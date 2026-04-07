@@ -1,0 +1,1558 @@
+/* ============================================
+   CSS VARIABELEN / THEMA
+   Gebaseerd op prilleven.be stijl:
+   warm terracotta & sage groen palet
+============================================ */
+:root {
+  --color-primary: #C98966;
+  --color-primary-dark: #BE764E;
+  --color-primary-light: #FFBC7D;
+  --color-secondary: #98C3A4;
+  --color-secondary-dark: #82BE93;
+  --color-danger: #c0392b;
+  --color-danger-dark: #a93226;
+  --color-warning: #f1c40f;
+  --color-info: #5dade2;
+  --color-dark: #171717;
+  --color-dark-light: #3d3d3d;
+  --color-gray: #7a7a7a;
+  --color-gray-light: #c5c5c5;
+  --color-light: #f0ebe6;
+  --color-white: #ffffff;
+  --color-bg: #faf8f5;
+  --color-star: #f1c40f;
+  --color-star-empty: #ddd;
+
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.12);
+
+  --radius-sm: 4px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+
+  --transition: all 0.3s ease;
+
+  --max-width: 1140px;
+}
+
+/* ============================================
+   RESET & BASIS STIJLEN
+============================================ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-dark);
+  line-height: 1.6;
+  min-height: 100vh;
+  font-weight: 400;
+}
+
+a {
+  color: var(--color-dark);
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+a:hover {
+  color: var(--color-primary);
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+h1, h2, h3 {
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--color-dark);
+}
+
+h1 { font-size: 2rem; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.15rem; }
+
+/* ============================================
+   HEADER COMPONENT
+============================================ */
+#app-header {
+  background: var(--color-primary);
+  color: var(--color-white);
+  padding: 1.25rem 2rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-inner {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.header-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.header-user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.header-user .user-name {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.3rem 0.8rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.header-user .user-name:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* ============================================
+   NAVIGATIE COMPONENT
+============================================ */
+#app-nav {
+  background: var(--color-white);
+  border-bottom: 1px solid var(--color-light);
+  position: sticky;
+  top: 58px;
+  z-index: 99;
+}
+
+.nav-inner {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+}
+
+.nav-link {
+  padding: 0.85rem 1.5rem;
+  color: var(--color-gray);
+  font-weight: 500;
+  border-bottom: 3px solid transparent;
+  transition: var(--transition);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.9rem;
+}
+
+.nav-link:hover {
+  color: var(--color-primary);
+}
+
+.nav-link.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* ============================================
+   HOOFDCONTENT AREA
+============================================ */
+#app-content {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem;
+  min-height: calc(100vh - 120px);
+}
+
+/* ============================================
+   KNOPPEN / BUTTONS
+   Stijl: platte knoppen, geen afgeronde hoeken
+============================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.65rem 1.35rem;
+  border: none;
+  border-radius: 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+  font-family: 'Poppins', sans-serif;
+  cursor: pointer;
+  transition: var(--transition);
+  line-height: 1.4;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: var(--color-white);
+}
+
+.btn-primary:hover {
+  background: var(--color-primary-dark);
+}
+
+.btn-secondary {
+  background: var(--color-secondary);
+  color: var(--color-white);
+}
+
+.btn-secondary:hover {
+  background: var(--color-secondary-dark);
+}
+
+.btn-danger {
+  background: var(--color-danger);
+  color: var(--color-white);
+}
+
+.btn-danger:hover {
+  background: var(--color-danger-dark);
+}
+
+.btn-outline {
+  background: transparent;
+  border: 2px solid var(--color-primary);
+  color: var(--color-primary);
+}
+
+.btn-outline:hover {
+  background: var(--color-primary);
+  color: var(--color-white);
+}
+
+.btn-sm {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+.btn-lg {
+  padding: 0.8rem 1.6rem;
+  font-size: 1rem;
+}
+
+.btn-icon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.3rem;
+  font-size: 1.2rem;
+  transition: var(--transition);
+}
+
+.btn-icon:hover {
+  transform: scale(1.15);
+}
+
+/* ============================================
+   FORMULIER ELEMENTEN
+============================================ */
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-weight: 600;
+  color: var(--color-dark);
+  font-size: 0.9rem;
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border: 2px solid var(--color-light);
+  border-radius: var(--radius-sm);
+  font-size: 0.95rem;
+  transition: var(--transition);
+  font-family: 'Poppins', sans-serif;
+  background: var(--color-white);
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(201, 137, 102, 0.15);
+}
+
+textarea.form-control {
+  resize: vertical;
+  min-height: 80px;
+}
+
+select.form-control {
+  cursor: pointer;
+}
+
+/* ============================================
+   CHECKBOX GROEP (voor allergenen / eetmomenten)
+============================================ */
+.checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  background: var(--color-light);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition);
+  font-size: 0.85rem;
+  user-select: none;
+}
+
+.checkbox-label:hover {
+  background: var(--color-gray-light);
+}
+
+.checkbox-label input[type="checkbox"] {
+  accent-color: var(--color-primary);
+}
+
+.checkbox-label input[type="checkbox"]:checked + span {
+  font-weight: 600;
+  color: var(--color-primary-dark);
+}
+
+/* ============================================
+   RECEPT KAARTEN GRID
+============================================ */
+.recipe-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.recipe-card {
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: var(--transition);
+  cursor: pointer;
+  position: relative;
+}
+
+.recipe-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+.recipe-card-image {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  background: var(--color-light);
+}
+
+.recipe-card-image-placeholder {
+  width: 100%;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-light);
+  color: var(--color-gray);
+  font-size: 3rem;
+}
+
+.recipe-card-body {
+  padding: 1.25rem;
+}
+
+.recipe-card-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--color-dark);
+}
+
+.recipe-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.recipe-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid var(--color-light);
+}
+
+/* ============================================
+   TAGS / BADGES
+============================================ */
+.tag {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.tag-moment {
+  background: rgba(152, 195, 164, 0.2);
+  color: #4a7c59;
+}
+
+.tag-allergen {
+  background: rgba(192, 57, 43, 0.1);
+  color: #c0392b;
+}
+
+.tag-time {
+  background: rgba(152, 195, 164, 0.15);
+  color: #4a7c59;
+}
+
+/* ============================================
+   STERREN BEOORDELING
+============================================ */
+.stars {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.star {
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: var(--transition);
+  color: var(--color-star-empty);
+  background: none;
+  border: none;
+  padding: 0;
+  line-height: 1;
+}
+
+.star.filled {
+  color: var(--color-star);
+}
+
+.star:hover {
+  transform: scale(1.2);
+}
+
+.stars-display .star {
+  cursor: default;
+}
+
+.stars-display .star:hover {
+  transform: none;
+}
+
+.rating-info {
+  font-size: 0.8rem;
+  color: var(--color-gray);
+  margin-left: 0.4rem;
+}
+
+/* ============================================
+   FAVORIET HART KNOP
+============================================ */
+.fav-btn {
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  cursor: pointer;
+  transition: var(--transition);
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 2;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+}
+
+.fav-btn:hover {
+  transform: scale(1.2);
+}
+
+.fav-btn.active {
+  animation: heartPop 0.3s ease;
+}
+
+@keyframes heartPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+
+/* ============================================
+   RECEPT DETAIL PAGINA
+============================================ */
+.recipe-detail {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.recipe-detail-header {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.recipe-detail-image {
+  width: 100%;
+  height: 350px;
+  object-fit: cover;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.recipe-detail-image-placeholder {
+  width: 100%;
+  height: 350px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-light);
+  border-radius: var(--radius-lg);
+  color: var(--color-gray);
+  font-size: 4rem;
+}
+
+.recipe-detail-title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.recipe-detail-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.recipe-section {
+  background: var(--color-white);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  margin-bottom: 1.25rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.recipe-section h3 {
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  color: var(--color-primary-dark);
+  border-bottom: 2px solid var(--color-light);
+  padding-bottom: 0.5rem;
+}
+
+/* ============================================
+   INGREDIENTEN LIJST
+============================================ */
+.ingredient-list {
+  list-style: none;
+}
+
+.ingredient-list li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--color-light);
+  display: flex;
+  justify-content: space-between;
+}
+
+.ingredient-list li:last-child {
+  border-bottom: none;
+}
+
+.ingredient-name {
+  font-weight: 500;
+}
+
+.ingredient-amount {
+  color: var(--color-gray);
+}
+
+/* ============================================
+   BEREIDINGSSTAPPEN
+============================================ */
+.preparation-list {
+  list-style: none;
+  counter-reset: step;
+}
+
+.preparation-list li {
+  counter-increment: step;
+  padding: 0.75rem 0 0.75rem 3rem;
+  position: relative;
+  border-bottom: 1px solid var(--color-light);
+}
+
+.preparation-list li:last-child {
+  border-bottom: none;
+}
+
+.preparation-list li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0.75rem;
+  width: 2rem;
+  height: 2rem;
+  background: var(--color-primary);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+/* ============================================
+   COMMENTAREN SECTIE
+============================================ */
+.comment-list {
+  margin-bottom: 1rem;
+}
+
+.comment-item {
+  padding: 0.75rem;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.5rem;
+}
+
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.3rem;
+}
+
+.comment-author {
+  font-weight: 600;
+  color: var(--color-primary-dark);
+  font-size: 0.85rem;
+}
+
+.comment-date {
+  color: var(--color-gray);
+  font-size: 0.75rem;
+}
+
+.comment-text {
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.comment-form {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.comment-form textarea {
+  flex: 1;
+  min-height: 60px;
+}
+
+/* ============================================
+   RECEPT FORMULIER (Toevoegen / Bewerken)
+============================================ */
+.recipe-form-container {
+  max-width: 700px;
+  margin: 0 auto;
+  background: var(--color-white);
+  padding: 2.5rem;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.recipe-form-container h2 {
+  margin-bottom: 1.5rem;
+  color: var(--color-primary-dark);
+}
+
+/* Dynamische lijsten (ingredienten, stappen) */
+.dynamic-list-item {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.dynamic-list-item .form-control {
+  margin-bottom: 0;
+}
+
+.dynamic-list-item .btn-remove {
+  color: var(--color-danger);
+  font-size: 1.2rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.3rem;
+  flex-shrink: 0;
+}
+
+.dynamic-list-item .btn-remove:hover {
+  color: var(--color-danger-dark);
+}
+
+.form-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  justify-content: flex-end;
+}
+
+/* ============================================
+   WEEKSCHEMA PAGINA
+============================================ */
+.schedule-controls {
+  background: var(--color-white);
+  padding: 2rem;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 1.5rem;
+}
+
+.schedule-controls h3 {
+  margin-bottom: 1rem;
+  color: var(--color-dark);
+}
+
+/* --- Schedule tabel: kolommen=dagen, rijen=eetmomenten --- */
+.schedule-table-wrapper {
+  overflow-x: auto;
+  margin-top: 1.5rem;
+}
+
+.schedule-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--color-white);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.schedule-table th,
+.schedule-table td {
+  padding: 0.75rem 0.5rem;
+  text-align: center;
+  vertical-align: top;
+  font-size: 0.85rem;
+}
+
+.schedule-corner {
+  background: var(--color-primary);
+  width: 100px;
+}
+
+.schedule-col-header {
+  background: var(--color-primary);
+  color: var(--color-white);
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.5px;
+  padding: 0.85rem 0.5rem;
+}
+
+.schedule-row-header {
+  background: var(--color-secondary);
+  color: var(--color-white);
+  font-weight: 600;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  text-align: left;
+  padding: 0.75rem 0.5rem;
+  word-break: break-word;
+  line-height: 1.3;
+}
+
+.schedule-cell {
+  border-bottom: 1px solid var(--color-light);
+  border-right: 1px solid var(--color-light);
+  position: relative;
+  min-height: 80px;
+  padding: 0.5rem 0.3rem;
+  vertical-align: middle;
+}
+
+.schedule-cell:last-child {
+  border-right: none;
+}
+
+.schedule-table tbody tr:last-child .schedule-cell,
+.schedule-table tbody tr:last-child .schedule-row-header {
+  border-bottom: none;
+}
+
+.schedule-cell-link {
+  display: block;
+  font-weight: 500;
+  font-size: 0.8rem;
+  color: var(--color-dark) !important;
+  text-decoration: none;
+  line-height: 1.3;
+  padding-right: 1rem;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.schedule-cell-link:hover {
+  color: var(--color-primary) !important;
+}
+
+.schedule-cell-empty {
+  color: var(--color-gray-light);
+  font-style: italic;
+  font-size: 0.8rem;
+}
+
+.schedule-cell .refresh-btn {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: var(--color-gray-light);
+  transition: var(--transition);
+  padding: 0.15rem;
+  opacity: 0;
+}
+
+.schedule-cell:hover .refresh-btn {
+  opacity: 1;
+}
+
+.schedule-cell .refresh-btn:hover {
+  color: var(--color-primary);
+  transform: rotate(90deg);
+}
+
+/* --- Recept achtergrond in schedule cellen --- */
+.schedule-cell-has-recipe {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  padding: 0 !important;
+}
+
+.schedule-cell-has-recipe .schedule-cell-link {
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  height: 100%;
+  min-height: 80px;
+  padding: 0;
+  text-decoration: none;
+}
+
+.schedule-recipe-overlay {
+  width: 100%;
+  padding: 0.35rem 0.3rem;
+  background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.45) 70%, transparent 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.schedule-recipe-name {
+  font-weight: 600;
+  font-size: 0.7rem;
+  line-height: 1.2;
+  word-break: break-word;
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.schedule-recipe-rating {
+  display: flex;
+  align-items: center;
+}
+
+.schedule-recipe-rating .stars {
+  font-size: 0.6rem;
+}
+
+.schedule-recipe-rating .star {
+  font-size: 0.6rem;
+  color: rgba(255,255,255,0.5);
+}
+
+.schedule-recipe-rating .star.filled {
+  color: #ffc107;
+}
+
+.schedule-recipe-rating .rating-info {
+  display: none;
+}
+
+.schedule-cell-has-recipe .schedule-cell-link:hover .schedule-recipe-name {
+  color: #ffe0b2;
+}
+
+.schedule-cell-has-recipe .refresh-btn {
+  color: rgba(255,255,255,0.7);
+}
+
+.schedule-cell-has-recipe .refresh-btn:hover {
+  color: #fff;
+}
+
+/* Legacy classes kept for backward compatibility */
+.schedule-grid {
+  margin-top: 1.5rem;
+}
+
+/* ============================================
+   BOODSCHAPPENLIJST TABEL
+   Dezelfde tabel-layout als weekschema,
+   maar met checkboxen in elke cel
+============================================ */
+.shopping-table .schedule-table-wrapper {
+  margin-top: 0;
+}
+
+.shopping-col-header {
+  padding: 0.65rem 0.4rem !important;
+}
+
+.shopping-day-toggle-compact {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  cursor: pointer;
+  color: var(--color-white);
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.shopping-day-toggle-compact input[type="checkbox"] {
+  accent-color: var(--color-white);
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+}
+
+.shopping-cell {
+  vertical-align: middle !important;
+  padding: 0.4rem 0.3rem !important;
+}
+
+.shopping-cell-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.3rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.shopping-cell-label input[type="checkbox"] {
+  accent-color: var(--color-primary);
+  width: 0.85rem;
+  height: 0.85rem;
+  cursor: pointer;
+  margin-top: 0.1rem;
+  flex-shrink: 0;
+}
+
+.shopping-cell-recipe {
+  font-size: 0.72rem;
+  line-height: 1.3;
+  color: var(--color-dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
+}
+
+.shopping-cell-label input[type="checkbox"]:not(:checked) + .shopping-cell-recipe {
+  color: var(--color-gray-light);
+  text-decoration: line-through;
+}
+
+.shopping-cell-empty {
+  opacity: 0.35;
+}
+
+/* ============================================
+   FAVORIETEN PAGINA
+============================================ */
+.favorites-section {
+  margin-bottom: 2.5rem;
+}
+
+.favorites-section h2 {
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 3px solid var(--color-primary);
+  display: inline-block;
+}
+
+.saved-schedule-card {
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 1rem;
+}
+
+.saved-schedule-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.saved-schedule-name {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.saved-schedule-date {
+  color: var(--color-gray);
+  font-size: 0.8rem;
+}
+
+/* ============================================
+   BOODSCHAPPENLIJST
+============================================ */
+.shopping-list-container {
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.shopping-recipe-select {
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+/* --- Dag-groep (bevat header + slots) --- */
+.shopping-day-group {
+  border: 1px solid var(--color-light);
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.75rem;
+  overflow: hidden;
+}
+
+.shopping-day-header {
+  background: var(--color-bg);
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--color-light);
+}
+
+.shopping-day-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.shopping-day-toggle input[type="checkbox"] {
+  accent-color: var(--color-primary);
+  width: 1.1rem;
+  height: 1.1rem;
+  cursor: pointer;
+}
+
+/* --- Eetmomenten lijst binnen een dag --- */
+.shopping-slot-list {
+  padding: 0.25rem 0;
+}
+
+.shopping-slot-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 1rem 0.45rem 2.2rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  user-select: none;
+}
+
+.shopping-slot-item:hover {
+  background: rgba(201, 137, 102, 0.06);
+}
+
+.shopping-slot-item.shopping-slot-empty {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.shopping-slot-item input[type="checkbox"] {
+  accent-color: var(--color-primary);
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+}
+
+.slot-label {
+  min-width: 90px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-gray);
+  letter-spacing: 0.3px;
+}
+
+.slot-recipe {
+  font-size: 0.9rem;
+  color: var(--color-dark);
+}
+
+.shopping-ingredient-list {
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.shopping-ingredient-list h3 {
+  margin-bottom: 1rem;
+  color: var(--color-primary-dark);
+}
+
+.shopping-ingredient-list ul {
+  list-style: none;
+}
+
+.shopping-ingredient-list li {
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--color-light);
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.shopping-ingredient-list li:last-child {
+  border-bottom: none;
+}
+
+.shopping-ingredient-list li::before {
+  content: "\25A2";
+  color: var(--color-primary);
+  font-size: 1.2rem;
+}
+
+/* ============================================
+   MODAL / OVERLAY
+============================================ */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  padding: 2.5rem;
+  max-width: 420px;
+  width: 90%;
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+}
+
+.modal h2 {
+  margin-bottom: 0.75rem;
+  color: var(--color-primary);
+}
+
+.modal p {
+  margin-bottom: 1rem;
+  color: var(--color-gray);
+}
+
+.modal input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid var(--color-light);
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
+  font-family: 'Poppins', sans-serif;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.modal input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+/* ============================================
+   BEVESTIGINGSDIALOOG
+============================================ */
+.confirm-dialog {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+}
+
+.confirm-dialog-box {
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: var(--shadow-lg);
+}
+
+.confirm-dialog-box p {
+  margin-bottom: 1.25rem;
+  font-size: 1rem;
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+/* ============================================
+   TOAST NOTIFICATIES
+============================================ */
+#toast-container {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.toast {
+  padding: 0.75rem 1.25rem;
+  border-radius: 0;
+  color: var(--color-white);
+  font-weight: 500;
+  box-shadow: var(--shadow-md);
+  animation: slideIn 0.3s ease;
+  max-width: 350px;
+  font-family: 'Poppins', sans-serif;
+}
+
+.toast-success {
+  background: var(--color-secondary-dark);
+}
+
+.toast-error {
+  background: var(--color-danger);
+}
+
+.toast-info {
+  background: var(--color-info);
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* ============================================
+   TOOLBAR / ACTIE BALK
+============================================ */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.toolbar-left {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.toolbar-right {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+/* ============================================
+   ZOEK & FILTER BAR
+============================================ */
+.search-bar {
+  position: relative;
+}
+
+.search-bar input {
+  padding: 0.65rem 0.85rem 0.65rem 2.2rem;
+  border: 2px solid var(--color-light);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  min-width: 250px;
+  transition: var(--transition);
+  font-family: 'Poppins', sans-serif;
+}
+
+.search-bar input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.search-bar::before {
+  content: "\1F50D";
+  position: absolute;
+  left: 0.65rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.9rem;
+}
+
+.filter-select {
+  padding: 0.65rem 0.85rem;
+  border: 2px solid var(--color-light);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  background: var(--color-white);
+  cursor: pointer;
+  font-family: 'Poppins', sans-serif;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+/* ============================================
+   LEGE STAAT (geen recepten, geen favorieten)
+============================================ */
+.empty-state {
+  text-align: center;
+  padding: 4rem 1rem;
+  color: var(--color-gray);
+}
+
+.empty-state-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  opacity: 0.4;
+}
+
+.empty-state h3 {
+  margin-bottom: 0.5rem;
+  color: var(--color-dark-light);
+}
+
+.empty-state p {
+  margin-bottom: 1.5rem;
+}
+
+/* ============================================
+   IMPORT SECTIE
+============================================ */
+.import-section {
+  background: var(--color-white);
+  border: 2px dashed var(--color-gray-light);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.import-section textarea {
+  width: 100%;
+  min-height: 120px;
+  margin: 0.75rem 0;
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+
+/* ============================================
+   AFDRUK STIJLEN
+============================================ */
+@media print {
+  #app-header,
+  #app-nav,
+  .btn,
+  #toast-container,
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+    color: black;
+  }
+
+  #app-content {
+    padding: 0;
+    max-width: 100%;
+  }
+
+  .shopping-ingredient-list {
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
+
+  .shopping-ingredient-list li::before {
+    content: "\25A1";
+    color: #333;
+  }
+}
+
+/* ============================================
+   HULPKLASSEN
+============================================ */
+.hidden {
+  display: none !important;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-muted {
+  color: var(--color-gray);
+}
+
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+.mb-1 { margin-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 1rem; }
+.mb-3 { margin-bottom: 1.5rem; }
+
+.flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+============================================ */
+@media (max-width: 768px) {
+  #app-content {
+    padding: 1rem;
+  }
+
+  .recipe-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .toolbar-left,
+  .toolbar-right {
+    justify-content: center;
+  }
+
+  .search-bar input {
+    min-width: 100%;
+  }
+
+  .recipe-detail-title {
+    font-size: 1.5rem;
+  }
+
+  .recipe-detail-image,
+  .recipe-detail-image-placeholder {
+    height: 220px;
+  }
+
+  .header-inner {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .nav-link {
+    padding: 0.7rem 1rem;
+    font-size: 0.85rem;
+  }
+
+  .comment-form {
+    flex-direction: column;
+  }
+
+  /* Schedule tabel op mobiel: horizontaal scrollbaar */
+  .schedule-table-wrapper {
+    margin: 1rem -1rem;
+    padding: 0 1rem;
+  }
+
+  .schedule-table {
+    font-size: 0.75rem;
+  }
+
+  .schedule-col-header,
+  .schedule-row-header {
+    font-size: 0.7rem;
+  }
+
+  .schedule-cell-link {
+    font-size: 0.7rem;
+  }
+}

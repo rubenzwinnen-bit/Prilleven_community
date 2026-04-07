@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Receptenboek - Jouw Digitale Keuken</title>
+
+  <!-- ============================================
+       EXTERNE STYLESHEET
+       Alle styling staat in een apart bestand
+  ============================================ -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ============================================
+       HEADER SECTIE
+       Wordt dynamisch gevuld door header.js component
+  ============================================ -->
+  <header id="app-header"></header>
+
+  <!-- ============================================
+       NAVIGATIE SECTIE
+       Wordt dynamisch gevuld door nav.js component
+  ============================================ -->
+  <nav id="app-nav"></nav>
+
+  <!-- ============================================
+       GEBRUIKERSNAAM MODAL
+       Verschijnt bij eerste bezoek om een naam in te stellen
+  ============================================ -->
+  <div id="user-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <h2>Welkom bij Receptenboek!</h2>
+      <p>Voer je naam in om te beginnen:</p>
+      <input type="text" id="user-name-input" placeholder="Jouw naam..." maxlength="30">
+      <button id="user-name-submit" class="btn btn-primary">Start</button>
+    </div>
+  </div>
+
+  <!-- ============================================
+       HOOFD CONTENT AREA
+       Hier worden alle pagina's/views dynamisch ingeladen
+       door de router op basis van de URL hash
+  ============================================ -->
+  <main id="app-content"></main>
+
+  <!-- ============================================
+       NOTIFICATIE CONTAINER
+       Voor toast-berichten (succes, fout, info)
+  ============================================ -->
+  <div id="toast-container"></div>
+
+  <!-- ============================================
+       JAVASCRIPT MODULES
+       Geladen als ES modules voor propere scheiding
+       script.js is het hoofdbestand dat alles initialiseert
+  ============================================ -->
+  <script type="module" src="script.js"></script>
+
+</body>
+</html>
