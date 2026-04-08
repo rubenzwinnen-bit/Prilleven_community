@@ -60,6 +60,7 @@ export function render(recipe, favIds = [], ratingsMap = {}) {
         <div class="recipe-card-meta">
           ${momentTags}
           <span class="tag tag-time">&#9201; ${recipe.cookingTime} min</span>
+          <span class="tag tag-portions">&#127869; ${recipe.portions || 1}</span>
         </div>
         <div class="recipe-card-meta">
           ${allergenTags}${moreAllergens}

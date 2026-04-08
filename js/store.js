@@ -99,6 +99,9 @@ function dbToRecipe(row) {
     image: row.image,
     mealMoments: row.meal_moments || [],
     cookingTime: row.cooking_time || 0,
+    /* Aantal porties (standaard 1 voor oude recepten zonder waarde).
+       De kolom `portions` in Supabase mag NULL zijn; we vangen dat hier op. */
+    portions: row.portions != null ? Number(row.portions) : 1,
     ingredients: row.ingredients || [],
     allergens: row.allergens || [],
     preparation: row.preparation || [],
@@ -113,11 +116,14 @@ function dbToRecipe(row) {
 
 /** Converteer app-data naar DB-formaat (snake_case kolommen) */
 function recipeToDb(data) {
+  /* Porties: minimaal 1, parseInt vangt "12 stuks" soort strings af */
+  const portions = parseInt(data.portions);
   return {
     name: data.name || 'Naamloos recept',
     image: data.image || '',
     meal_moments: data.mealMoments || [],
     cooking_time: parseInt(data.cookingTime) || 0,
+    portions: Number.isFinite(portions) && portions > 0 ? portions : 1,
     ingredients: data.ingredients || [],
     allergens: data.allergens || [],
     preparation: data.preparation || [],

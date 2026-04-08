@@ -119,6 +119,11 @@ export function render() {
               <td style="padding:0.5rem">45</td>
             </tr>
             <tr style="border-bottom:1px solid var(--color-light)">
+              <td style="padding:0.5rem"><strong>Porties</strong></td>
+              <td style="padding:0.5rem">Getal (aantal personen/stuks)<br><em style="font-size:0.8rem">Optioneel, standaard 1</em></td>
+              <td style="padding:0.5rem">2<br><em style="font-size:0.8rem">of 12 (voor 12 koekjes)</em></td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--color-light)">
               <td style="padding:0.5rem"><strong>Ingredienten</strong></td>
               <td style="padding:0.5rem">Pipe-gescheiden (|)<br><em>naam: hoev. eenheid</em><br>of <em>hoev. eenheid naam</em></td>
               <td style="padding:0.5rem">spaghetti: 300 gram | gehakt: 400 gram<br><em style="font-size:0.8rem">of: 300 gram spaghetti | 400 gram gehakt</em></td>
@@ -252,9 +257,10 @@ function renderRecipeManageList() {
 ============================================ */
 
 function downloadCsvTemplate() {
-  const template = `Naam;Afbeelding;Eetmomenten;Kooktijd;Ingredienten;Allergenen;Bereiding
-Voorbeeld Recept;https://voorbeeld.com/foto.jpg;ochtend, middag;30;bloem: 250 gram | eieren: 3 stuks | melk: 500 ml;gluten, ei, lactose;Meng alle droge ingredienten. | Voeg de natte ingredienten toe. | Bak in een voorverwarmde oven.
-Voorbeeld Fruit Moment;https://voorbeeld.com/fruit.jpg;fruit moment;5;appel: 2 stuks | kaneel: 1 theelepel;;Snijd het fruit. | Bestrooi met kaneel.`;
+  const template = `Naam;Afbeelding;Eetmomenten;Kooktijd;Porties;Ingredienten;Allergenen;Bereiding
+Voorbeeld Recept;https://voorbeeld.com/foto.jpg;ochtend, middag;30;4;bloem: 250 gram | eieren: 3 stuks | melk: 500 ml;gluten, ei, lactose;Meng alle droge ingredienten. | Voeg de natte ingredienten toe. | Bak in een voorverwarmde oven.
+Voorbeeld Fruit Moment;https://voorbeeld.com/fruit.jpg;fruit moment;5;2;appel: 2 stuks | kaneel: 1 theelepel;;Snijd het fruit. | Bestrooi met kaneel.
+Voorbeeld Koekjes;https://voorbeeld.com/koekjes.jpg;snack;25;12;bananen: 3 stuks | havermout: 120 gram;gluten;Pureer de bananen. | Meng alles. | Bak 20 minuten op 180°C.`;
 
   downloadFile('recepten-template.csv', template);
   showToast('CSV template gedownload!');
@@ -487,7 +493,9 @@ function parseCsv(csvText) {
   const firstRow = splitCsvRow(lines[0], delimiter);
   const isHeader = hasHeaderRow(firstRow);
 
-  const expectedHeaders = ['naam', 'afbeelding', 'eetmomenten', 'kooktijd', 'ingredienten', 'allergenen', 'bereiding'];
+  /* "Porties" is een optionele kolom: als de CSV hem niet heeft, krijgt hij
+     index -1 en vangt parseRecipePortions dat af met een standaardwaarde. */
+  const expectedHeaders = ['naam', 'afbeelding', 'eetmomenten', 'kooktijd', 'porties', 'ingredienten', 'allergenen', 'bereiding'];
 
   const colIndex = {};
   let dataStartIndex;
@@ -500,9 +508,19 @@ function parseCsv(csvText) {
     });
     dataStartIndex = 1;
   } else {
-    expectedHeaders.forEach((expected, idx) => {
-      colIndex[expected] = idx < firstRow.length ? idx : -1;
-    });
+    /* Zonder header: val terug op de oude volgorde (7 kolommen, zonder porties).
+       Als er 8 kolommen zijn, volgen we de nieuwe volgorde mét porties. */
+    const headersWithoutPortions = ['naam', 'afbeelding', 'eetmomenten', 'kooktijd', 'ingredienten', 'allergenen', 'bereiding'];
+    if (firstRow.length >= 8) {
+      expectedHeaders.forEach((expected, idx) => {
+        colIndex[expected] = idx < firstRow.length ? idx : -1;
+      });
+    } else {
+      headersWithoutPortions.forEach((expected, idx) => {
+        colIndex[expected] = idx < firstRow.length ? idx : -1;
+      });
+      colIndex['porties'] = -1;
+    }
     dataStartIndex = 0;
   }
 
@@ -523,6 +541,7 @@ function parseCsv(csvText) {
       image: getCol(cols, colIndex['afbeelding']) || '',
       mealMoments: parseCommaList(getCol(cols, colIndex['eetmomenten'])),
       cookingTime: parseInt(getCol(cols, colIndex['kooktijd'])) || 0,
+      portions: parseRecipePortions(getCol(cols, colIndex['porties'])),
       ingredients: parseIngredients(getCol(cols, colIndex['ingredienten'])),
       allergens: parseCommaList(getCol(cols, colIndex['allergenen'])),
       preparation: parsePipeList(getCol(cols, colIndex['bereiding'])),
@@ -532,6 +551,21 @@ function parseCsv(csvText) {
   }
 
   return recipes;
+}
+
+/* ----------------------------------------
+   PARSE RECIPE PORTIONS
+   Accepteert waarden zoals:
+     "2", "12", "12 stuks", "voor 4 personen"
+   Geeft standaard 1 terug als er niks staat
+---------------------------------------- */
+function parseRecipePortions(text) {
+  if (!text) return 1;
+  /* Pak het eerste getal dat we vinden (bv. uit "12 stuks") */
+  const match = String(text).match(/(\d+)/);
+  if (!match) return 1;
+  const num = parseInt(match[1], 10);
+  return Number.isFinite(num) && num > 0 ? num : 1;
 }
 
 function splitCsvLines(text) {

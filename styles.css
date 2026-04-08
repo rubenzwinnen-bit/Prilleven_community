@@ -439,6 +439,11 @@ select.form-control {
   color: #4a7c59;
 }
 
+.tag-portions {
+  background: rgba(221, 164, 97, 0.18);
+  color: #8a5a1a;
+}
+
 /* ============================================
    STERREN BEOORDELING
 ============================================ */

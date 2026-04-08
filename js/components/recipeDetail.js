@@ -154,12 +154,17 @@ function buildDetailHtml(recipe, isFav, avgRating, userRating, comments) {
         <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem">
           ${moments}
           <span class="tag tag-time">&#9201; ${recipe.cookingTime} min</span>
+          <span class="tag tag-portions">&#127869; ${recipe.portions || 1} ${(recipe.portions || 1) === 1 ? 'portie' : 'porties'}</span>
         </div>
         ${allergens ? `<div style="display:flex;flex-wrap:wrap;gap:0.5rem"><strong style="font-size:0.85rem;margin-right:0.25rem">Allergenen:</strong>${allergens}</div>` : '<p class="text-muted" style="font-size:0.85rem">Geen allergenen</p>'}
       </div>
 
       <div class="recipe-section">
-        <h3>Ingrediënten</h3>
+        <h3>Ingrediënten
+          <span class="text-muted" style="font-size:0.85rem;font-weight:normal">
+            (voor ${recipe.portions || 1} ${(recipe.portions || 1) === 1 ? 'portie' : 'porties'})
+          </span>
+        </h3>
         <ul class="ingredient-list">
           ${ingredientItems}
         </ul>

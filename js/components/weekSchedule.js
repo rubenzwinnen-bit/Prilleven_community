@@ -5,6 +5,13 @@
    Recepten worden willekeurig gekozen uit de pool,
    gefilterd op allergenen en eetmoment.
 
+   PER-GEBRUIKER:
+   Elke gebruiker heeft een eigen "actief" weekschema.
+   Dit wordt bewaard in localStorage onder de key
+   `receptenboek_active_schedule_<username>` zodat
+   het zichtbaar blijft bij terugkeer en tussen
+   sessies, tot de gebruiker het opnieuw genereert.
+
    Async patroon:
    - render() geeft een skeleton terug
    - init() haalt recepten + ratings parallel op
@@ -25,6 +32,42 @@ let currentSchedule = null;
 let cachedRecipes = [];
 let cachedUserRatings = {};
 let recipeMap = new Map();
+
+/* ----------------------------------------
+   PERSISTENT PER-GEBRUIKER OPSLAG
+   Het actieve (gegenereerde) weekschema wordt
+   per gebruiker bewaard in localStorage zodat
+   het niet verdwijnt bij navigatie of refresh.
+---------------------------------------- */
+function getActiveScheduleKey() {
+  const user = Store.getCurrentUser() || 'anoniem';
+  return `receptenboek_active_schedule_${user}`;
+}
+
+function loadActiveSchedule() {
+  try {
+    const raw = localStorage.getItem(getActiveScheduleKey());
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    /* Sanity check op de structuur */
+    if (!parsed || typeof parsed !== 'object' || !parsed.days) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function saveActiveSchedule(schedule) {
+  try {
+    if (schedule) {
+      localStorage.setItem(getActiveScheduleKey(), JSON.stringify(schedule));
+    } else {
+      localStorage.removeItem(getActiveScheduleKey());
+    }
+  } catch (err) {
+    console.warn('Kon actief weekschema niet opslaan:', err);
+  }
+}
 
 /* ----------------------------------------
    RENDER (skeleton)
@@ -67,7 +110,13 @@ function buildPageHtml() {
       <div class="schedule-controls">
         <h3>Allergenen uitsluiten</h3>
         <p class="text-muted mb-2" style="font-size:0.85rem">
-          Vink de allergenen aan die je wilt uitsluiten. Recepten met deze allergenen worden niet gebruikt.
+          Dit is <strong>jouw persoonlijke</strong> weekschema generator.
+          Alleen jij ziet het schema dat je hier genereert en andere
+          gebruikers kunnen het niet aanpassen. Het blijft bewaard tot
+          je op "Genereer Weekschema" klikt om het te vernieuwen.
+          <br><br>
+          Vink hieronder de allergenen aan die je wilt uitsluiten.
+          Recepten met deze allergenen worden niet gebruikt.
         </p>
         <div class="checkbox-group" id="allergen-filters">
           ${ALLERGENS.filter(a => usedAllergens.has(a)).map(a => `
@@ -182,6 +231,9 @@ export async function init() {
   const page = document.getElementById('schedule-page');
   if (!page) return;
 
+  /* ---- Laad het persoonlijke actieve schema uit localStorage ---- */
+  currentSchedule = loadActiveSchedule();
+
   /* ---- Data parallel ophalen ---- */
   try {
     const [recipes, userRatings] = await Promise.all([
@@ -200,6 +252,9 @@ export async function init() {
       </div>`;
     return;
   }
+
+  /* ---- Als het opgeslagen schema nog recept-IDs bevat die niet meer
+          bestaan (verwijderd), dan blijft de cel gewoon leeg. ---- */
 
   /* ---- Vul de pagina ---- */
   page.innerHTML = buildPageHtml();
@@ -270,8 +325,12 @@ function generateSchedule() {
 
   currentSchedule = {
     days,
-    excludedAllergens: excluded
+    excludedAllergens: excluded,
+    generatedAt: new Date().toISOString(),
   };
+
+  /* Persisteer per gebruiker */
+  saveActiveSchedule(currentSchedule);
 
   /* Herrender de pagina */
   const page = document.getElementById('schedule-page');
@@ -312,6 +371,9 @@ function refreshSlot(day, slotId) {
     currentSchedule.days[day][slotId] = null;
   }
 
+  /* Persisteer de wijziging zodat ook een ververst slot blijft staan */
+  saveActiveSchedule(currentSchedule);
+
   /* Update alleen het grid */
   const grid = document.getElementById('schedule-grid');
   if (grid) grid.innerHTML = renderScheduleGrid(currentSchedule);
@@ -346,5 +408,7 @@ async function saveSchedule() {
    RESET
 ---------------------------------------- */
 export function reset() {
-  // Behoud het schema zodat het zichtbaar blijft bij terugkeer
+  /* In-memory state leeggooien zodat een volgende bezoek
+     opnieuw uit localStorage leest (kan een andere gebruiker zijn). */
+  currentSchedule = null;
 }

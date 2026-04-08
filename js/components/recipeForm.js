@@ -79,6 +79,15 @@ export function render(recipeId = null) {
         </div>
 
         <div class="form-group">
+          <label for="recipe-portions">Aantal porties *</label>
+          <input type="number" class="form-control" id="recipe-portions"
+                 placeholder="Bijv. 2 personen of 12 koekjes" min="1" value="1" required>
+          <small class="text-muted" style="font-size:0.8rem">
+            Voor hoeveel personen of stuks zijn de hoeveelheden bedoeld? (bv. 4 personen, 12 koekjes)
+          </small>
+        </div>
+
+        <div class="form-group">
           <label>Ingrediënten *</label>
           <div id="ingredients-list">
             ${renderIngredientRow({}, 0)}
@@ -269,6 +278,7 @@ export async function init(recipeId = null) {
 function fillForm(recipe) {
   document.getElementById('recipe-name').value = recipe.name || '';
   document.getElementById('recipe-cooktime').value = recipe.cookingTime || '';
+  document.getElementById('recipe-portions').value = recipe.portions || 1;
   document.getElementById('recipe-image').value = recipe.image || '';
 
   /* Eetmomenten */
@@ -413,6 +423,13 @@ async function handleSubmit(e) {
     return;
   }
 
+  /* Porties */
+  const portions = parseInt(document.getElementById('recipe-portions').value) || 0;
+  if (portions <= 0) {
+    showToast('Vul een geldig aantal porties in', 'error');
+    return;
+  }
+
   /* Ingrediënten */
   const ingredients = [];
   document.querySelectorAll('#ingredients-list .dynamic-list-item').forEach(row => {
@@ -467,6 +484,7 @@ async function handleSubmit(e) {
     image,
     mealMoments,
     cookingTime,
+    portions,
     ingredients,
     allergens,
     preparation,
