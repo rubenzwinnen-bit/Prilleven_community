@@ -29,15 +29,71 @@
   <nav id="app-nav"></nav>
 
   <!-- ============================================
-       GEBRUIKERSNAAM MODAL
-       Verschijnt bij eerste bezoek om een naam in te stellen
+       AUTH MODAL
+       Tabbed modal met Login, Registreren,
+       Wachtwoord Vergeten en Wachtwoord Resetten views.
+       Email wordt geverifieerd tegen allowed_users tabel.
   ============================================ -->
   <div id="user-modal" class="modal-overlay hidden">
-    <div class="modal">
-      <h2>Welkom bij Receptenboek!</h2>
-      <p>Voer je naam in om te beginnen:</p>
-      <input type="text" id="user-name-input" placeholder="Jouw naam..." maxlength="30">
-      <button id="user-name-submit" class="btn btn-primary">Start</button>
+    <div class="modal auth-modal">
+
+      <!-- TAB NAVIGATIE -->
+      <div class="auth-tabs" id="auth-tabs">
+        <button class="auth-tab active" data-tab="login">Inloggen</button>
+        <button class="auth-tab" data-tab="signup">Registreren</button>
+      </div>
+
+      <!-- LOGIN VIEW -->
+      <div id="auth-login" class="auth-view">
+        <h2>Welkom terug!</h2>
+        <p>Log in met je e-mailadres en wachtwoord.</p>
+        <input type="email" id="login-email" class="auth-input" placeholder="jouw@email.com" maxlength="100">
+        <input type="password" id="login-password" class="auth-input" placeholder="Wachtwoord" maxlength="128">
+        <div id="login-error" class="auth-error hidden"></div>
+        <div id="login-loading" class="auth-loading hidden">Bezig met inloggen...</div>
+        <button id="login-submit" class="btn btn-primary btn-block">Inloggen</button>
+        <p class="auth-link-row">
+          <a href="#" id="show-forgot">Wachtwoord vergeten?</a>
+        </p>
+      </div>
+
+      <!-- REGISTREREN VIEW -->
+      <div id="auth-signup" class="auth-view hidden">
+        <h2>Account aanmaken</h2>
+        <p>Gebruik het e-mailadres waarmee je hebt betaald.</p>
+        <input type="email" id="signup-email" class="auth-input" placeholder="jouw@email.com" maxlength="100">
+        <input type="password" id="signup-password" class="auth-input" placeholder="Wachtwoord (min. 6 tekens)" maxlength="128">
+        <input type="password" id="signup-password-confirm" class="auth-input" placeholder="Wachtwoord bevestigen" maxlength="128">
+        <div id="signup-error" class="auth-error hidden"></div>
+        <div id="signup-loading" class="auth-loading hidden">Bezig met registreren...</div>
+        <button id="signup-submit" class="btn btn-primary btn-block">Registreren</button>
+      </div>
+
+      <!-- WACHTWOORD VERGETEN VIEW -->
+      <div id="auth-forgot" class="auth-view hidden">
+        <h2>Wachtwoord vergeten?</h2>
+        <p>Vul je e-mailadres in. We sturen je een link om je wachtwoord te resetten.</p>
+        <input type="email" id="forgot-email" class="auth-input" placeholder="jouw@email.com" maxlength="100">
+        <div id="forgot-error" class="auth-error hidden"></div>
+        <div id="forgot-success" class="auth-success hidden"></div>
+        <div id="forgot-loading" class="auth-loading hidden">Bezig met versturen...</div>
+        <button id="forgot-submit" class="btn btn-primary btn-block">Verstuur reset link</button>
+        <p class="auth-link-row">
+          <a href="#" id="show-login-from-forgot">Terug naar inloggen</a>
+        </p>
+      </div>
+
+      <!-- NIEUW WACHTWOORD VIEW (verschijnt via recovery link uit email) -->
+      <div id="auth-reset" class="auth-view hidden">
+        <h2>Nieuw wachtwoord instellen</h2>
+        <p>Kies een nieuw wachtwoord voor je account.</p>
+        <input type="password" id="reset-password" class="auth-input" placeholder="Nieuw wachtwoord (min. 6 tekens)" maxlength="128">
+        <input type="password" id="reset-password-confirm" class="auth-input" placeholder="Bevestig nieuw wachtwoord" maxlength="128">
+        <div id="reset-error" class="auth-error hidden"></div>
+        <div id="reset-loading" class="auth-loading hidden">Bezig met opslaan...</div>
+        <button id="reset-submit" class="btn btn-primary btn-block">Wachtwoord opslaan</button>
+      </div>
+
     </div>
   </div>
 

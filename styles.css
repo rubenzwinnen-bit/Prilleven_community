@@ -1235,6 +1235,134 @@ select.form-control {
 }
 
 /* ============================================
+   AUTH MODAL (Login / Registratie / Reset)
+============================================ */
+.auth-modal {
+  max-width: 440px;
+  text-align: left;
+}
+
+.auth-modal h2 {
+  text-align: center;
+}
+
+.auth-modal p {
+  text-align: center;
+}
+
+/* --- Tab navigatie --- */
+.auth-tabs {
+  display: flex;
+  border-bottom: 2px solid var(--color-light);
+  margin-bottom: 1.5rem;
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 0.75rem;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--color-gray);
+  cursor: pointer;
+  transition: var(--transition);
+  margin-bottom: -2px;
+}
+
+.auth-tab:hover {
+  color: var(--color-primary);
+}
+
+.auth-tab.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* --- Auth input velden --- */
+.auth-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid var(--color-light);
+  border-radius: var(--radius-sm);
+  font-size: 0.95rem;
+  font-family: 'Poppins', sans-serif;
+  margin-bottom: 0.75rem;
+  text-align: left;
+}
+
+.auth-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(201, 137, 102, 0.15);
+}
+
+/* --- Full-width knop --- */
+.btn-block {
+  width: 100%;
+  justify-content: center;
+}
+
+/* --- Fout- en succesberichten --- */
+.auth-error {
+  color: var(--color-danger);
+  font-size: 0.8rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.4;
+}
+
+.auth-success {
+  color: var(--color-secondary-dark);
+  font-size: 0.8rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.4;
+}
+
+.auth-loading {
+  color: var(--color-gray);
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+  text-align: center;
+}
+
+/* --- Link rij (wachtwoord vergeten, terug naar login) --- */
+.auth-link-row {
+  text-align: center;
+  margin-top: 0.75rem;
+  margin-bottom: 0;
+}
+
+.auth-link-row a {
+  color: var(--color-primary);
+  font-size: 0.85rem;
+  text-decoration: underline;
+}
+
+.auth-link-row a:hover {
+  color: var(--color-primary-dark);
+}
+
+/* --- Uitlogknop in header --- */
+.btn-logout {
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--color-white);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 0.25rem 0.7rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-family: 'Poppins', sans-serif;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-logout:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* ============================================
    BEVESTIGINGSDIALOOG
 ============================================ */
 .confirm-dialog {

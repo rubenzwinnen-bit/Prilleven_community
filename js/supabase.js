@@ -95,6 +95,135 @@ export async function supabaseStorageDelete(filePath) {
 }
 
 /* ----------------------------------------
+   CONTROLEER OF EEN EMAIL IN DE ALLOWED_USERS TABEL STAAT
+   Wordt aangeroepen bij login om te checken of de gebruiker
+   betaald heeft via de betalingswebsite.
+   Retourneert true als het emailadres gevonden is, anders false.
+---------------------------------------- */
+export async function checkAllowedUser(email) {
+  const data = await supabaseFetch(
+    `/rest/v1/allowed_users?email=eq.${encodeURIComponent(email)}&select=email`
+  );
+  return Array.isArray(data) && data.length > 0;
+}
+
+/* ============================================
+   AUTHENTICATIE FUNCTIES (Supabase Auth REST API)
+   Gebruikt /auth/v1/ endpoints voor signup, login,
+   wachtwoord reset en wachtwoord wijzigen.
+============================================ */
+
+/* ----------------------------------------
+   AUTH: Controleer of email nog kan registreren
+   Email moet in allowed_users staan EN has_registered = false
+---------------------------------------- */
+export async function checkCanSignUp(email) {
+  const data = await supabaseFetch(
+    `/rest/v1/allowed_users?email=eq.${encodeURIComponent(email)}&has_registered=eq.false&select=email`
+  );
+  return Array.isArray(data) && data.length > 0;
+}
+
+/* ----------------------------------------
+   AUTH: Maak een Supabase Auth account aan
+   POST /auth/v1/signup
+---------------------------------------- */
+export async function authSignUp(email, password) {
+  const url = SUPABASE_URL + '/auth/v1/signup';
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error_description || data.msg || 'Registratie mislukt');
+  }
+  return data;
+}
+
+/* ----------------------------------------
+   AUTH: Log in met email en wachtwoord
+   POST /auth/v1/token?grant_type=password
+---------------------------------------- */
+export async function authSignIn(email, password) {
+  const url = SUPABASE_URL + '/auth/v1/token?grant_type=password';
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error_description || data.msg || 'Inloggen mislukt');
+  }
+  return data;
+}
+
+/* ----------------------------------------
+   AUTH: Stuur een wachtwoord-reset email
+   POST /auth/v1/recover
+---------------------------------------- */
+export async function authResetPassword(email) {
+  const url = SUPABASE_URL + '/auth/v1/recover';
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email }),
+  });
+  if (!response.ok) {
+    const data = await response.json();
+    throw new Error(data.error_description || data.msg || 'Verzoek mislukt');
+  }
+}
+
+/* ----------------------------------------
+   AUTH: Stel nieuw wachtwoord in met recovery token
+   PUT /auth/v1/user
+---------------------------------------- */
+export async function authUpdatePassword(accessToken, newPassword) {
+  const url = SUPABASE_URL + '/auth/v1/user';
+  const response = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + accessToken,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ password: newPassword }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error_description || data.msg || 'Wachtwoord wijzigen mislukt');
+  }
+  return data;
+}
+
+/* ----------------------------------------
+   AUTH: Markeer email als geregistreerd in allowed_users
+   PATCH /rest/v1/allowed_users (zet has_registered = true)
+---------------------------------------- */
+export async function markUserRegistered(email) {
+  await supabaseFetch(
+    `/rest/v1/allowed_users?email=eq.${encodeURIComponent(email)}`,
+    {
+      method: 'PATCH',
+      body: { has_registered: true },
+      prefer: 'return=minimal',
+    }
+  );
+}
+
+/* ----------------------------------------
    DATA-URI NAAR BLOB CONVERTEREN
    Hulpfunctie om een base64 image om te zetten
    naar een Blob die we kunnen uploaden.
