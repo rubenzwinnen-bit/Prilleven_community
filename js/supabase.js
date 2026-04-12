@@ -118,16 +118,18 @@ export async function uploadIngredientIcon(filePath, fileBlob) {
 
 /* ----------------------------------------
    PUBLIEKE URL VAN EEN INGREDIËNT ICOON
+   Gebruikt encodeURIComponent zodat speciale
+   tekens in het pad veilig in de URL staan.
 ---------------------------------------- */
 export function ingredientIconPublicUrl(filePath) {
-  return `${SUPABASE_URL}/storage/v1/object/public/ingredient-icons/${filePath}`;
+  return `${SUPABASE_URL}/storage/v1/object/public/ingredient-icons/${encodeURIComponent(filePath)}`;
 }
 
 /* ----------------------------------------
    INGREDIËNT ICOON VERWIJDEREN UIT STORAGE
 ---------------------------------------- */
 export async function deleteIngredientIcon(filePath) {
-  await fetch(`${SUPABASE_URL}/storage/v1/object/ingredient-icons/${filePath}`, {
+  await fetch(`${SUPABASE_URL}/storage/v1/object/ingredient-icons/${encodeURIComponent(filePath)}`, {
     method: 'DELETE',
     headers: {
       'apikey': SUPABASE_ANON_KEY,

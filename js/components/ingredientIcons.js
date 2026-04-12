@@ -15,6 +15,23 @@ import {
 import { showToast, escapeHtml } from '../utils.js';
 
 /* ----------------------------------------
+   STORAGE PAD SANITISATIE
+   Zet een genormaliseerde ingrediënt-naam
+   om naar een veilig bestandspad voor
+   Supabase Storage. Verwijdert spaties,
+   diakritische tekens en speciale karakters.
+   Bijv. "maïs uit blik" → "mais-uit-blik.png"
+---------------------------------------- */
+function toStoragePath(normalized) {
+  const safe = normalized
+    .normalize('NFD')                       // splits ï → i + combining ¨
+    .replace(/[\u0300-\u036f]/g, '')        // strip diakritische tekens
+    .replace(/\s+/g, '-')                   // spaties → streepjes
+    .replace(/[^a-z0-9._-]/gi, '');         // verwijder overige onveilige tekens
+  return safe + '.png';
+}
+
+/* ----------------------------------------
    NORMALISATIE
    Maakt ingrediënt-namen uniform zodat
    "Tomaten", "tomaat", "tomaten" allemaal
@@ -328,11 +345,11 @@ export async function init() {
       /* Resize naar 128x128 met Canvas (center crop) */
       const blob = await resizeImage(file, 128, 128);
 
-      /* Upload naar Supabase Storage */
-      const iconUrl = await uploadIngredientIcon(`${normalized}.png`, blob);
+      /* Upload naar Supabase Storage (gesanitiseerd pad) */
+      const iconUrl = await uploadIngredientIcon(toStoragePath(normalized), blob);
 
-      /* UPSERT in ingredient_icons tabel */
-      await supabaseFetch('/rest/v1/ingredient_icons', {
+      /* UPSERT in ingredient_icons tabel (on_conflict=name voor merge) */
+      await supabaseFetch('/rest/v1/ingredient_icons?on_conflict=name', {
         method: 'POST',
         body: {
           name: normalized,
@@ -571,11 +588,11 @@ ui;ui.png`;
           /* Resize naar 128x128 */
           const blob = await resizeImage(imgFile, 128, 128);
 
-          /* Upload naar Storage */
-          const iconUrl = await uploadIngredientIcon(`${normalized}.png`, blob);
+          /* Upload naar Storage (gesanitiseerd pad) */
+          const iconUrl = await uploadIngredientIcon(toStoragePath(normalized), blob);
 
-          /* UPSERT in tabel */
-          await supabaseFetch('/rest/v1/ingredient_icons', {
+          /* UPSERT in tabel (on_conflict=name voor merge bij duplicaten) */
+          await supabaseFetch('/rest/v1/ingredient_icons?on_conflict=name', {
             method: 'POST',
             body: {
               name: normalized,
@@ -658,8 +675,8 @@ ui;ui.png`;
     if (!confirm(`Icoon voor "${normalized}" verwijderen?`)) return;
 
     try {
-      /* Verwijder uit Storage */
-      await deleteIngredientIcon(`${normalized}.png`);
+      /* Verwijder uit Storage (gesanitiseerd pad) */
+      await deleteIngredientIcon(toStoragePath(normalized));
 
       /* Verwijder uit tabel */
       await supabaseFetch(
