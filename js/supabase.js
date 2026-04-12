@@ -82,6 +82,54 @@ export function supabaseStoragePublicUrl(filePath) {
 }
 
 /* ----------------------------------------
+   INGREDIËNT ICOON UPLOADEN NAAR STORAGE
+   Upload een Blob naar de 'ingredient-icons' bucket
+   en geeft de publieke URL terug.
+
+   filePath  - pad binnen de bucket, bv. 'tomaat.png'
+   fileBlob  - de bestandsdata (Blob object)
+---------------------------------------- */
+export async function uploadIngredientIcon(filePath, fileBlob) {
+  const url = `${SUPABASE_URL}/storage/v1/object/ingredient-icons/${filePath}`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+      'Content-Type': fileBlob.type || 'image/png',
+      'x-upsert': 'true',
+    },
+    body: fileBlob,
+  });
+
+  if (!response.ok) {
+    throw new Error('Upload van icoon mislukt: ' + response.status);
+  }
+
+  return ingredientIconPublicUrl(filePath);
+}
+
+/* ----------------------------------------
+   PUBLIEKE URL VAN EEN INGREDIËNT ICOON
+---------------------------------------- */
+export function ingredientIconPublicUrl(filePath) {
+  return `${SUPABASE_URL}/storage/v1/object/public/ingredient-icons/${filePath}`;
+}
+
+/* ----------------------------------------
+   INGREDIËNT ICOON VERWIJDEREN UIT STORAGE
+---------------------------------------- */
+export async function deleteIngredientIcon(filePath) {
+  await fetch(`${SUPABASE_URL}/storage/v1/object/ingredient-icons/${filePath}`, {
+    method: 'DELETE',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+    },
+  }).catch(() => {});
+}
+
+/* ----------------------------------------
    AFBEELDING VERWIJDEREN UIT STORAGE
 ---------------------------------------- */
 export async function supabaseStorageDelete(filePath) {

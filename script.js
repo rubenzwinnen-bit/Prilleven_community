@@ -28,6 +28,7 @@ import * as WeekSchedule from './js/components/weekSchedule.js';
 import * as Favorites from './js/components/favorites.js';
 import * as ShoppingList from './js/components/shoppingList.js';
 import * as RecipeForm from './js/components/recipeForm.js';
+import * as IngredientIcons from './js/components/ingredientIcons.js';
 
 /* ============================================
    RECOVERY TOKEN DETECTIE
@@ -400,6 +401,11 @@ function setupApp() {
   /* --- Recepten importeren --- */
   Router.on('import', async () => {
     await renderPage(ImportRecipes.render(), ImportRecipes.init);
+  });
+
+  /* --- Ingrediënt iconen beheer --- */
+  Router.on('ingredient-icons', async () => {
+    await renderPage(IngredientIcons.render(), IngredientIcons.init);
   });
 
   /* --- Weekschema generator --- */

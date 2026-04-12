@@ -15,6 +15,7 @@ import { isAdmin } from '../store.js';
 const NAV_ITEMS = [
   { path: '', label: 'Recepten' },
   { path: 'import', label: 'Importeren', adminOnly: true },
+  { path: 'ingredient-icons', label: 'Iconen', adminOnly: true },
   { path: 'schedule', label: 'Weekschema' },
   { path: 'favorites', label: 'Favorieten' }
 ];

@@ -1561,6 +1561,103 @@ select.form-control {
 }
 
 /* ============================================
+   INGREDIËNT ICONEN BEHEER
+============================================ */
+.ingredient-icons-toolbar {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.ingredient-icons-toolbar .form-control {
+  flex: 1;
+  min-width: 200px;
+}
+
+.ingredient-icons-toolbar select.form-control {
+  flex: 0 0 auto;
+  min-width: 200px;
+}
+
+#icon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.icon-grid-item {
+  background: var(--color-white);
+  border: 2px solid var(--color-light);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  transition: var(--transition);
+}
+
+.icon-grid-item:hover {
+  border-color: var(--color-primary-light);
+  box-shadow: var(--shadow-sm);
+}
+
+.icon-grid-item.has-icon {
+  border-color: var(--color-secondary);
+}
+
+.icon-grid-preview {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.icon-grid-img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+}
+
+.icon-grid-placeholder {
+  font-size: 1.5rem;
+  color: var(--color-gray-light);
+}
+
+.icon-grid-info {
+  text-align: center;
+}
+
+.icon-grid-name {
+  display: block;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--color-dark);
+}
+
+.icon-grid-count {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-gray);
+}
+
+.icon-grid-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.icon-upload-label {
+  cursor: pointer;
+}
+
+/* ============================================
    AFDRUK STIJLEN
 ============================================ */
 @media print {
