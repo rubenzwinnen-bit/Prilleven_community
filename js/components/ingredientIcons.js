@@ -389,7 +389,9 @@ ui;ui.png`;
       a.displayName.localeCompare(b.displayName)
     );
 
-    /* Bouw CSV met alle ingrediënten */
+    /* Bouw CSV met alle ingrediënten
+       Gebruik .png als standaard extensie — de bulk import
+       matcht ook op basisnaam, dus .jpg/.webp etc. werkt ook */
     const rows = sorted.map(item =>
       `${item.displayName};${item.normalized}.png`
     );
@@ -417,7 +419,11 @@ ui;ui.png`;
     if (files.length === 0) { statusEl.textContent = ''; return; }
 
     const csvFiles = files.filter(f => f.name.toLowerCase().endsWith('.csv'));
-    const imageFiles = files.filter(f => f.type && f.type.startsWith('image/'));
+    const imageExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp', '.ico'];
+    const imageFiles = files.filter(f =>
+      (f.type && f.type.startsWith('image/')) ||
+      imageExts.some(ext => f.name.toLowerCase().endsWith(ext))
+    );
 
     let html = '';
     if (csvFiles.length >= 1) {
@@ -442,7 +448,11 @@ ui;ui.png`;
     }
 
     const csvFile = files.find(f => f.name.toLowerCase().endsWith('.csv'));
-    const imageFiles = files.filter(f => f.type && f.type.startsWith('image/'));
+    const imageExtsImport = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp', '.ico'];
+    const imageFiles = files.filter(f =>
+      (f.type && f.type.startsWith('image/')) ||
+      imageExtsImport.some(ext => f.name.toLowerCase().endsWith(ext))
+    );
 
     if (!csvFile) {
       showToast('Geen CSV bestand gevonden in de map', 'error');
@@ -483,24 +493,40 @@ ui;ui.png`;
         return;
       }
 
-      /* Bouw lookup van afbeeldings-bestanden */
+      /* Bouw lookup van afbeeldings-bestanden:
+         1) Exact match op volledige bestandsnaam (bijv. "tomaat.png")
+         2) Fallback match op basisnaam zonder extensie (bijv. "tomaat") */
       const fileMap = {};
+      const baseNameMap = {};
       for (const imgFile of imageFiles) {
-        fileMap[imgFile.name.toLowerCase()] = imgFile;
+        const fullName = imgFile.name.toLowerCase();
+        fileMap[fullName] = imgFile;
+
+        /* Basisnaam zonder extensie voor fallback matching */
+        const baseName = fullName.replace(/\.[^.]+$/, '');
+        if (!baseNameMap[baseName]) {
+          baseNameMap[baseName] = imgFile;
+        }
       }
 
       /* Verwerk elke rij */
       let uploaded = 0;
       let skipped = 0;
+      const notFound = [];
 
       for (let i = 0; i < rows.length; i++) {
         const { ingredientName, imageFileName } = rows[i];
         const normalized = normalizeIngredientName(ingredientName);
         if (!normalized) { skipped++; continue; }
 
-        const imgFile = fileMap[imageFileName.toLowerCase()];
+        /* Zoek afbeelding: eerst exact, dan op basisnaam */
+        const csvNameLower = imageFileName.toLowerCase();
+        const csvBaseName = csvNameLower.replace(/\.[^.]+$/, '');
+        const imgFile = fileMap[csvNameLower] || baseNameMap[csvBaseName];
+
         if (!imgFile) {
-          console.warn(`Afbeelding niet gevonden: ${imageFileName}`);
+          console.warn(`Afbeelding niet gevonden: ${imageFileName} (gezocht: exact "${csvNameLower}" of basis "${csvBaseName}")`);
+          notFound.push(ingredientName);
           skipped++;
           continue;
         }
@@ -540,9 +566,20 @@ ui;ui.png`;
 
       /* Klaar! */
       folderInput.value = '';
-      statusEl.innerHTML = `<span style="color:var(--color-success)">&#10003; ${uploaded} icoon/iconen geüpload${skipped > 0 ? `, ${skipped} overgeslagen` : ''}</span>`;
+      let resultHtml = `<span style="color:var(--color-success)">&#10003; ${uploaded} icoon/iconen geüpload${skipped > 0 ? `, ${skipped} overgeslagen` : ''}</span>`;
+
+      /* Toon eerste paar niet-gevonden bestanden als hint */
+      if (notFound.length > 0) {
+        const shown = notFound.slice(0, 5);
+        resultHtml += `<br><span style="color:var(--color-danger);font-size:0.8rem">
+          Niet gevonden: ${shown.map(n => `"${escapeHtml(n)}"`).join(', ')}${notFound.length > 5 ? ` en ${notFound.length - 5} meer...` : ''}
+          <br>Tip: zorg dat de bestandsnamen in de map overeenkomen met de namen in het CSV bestand (extensie mag verschillen).
+        </span>`;
+      }
+
+      statusEl.innerHTML = resultHtml;
       applyFilterAndSort();
-      showToast(`${uploaded} icoon/iconen geïmporteerd!`);
+      showToast(`${uploaded} icoon/iconen geïmporteerd!${skipped > 0 ? ` ${skipped} overgeslagen.` : ''}`);
     } catch (err) {
       console.error('Bulk import fout:', err);
       showToast('Import mislukt: ' + err.message, 'error');
