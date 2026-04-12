@@ -429,9 +429,13 @@ ui;ui.png`;
     if (csvFiles.length >= 1) {
       html += `<span style="color:var(--color-success)">&#10003; CSV gevonden: <strong>${csvFiles[0].name}</strong></span><br>`;
     } else {
-      html += `<span style="color:var(--color-danger)">&#10007; Geen CSV bestand gevonden</span><br>`;
+      html += `<span style="color:var(--color-info)">&#8505; Geen CSV — bestandsnamen worden als ingrediënt-naam gebruikt</span><br>`;
     }
     html += `<span style="color:var(--color-success)">&#10003; ${imageFiles.length} afbeelding(en) gevonden</span>`;
+    if (imageFiles.length > 0) {
+      const sampleNames = imageFiles.slice(0, 3).map(f => f.name).join(', ');
+      html += `<br><span style="font-size:0.8rem;color:var(--color-gray)">Bijv.: ${sampleNames}${imageFiles.length > 3 ? ' ...' : ''}</span>`;
+    }
     statusEl.innerHTML = html;
   });
 
@@ -454,62 +458,82 @@ ui;ui.png`;
       imageExtsImport.some(ext => f.name.toLowerCase().endsWith(ext))
     );
 
-    if (!csvFile) {
-      showToast('Geen CSV bestand gevonden in de map', 'error');
+    if (imageFiles.length === 0) {
+      showToast('Geen afbeeldingen gevonden in de map', 'error');
       return;
     }
 
     try {
       if (importBtn) importBtn.disabled = true;
-      statusEl.innerHTML = `<span style="color:var(--color-primary)">&#9203; CSV wordt gelezen...</span>`;
 
-      /* Lees CSV */
-      const csvText = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result);
-        reader.onerror = () => reject(new Error('Kon CSV niet lezen'));
-        reader.readAsText(csvFile, 'UTF-8');
-      });
+      /* --- Helper: NFC-normalisatie voor macOS compatibiliteit ---
+         macOS (HFS+/APFS) slaat bestandsnamen op in NFD Unicode-vorm,
+         terwijl JavaScript strings typisch NFC gebruiken.
+         Bijv. "maïs" kan als 2 vormen bestaan die er identiek uitzien
+         maar technisch verschillende byte-sequenties zijn. */
+      const nfc = (s) => s.normalize('NFC').toLowerCase().trim();
 
-      /* Parse CSV: elke rij = naam;afbeelding */
-      const lines = csvText.replace(/^\uFEFF/, '').trim().split(/\r?\n/).filter(l => l.trim());
-      const rows = [];
-
-      for (const line of lines) {
-        /* Detecteer scheidingsteken: puntkomma of komma */
-        const sep = line.includes(';') ? ';' : ',';
-        const cols = line.split(sep).map(c => c.trim().replace(/^"|"$/g, ''));
-        if (cols.length < 2 || !cols[0] || !cols[1]) continue;
-
-        /* Skip header rij */
-        if (cols[0].toLowerCase() === 'naam') continue;
-
-        rows.push({ ingredientName: cols[0], imageFileName: cols[1] });
-      }
-
-      if (rows.length === 0) {
-        showToast('Geen geldige rijen gevonden in het CSV bestand', 'error');
-        if (importBtn) importBtn.disabled = false;
-        return;
-      }
-
-      /* Bouw lookup van afbeeldings-bestanden:
+      /* --- Bouw lookup van afbeeldings-bestanden ---
+         3 niveaus van matching:
          1) Exact match op volledige bestandsnaam (bijv. "tomaat.png")
-         2) Fallback match op basisnaam zonder extensie (bijv. "tomaat") */
+         2) Match op basisnaam zonder extensie (bijv. "tomaat")
+         3) Match op genormaliseerde ingrediënt-naam */
       const fileMap = {};
       const baseNameMap = {};
       for (const imgFile of imageFiles) {
-        const fullName = imgFile.name.toLowerCase();
+        const fullName = nfc(imgFile.name);
         fileMap[fullName] = imgFile;
 
-        /* Basisnaam zonder extensie voor fallback matching */
         const baseName = fullName.replace(/\.[^.]+$/, '');
         if (!baseNameMap[baseName]) {
           baseNameMap[baseName] = imgFile;
         }
       }
 
-      /* Verwerk elke rij */
+      /* --- Bepaal rijen: uit CSV of automatisch uit bestandsnamen --- */
+      let rows = [];
+
+      if (csvFile) {
+        statusEl.innerHTML = `<span style="color:var(--color-primary)">&#9203; CSV wordt gelezen...</span>`;
+
+        /* Lees CSV */
+        const csvText = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.onerror = () => reject(new Error('Kon CSV niet lezen'));
+          reader.readAsText(csvFile, 'UTF-8');
+        });
+
+        /* Parse CSV: elke rij = naam;afbeelding */
+        const lines = csvText.replace(/^\uFEFF/, '').trim().split(/\r?\n/).filter(l => l.trim());
+
+        for (const line of lines) {
+          const sep = line.includes(';') ? ';' : ',';
+          const cols = line.split(sep).map(c => c.trim().replace(/^"|"$/g, ''));
+          if (cols.length < 2 || !cols[0] || !cols[1]) continue;
+          if (cols[0].toLowerCase() === 'naam') continue;
+          rows.push({ ingredientName: cols[0], imageFileName: cols[1] });
+        }
+      }
+
+      /* Als er geen CSV is (of CSV was leeg), gebruik bestandsnamen als ingrediënt-namen */
+      if (rows.length === 0) {
+        statusEl.innerHTML = `<span style="color:var(--color-primary)">&#9203; Geen CSV gevonden — bestandsnamen worden als ingrediënt-naam gebruikt...</span>`;
+        for (const imgFile of imageFiles) {
+          const baseName = imgFile.name.replace(/\.[^.]+$/, '');
+          if (baseName) {
+            rows.push({ ingredientName: baseName, imageFileName: imgFile.name });
+          }
+        }
+      }
+
+      if (rows.length === 0) {
+        showToast('Geen ingrediënten gevonden om te importeren', 'error');
+        if (importBtn) importBtn.disabled = false;
+        return;
+      }
+
+      /* --- Verwerk elke rij --- */
       let uploaded = 0;
       let skipped = 0;
       const notFound = [];
@@ -519,13 +543,16 @@ ui;ui.png`;
         const normalized = normalizeIngredientName(ingredientName);
         if (!normalized) { skipped++; continue; }
 
-        /* Zoek afbeelding: eerst exact, dan op basisnaam */
-        const csvNameLower = imageFileName.toLowerCase();
-        const csvBaseName = csvNameLower.replace(/\.[^.]+$/, '');
-        const imgFile = fileMap[csvNameLower] || baseNameMap[csvBaseName];
+        /* Zoek afbeelding: exact → basisnaam → genormaliseerde naam (alle met NFC) */
+        const csvNameNfc = nfc(imageFileName);
+        const csvBaseNfc = csvNameNfc.replace(/\.[^.]+$/, '');
+        const normalizedNfc = nfc(normalized);
+        const imgFile = fileMap[csvNameNfc]
+          || baseNameMap[csvBaseNfc]
+          || baseNameMap[normalizedNfc];
 
         if (!imgFile) {
-          console.warn(`Afbeelding niet gevonden: ${imageFileName} (gezocht: exact "${csvNameLower}" of basis "${csvBaseName}")`);
+          console.warn(`Afbeelding niet gevonden: ${imageFileName} (gezocht: "${csvNameNfc}", "${csvBaseNfc}", "${normalizedNfc}")`);
           notFound.push(ingredientName);
           skipped++;
           continue;
@@ -567,13 +594,19 @@ ui;ui.png`;
       /* Klaar! */
       folderInput.value = '';
       let resultHtml = `<span style="color:var(--color-success)">&#10003; ${uploaded} icoon/iconen geüpload${skipped > 0 ? `, ${skipped} overgeslagen` : ''}</span>`;
+      resultHtml += `<br><span style="font-size:0.8rem;color:var(--color-gray)">${rows.length} rijen in CSV, ${imageFiles.length} afbeeldingen in map</span>`;
 
       /* Toon eerste paar niet-gevonden bestanden als hint */
       if (notFound.length > 0) {
         const shown = notFound.slice(0, 5);
         resultHtml += `<br><span style="color:var(--color-danger);font-size:0.8rem">
           Niet gevonden: ${shown.map(n => `"${escapeHtml(n)}"`).join(', ')}${notFound.length > 5 ? ` en ${notFound.length - 5} meer...` : ''}
-          <br>Tip: zorg dat de bestandsnamen in de map overeenkomen met de namen in het CSV bestand (extensie mag verschillen).
+        </span>`;
+        /* Toon ook eerste paar beschikbare bestandsnamen als hint */
+        const sampleFiles = imageFiles.slice(0, 3).map(f => f.name);
+        resultHtml += `<br><span style="color:var(--color-gray);font-size:0.8rem">
+          Bestanden in map: ${sampleFiles.map(n => `"${escapeHtml(n)}"`).join(', ')}${imageFiles.length > 3 ? ` ...` : ''}
+          <br>Tip: bestandsnamen moeten overeenkomen met ingrediënt-namen (extensie mag verschillen).
         </span>`;
       }
 
