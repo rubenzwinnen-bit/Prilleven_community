@@ -5,15 +5,13 @@
 ============================================ */
 
 import * as Router from '../router.js';
-import { getCurrentUser } from '../store.js';
+import { isAdmin } from '../store.js';
 
 /* ----------------------------------------
    NAVIGATIE ITEMS
    Elk item heeft een pad en label.
    adminOnly: alleen zichtbaar voor admins.
 ---------------------------------------- */
-const ADMIN_EMAILS = ['ruben.zwinnen@hotmail.be', 'anneleen.plettinx@gmail.com'];
-
 const NAV_ITEMS = [
   { path: '', label: 'Recepten' },
   { path: 'import', label: 'Importeren', adminOnly: true },
@@ -27,11 +25,10 @@ const NAV_ITEMS = [
 ---------------------------------------- */
 export function render() {
   const current = Router.getCurrentPath().split('/')[0];
-  const user = (getCurrentUser() || '').toLowerCase();
-  const isAdmin = ADMIN_EMAILS.includes(user);
+  const admin = isAdmin();
 
   const links = NAV_ITEMS
-    .filter(item => !item.adminOnly || isAdmin)
+    .filter(item => !item.adminOnly || admin)
     .map(item => {
       const isActive = current === item.path ||
         (item.path === '' && current === '');

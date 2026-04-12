@@ -22,12 +22,7 @@
 import * as Store from '../store.js';
 import * as Router from '../router.js';
 import { supabaseStorageUpload } from '../supabase.js';
-import { showToast, confirm, escapeHtml, getMealMomentLabel } from '../utils.js';
-
-/* ----------------------------------------
-   STATE / CACHE
----------------------------------------- */
-let cachedRecipes = [];
+import { showToast, escapeHtml } from '../utils.js';
 
 /* ----------------------------------------
    RENDER (skeleton)
@@ -63,26 +58,6 @@ export function render() {
           <button class="btn btn-primary" id="btn-import-csv">
             Importeer recepten uit map
           </button>
-        </div>
-      </div>
-
-      <!-- ======== RECEPTEN BEHEREN ======== -->
-      <div class="import-section mt-2" style="border-color:var(--color-secondary);background:#f9faf5">
-        <h3 style="margin-bottom:0.5rem">&#9998; Recepten Beheren</h3>
-        <p class="text-muted" style="font-size:0.85rem;margin-bottom:1rem">
-          Bewerk of verwijder individuele recepten.
-        </p>
-
-        <div id="manage-recipes-list">
-          <p class="text-muted" style="font-size:0.85rem">Recepten laden...</p>
-        </div>
-
-        <div id="delete-all-container" style="display:none">
-          <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--color-light)">
-            <button class="btn btn-danger" id="btn-delete-all">
-              &#128465; Verwijder Alle Recepten
-            </button>
-          </div>
         </div>
       </div>
 
@@ -150,106 +125,10 @@ export function render() {
    INIT
 ---------------------------------------- */
 export async function init() {
-  /* ---- Recepten ophalen voor de beheer-lijst ---- */
-  try {
-    cachedRecipes = await Store.getRecipes();
-  } catch (err) {
-    showToast('Fout bij laden recepten: ' + err.message, 'error');
-    cachedRecipes = [];
-  }
-
-  const manageList = document.getElementById('manage-recipes-list');
-  if (manageList) {
-    manageList.innerHTML = renderRecipeManageList();
-  }
-
-  const deleteAllContainer = document.getElementById('delete-all-container');
-  if (deleteAllContainer) {
-    deleteAllContainer.style.display = cachedRecipes.length > 0 ? '' : 'none';
-  }
-
   /* ---- Listeners ---- */
   document.getElementById('btn-download-csv-template')?.addEventListener('click', downloadCsvTemplate);
   document.getElementById('btn-import-csv')?.addEventListener('click', importFromFolder);
   document.getElementById('folder-input')?.addEventListener('change', showFolderStatus);
-  document.getElementById('btn-delete-all')?.addEventListener('click', handleDeleteAll);
-
-  /* Receptbeheer: bewerk en verwijder knoppen */
-  if (manageList) {
-    manageList.addEventListener('click', async (e) => {
-      const editBtn = e.target.closest('.btn-edit-single');
-      if (editBtn) {
-        Router.navigate('edit/' + editBtn.dataset.id);
-        return;
-      }
-
-      const deleteBtn = e.target.closest('.btn-delete-single');
-      if (deleteBtn) {
-        const id = deleteBtn.dataset.id;
-        const name = deleteBtn.dataset.name;
-        const ok = await confirm(`Weet je zeker dat je "${name}" wilt verwijderen?`);
-        if (!ok) return;
-
-        try {
-          await Store.deleteRecipe(id);
-          showToast(`"${name}" verwijderd`, 'info');
-          /* Cache bijwerken en lijst herladen */
-          cachedRecipes = cachedRecipes.filter(r => r.id !== id);
-          manageList.innerHTML = renderRecipeManageList();
-          if (deleteAllContainer && cachedRecipes.length === 0) {
-            deleteAllContainer.style.display = 'none';
-          }
-        } catch (err) {
-          showToast('Fout bij verwijderen: ' + err.message, 'error');
-        }
-      }
-    });
-  }
-}
-
-/* ----------------------------------------
-   VERWIJDER ALLE RECEPTEN
----------------------------------------- */
-async function handleDeleteAll() {
-  const ok = await confirm('Weet je zeker dat je ALLE recepten wilt verwijderen? Dit kan niet ongedaan gemaakt worden.');
-  if (!ok) return;
-
-  try {
-    await Store.deleteAllRecipes();
-    showToast('Alle recepten verwijderd', 'info');
-    Router.navigate('');
-  } catch (err) {
-    showToast('Fout bij verwijderen: ' + err.message, 'error');
-  }
-}
-
-/* ============================================
-   RECEPTEN BEHEER LIJST
-============================================ */
-
-function renderRecipeManageList() {
-  if (cachedRecipes.length === 0) {
-    return '<p class="text-muted" style="font-size:0.85rem">Geen recepten om te beheren. Importeer eerst recepten.</p>';
-  }
-
-  const rows = cachedRecipes.map(r => {
-    const moments = (r.mealMoments || []).map(m => getMealMomentLabel(m)).join(', ');
-    return `
-      <div class="manage-recipe-row" style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0;border-bottom:1px solid var(--color-light)">
-        <div style="flex:1;min-width:0">
-          <strong style="font-size:0.9rem">${escapeHtml(r.name)}</strong>
-          ${moments ? `<span class="text-muted" style="font-size:0.8rem;margin-left:0.5rem">${escapeHtml(moments)}</span>` : ''}
-        </div>
-        <button class="btn btn-outline btn-sm btn-edit-single" data-id="${r.id}" style="white-space:nowrap">&#9998; Bewerken</button>
-        <button class="btn btn-danger btn-sm btn-delete-single" data-id="${r.id}" data-name="${escapeHtml(r.name)}" style="white-space:nowrap">&#128465;</button>
-      </div>
-    `;
-  }).join('');
-
-  return `
-    <div style="font-size:0.85rem;color:var(--color-muted);margin-bottom:0.5rem">${cachedRecipes.length} recept(en)</div>
-    <div style="max-height:400px;overflow-y:auto">${rows}</div>
-  `;
 }
 
 /* ============================================

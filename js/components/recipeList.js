@@ -11,7 +11,7 @@
 import * as Store from '../store.js';
 import * as Router from '../router.js';
 import * as RecipeCard from './recipeCard.js';
-import { showToast, MEAL_MOMENTS, ALLERGENS } from '../utils.js';
+import { showToast, confirm, MEAL_MOMENTS, ALLERGENS } from '../utils.js';
 
 /* Cache van pre-fetched data zodat het filteren snel blijft */
 let cachedRecipes = [];
@@ -49,7 +49,7 @@ export function render() {
         </select>
       </div>
 
-      <div class="toolbar-right">
+      <div class="toolbar-right" id="toolbar-admin">
       </div>
     </div>
 
@@ -98,8 +98,23 @@ export async function init() {
     return;
   }
 
+  /* ---- Admin check ---- */
+  const admin = Store.isAdmin();
+
+  /* ---- Admin toolbar: "Alle recepten verwijderen" knop ---- */
+  if (admin && cachedRecipes.length > 0) {
+    const toolbarAdmin = document.getElementById('toolbar-admin');
+    if (toolbarAdmin) {
+      toolbarAdmin.innerHTML = `
+        <button class="btn btn-danger btn-sm" id="btn-delete-all-recipes">
+          &#128465; Alle recepten verwijderen
+        </button>
+      `;
+    }
+  }
+
   /* ---- Recepten renderen ---- */
-  renderGrid(cachedRecipes);
+  renderGrid(cachedRecipes, admin);
 
   /* ---- Klik handlers (met AbortController signal) ---- */
   content.addEventListener('click', async (e) => {
@@ -132,6 +147,50 @@ export async function init() {
       return;
     }
 
+    /* Admin: Bewerken knop */
+    const editBtn = e.target.closest('.btn-edit-recipe');
+    if (editBtn) {
+      e.stopPropagation();
+      Router.navigate('edit/' + editBtn.dataset.id);
+      return;
+    }
+
+    /* Admin: Verwijderen knop */
+    const deleteBtn = e.target.closest('.btn-delete-recipe');
+    if (deleteBtn) {
+      e.stopPropagation();
+      const id = deleteBtn.dataset.id;
+      const name = deleteBtn.dataset.name;
+      const ok = await confirm(`Weet je zeker dat je "${name}" wilt verwijderen?`);
+      if (!ok) return;
+      try {
+        await Store.deleteRecipe(id);
+        showToast(`"${name}" verwijderd`, 'info');
+        cachedRecipes = cachedRecipes.filter(r => r.id !== id);
+        renderGrid(cachedRecipes, admin);
+      } catch (err) {
+        showToast('Fout bij verwijderen: ' + err.message, 'error');
+      }
+      return;
+    }
+
+    /* Admin: Alle recepten verwijderen */
+    const deleteAllBtn = e.target.closest('#btn-delete-all-recipes');
+    if (deleteAllBtn) {
+      e.stopPropagation();
+      const ok = await confirm('Weet je zeker dat je ALLE recepten wilt verwijderen? Dit kan niet ongedaan gemaakt worden.');
+      if (!ok) return;
+      try {
+        await Store.deleteAllRecipes();
+        showToast('Alle recepten verwijderd', 'info');
+        cachedRecipes = [];
+        renderGrid(cachedRecipes, admin);
+      } catch (err) {
+        showToast('Fout bij verwijderen: ' + err.message, 'error');
+      }
+      return;
+    }
+
     /* Recept kaart klik */
     const card = e.target.closest('.recipe-card');
     if (card) {
@@ -153,7 +212,7 @@ export async function init() {
    GRID RENDEREN
    Vult het grid met de gegeven recepten
 ---------------------------------------- */
-function renderGrid(recipes) {
+function renderGrid(recipes, admin = false) {
   const grid = document.getElementById('recipe-grid');
   if (!grid) return;
 
@@ -163,14 +222,14 @@ function renderGrid(recipes) {
         <div class="empty-state-icon">&#128214;</div>
         <h3>Nog geen recepten</h3>
         <p>Importeer recepten via de CSV import om te beginnen.</p>
-        <button class="btn btn-primary" onclick="location.hash='#/import'">Recepten Importeren</button>
+        ${admin ? `<button class="btn btn-primary" onclick="location.hash='#/import'">Recepten Importeren</button>` : ''}
       </div>
     `;
     return;
   }
 
   grid.innerHTML = recipes
-    .map(r => RecipeCard.render(r, cachedFavIds, cachedRatings))
+    .map(r => RecipeCard.render(r, cachedFavIds, cachedRatings, admin))
     .join('');
 }
 
@@ -202,7 +261,7 @@ function filterRecipes() {
 
   if (filtered.length > 0) {
     grid.innerHTML = filtered
-      .map(r => RecipeCard.render(r, cachedFavIds, cachedRatings))
+      .map(r => RecipeCard.render(r, cachedFavIds, cachedRatings, Store.isAdmin()))
       .join('');
   } else {
     grid.innerHTML = `

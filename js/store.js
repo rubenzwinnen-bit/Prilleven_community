@@ -87,6 +87,17 @@ export function setCurrentUser(name) {
 }
 
 /* ----------------------------------------
+   ADMIN CHECK
+   Controleert of de huidige gebruiker admin is
+---------------------------------------- */
+const ADMIN_EMAILS = ['ruben.zwinnen@hotmail.be', 'anneleen.plettinx@gmail.com'];
+
+export function isAdmin() {
+  const user = (getCurrentUser() || '').toLowerCase();
+  return ADMIN_EMAILS.includes(user);
+}
+
+/* ----------------------------------------
    HULPFUNCTIES
    Converteren tussen DB-formaat en app-formaat
 ---------------------------------------- */

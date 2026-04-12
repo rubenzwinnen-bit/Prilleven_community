@@ -20,8 +20,9 @@ import { escapeHtml, renderStarsDisplay, getMealMomentLabel } from '../utils.js'
      recipe     - het recept object
      favIds     - array van favoriete recept IDs (optioneel)
      ratingsMap - object {recipeId: {average, count}} (optioneel)
+     admin      - boolean, toon beheer-knoppen (optioneel)
 ---------------------------------------- */
-export function render(recipe, favIds = [], ratingsMap = {}) {
+export function render(recipe, favIds = [], ratingsMap = {}, admin = false) {
   const isFav = favIds.includes(recipe.id);
   const { average, count } = ratingsMap[recipe.id] || { average: 0, count: 0 };
 
@@ -70,6 +71,12 @@ export function render(recipe, favIds = [], ratingsMap = {}) {
       <!-- Footer met beoordeling -->
       <div class="recipe-card-footer">
         <div>${renderStarsDisplay(average, count)}</div>
+        ${admin ? `
+          <div style="display:flex;gap:0.4rem">
+            <button class="btn btn-outline btn-sm btn-edit-recipe" data-id="${recipe.id}" title="Bewerken">&#9998;</button>
+            <button class="btn btn-danger btn-sm btn-delete-recipe" data-id="${recipe.id}" data-name="${escapeHtml(recipe.name)}" title="Verwijderen">&#128465;</button>
+          </div>
+        ` : ''}
       </div>
     </article>
   `;
