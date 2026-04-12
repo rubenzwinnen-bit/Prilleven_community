@@ -536,12 +536,19 @@ ui;ui.png`;
       /* --- Verwerk elke rij --- */
       let uploaded = 0;
       let skipped = 0;
+      let normFailed = 0;
       const notFound = [];
+      const uploadErrors = [];
 
       for (let i = 0; i < rows.length; i++) {
         const { ingredientName, imageFileName } = rows[i];
         const normalized = normalizeIngredientName(ingredientName);
-        if (!normalized) { skipped++; continue; }
+        if (!normalized) {
+          normFailed++;
+          skipped++;
+          console.warn(`Normalisatie mislukt voor: "${ingredientName}"`);
+          continue;
+        }
 
         /* Zoek afbeelding: exact → basisnaam → genormaliseerde naam (alle met NFC) */
         const csvNameNfc = nfc(imageFileName);
@@ -586,23 +593,44 @@ ui;ui.png`;
 
           uploaded++;
         } catch (uploadErr) {
-          console.warn(`Fout bij ${normalized}:`, uploadErr);
+          const errMsg = uploadErr?.message || String(uploadErr);
+          console.error(`Upload fout bij "${normalized}":`, uploadErr);
+          if (uploadErrors.length < 3) {
+            uploadErrors.push({ name: normalized, error: errMsg });
+          }
           skipped++;
         }
       }
 
       /* Klaar! */
       folderInput.value = '';
-      let resultHtml = `<span style="color:var(--color-success)">&#10003; ${uploaded} icoon/iconen geüpload${skipped > 0 ? `, ${skipped} overgeslagen` : ''}</span>`;
-      resultHtml += `<br><span style="font-size:0.8rem;color:var(--color-gray)">${rows.length} rijen in CSV, ${imageFiles.length} afbeeldingen in map</span>`;
+      let resultHtml = `<span style="color:${uploaded > 0 ? 'var(--color-success)' : 'var(--color-danger)'}">
+        ${uploaded > 0 ? '&#10003;' : '&#10007;'} ${uploaded} icoon/iconen geüpload${skipped > 0 ? `, ${skipped} overgeslagen` : ''}
+      </span>`;
+      resultHtml += `<br><span style="font-size:0.8rem;color:var(--color-gray)">${rows.length} rijen verwerkt, ${imageFiles.length} afbeeldingen in map</span>`;
 
-      /* Toon eerste paar niet-gevonden bestanden als hint */
+      /* Toon normalisatie-fouten */
+      if (normFailed > 0) {
+        resultHtml += `<br><span style="color:var(--color-warning);font-size:0.8rem">
+          ⚠ ${normFailed} ingrediënt-namen konden niet genormaliseerd worden
+        </span>`;
+      }
+
+      /* Toon upload-fouten */
+      if (uploadErrors.length > 0) {
+        resultHtml += `<br><span style="color:var(--color-danger);font-size:0.8rem">
+          <strong>Upload fouten:</strong><br>
+          ${uploadErrors.map(e => `"${escapeHtml(e.name)}": ${escapeHtml(e.error)}`).join('<br>')}
+          ${skipped - notFound.length - normFailed > uploadErrors.length ? `<br>...en meer` : ''}
+        </span>`;
+      }
+
+      /* Toon niet-gevonden bestanden */
       if (notFound.length > 0) {
         const shown = notFound.slice(0, 5);
         resultHtml += `<br><span style="color:var(--color-danger);font-size:0.8rem">
-          Niet gevonden: ${shown.map(n => `"${escapeHtml(n)}"`).join(', ')}${notFound.length > 5 ? ` en ${notFound.length - 5} meer...` : ''}
+          <strong>Niet gevonden:</strong> ${shown.map(n => `"${escapeHtml(n)}"`).join(', ')}${notFound.length > 5 ? ` en ${notFound.length - 5} meer...` : ''}
         </span>`;
-        /* Toon ook eerste paar beschikbare bestandsnamen als hint */
         const sampleFiles = imageFiles.slice(0, 3).map(f => f.name);
         resultHtml += `<br><span style="color:var(--color-gray);font-size:0.8rem">
           Bestanden in map: ${sampleFiles.map(n => `"${escapeHtml(n)}"`).join(', ')}${imageFiles.length > 3 ? ` ...` : ''}
