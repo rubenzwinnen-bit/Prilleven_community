@@ -110,7 +110,10 @@ export function render() {
 
         <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:1rem">
           <button class="btn btn-secondary" id="btn-download-icon-template">
-            &#128229; Download CSV Template
+            &#128229; Download lege CSV template
+          </button>
+          <button class="btn btn-secondary" id="btn-download-filled-template">
+            &#128203; Download ingevulde CSV template
           </button>
         </div>
 
@@ -372,6 +375,36 @@ ui;ui.png`;
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     showToast('CSV template gedownload!');
+  });
+
+  /* Ingevulde template download (alle ingrediënten van de website) */
+  document.getElementById('btn-download-filled-template')?.addEventListener('click', () => {
+    if (ingredientList.length === 0) {
+      showToast('Geen ingrediënten gevonden om te exporteren.', 'error');
+      return;
+    }
+
+    /* Sorteer alfabetisch */
+    const sorted = [...ingredientList].sort((a, b) =>
+      a.displayName.localeCompare(b.displayName)
+    );
+
+    /* Bouw CSV met alle ingrediënten */
+    const rows = sorted.map(item =>
+      `${item.displayName};${item.normalized}.png`
+    );
+    const csv = `Naam;Afbeelding\n${rows.join('\n')}`;
+
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'iconen-alle-ingredienten.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast(`CSV met ${sorted.length} ingrediënten gedownload!`);
   });
 
   /* Folder status */

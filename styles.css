@@ -145,7 +145,8 @@ h3 { font-size: 1.15rem; }
   margin: 0 auto;
   display: flex;
   gap: 0;
-  overflow-x: auto;
+  overflow: visible;
+  flex-wrap: wrap;
 }
 
 .nav-link {
@@ -168,6 +169,71 @@ h3 { font-size: 1.15rem; }
   color: var(--color-primary);
   border-bottom-color: var(--color-primary);
   font-weight: 600;
+}
+
+/* ============================================
+   ADMIN DROPDOWN IN NAVIGATIE
+============================================ */
+.nav-dropdown-wrapper {
+  position: relative;
+}
+
+.nav-dropdown-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: none;
+  border: none;
+  font-family: 'Poppins', sans-serif;
+}
+
+.nav-dropdown-arrow {
+  font-size: 0.65rem;
+  transition: transform 0.2s ease;
+}
+
+.nav-dropdown-wrapper.open .nav-dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+.nav-dropdown-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: var(--color-white);
+  border: 1px solid var(--color-light);
+  box-shadow: var(--shadow-md);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  min-width: 200px;
+  z-index: 98;
+  overflow: hidden;
+}
+
+.nav-dropdown-wrapper.open .nav-dropdown-menu {
+  display: block;
+}
+
+.nav-dropdown-link {
+  display: block;
+  padding: 0.7rem 1.2rem;
+  color: var(--color-gray);
+  font-weight: 500;
+  font-size: 0.85rem;
+  transition: var(--transition);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.nav-dropdown-link:hover {
+  background: var(--color-bg);
+  color: var(--color-primary);
+}
+
+.nav-dropdown-link.active {
+  color: var(--color-primary);
+  font-weight: 600;
+  background: rgba(201, 137, 102, 0.08);
 }
 
 /* ============================================
