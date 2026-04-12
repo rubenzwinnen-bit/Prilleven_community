@@ -15,7 +15,7 @@ export function render() {
   return `
     <div class="header-inner">
       <div class="header-title">
-        &#127859; Receptenboek
+        &#127807; Community Pril leven
       </div>
       <div class="header-user">
         <span class="user-name" id="header-user-name">${user || 'Gast'}</span>
