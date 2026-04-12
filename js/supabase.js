@@ -90,7 +90,8 @@ export function supabaseStoragePublicUrl(filePath) {
    fileBlob  - de bestandsdata (Blob object)
 ---------------------------------------- */
 export async function uploadIngredientIcon(filePath, fileBlob) {
-  const url = `${SUPABASE_URL}/storage/v1/object/ingredient-icons/${filePath}`;
+  const encodedPath = encodeURIComponent(filePath);
+  const url = `${SUPABASE_URL}/storage/v1/object/ingredient-icons/${encodedPath}`;
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -103,7 +104,13 @@ export async function uploadIngredientIcon(filePath, fileBlob) {
   });
 
   if (!response.ok) {
-    throw new Error('Upload van icoon mislukt: ' + response.status);
+    /* Lees het Supabase foutbericht voor betere diagnostiek */
+    let detail = '';
+    try {
+      const errBody = await response.json();
+      detail = errBody.message || errBody.error || errBody.statusCode || '';
+    } catch { /* negeer parse fouten */ }
+    throw new Error(`Upload mislukt (${response.status}): ${detail || 'onbekende fout'}`);
   }
 
   return ingredientIconPublicUrl(filePath);
