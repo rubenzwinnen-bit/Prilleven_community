@@ -339,12 +339,22 @@ function generateShoppingList() {
   /* Verzamel en merge ingrediënten */
   const ingredientMap = new Map();
 
+  /* Bereken de vermenigvuldiger X per recept op basis van personen
+     Alleen toepassen als het schema geactiveerd is */
+  const persons = cachedSchedule.persons || 4;
+  const isActive = cachedSchedule.isActive || false;
+
   for (const [recipeId, count] of Object.entries(recipeCounts)) {
     const recipe = recipeMap.get(recipeId);
     if (!recipe) continue;
 
+    const X = isActive
+      ? Math.max(1, Math.ceil(persons / (recipe.portions || 1)))
+      : 1;
+
     (recipe.ingredients || []).forEach(ing => {
-      const key = ing.name.toLowerCase().trim();
+      const unitNorm = (ing.unit || '').toLowerCase().trim();
+      const key = ing.name.toLowerCase().trim() + '|' + unitNorm;
       if (!ingredientMap.has(key)) {
         ingredientMap.set(key, {
           name: ing.name,
@@ -358,7 +368,7 @@ function generateShoppingList() {
       const amount = parseFloat(ing.amount);
 
       if (!isNaN(amount)) {
-        entry.totalAmount += amount * count;
+        entry.totalAmount += amount * X * count;
         entry.isNumeric = true;
       }
     });
@@ -382,7 +392,7 @@ function generateShoppingList() {
   result.innerHTML = `
     <div class="shopping-ingredient-list">
       <div class="flex-between mb-2">
-        <h3 style="margin-bottom:0">Boodschappenlijst (${sortedIngredients.length} items)</h3>
+        <h3 style="margin-bottom:0">Boodschappenlijst (${sortedIngredients.length} items${isActive ? ` &middot; ${persons} personen` : ''})</h3>
         <button class="btn btn-primary no-print" id="btn-print-list">&#128424; Afdrukken</button>
       </div>
 

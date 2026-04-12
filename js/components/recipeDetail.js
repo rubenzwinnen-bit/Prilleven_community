@@ -17,7 +17,8 @@ import * as Router from '../router.js';
 import {
   showToast, escapeHtml, formatDate,
   renderStarsDisplay, renderStarsInteractive,
-  getMealMomentLabel
+  getMealMomentLabel, getSlotLabel,
+  WEEKDAYS, SCHEDULE_SLOTS
 } from '../utils.js';
 
 /* ----------------------------------------
@@ -46,16 +47,17 @@ export async function init(recipeId) {
   const container = document.getElementById('recipe-detail-container');
   if (!container) return;
 
-  let recipe, isFav, avgRating, userRating, comments;
+  let recipe, isFav, avgRating, userRating, comments, activeSchedule;
 
   /* ---- Data parallel ophalen ---- */
   try {
-    [recipe, isFav, avgRating, userRating, comments] = await Promise.all([
+    [recipe, isFav, avgRating, userRating, comments, activeSchedule] = await Promise.all([
       Store.getRecipe(recipeId),
       Store.isFavorite(recipeId),
       Store.getAverageRating(recipeId),
       Store.getUserRating(recipeId),
       Store.getComments(recipeId),
+      Store.getActiveSchedule(),
     ]);
   } catch (err) {
     container.innerHTML = `
@@ -79,17 +81,43 @@ export async function init(recipeId) {
     return;
   }
 
+  /* ---- Actief schema info bouwen ---- */
+  let activeInfo = null;
+  if (activeSchedule) {
+    const daySlots = [];
+    WEEKDAYS.forEach(day => {
+      SCHEDULE_SLOTS.forEach(slot => {
+        if (activeSchedule.days?.[day]?.[slot.id] === recipeId) {
+          const dayLabel = day.charAt(0).toUpperCase() + day.slice(1);
+          daySlots.push(`${dayLabel} - ${getSlotLabel(slot.id)}`);
+        }
+      });
+    });
+
+    if (daySlots.length > 0) {
+      const X = Math.max(1, Math.ceil(activeSchedule.persons / (recipe.portions || 1)));
+      activeInfo = {
+        persons: activeSchedule.persons,
+        portions: recipe.portions || 1,
+        X,
+        occurrences: daySlots.length,
+        daySlots,
+        selectedDays: 1,
+      };
+    }
+  }
+
   /* ---- Bouw de volledige HTML op ---- */
-  container.innerHTML = buildDetailHtml(recipe, isFav, avgRating, userRating, comments);
+  container.innerHTML = buildDetailHtml(recipe, isFav, avgRating, userRating, comments, activeInfo);
 
   /* ---- Event listeners koppelen ---- */
-  attachListeners(recipeId, userRating);
+  attachListeners(recipeId, userRating, recipe, activeInfo);
 }
 
 /* ----------------------------------------
    BOUW DE DETAIL HTML
 ---------------------------------------- */
-function buildDetailHtml(recipe, isFav, avgRating, userRating, comments) {
+function buildDetailHtml(recipe, isFav, avgRating, userRating, comments, activeInfo = null) {
   const { average, count } = avgRating;
 
   /* Afbeelding */
@@ -106,15 +134,6 @@ function buildDetailHtml(recipe, isFav, avgRating, userRating, comments) {
   const allergens = (recipe.allergens || [])
     .map(a => `<span class="tag tag-allergen">${escapeHtml(a)}</span>`)
     .join('');
-
-  /* Ingrediënten */
-  const ingredientItems = (recipe.ingredients || [])
-    .map(ing => `
-      <li>
-        <span class="ingredient-name">${escapeHtml(ing.name)}</span>
-        <span class="ingredient-amount">${escapeHtml(ing.amount)} ${escapeHtml(ing.unit)}</span>
-      </li>
-    `).join('');
 
   /* Bereidingsstappen */
   const prepSteps = (recipe.preparation || [])
@@ -133,6 +152,71 @@ function buildDetailHtml(recipe, isFav, avgRating, userRating, comments) {
       </div>
     `).join('');
 
+  /* Actief schema: ingrediënten + porties berekening */
+  const selectedDays = activeInfo?.selectedDays || 1;
+  const multiplier = activeInfo ? activeInfo.X * selectedDays : 1;
+  const Z = activeInfo ? activeInfo.X * activeInfo.portions * selectedDays : (recipe.portions || 1);
+
+  const ingredientItems = (recipe.ingredients || [])
+    .map(ing => {
+      const amount = parseFloat(ing.amount);
+      let displayAmount;
+      if (activeInfo && !isNaN(amount)) {
+        displayAmount = Math.max(1, Math.ceil(amount * multiplier * 100) / 100);
+        /* Toon als geheel getal als het een geheel getal is */
+        displayAmount = Number.isInteger(displayAmount) ? displayAmount.toString() : displayAmount.toFixed(2).replace(/\.?0+$/, '').replace('.', ',');
+      } else {
+        displayAmount = escapeHtml(ing.amount);
+      }
+      return `
+        <li>
+          <span class="ingredient-name">${escapeHtml(ing.name)}</span>
+          <span class="ingredient-amount">${displayAmount} ${escapeHtml(ing.unit)}</span>
+        </li>
+      `;
+    }).join('');
+
+  /* Actief schema info blok */
+  let activeScheduleHtml = '';
+  if (activeInfo) {
+    const dayPills = activeInfo.daySlots
+      .map(ds => `<span class="schedule-day-pill">${ds}</span>`)
+      .join('');
+
+    let selectorHtml = '';
+    if (activeInfo.occurrences >= 2) {
+      const buttons = [];
+      for (let i = 1; i <= activeInfo.occurrences; i++) {
+        const label = i === 1 ? '1 dag' : `${i} dagen`;
+        buttons.push(`<button class="day-selector-btn ${i === selectedDays ? 'active' : ''}" data-days="${i}">${label}</button>`);
+      }
+      selectorHtml = `
+        <p class="text-muted" style="font-size:0.85rem;margin-bottom:0.5rem">
+          Recept komt meer dan 1 keer voor in je actief weekschema, selecteer voor hoeveel dagen je het recept wil voorbereiden.
+        </p>
+        <div class="day-selector-bar">
+          ${buttons.join('')}
+        </div>
+      `;
+    }
+
+    activeScheduleHtml = `
+      <div class="active-schedule-info">
+        <div class="schedule-day-pills">${dayPills}</div>
+        ${selectorHtml}
+      </div>
+    `;
+  }
+
+  /* Porties weergave */
+  const portionsTag = activeInfo
+    ? '' /* Verberg de porties-tag als recept in actief schema zit */
+    : `<span class="tag tag-portions">&#127869; ${recipe.portions || 1} ${(recipe.portions || 1) === 1 ? 'portie' : 'porties'}</span>`;
+
+  const portionsTitle = activeInfo
+    ? `(${Z} ${Z === 1 ? 'portie' : 'porties'} &middot; ${activeInfo.persons} personen)`
+    : `(voor ${recipe.portions || 1} ${(recipe.portions || 1) === 1 ? 'portie' : 'porties'})`;
+
   return `
     <div class="recipe-detail">
       <button class="btn btn-outline btn-sm mb-2" id="btn-back">&#8592; Terug</button>
@@ -149,23 +233,25 @@ function buildDetailHtml(recipe, isFav, avgRating, userRating, comments) {
         </button>
       </div>
 
+      ${activeScheduleHtml}
+
       <div class="recipe-section">
         <h3>Informatie</h3>
         <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem">
           ${moments}
           <span class="tag tag-time">&#9201; ${recipe.cookingTime} min</span>
-          <span class="tag tag-portions">&#127869; ${recipe.portions || 1} ${(recipe.portions || 1) === 1 ? 'portie' : 'porties'}</span>
+          ${portionsTag}
         </div>
         ${allergens ? `<div style="display:flex;flex-wrap:wrap;gap:0.5rem"><strong style="font-size:0.85rem;margin-right:0.25rem">Allergenen:</strong>${allergens}</div>` : '<p class="text-muted" style="font-size:0.85rem">Geen allergenen</p>'}
       </div>
 
-      <div class="recipe-section">
+      <div class="recipe-section" id="ingredients-section">
         <h3>Ingrediënten
-          <span class="text-muted" style="font-size:0.85rem;font-weight:normal">
-            (voor ${recipe.portions || 1} ${(recipe.portions || 1) === 1 ? 'portie' : 'porties'})
+          <span class="text-muted" style="font-size:0.85rem;font-weight:normal" id="portions-subtitle">
+            ${portionsTitle}
           </span>
         </h3>
-        <ul class="ingredient-list">
+        <ul class="ingredient-list" id="ingredient-list">
           ${ingredientItems}
         </ul>
       </div>
@@ -214,7 +300,7 @@ function buildDetailHtml(recipe, isFav, avgRating, userRating, comments) {
    en in een closure-variabele gehouden zodat
    mouseleave geen netwerk-call meer hoeft te doen.
 ---------------------------------------- */
-function attachListeners(recipeId, initialRating = 0) {
+function attachListeners(recipeId, initialRating = 0, recipe = null, activeInfo = null) {
   /* Lokale state voor de huidige rating van deze gebruiker */
   let currentUserRating = initialRating;
 
@@ -222,6 +308,51 @@ function attachListeners(recipeId, initialRating = 0) {
   document.getElementById('btn-back')?.addEventListener('click', () => {
     Router.navigate('');
   });
+
+  /* Selectiebalk voor aantal dagen (actief weekschema) */
+  if (activeInfo && activeInfo.occurrences >= 2) {
+    document.querySelectorAll('.day-selector-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const days = parseInt(btn.dataset.days);
+        activeInfo.selectedDays = days;
+
+        /* Update actieve knop */
+        document.querySelectorAll('.day-selector-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        /* Herbereken ingrediënten */
+        const multiplier = activeInfo.X * days;
+        const Z = activeInfo.X * activeInfo.portions * days;
+
+        /* Update porties subtitle */
+        const subtitle = document.getElementById('portions-subtitle');
+        if (subtitle) {
+          subtitle.innerHTML = `(${Z} ${Z === 1 ? 'portie' : 'porties'} &middot; ${activeInfo.persons} personen)`;
+        }
+
+        /* Update ingrediënten */
+        const list = document.getElementById('ingredient-list');
+        if (list && recipe) {
+          list.innerHTML = (recipe.ingredients || []).map(ing => {
+            const amount = parseFloat(ing.amount);
+            let displayAmount;
+            if (!isNaN(amount)) {
+              displayAmount = Math.max(1, Math.ceil(amount * multiplier * 100) / 100);
+              displayAmount = Number.isInteger(displayAmount) ? displayAmount.toString() : displayAmount.toFixed(2).replace(/\.?0+$/, '').replace('.', ',');
+            } else {
+              displayAmount = escapeHtml(ing.amount);
+            }
+            return `
+              <li>
+                <span class="ingredient-name">${escapeHtml(ing.name)}</span>
+                <span class="ingredient-amount">${displayAmount} ${escapeHtml(ing.unit)}</span>
+              </li>
+            `;
+          }).join('');
+        }
+      });
+    });
+  }
 
   /* Favoriet toggle */
   document.getElementById('btn-toggle-fav')?.addEventListener('click', async (e) => {

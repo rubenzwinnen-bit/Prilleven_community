@@ -255,6 +255,8 @@ function showAuthModal(initialView = 'login') {
       let message = 'Registratie mislukt. Probeer het opnieuw.';
       if (err.message.includes('already been registered') || err.message.includes('already registered')) {
         message = 'Dit e-mailadres heeft al een account. Gebruik "Inloggen".';
+      } else if (err.message.includes('Email not confirmed')) {
+        message = 'Je e-mailadres moet eerst bevestigd worden. Controleer je inbox.';
       }
       showError('signup', message);
     } finally {

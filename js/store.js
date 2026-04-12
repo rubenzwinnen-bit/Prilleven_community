@@ -525,6 +525,8 @@ export async function getSavedSchedules() {
     name: s.name,
     days: s.days || {},
     excludedAllergens: s.excluded_allergens || [],
+    persons: s.persons || 4,
+    isActive: s.is_active || false,
     createdAt: s.created_at,
   }));
   _cacheSet(key, schedules);
@@ -547,6 +549,7 @@ export async function saveSchedule(schedule) {
       name: schedule.name,
       days: schedule.days || {},
       excluded_allergens: schedule.excludedAllergens || [],
+      persons: schedule.persons || 4,
     },
   });
 
@@ -560,6 +563,8 @@ export async function saveSchedule(schedule) {
     name: s.name,
     days: s.days,
     excludedAllergens: s.excluded_allergens,
+    persons: s.persons || 4,
+    isActive: s.is_active || false,
     createdAt: s.created_at,
   };
 }
@@ -580,10 +585,78 @@ export async function getSchedule(id) {
     name: s.name,
     days: s.days || {},
     excludedAllergens: s.excluded_allergens || [],
+    persons: s.persons || 4,
+    isActive: s.is_active || false,
     createdAt: s.created_at,
   };
   _cacheSet(`schedule:${id}`, schedule);
   return schedule;
+}
+
+/** Haal het actieve weekschema op voor de huidige gebruiker (gecached) */
+export async function getActiveSchedule() {
+  const user = getCurrentUser();
+  if (!user) return null;
+
+  const key = `active_schedule:${user}`;
+  const cached = _cacheGet(key);
+  if (cached !== undefined) return cached;
+
+  const data = await supabaseFetch(
+    `/rest/v1/schedules?user_name=eq.${encodeURIComponent(user)}` +
+    `&is_active=eq.true&select=*&limit=1`
+  );
+  if (!data || data.length === 0) {
+    _cacheSet(key, null);
+    return null;
+  }
+
+  const s = data[0];
+  const schedule = {
+    id: s.id,
+    name: s.name,
+    days: s.days || {},
+    excludedAllergens: s.excluded_allergens || [],
+    persons: s.persons || 4,
+    isActive: true,
+    createdAt: s.created_at,
+  };
+  _cacheSet(key, schedule);
+  return schedule;
+}
+
+/** Activeer een weekschema (deactiveert alle andere) */
+export async function setActiveSchedule(scheduleId, persons) {
+  const user = getCurrentUser();
+  if (!user) return;
+
+  /* Deactiveer alle schema's van deze gebruiker */
+  await supabaseFetch(
+    `/rest/v1/schedules?user_name=eq.${encodeURIComponent(user)}&is_active=eq.true`,
+    { method: 'PATCH', body: { is_active: false }, prefer: 'return=minimal' }
+  );
+
+  /* Activeer het gekozen schema met het aantal personen */
+  await supabaseFetch(
+    `/rest/v1/schedules?id=eq.${encodeURIComponent(scheduleId)}`,
+    { method: 'PATCH', body: { is_active: true, persons: persons }, prefer: 'return=minimal' }
+  );
+
+  _cacheInvalidate('schedules:');
+  _cacheInvalidate('schedule:');
+  _cacheInvalidate('active_schedule:');
+}
+
+/** Deactiveer een weekschema */
+export async function deactivateSchedule(scheduleId) {
+  await supabaseFetch(
+    `/rest/v1/schedules?id=eq.${encodeURIComponent(scheduleId)}`,
+    { method: 'PATCH', body: { is_active: false }, prefer: 'return=minimal' }
+  );
+
+  _cacheInvalidate('schedules:');
+  _cacheInvalidate('schedule:');
+  _cacheInvalidate('active_schedule:');
 }
 
 /** Verwijder een weekschema */

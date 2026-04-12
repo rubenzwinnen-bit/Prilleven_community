@@ -16,7 +16,7 @@ import * as Store from '../store.js';
 import * as Router from '../router.js';
 import * as RecipeCard from './recipeCard.js';
 import {
-  showToast, confirm, escapeHtml, formatDateShort, renderStarsDisplay,
+  showToast, confirm, promptInput, escapeHtml, formatDateShort, renderStarsDisplay,
   WEEKDAYS, SCHEDULE_SLOTS, getSlotLabel
 } from '../utils.js';
 
@@ -99,19 +99,27 @@ function renderScheduleCard(schedule) {
   }).join('');
 
   return `
-    <div class="saved-schedule-card" data-schedule-id="${schedule.id}">
+    <div class="saved-schedule-card ${schedule.isActive ? 'schedule-card-active' : ''}" data-schedule-id="${schedule.id}">
       <div class="saved-schedule-header">
         <div>
           <span class="saved-schedule-name">${escapeHtml(schedule.name)}</span>
           <span class="saved-schedule-date">${formatDateShort(schedule.createdAt)}</span>
+          ${schedule.isActive ? `<span class="active-schedule-badge">Actief &middot; ${schedule.persons} personen</span>` : ''}
         </div>
         <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+          ${schedule.isActive
+            ? `<button class="btn btn-sm btn-outline btn-deactivate-schedule" data-id="${schedule.id}">Deactiveren</button>`
+            : `<button class="btn btn-sm btn-activate-schedule" data-id="${schedule.id}">Activeren</button>`
+          }
           <button class="btn btn-sm btn-outline toggle-schedule-detail" data-id="${schedule.id}">
             &#128065; Details
           </button>
-          <button class="btn btn-sm btn-secondary btn-shopping" data-id="${schedule.id}">
-            &#128722; Boodschappenlijst
-          </button>
+          ${schedule.isActive
+            ? `<button class="btn btn-sm btn-secondary btn-shopping" data-id="${schedule.id}">
+                &#128722; Boodschappenlijst
+              </button>`
+            : ''
+          }
           <button class="btn btn-sm btn-danger btn-delete-schedule" data-id="${schedule.id}">
             &#128465; Verwijderen
           </button>
@@ -306,12 +314,85 @@ export async function init() {
       return;
     }
 
+    /* Weekschema activeren */
+    const activateBtn = e.target.closest('.btn-activate-schedule');
+    if (activateBtn) {
+      await handleActivateSchedule(activateBtn.dataset.id);
+      return;
+    }
+
+    /* Weekschema deactiveren */
+    const deactivateBtn = e.target.closest('.btn-deactivate-schedule');
+    if (deactivateBtn) {
+      await handleDeactivateSchedule(deactivateBtn.dataset.id);
+      return;
+    }
+
     /* Weekschema verwijderen */
     const deleteBtn = e.target.closest('.btn-delete-schedule');
     if (deleteBtn) {
       await handleDeleteSchedule(deleteBtn.dataset.id);
     }
   }, { signal: favAbort.signal });
+}
+
+/* ----------------------------------------
+   WEEKSCHEMA ACTIVEREN
+---------------------------------------- */
+async function handleActivateSchedule(scheduleId) {
+  const schedule = cachedSchedules.find(s => s.id === scheduleId);
+  const defaultPersons = schedule?.persons || 4;
+
+  const input = await promptInput(
+    'Voor hoeveel personen wil je dit weekschema activeren?',
+    String(defaultPersons)
+  );
+  if (!input) return;
+
+  const persons = parseInt(input);
+  if (!persons || persons < 1) {
+    showToast('Voer een geldig aantal personen in (minimaal 1)', 'error');
+    return;
+  }
+
+  try {
+    await Store.setActiveSchedule(scheduleId, persons);
+    showToast(`Weekschema geactiveerd voor ${persons} personen!`);
+
+    const container = document.getElementById('favorites-content');
+    if (container) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">&#9203;</div>
+          <p>Vernieuwen...</p>
+        </div>`;
+      await init();
+    }
+  } catch (err) {
+    showToast('Fout: ' + err.message, 'error');
+  }
+}
+
+/* ----------------------------------------
+   WEEKSCHEMA DEACTIVEREN
+---------------------------------------- */
+async function handleDeactivateSchedule(scheduleId) {
+  try {
+    await Store.deactivateSchedule(scheduleId);
+    showToast('Weekschema gedeactiveerd');
+
+    const container = document.getElementById('favorites-content');
+    if (container) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">&#9203;</div>
+          <p>Vernieuwen...</p>
+        </div>`;
+      await init();
+    }
+  } catch (err) {
+    showToast('Fout: ' + err.message, 'error');
+  }
 }
 
 /* ----------------------------------------

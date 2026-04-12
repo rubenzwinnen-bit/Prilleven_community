@@ -5,14 +5,18 @@
 ============================================ */
 
 import * as Router from '../router.js';
+import { getCurrentUser } from '../store.js';
 
 /* ----------------------------------------
    NAVIGATIE ITEMS
-   Elk item heeft een pad en label
+   Elk item heeft een pad en label.
+   adminOnly: alleen zichtbaar voor admins.
 ---------------------------------------- */
+const ADMIN_EMAILS = ['ruben.zwinnen@hotmail.be', 'anneleen.plettinx@gmail.com'];
+
 const NAV_ITEMS = [
   { path: '', label: 'Recepten' },
-  { path: 'import', label: 'Importeren' },
+  { path: 'import', label: 'Importeren', adminOnly: true },
   { path: 'schedule', label: 'Weekschema' },
   { path: 'favorites', label: 'Favorieten' }
 ];
@@ -23,12 +27,16 @@ const NAV_ITEMS = [
 ---------------------------------------- */
 export function render() {
   const current = Router.getCurrentPath().split('/')[0];
+  const user = (getCurrentUser() || '').toLowerCase();
+  const isAdmin = ADMIN_EMAILS.includes(user);
 
-  const links = NAV_ITEMS.map(item => {
-    const isActive = current === item.path ||
-      (item.path === '' && current === '');
-    return `<a class="nav-link ${isActive ? 'active' : ''}" data-path="${item.path}">${item.label}</a>`;
-  }).join('');
+  const links = NAV_ITEMS
+    .filter(item => !item.adminOnly || isAdmin)
+    .map(item => {
+      const isActive = current === item.path ||
+        (item.path === '' && current === '');
+      return `<a class="nav-link ${isActive ? 'active' : ''}" data-path="${item.path}">${item.label}</a>`;
+    }).join('');
 
   return `<div class="nav-inner">${links}</div>`;
 }
