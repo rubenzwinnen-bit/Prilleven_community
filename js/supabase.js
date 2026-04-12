@@ -102,7 +102,7 @@ export async function supabaseStorageDelete(filePath) {
 ---------------------------------------- */
 export async function checkAllowedUser(email) {
   const data = await supabaseFetch(
-    `/rest/v1/allowed_users?email=eq.${encodeURIComponent(email)}&select=email`
+    `/rest/v1/allowed_users?email=ilike.${encodeURIComponent(email)}&select=email`
   );
   return Array.isArray(data) && data.length > 0;
 }
@@ -119,7 +119,7 @@ export async function checkAllowedUser(email) {
 ---------------------------------------- */
 export async function checkCanSignUp(email) {
   const data = await supabaseFetch(
-    `/rest/v1/allowed_users?email=eq.${encodeURIComponent(email)}&has_registered=eq.false&select=email`
+    `/rest/v1/allowed_users?email=ilike.${encodeURIComponent(email)}&has_registered=eq.false&select=email`
   );
   return Array.isArray(data) && data.length > 0;
 }
@@ -214,7 +214,7 @@ export async function authUpdatePassword(accessToken, newPassword) {
 ---------------------------------------- */
 export async function markUserRegistered(email) {
   await supabaseFetch(
-    `/rest/v1/allowed_users?email=eq.${encodeURIComponent(email)}`,
+    `/rest/v1/allowed_users?email=ilike.${encodeURIComponent(email)}`,
     {
       method: 'PATCH',
       body: { has_registered: true },
