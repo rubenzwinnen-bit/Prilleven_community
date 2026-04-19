@@ -1,0 +1,249 @@
+// Admin dashboard endpoints — samengevoegd in 1 file om onder Vercel Hobby
+// function-limit te blijven. Dispatches op ?section=... query param.
+//
+//   GET /api/admin?section=global            → globale statistieken
+//   GET /api/admin?section=users             → per-user aggregaat (30 dagen)
+//   GET /api/admin?section=queries&limit=50  → recente vragen
+//   GET /api/admin?section=events&limit=100&email=X → subscription-events
+
+import { requireAdmin, AuthError } from './_lib/auth.mjs';
+import { supabase } from './_lib/clients.mjs';
+
+function json(res, status, body) {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store');
+  res.statusCode = status;
+  res.end(JSON.stringify(body));
+}
+
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') { res.statusCode = 204; return res.end(); }
+  if (req.method !== 'GET') return json(res, 405, { error: 'Method not allowed' });
+
+  try {
+    await requireAdmin(req);
+  } catch (e) {
+    if (e instanceof AuthError) return json(res, e.status, { error: e.message });
+    throw e;
+  }
+
+  try {
+    const url = new URL(req.url, 'http://x');
+    const section = (url.searchParams.get('section') || 'global').toLowerCase();
+
+    if (section === 'global') return json(res, 200, await getGlobalStats());
+    if (section === 'users') return json(res, 200, await getUsersStats());
+    if (section === 'queries') {
+      const limit = Math.min(200, parseInt(url.searchParams.get('limit') || '50', 10));
+      return json(res, 200, await getRecentQueries(limit));
+    }
+    if (section === 'events') {
+      const limit = Math.min(500, parseInt(url.searchParams.get('limit') || '100', 10));
+      const emailFilter = url.searchParams.get('email');
+      return json(res, 200, await getSubscriptionEvents(limit, emailFilter));
+    }
+    return json(res, 400, { error: 'Unknown section. Use: global, users, queries, events.' });
+  } catch (err) {
+    console.error('[admin]', err);
+    return json(res, 500, { error: err.message || 'Er ging iets mis.' });
+  }
+}
+
+// ---------- Sections ----------
+
+async function getGlobalStats() {
+  const now = new Date();
+  const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+  const monthStart = new Date(now); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+
+  const { count: activeUsers } = await supabase
+    .from('allowed_users').select('*', { count: 'exact', head: true })
+    .eq('subscription_active', true);
+  const { count: totalUsers } = await supabase
+    .from('allowed_users').select('*', { count: 'exact', head: true });
+  const { count: queriesToday } = await supabase
+    .from('usage_log').select('*', { count: 'exact', head: true })
+    .eq('event', 'query').gte('created_at', todayStart.toISOString());
+  const { count: queriesMonth } = await supabase
+    .from('usage_log').select('*', { count: 'exact', head: true })
+    .eq('event', 'query').gte('created_at', monthStart.toISOString());
+  const { count: cacheHitsToday } = await supabase
+    .from('usage_log').select('*', { count: 'exact', head: true })
+    .eq('event', 'cache_hit').gte('created_at', todayStart.toISOString());
+
+  const { data: costsToday } = await supabase
+    .from('usage_log').select('cost_cents, tokens_in, tokens_out')
+    .gte('created_at', todayStart.toISOString());
+  const costCentsToday = (costsToday || []).reduce((s, r) => s + Number(r.cost_cents || 0), 0);
+  const tokensInToday = (costsToday || []).reduce((s, r) => s + Number(r.tokens_in || 0), 0);
+  const tokensOutToday = (costsToday || []).reduce((s, r) => s + Number(r.tokens_out || 0), 0);
+
+  const { data: costsMonth } = await supabase
+    .from('usage_log').select('cost_cents').gte('created_at', monthStart.toISOString());
+  const costCentsMonth = (costsMonth || []).reduce((s, r) => s + Number(r.cost_cents || 0), 0);
+
+  const { count: rateLimitHits } = await supabase
+    .from('usage_log').select('*', { count: 'exact', head: true })
+    .eq('event', 'blocked_rate_limit').gte('created_at', todayStart.toISOString());
+
+  const totalQueries = (queriesToday || 0) + (cacheHitsToday || 0);
+  const cacheHitRate = totalQueries > 0 ? (cacheHitsToday || 0) / totalQueries : 0;
+
+  return {
+    users: { active: activeUsers || 0, total: totalUsers || 0 },
+    today: {
+      queries: queriesToday || 0,
+      cache_hits: cacheHitsToday || 0,
+      cache_hit_rate: cacheHitRate,
+      cost_cents: costCentsToday,
+      tokens_in: tokensInToday,
+      tokens_out: tokensOutToday,
+      rate_limit_hits: rateLimitHits || 0,
+    },
+    month: { queries: queriesMonth || 0, cost_cents: costCentsMonth },
+  };
+}
+
+async function getUsersStats() {
+  const { data: users, error: uErr } = await supabase
+    .from('allowed_users')
+    .select('email, has_registered, subscription_active, subscription_end_date, cancelled_at, is_admin');
+  if (uErr) throw new Error(uErr.message);
+
+  const { data: authUsers } = await supabase.auth.admin.listUsers();
+  const emailToId = new Map();
+  for (const u of (authUsers?.users || [])) {
+    if (u.email) emailToId.set(u.email.toLowerCase(), u.id);
+  }
+
+  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: usage } = await supabase
+    .from('usage_log').select('user_id, event, tokens_in, tokens_out, cost_cents, created_at')
+    .gte('created_at', since);
+
+  const perUser = new Map();
+  for (const row of (usage || [])) {
+    if (!row.user_id) continue;
+    let agg = perUser.get(row.user_id);
+    if (!agg) {
+      agg = {
+        queries: 0, cache_hits: 0, rate_limit_hits: 0,
+        tokens_in: 0, tokens_out: 0, cost_cents: 0, last_activity: null,
+      };
+      perUser.set(row.user_id, agg);
+    }
+    if (row.event === 'query' || row.event === 'query_with_image') agg.queries++;
+    else if (row.event === 'cache_hit') agg.cache_hits++;
+    else if (row.event === 'blocked_rate_limit') agg.rate_limit_hits++;
+    agg.tokens_in += Number(row.tokens_in || 0);
+    agg.tokens_out += Number(row.tokens_out || 0);
+    agg.cost_cents += Number(row.cost_cents || 0);
+    if (!agg.last_activity || row.created_at > agg.last_activity) {
+      agg.last_activity = row.created_at;
+    }
+  }
+
+  const { data: memCounts } = await supabase.from('chat_user_memory').select('user_id');
+  const memPerUser = new Map();
+  for (const m of (memCounts || [])) {
+    memPerUser.set(m.user_id, (memPerUser.get(m.user_id) || 0) + 1);
+  }
+
+  const { data: convCounts } = await supabase.from('conversations').select('user_id');
+  const convPerUser = new Map();
+  for (const c of (convCounts || [])) {
+    if (!c.user_id) continue;
+    convPerUser.set(c.user_id, (convPerUser.get(c.user_id) || 0) + 1);
+  }
+
+  const rows = (users || []).map(u => {
+    const userId = emailToId.get((u.email || '').toLowerCase()) || null;
+    const stats = userId ? (perUser.get(userId) || {}) : {};
+    return {
+      email: u.email,
+      subscription_active: u.subscription_active,
+      subscription_end_date: u.subscription_end_date,
+      cancelled_at: u.cancelled_at,
+      has_registered: u.has_registered,
+      is_admin: u.is_admin,
+      queries_30d: stats.queries || 0,
+      cache_hits_30d: stats.cache_hits || 0,
+      rate_limit_hits_30d: stats.rate_limit_hits || 0,
+      tokens_in_30d: stats.tokens_in || 0,
+      tokens_out_30d: stats.tokens_out || 0,
+      cost_cents_30d: stats.cost_cents || 0,
+      conversations: userId ? (convPerUser.get(userId) || 0) : 0,
+      memories: userId ? (memPerUser.get(userId) || 0) : 0,
+      last_activity: stats.last_activity || null,
+    };
+  });
+  return { users: rows };
+}
+
+async function getRecentQueries(limit) {
+  const { data: msgs, error } = await supabase
+    .from('messages')
+    .select('id, conversation_id, role, content, retrieved_ids, tokens_in, tokens_out, model, had_image, created_at')
+    .eq('role', 'assistant')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+
+  const conversationIds = [...new Set((msgs || []).map(m => m.conversation_id))];
+  const { data: convs } = await supabase
+    .from('conversations').select('id, user_id, title').in('id', conversationIds);
+  const convMap = new Map((convs || []).map(c => [c.id, c]));
+
+  const { data: authUsers } = await supabase.auth.admin.listUsers();
+  const idToEmail = new Map();
+  for (const u of (authUsers?.users || [])) {
+    if (u.email) idToEmail.set(u.id, u.email);
+  }
+
+  const { data: allUserMsgs } = await supabase
+    .from('messages').select('id, conversation_id, content, created_at')
+    .eq('role', 'user').in('conversation_id', conversationIds)
+    .order('created_at', { ascending: true });
+
+  const userMsgsByConv = new Map();
+  for (const u of (allUserMsgs || [])) {
+    if (!userMsgsByConv.has(u.conversation_id)) userMsgsByConv.set(u.conversation_id, []);
+    userMsgsByConv.get(u.conversation_id).push(u);
+  }
+
+  const rows = (msgs || []).map(m => {
+    const conv = convMap.get(m.conversation_id);
+    const userMsgs = userMsgsByConv.get(m.conversation_id) || [];
+    const prevUser = [...userMsgs].reverse().find(u => u.created_at < m.created_at);
+    return {
+      timestamp: m.created_at,
+      email: conv?.user_id ? idToEmail.get(conv.user_id) || '(onbekend)' : '(anoniem)',
+      conversation_id: m.conversation_id,
+      conversation_title: conv?.title || '(geen titel)',
+      question: prevUser?.content || '(geen vraag gevonden)',
+      answer_preview: (m.content || '').slice(0, 140),
+      model: m.model,
+      tokens_in: m.tokens_in,
+      tokens_out: m.tokens_out,
+      had_image: m.had_image,
+      retrieved_count: (m.retrieved_ids || []).length,
+      retrieved_ids: m.retrieved_ids || [],
+    };
+  });
+  return { queries: rows };
+}
+
+async function getSubscriptionEvents(limit, emailFilter) {
+  let q = supabase
+    .from('subscription_events')
+    .select('id, email, event_type, category, cycle, applied, error, received_at')
+    .order('received_at', { ascending: false })
+    .limit(limit);
+  if (emailFilter) q = q.ilike('email', emailFilter);
+  const { data, error } = await q;
+  if (error) throw new Error(error.message);
+  return { events: data || [] };
+}

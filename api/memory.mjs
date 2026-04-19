@@ -1,5 +1,8 @@
-// GET    /api/memory        → lijst van alle memories van de user
-// DELETE /api/memory         → verwijder alle memories van deze user
+// GET    /api/memory          → lijst van alle memories
+// DELETE /api/memory           → verwijder alle memories van deze user
+// DELETE /api/memory?id=<uuid> → verwijder één memory
+//
+// Samengevoegd in 1 file om onder Vercel Hobby function-limit te blijven.
 
 import { requireAuth, AuthError } from './_lib/auth.mjs';
 import { supabase } from './_lib/clients.mjs';
@@ -38,6 +41,22 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'DELETE') {
+      const url = new URL(req.url, 'http://x');
+      const id = url.searchParams.get('id');
+      if (id) {
+        // Verwijder één memory (ownership-check + delete in één query)
+        const { data, error } = await supabase
+          .from('chat_user_memory')
+          .delete()
+          .eq('id', id)
+          .eq('user_id', auth.userId)
+          .select('id')
+          .maybeSingle();
+        if (error) throw new Error(error.message);
+        if (!data) return json(res, 404, { error: 'Niet gevonden.' });
+        return json(res, 204, {});
+      }
+      // Verwijder alles van deze user
       const { error } = await supabase
         .from('chat_user_memory')
         .delete()

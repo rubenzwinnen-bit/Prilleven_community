@@ -74,7 +74,7 @@ function truncate(s, n) {
 async function loadGlobalStats() {
   const el = document.getElementById('global-stats');
   try {
-    const data = await authedFetch('/api/admin/global-stats');
+    const data = await authedFetch('/api/admin?section=global');
     el.innerHTML = `
       <div class="stats-grid">
         <div class="stat-card">
@@ -198,7 +198,7 @@ function renderUsersTable() {
 async function loadUsers() {
   const el = document.getElementById('users-table');
   try {
-    const data = await authedFetch('/api/admin/users-stats');
+    const data = await authedFetch('/api/admin?section=users');
     usersCache = data.users || [];
     renderUsersTable();
   } catch (err) {
@@ -210,7 +210,7 @@ async function loadUsers() {
 async function loadQueries() {
   const el = document.getElementById('queries-table');
   try {
-    const data = await authedFetch('/api/admin/recent-queries?limit=50');
+    const data = await authedFetch('/api/admin?section=queries&limit=50');
     const rows = data.queries || [];
     if (rows.length === 0) { el.innerHTML = '<div class="empty">Nog geen vragen.</div>'; return; }
     el.innerHTML = `
@@ -252,8 +252,8 @@ async function loadEvents() {
   const el = document.getElementById('events-table');
   const search = (document.getElementById('events-search').value || '').trim();
   try {
-    const q = search ? `?email=${encodeURIComponent('%' + search + '%')}` : '';
-    const data = await authedFetch('/api/admin/subscription-events' + q);
+    const q = search ? `&email=${encodeURIComponent('%' + search + '%')}` : '';
+    const data = await authedFetch('/api/admin?section=events&limit=100' + q);
     const rows = data.events || [];
     if (rows.length === 0) { el.innerHTML = '<div class="empty">Nog geen events.</div>'; return; }
 

@@ -503,7 +503,7 @@ function renderMemoryList(memories) {
     row.querySelector('.mem-delete').addEventListener('click', async () => {
       if (!confirm('Dit feit uit het geheugen verwijderen?')) return;
       try {
-        const res = await authedFetch('/api/memory/' + encodeURIComponent(m.id), { method: 'DELETE' });
+        const res = await authedFetch('/api/memory?id=' + encodeURIComponent(m.id), { method: 'DELETE' });
         if (!res.ok && res.status !== 204) {
           const data = await res.json().catch(() => ({}));
           throw new Error(data.error || 'Verwijderen mislukt.');
