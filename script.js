@@ -105,7 +105,7 @@ function startSubscriptionPoll() {
       subPollTimer = null;
       showSubscriptionExpiredScreen(status);
     }
-  }, 2 * 60 * 1000);
+  }, 60 * 1000); // elke minuut
 }
 
 /* ============================================

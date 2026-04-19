@@ -284,11 +284,11 @@ export async function markUserRegistered(email) {
    SUBSCRIPTION STATUS CHECK
    ============================================
    Fetcht /api/subscription-status om te checken of een user
-   (op basis van email) toegang heeft. Gecached 5 minuten.
+   (op basis van email) toegang heeft. Gecached 1 minuut.
 ============================================ */
 
 const SUB_CACHE = new Map(); // email → { status, expiresAt }
-const SUB_CACHE_TTL = 5 * 60 * 1000;
+const SUB_CACHE_TTL = 60 * 1000; // 1 minuut
 
 export async function fetchSubscriptionStatus(email) {
   if (!email) return { active: false, reason: 'not_registered' };
