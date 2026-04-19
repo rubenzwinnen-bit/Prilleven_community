@@ -14,6 +14,9 @@ export const LIMIT_PER_HOUR_USER = 50;
 export const LIMIT_PER_DAY_USER = 500;
 export const COST_CAP_CENTS_PER_DAY_USER = 200; // €2.00 per user per dag
 
+// Foto-upload limiet: apart van normale queries omdat vision-requests duurder zijn.
+export const IMAGE_LIMIT_PER_DAY_USER = 50;
+
 export function hashIp(ip) {
   return createHash('sha256').update(String(ip || 'unknown')).digest('hex');
 }
@@ -96,6 +99,31 @@ export async function checkCostCap({ key, keyCol, isUser = false }) {
     allowed: spentCents < cap,
     spentCents,
     cap,
+  };
+}
+
+/**
+ * Check specifieke limiet voor image-queries (aparte teller).
+ * Telt alle events met had_image=true in laatste 24h.
+ * We gebruiken een aparte event-type 'query_with_image' voor simpelheid.
+ */
+export async function checkImageRateLimit({ key, keyCol }) {
+  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { count, error } = await supabase
+    .from('usage_log')
+    .select('*', { count: 'exact', head: true })
+    .eq(keyCol, key)
+    .eq('event', 'query_with_image')
+    .gte('created_at', dayAgo);
+  if (error) {
+    console.error(`[image-rate-limit] ${error.message}`);
+    return { allowed: true, remaining: IMAGE_LIMIT_PER_DAY_USER, limit: IMAGE_LIMIT_PER_DAY_USER };
+  }
+  const used = count || 0;
+  return {
+    allowed: used < IMAGE_LIMIT_PER_DAY_USER,
+    remaining: Math.max(0, IMAGE_LIMIT_PER_DAY_USER - used),
+    limit: IMAGE_LIMIT_PER_DAY_USER,
   };
 }
 

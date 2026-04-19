@@ -556,6 +556,60 @@ memoryModal?.addEventListener('click', (e) => {
   if (e.target === memoryModal) closeMemoryModal();
 });
 
+// ---------- Foto-upload ----------
+const MAX_IMAGE_BYTES = 3 * 1024 * 1024; // 3 MB raw file
+const fileInput = document.getElementById('file-input');
+const imgPreview = document.getElementById('image-preview');
+const imgPreviewImg = document.getElementById('image-preview-img');
+const imgPreviewInfo = document.getElementById('image-preview-info');
+const imgRemove = document.getElementById('image-remove');
+
+let pendingImage = null; // { mime, b64, dataUrl, filename, sizeKb }
+
+function clearPendingImage() {
+  pendingImage = null;
+  imgPreview.style.display = 'none';
+  imgPreviewImg.src = '';
+  imgPreviewInfo.textContent = '';
+  fileInput.value = '';
+}
+
+fileInput?.addEventListener('change', async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+  if (!allowed.includes(file.type)) {
+    alert('Alleen JPG, PNG, WebP of GIF fotos zijn toegestaan.');
+    fileInput.value = '';
+    return;
+  }
+  if (file.size > MAX_IMAGE_BYTES) {
+    alert(`Foto is te groot (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum is ${MAX_IMAGE_BYTES / 1024 / 1024} MB.`);
+    fileInput.value = '';
+    return;
+  }
+  // File → base64
+  const dataUrl = await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+  const b64 = String(dataUrl).split(',')[1] || '';
+  pendingImage = {
+    mime: file.type,
+    b64,
+    dataUrl,
+    filename: file.name,
+    sizeKb: Math.round(file.size / 1024),
+  };
+  imgPreviewImg.src = dataUrl;
+  imgPreviewInfo.textContent = `${file.name} (${pendingImage.sizeKb} KB)`;
+  imgPreview.style.display = 'flex';
+});
+
+imgRemove?.addEventListener('click', clearPendingImage);
+
 // ---------- Chat submit ----------
 input.addEventListener('input', () => {
   counter.textContent = input.value.length;
@@ -571,18 +625,37 @@ input.addEventListener('keydown', (e) => {
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const question = input.value.trim();
-  if (question.length < 3) return;
+  const hasImg = !!pendingImage;
 
-  appendMsg('user', question);
+  // Minimum: óf een vraag van 3 chars, óf een foto
+  if (!hasImg && question.length < 3) return;
+
+  // Toon user-bericht (met foto-thumb als aanwezig)
+  const userMsgDiv = appendMsg('user', question || '(Foto bijgevoegd)');
+  if (hasImg) {
+    const imgEl = document.createElement('img');
+    imgEl.src = pendingImage.dataUrl;
+    imgEl.style.cssText = 'max-width:200px; max-height:160px; border-radius:8px; margin-top:.5rem; display:block;';
+    userMsgDiv.appendChild(imgEl);
+  }
+
+  // Body samenstellen
+  const body = { question, conversation_id: currentConversationId };
+  if (hasImg) {
+    body.image_b64 = pendingImage.b64;
+    body.image_mime = pendingImage.mime;
+  }
+
   input.value = '';
   counter.textContent = '0';
+  clearPendingImage();
   sendBtn.disabled = true;
-  sendBtn.textContent = 'Even zoeken...';
+  sendBtn.textContent = hasImg ? 'Foto analyseren…' : 'Even zoeken...';
 
   try {
     const res = await authedFetch('/api/chat', {
       method: 'POST',
-      body: JSON.stringify({ question, conversation_id: currentConversationId }),
+      body: JSON.stringify(body),
     });
     const data = await res.json();
 

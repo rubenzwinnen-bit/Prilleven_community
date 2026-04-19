@@ -19,7 +19,8 @@ import { anthropic } from './_lib/clients.mjs';
 import { retrieveCombined } from './_lib/retrieve.mjs';
 import { extractAndStoreMemories } from './_lib/user-memory.mjs';
 import {
-  checkRateLimit, checkCostCap, logUsage, hashIp, extractIp,
+  checkRateLimit, checkCostCap, checkImageRateLimit, logUsage, hashIp, extractIp,
+  IMAGE_LIMIT_PER_DAY_USER,
 } from './_lib/rate-limit.mjs';
 import { getCached, setCached } from './_lib/cache.mjs';
 import { pickModel } from './_lib/model-router.mjs';
@@ -44,9 +45,9 @@ const MIN_QUESTION_CHARS = 3;
 const MAX_OUTPUT_TOKENS = 600;
 const HISTORY_LIMIT = 10;
 
-// Toegestane content: alleen JSON (tekstvraag) — multipart/foto komt in Fase D.
-const ACCEPTED_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp'];
-const MAX_IMAGES_PER_REQUEST = 1;
+// Foto-upload: base64 in JSON body
+const ACCEPTED_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const MAX_IMAGE_BYTES = 3 * 1024 * 1024; // 3 MB raw — base64 blijft onder 4.5 MB request-limit
 
 // ---------- System prompt ----------
 const SYSTEM_PROMPT = `Je bent HapjesHeld, de AI-assistent van Pril Leven — een Belgisch/Nederlandstalig platform over kindervoeding (0-24 maanden en jonge kinderen).
@@ -104,18 +105,11 @@ export default async function handler(req, res) {
     return json(res, 405, { error: 'Method not allowed' });
   }
 
-  // ---- Content-type guard
+  // ---- Content-type guard — alleen JSON (foto's komen als base64 in JSON)
   const contentType = (req.headers?.['content-type'] || '').toLowerCase();
-  const isJson = contentType.includes('application/json');
-  const isMultipart = contentType.includes('multipart/form-data');
-  if (!isJson && !isMultipart) {
+  if (!contentType.includes('application/json')) {
     return json(res, 415, {
-      error: 'Alleen tekstvragen en afbeeldingen (JPG, PNG, WebP) zijn toegestaan. Documenten worden niet geaccepteerd.',
-    });
-  }
-  if (isMultipart) {
-    return json(res, 501, {
-      error: 'Foto-uploads zijn nog niet beschikbaar. Alleen tekstvragen op dit moment.',
+      error: 'Alleen application/json wordt geaccepteerd. Foto\'s moeten als base64 in de JSON body.',
     });
   }
 
@@ -154,8 +148,32 @@ export default async function handler(req, res) {
   const question = typeof body.question === 'string' ? body.question.trim() : '';
   const conversationIdIn = typeof body.conversation_id === 'string' ? body.conversation_id : null;
 
+  // ---- Image parsen (optioneel)
+  let imageForClaude = null; // { type:'image', source:{ type:'base64', media_type, data } }
+  const hasImage = !!body.image_b64;
+  if (hasImage) {
+    const imageMime = typeof body.image_mime === 'string' ? body.image_mime.toLowerCase() : '';
+    const imageB64 = typeof body.image_b64 === 'string' ? body.image_b64 : '';
+    if (!ACCEPTED_IMAGE_MIMES.includes(imageMime)) {
+      return json(res, 415, { error: 'Alleen JPG, PNG, WebP of GIF foto\'s.' });
+    }
+    // Raw size = base64.length * 0.75
+    const rawBytes = Math.floor((imageB64.length * 3) / 4);
+    if (rawBytes > MAX_IMAGE_BYTES) {
+      return json(res, 413, { error: `Foto te groot (max ${Math.round(MAX_IMAGE_BYTES / 1024 / 1024)} MB).` });
+    }
+    if (imageB64.length === 0) {
+      return json(res, 400, { error: 'image_b64 is leeg.' });
+    }
+    imageForClaude = {
+      type: 'image',
+      source: { type: 'base64', media_type: imageMime, data: imageB64 },
+    };
+  }
+
   // ---- Input validation
-  if (question.length < MIN_QUESTION_CHARS) {
+  // Met foto: korte vraag toegestaan (bv. "wat zit hier in?"). Zonder foto: min 3 chars.
+  if (!hasImage && question.length < MIN_QUESTION_CHARS) {
     return json(res, 400, { error: 'Vraag is te kort.' });
   }
   if (question.length > MAX_QUESTION_CHARS) {
@@ -179,6 +197,16 @@ export default async function handler(req, res) {
     if (!cc.allowed) {
       await logUsage({ userId, ipHash, event: 'blocked_rate_limit' });
       return json(res, 429, { error: 'Dagelijkse gebruikslimiet bereikt. Probeer morgen opnieuw.' });
+    }
+    // Extra image-cap (indien foto meegestuurd)
+    if (hasImage) {
+      const ir = await checkImageRateLimit({ key: userId, keyCol: 'user_id' });
+      if (!ir.allowed) {
+        await logUsage({ userId, ipHash, event: 'blocked_rate_limit' });
+        return json(res, 429, {
+          error: `Je hebt de maximum van ${IMAGE_LIMIT_PER_DAY_USER} foto's per dag bereikt. Probeer morgen opnieuw.`,
+        });
+      }
     }
   } catch (e) {
     console.error('[rate-limit]', e.message);
@@ -270,7 +298,8 @@ export default async function handler(req, res) {
     }
 
     // ---- Model + Claude call met history
-    const { model, reason } = pickModel({ hasImage: false, question, topScore });
+    // Bij foto: altijd Sonnet (betere vision), bij tekst: model-router bepaalt.
+    const { model, reason } = pickModel({ hasImage, question, topScore });
     const contextText = formatContext(chunks);
     const profileBlock = profileSummary
       ? `Over de gebruiker: ${profileSummary}\n\nHoud hier rekening mee in je antwoord.\n\n---\n\n`
@@ -278,20 +307,26 @@ export default async function handler(req, res) {
     const memoryBlock = (memories && memories.length > 0)
       ? `Dit weet ik al over deze gebruiker uit eerdere gesprekken:\n${memories.map(m => `- ${m.content}`).join('\n')}\n\nGebruik deze info waar relevant, maar herhaal feiten niet onnodig.\n\n---\n\n`
       : '';
-    const latestUser = `${profileBlock}${memoryBlock}Context uit de kennisbank:
+    const questionForPrompt = question || '(Bekijk de bijgevoegde foto en geef relevant advies.)';
+    const latestUserText = `${profileBlock}${memoryBlock}Context uit de kennisbank:
 
 ${contextText}
 
 ---
 
-Vraag van de gebruiker: ${question}`;
+Vraag van de gebruiker: ${questionForPrompt}`;
+
+    // Bij foto: multipart content met image + text; anders plain text
+    const latestUserContent = imageForClaude
+      ? [imageForClaude, { type: 'text', text: latestUserText }]
+      : latestUserText;
 
     const messagesForLLM = [
-      // Historische berichten (exclusief system): bouw user/assistant paar
+      // Historische berichten (exclusief system): alleen tekst, oude foto's zijn niet bewaard
       ...history
         .filter(m => m.role === 'user' || m.role === 'assistant')
         .map(m => ({ role: m.role, content: m.content })),
-      { role: 'user', content: latestUser },
+      { role: 'user', content: latestUserContent },
     ];
 
     const response = await anthropic.messages.create({
@@ -311,26 +346,36 @@ Vraag van de gebruiker: ${question}`;
     const costCents = tokensIn * model.costInCents + tokensOut * model.costOutCents;
 
     // ---- Store messages + cache + log
+    // Bij foto: had_image=true opslaan maar content bevat alleen de vraag + placeholder.
+    // De foto-bytes worden NOOIT opgeslagen.
+    const userContentForDB = hasImage
+      ? (question ? `${question}\n[foto bijgevoegd]` : '[foto bijgevoegd]')
+      : question;
     let asstId = null;
     if (memoryEnabled) {
       await storeMessage(conversationId, {
-        role: 'user', content: question,
+        role: 'user', content: userContentForDB, hadImage: hasImage,
       });
       asstId = await storeMessage(conversationId, {
         role: 'assistant', content: answer,
         retrievedIds, tokensIn, tokensOut, model: model.id,
       });
       if (isFirstMessage) {
-        const title = await generateConversationTitle(question);
+        const title = await generateConversationTitle(question || 'Foto-analyse');
         if (title) await setConversationTitle(conversationId, title);
       }
     }
 
-    if (canUseCache) {
+    // Cache nooit antwoorden op foto-vragen (zijn per foto uniek)
+    if (canUseCache && !hasImage) {
       await setCached(question, answer, retrievedIds);
     }
 
-    await logUsage({ userId, ipHash, event: 'query', tokensIn, tokensOut, costCents });
+    await logUsage({
+      userId, ipHash,
+      event: hasImage ? 'query_with_image' : 'query',
+      tokensIn, tokensOut, costCents,
+    });
 
     // ---- Memory extractie (synchroon — ~1s extra latency, maar betrouwbaar)
     // In serverless/vercel-dev wordt fire-and-forget vaak gekilled voor het
