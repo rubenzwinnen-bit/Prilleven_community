@@ -86,6 +86,26 @@ async function initApp() {
   await Store.refreshAdminStatus();
 
   setupApp();
+
+  // Periodiek checken of subscription nog actief is (elke 2 min).
+  // Detecteert live-cancellation zonder dat gebruiker moet refreshen.
+  startSubscriptionPoll();
+}
+
+let subPollTimer = null;
+function startSubscriptionPoll() {
+  if (subPollTimer) clearInterval(subPollTimer);
+  subPollTimer = setInterval(async () => {
+    const email = Store.getCurrentUser();
+    if (!email) return;
+    invalidateSubscriptionCache(email);
+    const status = await fetchSubscriptionStatus(email);
+    if (!status.active && !document.getElementById('sub-expired-overlay')) {
+      clearInterval(subPollTimer);
+      subPollTimer = null;
+      showSubscriptionExpiredScreen(status);
+    }
+  }, 2 * 60 * 1000);
 }
 
 /* ============================================
