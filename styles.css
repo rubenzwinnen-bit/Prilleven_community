@@ -2034,3 +2034,18 @@ select.form-control {
   .home-tile-title { font-size: 1.05rem; }
   .home-tile-desc { font-size: .85rem; }
 }
+
+/* Verberg de navigatiebalk op de hub-landingspagina */
+body.is-hub #app-nav { display: none; }
+
+/* Logo op het inlog-scherm */
+.auth-logo {
+  text-align: center;
+  margin-bottom: 1.25rem;
+  margin-top: .25rem;
+}
+.auth-logo img {
+  max-width: 140px;
+  height: auto;
+  display: inline-block;
+}

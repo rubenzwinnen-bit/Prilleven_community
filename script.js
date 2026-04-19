@@ -511,6 +511,9 @@ function setupApp() {
   async function renderPage(html, initFn) {
     content.innerHTML = html;
     Nav.updateActive();
+    // Verberg nav op de landingspagina (hub heeft eigen tegels)
+    const isHub = Router.getCurrentPath() === '';
+    document.body.classList.toggle('is-hub', isHub);
     if (initFn) await initFn();
     window.scrollTo(0, 0);
   }
