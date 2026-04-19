@@ -70,3 +70,17 @@ export async function requireAuth(req) {
 
   return { userId: entry.userId, email: entry.email, jwt };
 }
+
+/**
+ * Extends requireAuth met een admin-check via allowed_users.is_admin.
+ * Gooit AuthError(403) als de user geen admin is.
+ */
+export async function requireAdmin(req) {
+  const auth = await requireAuth(req);
+  const { getAccessStatus } = await import('./subscription.mjs');
+  const status = await getAccessStatus(auth.email);
+  if (!status.isAdmin) {
+    throw new AuthError(403, 'Admin-rechten vereist.');
+  }
+  return auth;
+}
