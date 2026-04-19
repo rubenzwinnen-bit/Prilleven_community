@@ -26,6 +26,7 @@ import {
 import * as Router from './js/router.js';
 import * as Header from './js/components/header.js';
 import * as Nav from './js/components/nav.js';
+import * as Home from './js/components/home.js';
 import * as RecipeList from './js/components/recipeList.js';
 import * as RecipeDetail from './js/components/recipeDetail.js';
 import * as ImportRecipes from './js/components/importRecipes.js';
@@ -514,8 +515,13 @@ function setupApp() {
     window.scrollTo(0, 0);
   }
 
-  /* --- Recepten overzicht (homepagina) --- */
+  /* --- Hub: landingspagina met tegels --- */
   Router.on('', async () => {
+    await renderPage(Home.render(), Home.init);
+  });
+
+  /* --- Recepten overzicht --- */
+  Router.on('recipes', async () => {
     await renderPage(RecipeList.render(), RecipeList.init);
   });
 
