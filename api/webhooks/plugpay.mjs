@@ -144,8 +144,26 @@ async function logEvent({ email, eventType, category, cycle, payload, applied, e
 }
 
 export default async function handler(req, res) {
+  // CORS preflight
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Signature, X-Plug-Signature');
+  if (req.method === 'OPTIONS') {
+    res.statusCode = 204;
+    return res.end();
+  }
+
+  // GET = health-check / webhook-URL validatie door externe tools
+  if (req.method === 'GET') {
+    return json(res, 200, {
+      status: 'ready',
+      endpoint: 'plugpay webhook',
+      hint: 'Use POST with JSON body containing email. Query: ?type=activated|cancelled|expired&cycle=monthly|yearly',
+    });
+  }
+
   if (req.method !== 'POST') {
-    return json(res, 405, { error: 'Method not allowed' });
+    return json(res, 405, { error: 'Method not allowed. Use POST.' });
   }
 
   // URL-parameters (fallback bron voor type en cycle)
