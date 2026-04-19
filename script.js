@@ -17,6 +17,10 @@ import {
   authResetPassword,
   authUpdatePassword,
   markUserRegistered,
+  sessionSet,
+  sessionClear,
+  fetchSubscriptionStatus,
+  subscriptionAccessMessage,
 } from './js/supabase.js';
 import * as Router from './js/router.js';
 import * as Header from './js/components/header.js';
@@ -56,18 +60,86 @@ function detectRecoveryToken() {
    APP INITIALISATIE
    Wordt uitgevoerd zodra de DOM geladen is
 ============================================ */
-function initApp() {
+async function initApp() {
   detectRecoveryToken();
 
   const user = Store.getCurrentUser();
 
   if (recoveryToken) {
     showAuthModal('reset');
-  } else if (!user) {
-    showAuthModal('login');
-  } else {
-    setupApp();
+    return;
   }
+  if (!user) {
+    showAuthModal('login');
+    return;
+  }
+
+  // Check subscription voor bestaande sessie
+  const status = await fetchSubscriptionStatus(user);
+  if (!status.active) {
+    showSubscriptionExpiredScreen(status);
+    return;
+  }
+
+  // Pre-load admin status zodat Store.isAdmin() synchroon werkt
+  await Store.refreshAdminStatus();
+
+  setupApp();
+}
+
+/* ============================================
+   ABONNEMENT-VERLOPEN SCHERM
+   Toont een volledig-scherm bericht als het
+   lidmaatschap niet meer actief is.
+============================================ */
+function showSubscriptionExpiredScreen(status) {
+  const message = subscriptionAccessMessage(status);
+  const overlay = document.createElement('div');
+  overlay.id = 'sub-expired-overlay';
+  overlay.style.cssText = `
+    position: fixed; inset: 0;
+    background: var(--color-bg, #faf8f5);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    font-family: 'Poppins', sans-serif;
+  `;
+  overlay.innerHTML = `
+    <div style="max-width: 480px; text-align: center;">
+      <div style="font-size: 3rem; margin-bottom: 1rem;">🌿</div>
+      <h1 style="color: var(--color-primary, #C98966); margin-bottom: 1rem;">Je lidmaatschap is verlopen</h1>
+      <p style="color: var(--color-dark-light, #3d3d3d); line-height: 1.6; margin-bottom: 2rem;">${message}</p>
+      <a href="https://prilleven.be" style="
+        display: inline-block;
+        padding: .85rem 1.75rem;
+        background: var(--color-primary, #C98966);
+        color: white;
+        text-decoration: none;
+        border-radius: 12px;
+        font-weight: 600;
+        margin-right: .5rem;
+      ">Verleng op prilleven.be</a>
+      <button id="sub-logout-btn" style="
+        padding: .85rem 1.75rem;
+        background: transparent;
+        color: var(--color-dark, #171717);
+        border: 1px solid var(--color-gray-light, #c5c5c5);
+        border-radius: 12px;
+        font-family: inherit;
+        font-weight: 500;
+        cursor: pointer;
+      ">Uitloggen</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  document.getElementById('sub-logout-btn').addEventListener('click', () => {
+    localStorage.removeItem('receptenboek_user');
+    sessionClear();
+    Store.clearCache();
+    location.reload();
+  });
 }
 
 /* ============================================
@@ -159,9 +231,17 @@ function showAuthModal(initialView = 'login') {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   }
 
-  function completeLogin(email) {
+  async function completeLogin(email) {
     Store.setCurrentUser(email);
+    // Subscription check — als niet actief, toon expired-scherm i.p.v. app
+    const status = await fetchSubscriptionStatus(email);
     modal.classList.add('hidden');
+    if (!status.active) {
+      showSubscriptionExpiredScreen(status);
+      return;
+    }
+    // Pre-load admin status zodat Store.isAdmin() synchroon werkt
+    await Store.refreshAdminStatus();
     setupApp();
   }
 
@@ -185,7 +265,8 @@ function showAuthModal(initialView = 'login') {
     views.login.querySelector('.auth-error').classList.add('hidden');
 
     try {
-      await authSignIn(email, password);
+      const authData = await authSignIn(email, password);
+      sessionSet(authData);
       completeLogin(email);
     } catch (err) {
       let message = 'Inloggen mislukt. Controleer je gegevens.';
@@ -249,7 +330,8 @@ function showAuthModal(initialView = 'login') {
       await markUserRegistered(email);
 
       /* Stap 4: Auto-login na registratie */
-      await authSignIn(email, password);
+      const authData = await authSignIn(email, password);
+      sessionSet(authData);
       completeLogin(email);
 
     } catch (err) {
@@ -324,7 +406,8 @@ function showAuthModal(initialView = 'login') {
     try {
       const result = await authUpdatePassword(recoveryToken, password);
       const email = result.email;
-      await authSignIn(email, password);
+      const authData = await authSignIn(email, password);
+      sessionSet(authData);
       completeLogin(email);
     } catch (err) {
       let message = 'Wachtwoord wijzigen mislukt. De link is mogelijk verlopen.';

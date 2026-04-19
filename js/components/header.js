@@ -5,6 +5,7 @@
 ============================================ */
 
 import * as Store from '../store.js';
+import { sessionClear, invalidateSubscriptionCache } from '../supabase.js';
 
 /* ----------------------------------------
    RENDER
@@ -33,7 +34,11 @@ export function init() {
   const logoutBtn = document.getElementById('header-logout-btn');
   if (logoutBtn) {
     logoutBtn.addEventListener('click', () => {
+      const email = Store.getCurrentUser();
       localStorage.removeItem('receptenboek_user');
+      sessionClear();
+      if (email) invalidateSubscriptionCache(email);
+      Store.clearAdminCache();
       Store.clearCache();
       location.reload();
     });

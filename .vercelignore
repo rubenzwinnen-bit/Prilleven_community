@@ -1,0 +1,3 @@
+# Ignored during Vercel build/dev detection.
+tools/
+scripts/

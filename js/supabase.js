@@ -280,6 +280,123 @@ export async function markUserRegistered(email) {
   );
 }
 
+/* ============================================
+   SUBSCRIPTION STATUS CHECK
+   ============================================
+   Fetcht /api/subscription-status om te checken of een user
+   (op basis van email) toegang heeft. Gecached 5 minuten.
+============================================ */
+
+const SUB_CACHE = new Map(); // email → { status, expiresAt }
+const SUB_CACHE_TTL = 5 * 60 * 1000;
+
+export async function fetchSubscriptionStatus(email) {
+  if (!email) return { active: false, reason: 'not_registered' };
+  const key = email.toLowerCase().trim();
+  const now = Date.now();
+  const cached = SUB_CACHE.get(key);
+  if (cached && cached.expiresAt > now) return cached.status;
+
+  try {
+    const res = await fetch('/api/subscription-status?email=' + encodeURIComponent(key));
+    if (!res.ok) {
+      // Fail-open bij server-fout
+      return { active: true, reason: null };
+    }
+    const status = await res.json();
+    SUB_CACHE.set(key, { status, expiresAt: now + SUB_CACHE_TTL });
+    return status;
+  } catch {
+    return { active: true, reason: null };
+  }
+}
+
+export function subscriptionAccessMessage(status) {
+  if (!status) return 'Je hebt momenteel geen toegang.';
+  if (status.reason === 'not_registered')
+    return 'Je account is niet geregistreerd. Neem contact op als dit een fout is.';
+  if (status.reason === 'cancelled' || status.reason === 'expired')
+    return 'Je abonnement is verlopen. Verleng je lidmaatschap op prilleven.be om weer toegang te krijgen.';
+  return 'Je hebt momenteel geen toegang tot deze app.';
+}
+
+export function invalidateSubscriptionCache(email) {
+  if (!email) return;
+  SUB_CACHE.delete(email.toLowerCase().trim());
+}
+
+/* ============================================
+   SESSIE-MANAGEMENT VOOR DE CHAT-BOT
+   ============================================
+   De chat API (/api/chat en verwante endpoints) heeft
+   de Supabase JWT nodig als Bearer-token. We persisteren
+   de volledige sessie (access + refresh token) in
+   localStorage zodat de chat-pagina hem kan lezen.
+============================================ */
+
+const SESSION_KEY = 'pril_session';
+
+/** Sla een Supabase auth-response op als sessie-object. */
+export function sessionSet(authData) {
+  if (!authData || !authData.access_token) return;
+  const now = Math.floor(Date.now() / 1000);
+  const session = {
+    access_token: authData.access_token,
+    refresh_token: authData.refresh_token,
+    expires_at: authData.expires_at || (now + (authData.expires_in || 3600)),
+    user_id: authData.user?.id || null,
+    email: authData.user?.email || null,
+  };
+  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+}
+
+/** Haal de huidige sessie op (of null). */
+export function sessionGet() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Verwijder de sessie (bij logout of verlopen refresh). */
+export function sessionClear() {
+  localStorage.removeItem(SESSION_KEY);
+}
+
+/**
+ * Als de sessie binnen 60s verloopt, vernieuw via refresh_token.
+ * Returnt de huidige/vernieuwde sessie, of null als niet aanwezig/vernieuwd.
+ */
+export async function sessionRefreshIfNeeded() {
+  const s = sessionGet();
+  if (!s) return null;
+  const now = Math.floor(Date.now() / 1000);
+  if (s.expires_at > now + 60) return s; // nog geldig
+
+  try {
+    const res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ refresh_token: s.refresh_token }),
+    });
+    if (!res.ok) {
+      sessionClear();
+      return null;
+    }
+    const data = await res.json();
+    sessionSet(data);
+    return sessionGet();
+  } catch {
+    sessionClear();
+    return null;
+  }
+}
+
 /* ----------------------------------------
    DATA-URI NAAR BLOB CONVERTEREN
    Hulpfunctie om een base64 image om te zetten

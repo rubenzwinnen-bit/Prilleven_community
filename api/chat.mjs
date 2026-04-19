@@ -1,0 +1,361 @@
+// POST /api/chat
+// Body: { question: string, conversation_id?: string }
+// Headers: Authorization: Bearer <supabase-jwt>
+// Returns: { answer, sources, cached, topScore, model, modelReason, conversation_id }
+//
+// Flow (Fase A — auth + conversatie-history):
+//   1. requireAuth → userId (JWT validate)
+//   2. Input validation
+//   3. Rate-limit + cost cap op user_id
+//   4. Resolve of maak conversation
+//   5. Cache check (globaal — per-user cache komt in latere fase)
+//   6. Laad laatste N messages als LLM-context
+//   7. Retrieve chunks via Voyage + pgvector
+//   8. Out-of-scope fallback indien topScore < threshold
+//   9. Claude call met history + context
+//  10. Store user + assistant messages; genereer titel als eerste message
+
+import { anthropic } from './_lib/clients.mjs';
+import { retrieveCombined } from './_lib/retrieve.mjs';
+import { extractAndStoreMemories } from './_lib/user-memory.mjs';
+import {
+  checkRateLimit, checkCostCap, logUsage, hashIp, extractIp,
+} from './_lib/rate-limit.mjs';
+import { getCached, setCached } from './_lib/cache.mjs';
+import { pickModel } from './_lib/model-router.mjs';
+import { requireAuth, AuthError } from './_lib/auth.mjs';
+import {
+  getOrCreateConversation,
+  loadConversationMessages,
+  storeMessage,
+  generateConversationTitle,
+  setConversationTitle,
+} from './_lib/conversation.mjs';
+import {
+  loadUserProfile,
+  formatProfileForPrompt,
+  primaryChildAgeMonths,
+} from './_lib/profile.mjs';
+import { getAccessStatus, accessDeniedMessage } from './_lib/subscription.mjs';
+
+// ---------- Config ----------
+const MAX_QUESTION_CHARS = 500;
+const MIN_QUESTION_CHARS = 3;
+const MAX_OUTPUT_TOKENS = 600;
+const HISTORY_LIMIT = 10;
+
+// Toegestane content: alleen JSON (tekstvraag) — multipart/foto komt in Fase D.
+const ACCEPTED_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_IMAGES_PER_REQUEST = 1;
+
+// ---------- System prompt ----------
+const SYSTEM_PROMPT = `Je bent HapjesHeld, de AI-assistent van Pril Leven — een Belgisch/Nederlandstalig platform over kindervoeding (0-24 maanden en jonge kinderen).
+
+**Jouw rol:**
+- Beantwoord vragen over kindervoeding op basis van de meegegeven context uit Anneleens eigen kennisbank (gids, masterclass, recepten, roadmap).
+- Antwoord in het Nederlands, in een warme, geruststellende en praktische toon zoals Anneleen zelf spreekt.
+- Wees concreet: geef stappen, hoeveelheden, leeftijdsadviezen waar relevant.
+
+**Toon — allerbelangrijkste richtlijn:**
+- Stel ouders altijd gerust. De meeste zorgen rond kindervoeding zijn normaal en vaak tijdelijk. Ouders die iets vragen zijn al betrokken en doen het goed.
+- Begin waar mogelijk met een korte erkenning of normalisering ("Dat is een vraag die veel ouders stellen", "Helemaal normaal dat je dit even wil checken", "Geen zorgen, ..."), geef dan pas de praktische info.
+- Vermijd alarmerende woorden zoals "gevaarlijk", "dringend", "probleem", "fout" — tenzij het écht om een medisch noodgeval gaat (bv. acute allergische reactie).
+- Benadruk wat er wél goed gaat en wat haalbaar is. Formuleer zachter: "kan helpen", "een fijne aanpak is", "je kan proberen" — liever dan "moet", "mag niet", "is nodig".
+- Laat ruimte voor variatie en eigen ritme: niet elk kindje is hetzelfde, schommelingen in eetlust horen erbij, er is geen strikt schema waar iedereen aan moet voldoen.
+- Als er een reden tot voorzichtigheid is (bv. verstikkingsgevaar, allergenen-introductie), verpak je dat als praktische tip — niet als waarschuwing die doet schrikken.
+
+**Belangrijke regels:**
+- Gebruik UITSLUITEND de informatie uit de meegegeven context. Verzin NIETS.
+- Introduceer NOOIT vakjargon, termen of concepten die niet letterlijk in de meegegeven context staan (bv. "voor- en achtermelk", "cluster feeding", enz.). Als een term niet in de context voorkomt, gebruik die dan ook niet — zelfs niet als voorbeeld of zijpad.
+- Noem geen oorzaken, mechanismen of verklaringen die niet in de context staan. Geen "soms heel normaal, kan ook wijzen op X of Y" als X en Y niet in de context voorkomen.
+- Als de context onvoldoende antwoord geeft: zeg rustig dat je dit specifieke punt niet in de kennisbank vindt, en verwijs vriendelijk door naar huisarts, kinderarts of pediatrisch diëtist — formuleer dat als een geruststellende dubbel-check, niet als een alarmbel.
+- Bij allergische reacties of twijfel over de gezondheid: verwijs altijd door naar een arts, maar houd de toon kalm ("voor alle zekerheid kan je dit even voorleggen aan je huisarts").
+- Wees kort en overzichtelijk: 3-6 zinnen voor eenvoudige vragen, met bullets voor lijsten.
+- Vermeld bij recepten veiligheidstips rond stukjes (verstikkingsgevaar) — kort en praktisch, niet angstaanjagend.
+- Als de vraag buiten kindervoeding valt: zeg vriendelijk dat je daar niet op kan antwoorden.
+
+**Formaat:**
+- GEEN markdown: geen **bold**, geen *italic*, geen ## headers. Schrijf gewone doorlopende tekst. Gebruik hooguit bullet points (met "•" of "-") voor lijstjes.
+- Benadruk woorden via woordvolgorde of uitleg, niet met sterretjes of hoofdletters.
+- Eindig niet met "hoop dat dit helpt" of disclaimers.`;
+
+// ---------- Helpers ----------
+function json(res, status, body) {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store');
+  res.statusCode = status;
+  res.end(JSON.stringify(body));
+}
+
+function formatContext(chunks) {
+  return chunks
+    .map((c, i) => `[Bron ${i + 1} — ${c.source} / ${c.title}]\n${c.content}`)
+    .join('\n\n---\n\n');
+}
+
+// ---------- Handler ----------
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') { res.statusCode = 204; return res.end(); }
+  if (req.method !== 'POST') {
+    return json(res, 405, { error: 'Method not allowed' });
+  }
+
+  // ---- Content-type guard
+  const contentType = (req.headers?.['content-type'] || '').toLowerCase();
+  const isJson = contentType.includes('application/json');
+  const isMultipart = contentType.includes('multipart/form-data');
+  if (!isJson && !isMultipart) {
+    return json(res, 415, {
+      error: 'Alleen tekstvragen en afbeeldingen (JPG, PNG, WebP) zijn toegestaan. Documenten worden niet geaccepteerd.',
+    });
+  }
+  if (isMultipart) {
+    return json(res, 501, {
+      error: 'Foto-uploads zijn nog niet beschikbaar. Alleen tekstvragen op dit moment.',
+    });
+  }
+
+  // ---- Auth
+  let auth;
+  try {
+    auth = await requireAuth(req);
+  } catch (e) {
+    if (e instanceof AuthError) return json(res, e.status, { error: e.message });
+    console.error('[chat][auth]', e);
+    return json(res, 500, { error: 'Er ging iets mis bij authenticatie.' });
+  }
+  const userId = auth.userId;
+
+  // ---- Subscription gate
+  try {
+    const access = await getAccessStatus(auth.email);
+    if (!access.active) {
+      return json(res, 403, {
+        error: accessDeniedMessage(access),
+        reason: access.reason,
+      });
+    }
+  } catch (e) {
+    console.error('[chat][subscription]', e.message);
+    // fail open bij onverwachte error — niet iedereen buitensluiten
+  }
+
+  // ---- Body parsen
+  let body;
+  try {
+    body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+  } catch {
+    return json(res, 400, { error: 'Ongeldige JSON.' });
+  }
+  const question = typeof body.question === 'string' ? body.question.trim() : '';
+  const conversationIdIn = typeof body.conversation_id === 'string' ? body.conversation_id : null;
+
+  // ---- Input validation
+  if (question.length < MIN_QUESTION_CHARS) {
+    return json(res, 400, { error: 'Vraag is te kort.' });
+  }
+  if (question.length > MAX_QUESTION_CHARS) {
+    return json(res, 400, { error: `Vraag is te lang (max ${MAX_QUESTION_CHARS} tekens).` });
+  }
+
+  const ipHash = hashIp(extractIp(req));
+
+  // ---- Rate limit per user
+  try {
+    const rl = await checkRateLimit({ key: userId, keyCol: 'user_id', isUser: true });
+    if (!rl.allowed) {
+      await logUsage({ userId, ipHash, event: 'blocked_rate_limit' });
+      return json(res, 429, {
+        error: rl.reason === 'hour'
+          ? `Te veel vragen binnen een uur (max ${rl.hourLimit}). Probeer straks opnieuw.`
+          : `Dagelijkse limiet bereikt (max ${rl.dayLimit}). Tot morgen!`,
+      });
+    }
+    const cc = await checkCostCap({ key: userId, keyCol: 'user_id', isUser: true });
+    if (!cc.allowed) {
+      await logUsage({ userId, ipHash, event: 'blocked_rate_limit' });
+      return json(res, 429, { error: 'Dagelijkse gebruikslimiet bereikt. Probeer morgen opnieuw.' });
+    }
+  } catch (e) {
+    console.error('[rate-limit]', e.message);
+    // fail open
+  }
+
+  try {
+    // ---- Load profile (voor context + age-filter)
+    const profile = await loadUserProfile(userId);
+    const memoryEnabled = profile?.memory_enabled !== false; // default aan als geen profiel
+    const profileSummary = formatProfileForPrompt(profile);
+    const filterAge = primaryChildAgeMonths(profile);
+
+    // ---- Resolve/create conversation
+    let conversation;
+    try {
+      conversation = await getOrCreateConversation(userId, conversationIdIn);
+    } catch (e) {
+      return json(res, e.status || 400, { error: e.message });
+    }
+    const conversationId = conversation.id;
+    const isFirstMessage = !conversation.title;
+
+    // ---- Cache check (globaal) — skippen als er history is of profiel-context,
+    // want antwoord hangt dan van persoonlijke context af.
+    const history = memoryEnabled
+      ? await loadConversationMessages(conversationId, { limit: HISTORY_LIMIT })
+      : [];
+    const canUseCache = history.length === 0 && !profileSummary;
+
+    if (canUseCache) {
+      const cached = await getCached(question);
+      if (cached) {
+        let asstId = null;
+        if (memoryEnabled) {
+          await storeMessage(conversationId, { role: 'user', content: question });
+          asstId = await storeMessage(conversationId, {
+            role: 'assistant', content: cached.answer,
+            retrievedIds: cached.retrievedIds, model: 'cache',
+          });
+          if (isFirstMessage) {
+            const title = await generateConversationTitle(question);
+            if (title) await setConversationTitle(conversationId, title);
+          }
+        }
+        await logUsage({ userId, ipHash, event: 'cache_hit' });
+        return json(res, 200, {
+          answer: cached.answer,
+          sources: cached.retrievedIds,
+          cached: true,
+          topScore: null,
+          conversation_id: conversationId,
+          assistant_message_id: asstId,
+        });
+      }
+    }
+
+    // ---- Retrieval: kennisbank + user-memory combined
+    const { chunks, memories, topScore, hasRelevant } = await retrieveCombined(question, {
+      userId,
+      filterAge,
+      topKDocs: 6,
+      topKMemory: 4,
+      includeMemory: memoryEnabled,
+    });
+
+    // ---- Out-of-scope: alleen fallback als er écht niets relevant is (geen docs én geen memories).
+    if (!hasRelevant || (chunks.length === 0 && (!memories || memories.length === 0))) {
+      const fallback =
+        'Daar vind ik helaas geen duidelijk antwoord op in de kennisbank. Ik beantwoord vragen over kindervoeding (0-24 maanden en jonge kinderen) op basis van Anneleens gids, masterclass en recepten — probeer gerust de vraag anders te formuleren. Voor specifieke medische vragen of twijfel blijft je huisarts, kinderarts of pediatrisch diëtist de beste plek.';
+      let asstId = null;
+      if (memoryEnabled) {
+        await storeMessage(conversationId, { role: 'user', content: question });
+        asstId = await storeMessage(conversationId, { role: 'assistant', content: fallback, model: 'fallback' });
+        if (isFirstMessage) {
+          const title = await generateConversationTitle(question);
+          if (title) await setConversationTitle(conversationId, title);
+        }
+      }
+      await logUsage({ userId, ipHash, event: 'query' });
+      return json(res, 200, {
+        answer: fallback,
+        sources: [],
+        cached: false,
+        topScore,
+        conversation_id: conversationId,
+        assistant_message_id: asstId,
+      });
+    }
+
+    // ---- Model + Claude call met history
+    const { model, reason } = pickModel({ hasImage: false, question, topScore });
+    const contextText = formatContext(chunks);
+    const profileBlock = profileSummary
+      ? `Over de gebruiker: ${profileSummary}\n\nHoud hier rekening mee in je antwoord.\n\n---\n\n`
+      : '';
+    const memoryBlock = (memories && memories.length > 0)
+      ? `Dit weet ik al over deze gebruiker uit eerdere gesprekken:\n${memories.map(m => `- ${m.content}`).join('\n')}\n\nGebruik deze info waar relevant, maar herhaal feiten niet onnodig.\n\n---\n\n`
+      : '';
+    const latestUser = `${profileBlock}${memoryBlock}Context uit de kennisbank:
+
+${contextText}
+
+---
+
+Vraag van de gebruiker: ${question}`;
+
+    const messagesForLLM = [
+      // Historische berichten (exclusief system): bouw user/assistant paar
+      ...history
+        .filter(m => m.role === 'user' || m.role === 'assistant')
+        .map(m => ({ role: m.role, content: m.content })),
+      { role: 'user', content: latestUser },
+    ];
+
+    const response = await anthropic.messages.create({
+      model: model.id,
+      max_tokens: MAX_OUTPUT_TOKENS,
+      system: SYSTEM_PROMPT,
+      messages: messagesForLLM,
+    });
+
+    const answer = response.content
+      .filter((b) => b.type === 'text')
+      .map((b) => b.text).join('\n').trim();
+
+    const retrievedIds = chunks.map((c) => c.id);
+    const tokensIn = response.usage?.input_tokens ?? 0;
+    const tokensOut = response.usage?.output_tokens ?? 0;
+    const costCents = tokensIn * model.costInCents + tokensOut * model.costOutCents;
+
+    // ---- Store messages + cache + log
+    let asstId = null;
+    if (memoryEnabled) {
+      await storeMessage(conversationId, {
+        role: 'user', content: question,
+      });
+      asstId = await storeMessage(conversationId, {
+        role: 'assistant', content: answer,
+        retrievedIds, tokensIn, tokensOut, model: model.id,
+      });
+      if (isFirstMessage) {
+        const title = await generateConversationTitle(question);
+        if (title) await setConversationTitle(conversationId, title);
+      }
+    }
+
+    if (canUseCache) {
+      await setCached(question, answer, retrievedIds);
+    }
+
+    await logUsage({ userId, ipHash, event: 'query', tokensIn, tokensOut, costCents });
+
+    // ---- Memory extractie (synchroon — ~1s extra latency, maar betrouwbaar)
+    // In serverless/vercel-dev wordt fire-and-forget vaak gekilled voor het
+    // klaar is. Synchroon garandeert dat het feit wordt opgeslagen.
+    // Faalt stil — niet kritisch voor de response.
+    if (memoryEnabled && asstId) {
+      try {
+        await extractAndStoreMemories(userId, question, answer, asstId);
+      } catch (e) {
+        console.error('[memory-extract]', e.message);
+      }
+    }
+
+    return json(res, 200, {
+      answer,
+      sources: retrievedIds,
+      cached: false,
+      topScore,
+      model: model.id,
+      modelReason: reason,
+      conversation_id: conversationId,
+      assistant_message_id: asstId,
+    });
+  } catch (err) {
+    console.error('[chat]', err);
+    return json(res, 500, { error: 'Er ging iets mis. Probeer het later opnieuw.' });
+  }
+}
