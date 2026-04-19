@@ -21,6 +21,7 @@ import {
   sessionClear,
   fetchSubscriptionStatus,
   subscriptionAccessMessage,
+  invalidateSubscriptionCache,
 } from './js/supabase.js';
 import * as Router from './js/router.js';
 import * as Header from './js/components/header.js';
@@ -120,7 +121,20 @@ function showSubscriptionExpiredScreen(status) {
         border-radius: 12px;
         font-weight: 600;
         margin-right: .5rem;
+        margin-bottom: .5rem;
       ">Verleng op prilleven.be</a>
+      <button id="sub-refresh-btn" style="
+        padding: .85rem 1.75rem;
+        background: #82BE93;
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-family: inherit;
+        font-weight: 600;
+        cursor: pointer;
+        margin-right: .5rem;
+        margin-bottom: .5rem;
+      ">Net betaald? Check opnieuw</button>
       <button id="sub-logout-btn" style="
         padding: .85rem 1.75rem;
         background: transparent;
@@ -130,15 +144,35 @@ function showSubscriptionExpiredScreen(status) {
         font-family: inherit;
         font-weight: 500;
         cursor: pointer;
+        margin-bottom: .5rem;
       ">Uitloggen</button>
     </div>
   `;
   document.body.appendChild(overlay);
   document.getElementById('sub-logout-btn').addEventListener('click', () => {
+    const email = Store.getCurrentUser();
     localStorage.removeItem('receptenboek_user');
     sessionClear();
+    if (email) invalidateSubscriptionCache(email);
     Store.clearCache();
     location.reload();
+  });
+  document.getElementById('sub-refresh-btn').addEventListener('click', async () => {
+    const email = Store.getCurrentUser();
+    const btn = document.getElementById('sub-refresh-btn');
+    btn.disabled = true;
+    btn.textContent = 'Even checken…';
+    // Invalideer client-side cache zodat we écht opnieuw de server bevragen
+    if (email) invalidateSubscriptionCache(email);
+    const fresh = await fetchSubscriptionStatus(email);
+    if (fresh.active) {
+      overlay.remove();
+      await Store.refreshAdminStatus();
+      setupApp();
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'Nog niet gewijzigd — probeer opnieuw';
+    }
   });
 }
 
