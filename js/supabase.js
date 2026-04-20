@@ -365,36 +365,60 @@ export function sessionClear() {
   localStorage.removeItem(SESSION_KEY);
 }
 
-/**
- * Als de sessie binnen 60s verloopt, vernieuw via refresh_token.
- * Returnt de huidige/vernieuwde sessie, of null als niet aanwezig/vernieuwd.
- */
-export async function sessionRefreshIfNeeded() {
-  const s = sessionGet();
-  if (!s) return null;
-  const now = Math.floor(Date.now() / 1000);
-  if (s.expires_at > now + 60) return s; // nog geldig
+// Marge waarbinnen we alvast vernieuwen i.p.v. wachten tot de token écht verloopt.
+// 5 min is ruim genoeg om klok-drift + in-flight requests op te vangen.
+const REFRESH_MARGIN_SEC = 300;
 
-  try {
-    const res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
-      method: 'POST',
-      headers: {
-        'apikey': SUPABASE_ANON_KEY,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ refresh_token: s.refresh_token }),
-    });
-    if (!res.ok) {
-      sessionClear();
-      return null;
-    }
-    const data = await res.json();
-    sessionSet(data);
-    return sessionGet();
-  } catch {
+// Eén gedeelde in-flight refresh-promise voorkomt dat parallelle calls
+// (bv. Promise.all in init) de refresh_token meerdere keren rouleren en
+// elkaars sessie ongeldig maken.
+let _inflightRefresh = null;
+
+async function _doRefresh(refreshToken) {
+  const res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
+  if (!res.ok) {
     sessionClear();
     return null;
   }
+  const data = await res.json();
+  sessionSet(data);
+  return sessionGet();
+}
+
+/**
+ * Als de sessie binnen REFRESH_MARGIN_SEC verloopt, vernieuw via refresh_token.
+ * Returnt de huidige/vernieuwde sessie, of null als niet aanwezig/vernieuwd.
+ *
+ * Parallelle calls delen één refresh-promise (dedup).
+ * Pass `force: true` om altijd te vernieuwen, ongeacht expires_at.
+ */
+export async function sessionRefreshIfNeeded({ force = false } = {}) {
+  const s = sessionGet();
+  if (!s) return null;
+  const now = Math.floor(Date.now() / 1000);
+  if (!force && s.expires_at > now + REFRESH_MARGIN_SEC) return s;
+
+  if (_inflightRefresh) {
+    return _inflightRefresh;
+  }
+  _inflightRefresh = (async () => {
+    try {
+      return await _doRefresh(s.refresh_token);
+    } catch {
+      sessionClear();
+      return null;
+    } finally {
+      _inflightRefresh = null;
+    }
+  })();
+  return _inflightRefresh;
 }
 
 /* ----------------------------------------

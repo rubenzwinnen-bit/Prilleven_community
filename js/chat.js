@@ -92,13 +92,7 @@ function closeMobileSidebar() {
 }
 
 // ---------- API helpers ----------
-async function authedFetch(url, opts = {}) {
-  const session = await sessionRefreshIfNeeded();
-  if (!session) {
-    sessionClear();
-    window.location.href = '/';
-    throw new Error('Geen geldige sessie');
-  }
+function buildAuthedHeaders(opts, session) {
   const headers = {
     ...(opts.headers || {}),
     Authorization: 'Bearer ' + session.access_token,
@@ -106,11 +100,34 @@ async function authedFetch(url, opts = {}) {
   if (opts.body && !headers['Content-Type']) {
     headers['Content-Type'] = 'application/json';
   }
-  const res = await fetch(url, { ...opts, headers });
-  if (res.status === 401) {
+  return headers;
+}
+
+async function authedFetch(url, opts = {}) {
+  let session = await sessionRefreshIfNeeded();
+  if (!session) {
     sessionClear();
     window.location.href = '/';
-    throw new Error('Sessie verlopen');
+    throw new Error('Geen geldige sessie');
+  }
+  let res = await fetch(url, { ...opts, headers: buildAuthedHeaders(opts, session) });
+
+  // Eén retry bij 401: access_token kan server-side al verlopen zijn terwijl
+  // de client hem nog geldig vond (klok-drift, rotatie, etc.). Forceer één
+  // refresh en probeer opnieuw vóór we de user eruit gooien.
+  if (res.status === 401) {
+    session = await sessionRefreshIfNeeded({ force: true });
+    if (!session) {
+      sessionClear();
+      window.location.href = '/';
+      throw new Error('Sessie verlopen');
+    }
+    res = await fetch(url, { ...opts, headers: buildAuthedHeaders(opts, session) });
+    if (res.status === 401) {
+      sessionClear();
+      window.location.href = '/';
+      throw new Error('Sessie verlopen');
+    }
   }
   return res;
 }
