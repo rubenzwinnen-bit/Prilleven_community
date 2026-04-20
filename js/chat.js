@@ -574,8 +574,7 @@ function clearPendingImage() {
   fileInput.value = '';
 }
 
-fileInput?.addEventListener('change', async (e) => {
-  const file = e.target.files?.[0];
+async function processImageFile(file) {
   if (!file) return;
   const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
   if (!allowed.includes(file.type)) {
@@ -606,9 +605,58 @@ fileInput?.addEventListener('change', async (e) => {
   imgPreviewImg.src = dataUrl;
   imgPreviewInfo.textContent = `${file.name} (${pendingImage.sizeKb} KB)`;
   imgPreview.style.display = 'flex';
+}
+
+fileInput?.addEventListener('change', (e) => {
+  const file = e.target.files?.[0];
+  processImageFile(file);
 });
 
 imgRemove?.addEventListener('click', clearPendingImage);
+
+// ---------- Drag & drop foto vanuit desktop ----------
+const dropZone = document.querySelector('.chat-wrap') || document.body;
+let dragDepth = 0;
+
+function isFileDrag(e) {
+  return Array.from(e.dataTransfer?.types || []).includes('Files');
+}
+
+window.addEventListener('dragenter', (e) => {
+  if (!isFileDrag(e)) return;
+  e.preventDefault();
+  dragDepth++;
+  dropZone.classList.add('drag-active');
+});
+
+window.addEventListener('dragover', (e) => {
+  if (!isFileDrag(e)) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'copy';
+});
+
+window.addEventListener('dragleave', (e) => {
+  if (!isFileDrag(e)) return;
+  dragDepth = Math.max(0, dragDepth - 1);
+  if (dragDepth === 0) dropZone.classList.remove('drag-active');
+});
+
+window.addEventListener('drop', (e) => {
+  if (!isFileDrag(e)) return;
+  e.preventDefault();
+  dragDepth = 0;
+  dropZone.classList.remove('drag-active');
+  const file = e.dataTransfer.files?.[0];
+  if (file) processImageFile(file);
+});
+
+// Plakken vanuit klembord (bv. screenshot)
+window.addEventListener('paste', (e) => {
+  const item = Array.from(e.clipboardData?.items || []).find(it => it.type.startsWith('image/'));
+  if (!item) return;
+  const file = item.getAsFile();
+  if (file) processImageFile(file);
+});
 
 // ---------- Chat submit ----------
 input.addEventListener('input', () => {
