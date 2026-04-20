@@ -85,12 +85,13 @@ h3 { font-size: 1.15rem; }
    HEADER COMPONENT
 ============================================ */
 #app-header {
-  background: var(--color-primary);
-  color: var(--color-white);
-  padding: 1.25rem 2rem;
+  background: var(--color-white);
+  color: var(--color-dark);
+  padding: 0.5rem 2rem;
   position: sticky;
   top: 0;
   z-index: 100;
+  border-bottom: 1px solid var(--color-light);
 }
 
 .header-inner {
@@ -107,13 +108,13 @@ h3 { font-size: 1.15rem; }
   font-weight: 700;
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  color: inherit;
+  gap: 0.75rem;
+  color: var(--color-secondary-dark);
   text-decoration: none;
 }
-.header-title:hover { opacity: 0.9; }
+.header-title:hover { opacity: 0.8; }
 .header-logo {
-  height: 38px;
+  height: 64px;
   width: auto;
   display: block;
 }
@@ -124,13 +125,14 @@ h3 { font-size: 1.15rem; }
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.18);
-  color: var(--color-white);
+  background: var(--color-light);
+  color: var(--color-dark);
   text-decoration: none;
   transition: var(--transition);
 }
 .header-home-btn:hover {
-  background: rgba(255,255,255,0.32);
+  background: var(--color-secondary);
+  color: var(--color-white);
 }
 
 .header-user {
@@ -141,7 +143,8 @@ h3 { font-size: 1.15rem; }
 }
 
 .header-user .user-name {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--color-light);
+  color: var(--color-dark);
   padding: 0.3rem 0.8rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
@@ -149,7 +152,7 @@ h3 { font-size: 1.15rem; }
 }
 
 .header-user .user-name:hover {
-  background: rgba(255, 255, 255, 0.35);
+  background: var(--color-gray-light);
 }
 
 /* ============================================
@@ -159,7 +162,7 @@ h3 { font-size: 1.15rem; }
   background: var(--color-white);
   border-bottom: 1px solid var(--color-light);
   position: sticky;
-  top: 58px;
+  top: 81px;
   z-index: 99;
 }
 
@@ -1436,9 +1439,9 @@ select.form-control {
 
 /* --- Uitlogknop in header --- */
 .btn-logout {
-  background: rgba(255, 255, 255, 0.15);
-  color: var(--color-white);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: transparent;
+  color: var(--color-dark);
+  border: 1px solid var(--color-gray-light);
   padding: 0.25rem 0.7rem;
   border-radius: var(--radius-sm);
   font-size: 0.75rem;
@@ -1448,7 +1451,8 @@ select.form-control {
 }
 
 .btn-logout:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--color-light);
+  border-color: var(--color-gray);
 }
 
 /* ============================================
