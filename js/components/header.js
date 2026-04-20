@@ -15,10 +15,14 @@ export function render() {
   const user = Store.getCurrentUser();
   return `
     <div class="header-inner">
-      <div class="header-title">
-        &#127807; Community Pril leven
-      </div>
+      <a class="header-title" href="#/" id="header-home-link" title="Naar het hub">
+        <img src="/pril-leven-logo.png" alt="" class="header-logo" />
+        <span>Community Pril leven</span>
+      </a>
       <div class="header-user">
+        <a href="#/" class="header-home-btn" id="header-home-btn" title="Naar het hub" aria-label="Naar het hub">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1V9.5Z"/></svg>
+        </a>
         <span class="user-name" id="header-user-name">${user || 'Gast'}</span>
         <button class="btn-logout" id="header-logout-btn" title="Uitloggen">Uitloggen</button>
       </div>

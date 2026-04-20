@@ -40,9 +40,15 @@
       font-size: 1.25rem;
       display: inline-flex;
       align-items: center;
-      gap: .5rem;
+      gap: .6rem;
+      text-decoration: none;
     }
     .chat-header a.brand:hover { color: var(--color-light); }
+    .chat-header .brand-logo {
+      height: 34px;
+      width: auto;
+      display: block;
+    }
     .chat-header .beta {
       background: rgba(255,255,255,.2);
       padding: .15rem .6rem;
@@ -58,8 +64,17 @@
       opacity: .9;
       font-size: .95rem;
       font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.18);
+      text-decoration: none;
+      transition: var(--transition);
     }
-    .chat-header .back:hover { opacity: 1; color: var(--color-light); }
+    .chat-header .back:hover { opacity: 1; background: rgba(255,255,255,.32); color: var(--color-white); }
     .chat-header .user-email {
       color: var(--color-white);
       opacity: .85;
@@ -669,10 +684,15 @@
   <header class="chat-header">
     <div class="chat-header-inner">
       <button class="hamburger" id="toggle-sidebar" aria-label="Menu">☰</button>
-      <a class="brand" href="/">🌿 Pril Leven</a>
+      <a class="brand" href="/">
+        <img src="/pril-leven-logo.png" alt="" class="brand-logo" />
+        <span>Community Pril Leven</span>
+      </a>
       <span class="beta">AI · beta</span>
       <span class="user-email" id="header-user-email"></span>
-      <a class="back" href="/">← Terug naar site</a>
+      <a class="back" href="/" title="Naar het hub" aria-label="Naar het hub">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1V9.5Z"/></svg>
+      </a>
     </div>
   </header>
 

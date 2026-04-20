@@ -356,11 +356,16 @@ function attachListeners(recipeId, initialRating = 0, recipe = null, activeInfo 
 
   /* Favoriet toggle */
   document.getElementById('btn-toggle-fav')?.addEventListener('click', async (e) => {
-    const id = e.currentTarget.dataset.id;
+    // Bewaar referentie naar de knop — e.currentTarget wordt null na de eerste await
+    // (browser reset currentTarget zodra de event-dispatch klaar is).
+    const btn = e.currentTarget;
+    const id = btn.dataset.id;
     try {
       const isFav = await Store.toggleFavorite(id);
-      e.currentTarget.className = `btn ${isFav ? 'btn-primary' : 'btn-outline'}`;
-      e.currentTarget.innerHTML = isFav ? '&#10084;&#65039; In favorieten' : '&#9825; Favoriet maken';
+      if (btn.isConnected) {
+        btn.className = `btn ${isFav ? 'btn-primary' : 'btn-outline'}`;
+        btn.innerHTML = isFav ? '&#10084;&#65039; In favorieten' : '&#9825; Favoriet maken';
+      }
       showToast(isFav ? 'Toegevoegd aan favorieten' : 'Verwijderd uit favorieten');
     } catch (err) {
       showToast('Fout: ' + err.message, 'error');

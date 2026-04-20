@@ -57,8 +57,7 @@ export function render() {
   return `
     <div class="home-hub">
       <div class="home-welcome">
-        <h1>Welkom terug${firstName ? ', <span>' + firstName + '</span>' : ''}.</h1>
-        <p class="home-lead">Waarmee kunnen we je vandaag helpen?</p>
+        <h1 class="home-welcome-title">Welkom terug</h1>
       </div>
       <div class="home-tiles">
         ${tileCards}
