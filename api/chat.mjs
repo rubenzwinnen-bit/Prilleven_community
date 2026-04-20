@@ -94,6 +94,30 @@ function formatContext(chunks) {
     .join('\n\n---\n\n');
 }
 
+// Extract a comma-separated list of food items from a photo via Haiku vision.
+// Used to enrich the RAG search query so recipe chunks can be matched even when
+// the user's text question is too vague (e.g. "wat kan ik hiermee maken?").
+async function extractIngredientsForRAG(imageBlock) {
+  try {
+    const r = await anthropic.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 120,
+      system: 'Je bent een visuele ingrediënten-detector. Je antwoordt UITSLUITEND met een kommagescheiden lijst van zichtbare voedingsmiddelen in het Nederlands (bv. "banaan, appel, wortel, broccoli"). Geen zinnen, geen uitleg, geen hoeveelheden. Maximum 15 items. Als de foto geen voedsel toont: antwoord met het woord "geen".',
+      messages: [{
+        role: 'user',
+        content: [imageBlock, { type: 'text', text: 'Welke ingrediënten zie je?' }],
+      }],
+    });
+    const text = r.content.filter(b => b.type === 'text').map(b => b.text).join(' ').trim();
+    if (!text || /^geen\b/i.test(text)) return '';
+    // Sanitise: keep first line, strip trailing punctuation
+    return text.split('\n')[0].replace(/[.;]+$/, '').trim();
+  } catch (e) {
+    console.error('[ingredient-extract]', e.message);
+    return '';
+  }
+}
+
 // ---------- Handler ----------
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -264,8 +288,20 @@ export default async function handler(req, res) {
       }
     }
 
+    // ---- Bij foto: eerst ingrediënten extraheren (Haiku vision) en aan de zoekstring toevoegen,
+    // zodat RAG recepten kan vinden ook als de tekstvraag vaag is ("wat kan ik hiermee maken?").
+    let extractedIngredients = '';
+    let searchQuery = question;
+    if (hasImage) {
+      extractedIngredients = await extractIngredientsForRAG(imageForClaude);
+      if (extractedIngredients) {
+        const baseQ = question || 'recept op basis van deze ingrediënten';
+        searchQuery = `${baseQ} — ingrediënten: ${extractedIngredients}`;
+      }
+    }
+
     // ---- Retrieval: kennisbank + user-memory combined
-    const { chunks, memories, topScore, hasRelevant } = await retrieveCombined(question, {
+    const { chunks, memories, topScore, hasRelevant } = await retrieveCombined(searchQuery, {
       userId,
       filterAge,
       topKDocs: 6,
@@ -274,7 +310,8 @@ export default async function handler(req, res) {
     });
 
     // ---- Out-of-scope: alleen fallback als er écht niets relevant is (geen docs én geen memories).
-    if (!hasRelevant || (chunks.length === 0 && (!memories || memories.length === 0))) {
+    // Met foto: skip de fallback — Sonnet vision kan altijd iets nuttigs zeggen, ook met zwakke chunks.
+    if (!hasImage && (!hasRelevant || (chunks.length === 0 && (!memories || memories.length === 0)))) {
       const fallback =
         'Daar vind ik helaas geen duidelijk antwoord op in de kennisbank. Ik beantwoord vragen over kindervoeding (0-24 maanden en jonge kinderen) op basis van Anneleens gids, masterclass en recepten — probeer gerust de vraag anders te formuleren. Voor specifieke medische vragen of twijfel blijft je huisarts, kinderarts of pediatrisch diëtist de beste plek.';
       let asstId = null;
@@ -308,13 +345,22 @@ export default async function handler(req, res) {
       ? `Dit weet ik al over deze gebruiker uit eerdere gesprekken:\n${memories.map(m => `- ${m.content}`).join('\n')}\n\nGebruik deze info waar relevant, maar herhaal feiten niet onnodig.\n\n---\n\n`
       : '';
     const questionForPrompt = question || '(Bekijk de bijgevoegde foto en geef relevant advies.)';
+    const ingredientsBlock = (hasImage && extractedIngredients)
+      ? `Ingrediënten die zichtbaar zijn op de foto: ${extractedIngredients}.
+
+Gebruik deze ingrediënten en bovenstaande context om een passend recept of suggestie uit Anneleens kennisbank voor te stellen. Verifieer eerst kort wat je op de foto ziet, kies dan een recept of combinatie die hierbij past.
+
+---
+
+`
+      : '';
     const latestUserText = `${profileBlock}${memoryBlock}Context uit de kennisbank:
 
 ${contextText}
 
 ---
 
-Vraag van de gebruiker: ${questionForPrompt}`;
+${ingredientsBlock}Vraag van de gebruiker: ${questionForPrompt}`;
 
     // Bij foto: multipart content met image + text; anders plain text
     const latestUserContent = imageForClaude
