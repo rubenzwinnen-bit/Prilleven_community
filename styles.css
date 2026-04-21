@@ -2022,6 +2022,29 @@ select.form-control {
 .home-tile .home-tile-title { color: var(--color-white); }
 .home-tile .home-tile-desc  { color: rgba(255,255,255,.88); }
 .home-tile .home-tile-arrow { color: var(--color-white); }
+
+/* Hover-voorbeeldfoto boven de tegel — verschijnt bij muis-hover */
+.home-tile-hover-img {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 12px);
+  transform: translateX(-50%) translateY(8px) scale(0.96);
+  transform-origin: center bottom;
+  width: min(320px, 90%);
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  border: 3px solid var(--color-white);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease, transform .2s ease;
+  z-index: 20;
+}
+.home-tile:hover .home-tile-hover-img {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0) scale(1);
+}
 /* Icon-cirkels lichter zodat ze contrasteren met de terracotta tegel */
 .home-tile--terracotta .home-tile-icon,
 .home-tile--sage       .home-tile-icon,

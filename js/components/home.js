@@ -16,35 +16,36 @@ export function render() {
   const tiles = [
     {
       id: 'recipes',
-      icon: '🍽️',
       title: 'Receptenboek & Weekschema',
       desc: 'Bekijk recepten, bouw je weekschema op en beheer je favorieten en boodschappenlijst.',
       href: '#/recipes',
       accent: 'terracotta',
+      hoverImg: '/fotos/receptenboek%20%26%20weekschema.jpeg',
     },
     {
       id: 'chat',
-      icon: '🌿',
-      title: 'HapjesHeld',
+      title: 'HapjesHeld 2.0',
       desc: 'Je persoonlijke AI-assistent voor al je vragen over kindervoeding. Onthoudt je gezin en leert je beter kennen.',
       href: '/chat.html',
       accent: 'sage',
+      hoverImg: '/fotos/de%20hapjesheld.png',
     },
   ];
 
   if (admin) {
     tiles.push({
       id: 'admin',
-      icon: '📊',
       title: 'Admin dashboard',
       desc: 'Overzicht van gebruikers, chat-activiteit, kosten en abonnement-events. Alleen voor administrators.',
       href: '/admin-chat.html',
       accent: 'dark',
+      hoverImg: '/fotos/matrix.jpg',
     });
   }
 
   const tileCards = tiles.map(t => `
     <a class="home-tile home-tile--${t.accent}" href="${t.href}">
+      ${t.hoverImg ? `<img class="home-tile-hover-img" src="${t.hoverImg}" alt="" loading="lazy" />` : ''}
       <div class="home-tile-body">
         <h3 class="home-tile-title">${t.title}</h3>
         <p class="home-tile-desc">${t.desc}</p>

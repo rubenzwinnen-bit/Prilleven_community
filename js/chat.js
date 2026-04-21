@@ -730,7 +730,6 @@ form.addEventListener('submit', async (e) => {
       const meta = [
         data.cached ? '✓ uit cache' : null,
         data.sources?.length ? `${data.sources.length} bron${data.sources.length > 1 ? 'nen' : ''}` : null,
-        data.topScore ? `relevantie ${(data.topScore * 100).toFixed(0)}%` : null,
       ].filter(Boolean).join(' · ');
       appendMsg('bot', stripMarkdown(data.answer), meta);
 
