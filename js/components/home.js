@@ -20,7 +20,7 @@ export function render() {
       desc: 'Bekijk recepten, bouw je weekschema op en beheer je favorieten en boodschappenlijst.',
       href: '#/recipes',
       accent: 'terracotta',
-      hoverImg: '/fotos/receptenboek%20%26%20weekschema.jpeg',
+      hoverImg: '/fotos/receptenboek-weekschema.jpeg',
     },
     {
       id: 'chat',
@@ -28,7 +28,7 @@ export function render() {
       desc: 'Je persoonlijke AI-assistent voor al je vragen over kindervoeding. Onthoudt je gezin en leert je beter kennen.',
       href: '/chat.html',
       accent: 'sage',
-      hoverImg: '/fotos/de%20hapjesheld.png',
+      hoverImg: '/fotos/hapjesheld.png',
     },
   ];
 
