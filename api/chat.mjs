@@ -301,10 +301,12 @@ export default async function handler(req, res) {
     }
 
     // ---- Retrieval: kennisbank + user-memory combined
+    // topKDocs=10: meer context → grotere kans dat de specifieke chunk die op de vraag
+    // antwoordt tussen de top-K belandt (ook als de similarity score ergens in het midden zit).
     const { chunks, memories, topScore, hasRelevant } = await retrieveCombined(searchQuery, {
       userId,
       filterAge,
-      topKDocs: 6,
+      topKDocs: 10,
       topKMemory: 4,
       includeMemory: memoryEnabled,
     });
