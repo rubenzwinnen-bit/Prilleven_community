@@ -78,7 +78,7 @@ function showWelcome() {
   clearLog();
   const welcome = document.createElement('div');
   welcome.className = 'msg bot';
-  welcome.innerHTML = `Hallo! Ik ben HapjesHeld, de AI-assistent van Pril Leven. Je kan me vragen stellen over kindervoeding. Bijvoorbeeld:
+  welcome.innerHTML = `Hallo! Ik ben HapjesHeld 2.0, de AI-assistent van Pril Leven. Je kan me vragen stellen over kindervoeding. Bijvoorbeeld:
   <br /><br />
   • <em>Wanneer mag mijn kindje starten met vast voedsel?</em><br />
   • <em>Hoe introduceer ik pindakaas bij 8 maanden?</em><br />

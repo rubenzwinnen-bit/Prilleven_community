@@ -2008,42 +2008,41 @@ select.form-control {
   box-shadow: var(--shadow-sm);
   text-decoration: none;
   color: var(--color-white);
-  transition: var(--transition);
+  transition: box-shadow .25s ease, background .25s ease,
+              border-color .25s ease, padding-top .3s ease;
   position: relative;
+  overflow: hidden;
 }
 .home-tile:hover {
-  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
   background: var(--color-primary-dark);
   border-color: var(--color-primary-dark);
   color: var(--color-white);
+  padding-top: calc(1.5rem + 220px);
 }
 /* Tegel-titel + arrow + omschrijving in wit voor leesbaarheid op terracotta */
 .home-tile .home-tile-title { color: var(--color-white); }
 .home-tile .home-tile-desc  { color: rgba(255,255,255,.88); }
 .home-tile .home-tile-arrow { color: var(--color-white); }
 
-/* Hover-voorbeeldfoto boven de tegel — verschijnt bij muis-hover */
+/* Hover-foto is onderdeel van de tegel en groeit vanuit de bovenkant */
 .home-tile-hover-img {
   position: absolute;
-  left: 50%;
-  bottom: calc(100% + 12px);
-  transform: translateX(-50%) translateY(8px) scale(0.96);
-  transform-origin: center bottom;
-  width: min(320px, 90%);
-  max-height: 220px;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 0;
   object-fit: cover;
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-  border: 3px solid var(--color-white);
+  object-position: center center;
   opacity: 0;
   pointer-events: none;
-  transition: opacity .2s ease, transform .2s ease;
-  z-index: 20;
+  transition: height .3s ease, opacity .3s ease;
+  z-index: 1;
 }
 .home-tile:hover .home-tile-hover-img {
+  height: 200px;
   opacity: 1;
-  transform: translateX(-50%) translateY(0) scale(1);
 }
 /* Icon-cirkels lichter zodat ze contrasteren met de terracotta tegel */
 .home-tile--terracotta .home-tile-icon,

@@ -15,10 +15,10 @@
     body { background: var(--color-bg); min-height: 100vh; }
 
     .admin-header {
-      background: var(--color-primary);
-      color: var(--color-white);
-      padding: 1rem 1.5rem;
-      box-shadow: var(--shadow-sm);
+      background: var(--color-white);
+      color: var(--color-dark);
+      padding: 0.5rem 1.5rem;
+      border-bottom: 1px solid var(--color-light);
     }
     .admin-header-inner {
       max-width: 1400px;
@@ -28,21 +28,23 @@
       gap: .75rem;
     }
     .admin-header a.brand {
-      color: var(--color-white);
+      color: var(--color-secondary-dark);
       font-weight: 700;
-      font-size: 1.25rem;
+      font-size: 1.4rem;
       display: inline-flex;
       align-items: center;
-      gap: .6rem;
+      gap: .75rem;
       text-decoration: none;
     }
+    .admin-header a.brand:hover { opacity: 0.8; }
     .admin-header .brand-logo {
-      height: 34px;
+      height: 64px;
       width: auto;
       display: block;
     }
     .admin-header .badge {
-      background: rgba(255,255,255,.2);
+      background: var(--color-light);
+      color: var(--color-dark-light);
       padding: .15rem .6rem;
       border-radius: 999px;
       font-size: .7rem;
@@ -52,8 +54,8 @@
     }
     .admin-header .back {
       margin-left: auto;
-      color: var(--color-white);
-      opacity: .9;
+      color: var(--color-dark);
+      opacity: 1;
       font-size: .95rem;
       font-weight: 500;
       display: inline-flex;
@@ -62,11 +64,11 @@
       width: 36px;
       height: 36px;
       border-radius: 50%;
-      background: rgba(255,255,255,.18);
+      background: var(--color-light);
       text-decoration: none;
       transition: var(--transition);
     }
-    .admin-header .back:hover { opacity: 1; background: var(--color-secondary-dark); color: var(--color-white); }
+    .admin-header .back:hover { background: var(--color-secondary-dark); color: var(--color-white); }
 
     .admin-main {
       max-width: 1400px;
