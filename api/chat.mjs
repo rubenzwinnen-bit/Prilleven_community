@@ -309,9 +309,12 @@ export default async function handler(req, res) {
       includeMemory: memoryEnabled,
     });
 
-    // ---- Out-of-scope: alleen fallback als er écht niets relevant is (geen docs én geen memories).
-    // Met foto: skip de fallback — Sonnet vision kan altijd iets nuttigs zeggen, ook met zwakke chunks.
-    if (!hasImage && (!hasRelevant || (chunks.length === 0 && (!memories || memories.length === 0)))) {
+    // ---- Out-of-scope: alleen fallback als er écht niets terugkomt (0 chunks én 0 memories).
+    // We vertrouwen op Claude's system-prompt om zelf te zeggen "niet in kennisbank" als de
+    // chunks de vraag niet beantwoorden — betrouwbaarder dan een harde similarity-threshold
+    // die goede-maar-zwak-gematchte chunks wegknijpt.
+    // Met foto: skip de fallback sowieso — Sonnet vision kan altijd iets zinvols zeggen.
+    if (!hasImage && chunks.length === 0 && (!memories || memories.length === 0)) {
       // Diagnostic log — laat zien waarom er een fallback werd gestuurd.
       console.log('[chat] out-of-scope fallback', {
         question: question.slice(0, 120),
