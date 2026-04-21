@@ -311,6 +311,15 @@ export default async function handler(req, res) {
       includeMemory: memoryEnabled,
     });
 
+    // Diagnostic log: welke chunks gaan naar Claude? Zichtbaar in Vercel function-logs.
+    console.log('[chat] retrieval', {
+      q: searchQuery.slice(0, 100),
+      filterAge,
+      topScore: Number(topScore?.toFixed?.(3) ?? topScore),
+      chunks: chunks.map(c => `${c.source} / ${c.title} @${c.similarity?.toFixed?.(3)}`),
+      memories: (memories || []).map(m => `${(m.content || '').slice(0,60)}… @${m.similarity?.toFixed?.(3)}`),
+    });
+
     // ---- Out-of-scope: alleen fallback als er écht niets terugkomt (0 chunks én 0 memories).
     // We vertrouwen op Claude's system-prompt om zelf te zeggen "niet in kennisbank" als de
     // chunks de vraag niet beantwoorden — betrouwbaarder dan een harde similarity-threshold
