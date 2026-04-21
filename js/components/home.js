@@ -28,7 +28,7 @@ export function render() {
       desc: 'Je persoonlijke AI-assistent voor al je vragen over kindervoeding. Onthoudt je gezin en leert je beter kennen.',
       href: '/chat.html',
       accent: 'sage',
-      hoverImg: '/fotos/hapjesheld_1.png',
+      hoverImg: '/fotos/HapjesHeld_2.png',
     },
   ];
 
