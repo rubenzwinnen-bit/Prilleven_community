@@ -1440,8 +1440,8 @@ select.form-control {
 /* --- Uitlogknop in header --- */
 .btn-logout {
   background: transparent;
-  color: var(--color-dark);
-  border: 1px solid var(--color-gray-light);
+  color: var(--color-secondary-dark);
+  border: 1px solid var(--color-secondary-dark);
   padding: 0.25rem 0.7rem;
   border-radius: var(--radius-sm);
   font-size: 0.75rem;
@@ -1451,8 +1451,9 @@ select.form-control {
 }
 
 .btn-logout:hover {
-  background: var(--color-light);
-  border-color: var(--color-gray);
+  background: var(--color-secondary-dark);
+  color: var(--color-white);
+  border-color: var(--color-secondary-dark);
 }
 
 /* ============================================
@@ -2015,10 +2016,10 @@ select.form-control {
   box-shadow: var(--shadow-md);
   color: var(--color-dark);
 }
-/* Accent-borders per tegel — past de tile-kleur door in de uitlijning */
-.home-tile--terracotta { border-color: var(--color-primary); }
-.home-tile--sage       { border-color: var(--color-secondary-dark); }
-.home-tile--dark       { border-color: var(--color-dark); }
+/* Accent-border voor alle tegels — eenduidige terracotta uitlijning */
+.home-tile--terracotta,
+.home-tile--sage,
+.home-tile--dark { border-color: var(--color-primary); }
 .home-tile-icon {
   width: 64px;
   height: 64px;

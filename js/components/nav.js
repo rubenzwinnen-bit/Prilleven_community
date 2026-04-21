@@ -13,7 +13,6 @@ import { isAdmin } from '../store.js';
    Gewone items voor alle gebruikers.
 ---------------------------------------- */
 const NAV_ITEMS = [
-  { path: '', label: 'Home' },
   { path: 'recipes', label: 'Recepten' },
   { path: 'schedule', label: 'Weekschema' },
   { path: 'favorites', label: 'Favorieten' }
