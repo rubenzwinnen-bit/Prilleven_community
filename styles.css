@@ -131,7 +131,7 @@ h3 { font-size: 1.15rem; }
   transition: var(--transition);
 }
 .header-home-btn:hover {
-  background: var(--color-primary);
+  background: var(--color-secondary-dark);
   color: var(--color-white);
 }
 
@@ -2002,24 +2002,30 @@ select.form-control {
   align-items: center;
   gap: 1.25rem;
   padding: 1.5rem 1.75rem;
-  background: var(--color-white);
+  background: var(--color-primary);
   border-radius: var(--radius-lg);
-  border: 2px solid var(--color-light);
+  border: 2px solid var(--color-primary);
   box-shadow: var(--shadow-sm);
   text-decoration: none;
-  color: var(--color-dark);
+  color: var(--color-white);
   transition: var(--transition);
   position: relative;
 }
 .home-tile:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
-  color: var(--color-dark);
+  background: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+  color: var(--color-white);
 }
-/* Accent-border voor alle tegels — eenduidige terracotta uitlijning */
-.home-tile--terracotta,
-.home-tile--sage,
-.home-tile--dark { border-color: var(--color-primary); }
+/* Tegel-titel + arrow + omschrijving in wit voor leesbaarheid op terracotta */
+.home-tile .home-tile-title { color: var(--color-white); }
+.home-tile .home-tile-desc  { color: rgba(255,255,255,.88); }
+.home-tile .home-tile-arrow { color: var(--color-white); }
+/* Icon-cirkels lichter zodat ze contrasteren met de terracotta tegel */
+.home-tile--terracotta .home-tile-icon,
+.home-tile--sage       .home-tile-icon,
+.home-tile--dark       .home-tile-icon { background: rgba(255,255,255,.85); }
 .home-tile-icon {
   width: 64px;
   height: 64px;
