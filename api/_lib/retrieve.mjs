@@ -51,6 +51,12 @@ export async function retrieveChunks(question, { topK = DEFAULT_TOP_K, filterAge
 /**
  * Combined retrieval: kennisbank-chunks + user-memory in parallel.
  * Gebruikt één query-embedding voor beide.
+ *
+ * Fallback-gedrag: als er met `filterAge` geen relevante chunks worden gevonden,
+ * doen we een tweede RPC-call zonder leeftijdsfilter met dezelfde embedding.
+ * Dit voorkomt dat vragen als "wanneer kan ik starten met vast eten?" een
+ * fallback krijgen terwijl de baby nog net niet oud genoeg is (de relevante
+ * voorbereiding-chunks zijn getagged vanaf 4-6 maanden).
  */
 export async function retrieveCombined(question, {
   userId,
@@ -80,15 +86,39 @@ export async function retrieveCombined(question, {
   if (docsRes.error) throw new Error(`Docs RPC: ${docsRes.error.message}`);
   if (memRes.error) console.error('[retrieveCombined] memory error:', memRes.error.message);
 
-  const docs = docsRes.data || [];
+  let docs = docsRes.data || [];
   const memories = (memRes.data || []).filter(m => m.similarity >= RELEVANCE_THRESHOLD);
 
-  const topDocScore = docs[0]?.similarity ?? 0;
+  let topDocScore = docs[0]?.similarity ?? 0;
+  let ageFallbackUsed = false;
+
+  // Fallback: leeftijd-gefilterd niets relevants gevonden? Probeer ongefilterd.
+  if (filterAge !== null && topDocScore < RELEVANCE_THRESHOLD) {
+    const { data: fbData, error: fbErr } = await supabase.rpc('match_documents', {
+      query_embedding: embedding,
+      match_count: topKDocs,
+      filter_age: null,
+      filter_sources: null,
+    });
+    if (fbErr) {
+      console.error('[retrieveCombined] age-fallback error:', fbErr.message);
+    } else if (fbData && fbData.length > 0 && (fbData[0].similarity ?? 0) >= RELEVANCE_THRESHOLD) {
+      docs = fbData;
+      topDocScore = docs[0].similarity ?? 0;
+      ageFallbackUsed = true;
+    }
+  }
+
   const topMemScore = memories[0]?.similarity ?? 0;
   const topScore = Math.max(topDocScore, topMemScore);
   // Antwoorden als ÓF docs ÓF memories relevant zijn.
   // Bij alleen memory: bot gebruikt die persoonlijke context + een lagere-score doc als aanvulling.
   const hasRelevant = topScore >= RELEVANCE_THRESHOLD;
+
+  if (ageFallbackUsed) {
+    console.log('[retrieveCombined] age-filter fallback gebruikt',
+      { filterAge, topScore: topDocScore.toFixed(3), docsFound: docs.length });
+  }
 
   // Fire-and-forget: update last_used_at voor opgehaalde memories
   if (memories.length > 0) {
