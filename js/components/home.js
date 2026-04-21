@@ -45,7 +45,6 @@ export function render() {
 
   const tileCards = tiles.map(t => `
     <a class="home-tile home-tile--${t.accent}" href="${t.href}">
-      <div class="home-tile-icon">${t.icon}</div>
       <div class="home-tile-body">
         <h3 class="home-tile-title">${t.title}</h3>
         <p class="home-tile-desc">${t.desc}</p>
