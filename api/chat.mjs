@@ -312,6 +312,15 @@ export default async function handler(req, res) {
     // ---- Out-of-scope: alleen fallback als er écht niets relevant is (geen docs én geen memories).
     // Met foto: skip de fallback — Sonnet vision kan altijd iets nuttigs zeggen, ook met zwakke chunks.
     if (!hasImage && (!hasRelevant || (chunks.length === 0 && (!memories || memories.length === 0)))) {
+      // Diagnostic log — laat zien waarom er een fallback werd gestuurd.
+      console.log('[chat] out-of-scope fallback', {
+        question: question.slice(0, 120),
+        filterAge,
+        topScore: Number(topScore?.toFixed?.(3) ?? topScore),
+        docsReturned: chunks.length,
+        topDocSources: chunks.slice(0, 3).map(c => `${c.source}/${c.title}@${c.similarity?.toFixed?.(3)}`),
+        memoriesFound: memories?.length || 0,
+      });
       const fallback =
         'Daar vind ik helaas geen duidelijk antwoord op in de kennisbank. Ik beantwoord vragen over kindervoeding (0-24 maanden en jonge kinderen) op basis van Anneleens gids, masterclass en recepten — probeer gerust de vraag anders te formuleren. Voor specifieke medische vragen of twijfel blijft je huisarts, kinderarts of pediatrisch diëtist de beste plek.';
       let asstId = null;
