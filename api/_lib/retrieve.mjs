@@ -9,6 +9,12 @@ const DEFAULT_TOP_K = 6;
 // Below this: probably off-topic — don't feed to Claude.
 export const RELEVANCE_THRESHOLD = 0.55;
 
+// Lagere drempel specifiek voor de age-filter fallback. Wanneer de age-gefilterde
+// zoek al onder RELEVANCE_THRESHOLD zit (irrelevante chunks), is een ongefilterde
+// zoek met score ≥ 0.40 die bovendien beter is dan de originele top, een strikte
+// verbetering — ook al zit hij nog onder de globale drempel.
+const AGE_FALLBACK_THRESHOLD = 0.40;
+
 export async function embedQuery(text) {
   const res = await fetch('https://api.voyageai.com/v1/embeddings', {
     method: 'POST',
@@ -102,7 +108,11 @@ export async function retrieveCombined(question, {
     });
     if (fbErr) {
       console.error('[retrieveCombined] age-fallback error:', fbErr.message);
-    } else if (fbData && fbData.length > 0 && (fbData[0].similarity ?? 0) >= RELEVANCE_THRESHOLD) {
+    } else if (
+      fbData && fbData.length > 0 &&
+      (fbData[0].similarity ?? 0) >= AGE_FALLBACK_THRESHOLD &&
+      (fbData[0].similarity ?? 0) > topDocScore
+    ) {
       docs = fbData;
       topDocScore = docs[0].similarity ?? 0;
       ageFallbackUsed = true;
