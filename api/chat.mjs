@@ -43,7 +43,7 @@ import { getAccessStatus, accessDeniedMessage } from './_lib/subscription.mjs';
 const MAX_QUESTION_CHARS = 500;
 const MIN_QUESTION_CHARS = 3;
 const MAX_OUTPUT_TOKENS = 600;
-const HISTORY_LIMIT = 10;
+const HISTORY_LIMIT = 20;
 
 // Foto-upload: base64 in JSON body
 const ACCEPTED_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
