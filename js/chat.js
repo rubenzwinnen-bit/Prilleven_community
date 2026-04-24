@@ -399,18 +399,45 @@ async function loadProfile() {
 const quotaBar = document.getElementById('quota-bar');
 const quotaFill = document.getElementById('quota-fill');
 const quotaPct = document.getElementById('quota-pct');
+const quotaNotice = document.getElementById('quota-notice');
+
+let quotaReached = false;
 
 function updateQuotaBar(usage) {
   if (!usage || !quotaBar) return;
   const pct = Math.max(0, Math.min(100, Number(usage.percent) || 0));
   quotaFill.style.width = pct + '%';
-  quotaFill.classList.toggle('warn', pct >= 70 && pct < 90);
-  quotaFill.classList.toggle('danger', pct >= 90);
+  quotaFill.classList.toggle('warn', pct >= 70 && pct < 100);
+  quotaFill.classList.toggle('danger', pct >= 100);
   quotaPct.textContent = pct + '%';
   quotaBar.classList.add('visible');
-  const spent = (Number(usage.spentCents) / 100).toFixed(2);
-  const cap = (Number(usage.capCents) / 100).toFixed(2);
-  quotaBar.title = `AI-budget: €${spent} van €${cap} gebruikt deze maand (reset op de 1e).`;
+  quotaBar.title = 'Je maandelijkse AI-gebruik. Wordt automatisch aangevuld op de 1e van elke maand.';
+
+  quotaReached = pct >= 100;
+  if (quotaNotice) {
+    if (quotaReached) {
+      quotaNotice.textContent = 'Maandlimiet bereikt — je kan op de 1e van volgende maand weer vragen stellen.';
+      quotaNotice.classList.add('visible');
+    } else if (pct >= 90) {
+      quotaNotice.textContent = 'Je nadert je maandlimiet. Nog een beperkt aantal vragen beschikbaar tot de 1e.';
+      quotaNotice.classList.add('visible');
+    } else {
+      quotaNotice.classList.remove('visible');
+      quotaNotice.textContent = '';
+    }
+  }
+  // Input-state syncen: als limiet bereikt, send-knop uit
+  if (sendBtn) {
+    sendBtn.disabled = quotaReached;
+    if (quotaReached) sendBtn.title = 'Maandlimiet bereikt';
+    else sendBtn.removeAttribute('title');
+  }
+  if (input) {
+    input.disabled = quotaReached;
+    input.placeholder = quotaReached
+      ? 'Maandlimiet bereikt — terug op de 1e van volgende maand'
+      : 'Typ je vraag... (max 500 tekens)';
+  }
 }
 
 // Event handlers profile modal
@@ -714,6 +741,12 @@ form.addEventListener('submit', async (e) => {
   // Minimum: óf een vraag van 3 chars, óf een foto
   if (!hasImg && question.length < 3) return;
 
+  // Hard-block: als maandlimiet al bereikt, niet eens versturen
+  if (quotaReached) {
+    appendMsg('err', 'Maandlimiet bereikt. Je kan op de 1e van volgende maand weer vragen stellen.');
+    return;
+  }
+
   // Toon user-bericht (met foto-thumb als aanwezig)
   const userMsgDiv = appendMsg('user', question || '(Foto bijgevoegd)');
   if (hasImg) {
@@ -777,9 +810,10 @@ form.addEventListener('submit', async (e) => {
     appendMsg('err', 'Netwerkfout. Is de server bereikbaar?');
     console.error(err);
   } finally {
-    sendBtn.disabled = false;
+    sendBtn.disabled = quotaReached;
     sendBtn.textContent = 'Stuur';
-    input.focus();
+    input.disabled = quotaReached;
+    if (!quotaReached) input.focus();
   }
 });
 

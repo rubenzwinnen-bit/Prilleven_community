@@ -250,6 +250,18 @@
     .quota-bar-fill.warn { background: #f1c40f; }
     .quota-bar-fill.danger { background: var(--color-danger, #c0392b); }
     .quota-bar .quota-pct { font-variant-numeric: tabular-nums; }
+    .quota-notice {
+      display: none;
+      margin-top: .4rem;
+      font-size: .78rem;
+      color: var(--color-danger-dark, #7b1f1f);
+      background: #fdecea;
+      border: 1px solid #f5c6cb;
+      border-radius: var(--radius-md);
+      padding: .35rem .55rem;
+      line-height: 1.35;
+    }
+    .quota-notice.visible { display: block; }
 
     .chat-log {
       background: var(--color-white);
@@ -758,7 +770,7 @@
         <h1>HapjesHeld 2.0</h1>
         <p class="intro">Stel je vraag over kindervoeding. De assistent gebruikt Anneleens eigen gids, masterclass, recepten en roadmap en onthoudt je eerdere gesprekken.</p>
 
-        <div id="quota-bar" class="quota-bar" title="Je AI-budget voor deze maand. Wordt automatisch aangevuld op de 1e van de maand.">
+        <div id="quota-bar" class="quota-bar" title="Je maandelijkse AI-gebruik. Wordt automatisch aangevuld op de 1e van elke maand.">
           <div class="quota-bar-head">
             <span>AI-gebruik deze maand</span>
             <span class="quota-pct" id="quota-pct">—</span>
@@ -766,6 +778,7 @@
           <div class="quota-bar-track">
             <div class="quota-bar-fill" id="quota-fill" style="width:0%"></div>
           </div>
+          <div class="quota-notice" id="quota-notice" role="status"></div>
         </div>
 
         <div id="log" class="chat-log" aria-live="polite">
