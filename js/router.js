@@ -12,6 +12,12 @@
 const routes = {};
 let notFoundHandler = null;
 
+/* Bijhouden welk pad we verlaten, zodat we de scroll-positie
+   kunnen onthouden (zie handleRoute). Null = nog niet genavigeerd
+   binnen de app — handig om te weten of een "terug" knop
+   history.back() mag gebruiken of moet fallbacken. */
+let previousPath = null;
+
 /* ----------------------------------------
    ROUTE REGISTREREN
    Registreer een handler voor een bepaald pad.
@@ -45,6 +51,17 @@ export function onNotFound(handler) {
 export function getCurrentPath() {
   const hash = window.location.hash.slice(2); // verwijder #/
   return hash || '';
+}
+
+/* ----------------------------------------
+   HEEFT IN-APP GESCHIEDENIS?
+   Gebruik om te beslissen of een "terug" knop
+   history.back() mag gebruiken, of moet fallbacken
+   naar een expliciete route (bv. bij direct openen
+   van een URL zonder voorgaande navigatie).
+---------------------------------------- */
+export function hasHistory() {
+  return previousPath !== null;
 }
 
 /* ----------------------------------------
@@ -89,9 +106,19 @@ function matchRoute(currentPath) {
 
 /* ----------------------------------------
    ROUTE AFHANDELING
-   Wordt aangeroepen bij elke hash-verandering
+   Wordt aangeroepen bij elke hash-verandering.
+   Voor de route-wissel: bewaar de scroll-positie van de
+   verlaten pagina in sessionStorage zodat we die kunnen
+   herstellen als de gebruiker terugkomt.
 ---------------------------------------- */
 function handleRoute() {
+  /* Scroll-positie van de verlaten pagina bewaren */
+  if (previousPath !== null) {
+    try {
+      sessionStorage.setItem(`scroll:${previousPath}`, String(window.scrollY));
+    } catch { /* storage kan vol of geblokkeerd zijn; negeren */ }
+  }
+
   const currentPath = getCurrentPath();
   const result = matchRoute(currentPath);
 
@@ -100,6 +127,8 @@ function handleRoute() {
   } else if (notFoundHandler) {
     notFoundHandler();
   }
+
+  previousPath = currentPath;
 }
 
 /* ----------------------------------------

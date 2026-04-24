@@ -515,7 +515,19 @@ function setupApp() {
     const isHub = Router.getCurrentPath() === '';
     document.body.classList.toggle('is-hub', isHub);
     if (initFn) await initFn();
-    window.scrollTo(0, 0);
+
+    /* Scroll-positie herstellen als we terugkomen op een eerder bezochte
+       route; anders naar bovenaan scrollen (nieuwe pagina). */
+    const currentPath = Router.getCurrentPath();
+    const savedKey = `scroll:${currentPath}`;
+    const saved = sessionStorage.getItem(savedKey);
+    if (saved !== null) {
+      sessionStorage.removeItem(savedKey);
+      const y = parseInt(saved, 10);
+      window.scrollTo(0, isNaN(y) ? 0 : y);
+    } else {
+      window.scrollTo(0, 0);
+    }
   }
 
   /* --- Hub: landingspagina met tegels --- */

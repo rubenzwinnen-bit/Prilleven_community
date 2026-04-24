@@ -304,9 +304,16 @@ function attachListeners(recipeId, initialRating = 0, recipe = null, activeInfo 
   /* Lokale state voor de huidige rating van deze gebruiker */
   let currentUserRating = initialRating;
 
-  /* Terug knop */
+  /* Terug knop — gebruik browser-history om terug te keren naar de
+     pagina waar de gebruiker vandaan kwam (receptenlijst, favorieten, ...).
+     Fallback: receptenlijst als er geen in-app geschiedenis is
+     (bv. bij direct openen van een recept-URL). */
   document.getElementById('btn-back')?.addEventListener('click', () => {
-    Router.navigate('');
+    if (Router.hasHistory()) {
+      window.history.back();
+    } else {
+      Router.navigate('recipes');
+    }
   });
 
   /* Selectiebalk voor aantal dagen (actief weekschema) */
