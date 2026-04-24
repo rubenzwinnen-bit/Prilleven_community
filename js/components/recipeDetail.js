@@ -307,7 +307,9 @@ function attachListeners(recipeId, initialRating = 0, recipe = null, activeInfo 
   /* Terug knop — alleen tonen/actief maken als de gebruiker binnen
      de app genavigeerd heeft. Bij direct openen van een recept (nieuw
      tabblad, gedeelde link, bladwijzer) is "terug" niet relevant, dus
-     verbergen we de knop volledig. */
+     verwijderen we de knop volledig uit de DOM.
+     NB: `hidden` attribuut werkt niet op .btn want die class zet
+     `display: inline-flex` met gelijke specificity. Daarom remove(). */
   const btnBack = document.getElementById('btn-back');
   if (btnBack) {
     if (Router.hasHistory()) {
@@ -315,7 +317,7 @@ function attachListeners(recipeId, initialRating = 0, recipe = null, activeInfo 
         window.history.back();
       });
     } else {
-      btnBack.hidden = true;
+      btnBack.remove();
     }
   }
 
