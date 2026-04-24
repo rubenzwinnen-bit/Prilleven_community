@@ -5,6 +5,7 @@
 //   GET /api/admin?section=users             → per-user aggregaat (30 dagen)
 //   GET /api/admin?section=queries&limit=50  → recente vragen
 //   GET /api/admin?section=events&limit=100&email=X → subscription-events
+//   GET /api/admin?section=conversations&email=X    → alle conversaties+berichten per user
 
 import { requireAdmin, AuthError } from './_lib/auth.mjs';
 import { supabase } from './_lib/clients.mjs';
@@ -45,7 +46,12 @@ export default async function handler(req, res) {
       const emailFilter = url.searchParams.get('email');
       return json(res, 200, await getSubscriptionEvents(limit, emailFilter));
     }
-    return json(res, 400, { error: 'Unknown section. Use: global, users, queries, events.' });
+    if (section === 'conversations') {
+      const email = url.searchParams.get('email');
+      if (!email) return json(res, 400, { error: 'email query-param verplicht' });
+      return json(res, 200, await getUserConversations(email));
+    }
+    return json(res, 400, { error: 'Unknown section. Use: global, users, queries, events, conversations.' });
   } catch (err) {
     console.error('[admin]', err);
     return json(res, 500, { error: err.message || 'Er ging iets mis.' });
@@ -234,6 +240,47 @@ async function getRecentQueries(limit) {
     };
   });
   return { queries: rows };
+}
+
+async function getUserConversations(email) {
+  // Resolve email → user_id via auth.admin.listUsers
+  const { data: authUsers } = await supabase.auth.admin.listUsers();
+  const user = (authUsers?.users || []).find(
+    u => (u.email || '').toLowerCase() === email.toLowerCase()
+  );
+  if (!user) return { email, conversations: [] };
+
+  const { data: convs, error: cErr } = await supabase
+    .from('conversations')
+    .select('id, title, created_at, updated_at')
+    .eq('user_id', user.id)
+    .order('updated_at', { ascending: false });
+  if (cErr) throw new Error(cErr.message);
+
+  const convIds = (convs || []).map(c => c.id);
+  if (convIds.length === 0) return { email, conversations: [] };
+
+  const { data: msgs, error: mErr } = await supabase
+    .from('messages')
+    .select('id, conversation_id, role, content, had_image, model, tokens_in, tokens_out, created_at')
+    .in('conversation_id', convIds)
+    .order('created_at', { ascending: true });
+  if (mErr) throw new Error(mErr.message);
+
+  const byConv = new Map();
+  for (const m of (msgs || [])) {
+    if (!byConv.has(m.conversation_id)) byConv.set(m.conversation_id, []);
+    byConv.get(m.conversation_id).push(m);
+  }
+
+  const result = (convs || []).map(c => ({
+    id: c.id,
+    title: c.title || '(geen titel)',
+    created_at: c.created_at,
+    updated_at: c.updated_at,
+    messages: byConv.get(c.id) || [],
+  }));
+  return { email, conversations: result };
 }
 
 async function getSubscriptionEvents(limit, emailFilter) {

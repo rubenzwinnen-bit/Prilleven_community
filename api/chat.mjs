@@ -19,7 +19,7 @@ import { anthropic } from './_lib/clients.mjs';
 import { retrieveCombined } from './_lib/retrieve.mjs';
 import { extractAndStoreMemories } from './_lib/user-memory.mjs';
 import {
-  checkRateLimit, checkCostCap, checkImageRateLimit, logUsage, hashIp, extractIp,
+  checkRateLimit, checkCostCap, checkMonthlyCostCap, checkImageRateLimit, logUsage, hashIp, extractIp,
   IMAGE_LIMIT_PER_DAY_USER,
 } from './_lib/rate-limit.mjs';
 import { getCached, setCached } from './_lib/cache.mjs';
@@ -221,6 +221,11 @@ export default async function handler(req, res) {
     if (!cc.allowed) {
       await logUsage({ userId, ipHash, event: 'blocked_rate_limit' });
       return json(res, 429, { error: 'Dagelijkse gebruikslimiet bereikt. Probeer morgen opnieuw.' });
+    }
+    const mc = await checkMonthlyCostCap({ key: userId, keyCol: 'user_id', isUser: true });
+    if (!mc.allowed) {
+      await logUsage({ userId, ipHash, event: 'blocked_rate_limit' });
+      return json(res, 429, { error: 'Maandelijkse gebruikslimiet bereikt. Deze is volgende maand weer beschikbaar.' });
     }
     // Extra image-cap (indien foto meegestuurd)
     if (hasImage) {

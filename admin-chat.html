@@ -180,6 +180,7 @@
       padding: .65rem 1rem;
       border-bottom: 1px solid var(--color-light);
       vertical-align: top;
+      text-align: left;
     }
     tbody tr:hover { background: var(--color-bg); }
 
@@ -230,6 +231,104 @@
 
     .tab-content { display: none; }
     .tab-content.active { display: block; }
+
+    /* Conversations modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.4);
+      z-index: 1000;
+      display: none;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 2rem 1rem;
+      overflow-y: auto;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-box {
+      background: var(--color-white);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-md, 0 10px 30px rgba(0,0,0,.2));
+      width: 100%;
+      max-width: 900px;
+      max-height: calc(100vh - 4rem);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .modal-head {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--color-light);
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+    }
+    .modal-head h3 { margin: 0; font-size: 1rem; }
+    .modal-head .close {
+      margin-left: auto;
+      border: 0;
+      background: var(--color-light);
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      color: var(--color-dark);
+    }
+    .modal-body {
+      padding: 1rem 1.25rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .conv-block {
+      border: 1px solid var(--color-light);
+      border-radius: var(--radius-md);
+      margin-bottom: 1rem;
+      overflow: hidden;
+    }
+    .conv-head {
+      padding: .65rem 1rem;
+      background: var(--color-bg);
+      font-weight: 600;
+      font-size: .9rem;
+      display: flex;
+      gap: .5rem;
+      align-items: center;
+    }
+    .conv-head .muted { color: var(--color-gray); font-weight: 400; font-size: .8rem; margin-left: auto; }
+    .conv-msgs { padding: .5rem 1rem; }
+    .msg {
+      padding: .5rem 0;
+      border-bottom: 1px dashed var(--color-light);
+      font-size: .88rem;
+    }
+    .msg:last-child { border-bottom: 0; }
+    .msg .role {
+      font-size: .7rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: .04em;
+      margin-right: .4rem;
+    }
+    .msg.user .role { color: var(--color-secondary-dark, #3d6e50); }
+    .msg.assistant .role { color: var(--color-primary, #8a5cb0); }
+    .msg .content {
+      margin-top: .25rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .msg .meta { font-size: .7rem; color: var(--color-gray); margin-top: .2rem; }
+    .btn-link {
+      border: 0;
+      background: transparent;
+      color: var(--color-primary);
+      cursor: pointer;
+      padding: 0;
+      font-size: inherit;
+      font-family: inherit;
+      text-decoration: underline;
+    }
+    .btn-link:hover { opacity: .8; }
 
     /* Responsive */
     @media (max-width: 800px) {
@@ -309,6 +408,19 @@
       </div>
     </div>
   </main>
+
+  <!-- Conversations modal -->
+  <div id="conv-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="conv-modal-title">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3 id="conv-modal-title">Gesprekken</h3>
+        <button class="close" id="conv-modal-close" aria-label="Sluiten">×</button>
+      </div>
+      <div class="modal-body" id="conv-modal-body">
+        <div class="loading">Laden…</div>
+      </div>
+    </div>
+  </div>
 
   <script src="/js/admin-chat.js" type="module"></script>
 </body>

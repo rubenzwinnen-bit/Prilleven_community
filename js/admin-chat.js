@@ -153,6 +153,7 @@ function renderUsersTable() {
           ${header('conversations', 'Gesprekken')}
           ${header('memories', 'Geheugen')}
           ${header('last_activity', 'Laatst actief')}
+          <th>Acties</th>
         </tr>
       </thead>
       <tbody>
@@ -178,6 +179,11 @@ function renderUsersTable() {
             <td>${fmtNum(r.conversations)}</td>
             <td>${fmtNum(r.memories)}</td>
             <td>${fmtRelTime(r.last_activity)}</td>
+            <td>
+              ${r.conversations > 0
+                ? `<button class="btn-link" data-view-conv="${esc(r.email)}">Bekijk</button>`
+                : '<span class="row-details">—</span>'}
+            </td>
           </tr>
         `).join('')}
       </tbody>
@@ -193,6 +199,66 @@ function renderUsersTable() {
       renderUsersTable();
     });
   });
+
+  // Hook "Bekijk" buttons
+  el.querySelectorAll('button[data-view-conv]').forEach(btn => {
+    btn.addEventListener('click', () => openConversationsModal(btn.dataset.viewConv));
+  });
+}
+
+// ---------- Conversations modal ----------
+const convModal = document.getElementById('conv-modal');
+const convModalTitle = document.getElementById('conv-modal-title');
+const convModalBody = document.getElementById('conv-modal-body');
+document.getElementById('conv-modal-close').addEventListener('click', closeConversationsModal);
+convModal.addEventListener('click', (e) => {
+  if (e.target === convModal) closeConversationsModal();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && convModal.classList.contains('open')) closeConversationsModal();
+});
+
+function closeConversationsModal() {
+  convModal.classList.remove('open');
+  convModalBody.innerHTML = '<div class="loading">Laden…</div>';
+}
+
+async function openConversationsModal(email) {
+  convModalTitle.textContent = `Gesprekken — ${email}`;
+  convModalBody.innerHTML = '<div class="loading">Laden…</div>';
+  convModal.classList.add('open');
+  try {
+    const data = await authedFetch('/api/admin?section=conversations&email=' + encodeURIComponent(email));
+    const convs = data.conversations || [];
+    if (convs.length === 0) {
+      convModalBody.innerHTML = '<div class="empty">Deze gebruiker heeft nog geen gesprekken.</div>';
+      return;
+    }
+    convModalBody.innerHTML = convs.map(c => `
+      <div class="conv-block">
+        <div class="conv-head">
+          <span>${esc(c.title)}</span>
+          <span class="muted">${c.messages.length} berichten · gestart ${fmtDate(c.created_at)}</span>
+        </div>
+        <div class="conv-msgs">
+          ${c.messages.length === 0
+            ? '<div class="row-details">Geen berichten.</div>'
+            : c.messages.map(m => `
+              <div class="msg ${m.role === 'user' ? 'user' : 'assistant'}">
+                <span class="role">${m.role === 'user' ? 'Vraag' : 'Antwoord'}</span>
+                <span class="row-details">${fmtDate(m.created_at)}${m.had_image ? ' · 📷' : ''}${m.model ? ' · ' + esc(m.model) : ''}</span>
+                <div class="content">${esc(m.content || '')}</div>
+                ${(m.tokens_in || m.tokens_out)
+                  ? `<div class="meta">${fmtNum(m.tokens_in)} in / ${fmtNum(m.tokens_out)} uit</div>`
+                  : ''}
+              </div>
+            `).join('')}
+        </div>
+      </div>
+    `).join('');
+  } catch (err) {
+    convModalBody.innerHTML = '<div class="error-box">Kon gesprekken niet laden: ' + esc(err.message) + '</div>';
+  }
 }
 
 async function loadUsers() {

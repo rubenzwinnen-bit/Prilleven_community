@@ -12,7 +12,8 @@ export const COST_CAP_CENTS_PER_DAY = 50; // €0.50 per IP per dag
 // Authenticated (paying) users — ruimere limieten.
 export const LIMIT_PER_HOUR_USER = 50;
 export const LIMIT_PER_DAY_USER = 500;
-export const COST_CAP_CENTS_PER_DAY_USER = 200; // €2.00 per user per dag
+export const COST_CAP_CENTS_PER_DAY_USER = 50; // €0.50 per user per dag
+export const COST_CAP_CENTS_PER_MONTH_USER = 250; // €2.50 per user per (kalender)maand
 
 // Foto-upload limiet: apart van normale queries omdat vision-requests duurder zijn.
 export const IMAGE_LIMIT_PER_DAY_USER = 50;
@@ -92,6 +93,33 @@ export async function checkCostCap({ key, keyCol, isUser = false }) {
     .gte('created_at', dayAgo);
   if (error) {
     console.error(`[cost-cap] ${error.message}`);
+    return { allowed: true, spentCents: 0, cap };
+  }
+  const spentCents = (data || []).reduce((sum, r) => sum + Number(r.cost_cents || 0), 0);
+  return {
+    allowed: spentCents < cap,
+    spentCents,
+    cap,
+  };
+}
+
+/**
+ * Check maandelijkse €-cost cap (kalendermaand: sinds de 1e van de huidige maand).
+ * Fail-open bij DB-fout.
+ */
+export async function checkMonthlyCostCap({ key, keyCol, isUser = false }) {
+  // Enkel voor ingelogde users — anon. IPs hebben al een strenge dagcap.
+  if (!isUser) return { allowed: true, spentCents: 0, cap: Infinity };
+  const cap = COST_CAP_CENTS_PER_MONTH_USER;
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0).toISOString();
+  const { data, error } = await supabase
+    .from('usage_log')
+    .select('cost_cents')
+    .eq(keyCol, key)
+    .gte('created_at', monthStart);
+  if (error) {
+    console.error(`[cost-cap-month] ${error.message}`);
     return { allowed: true, spentCents: 0, cap };
   }
   const spentCents = (data || []).reduce((sum, r) => sum + Number(r.cost_cents || 0), 0);
