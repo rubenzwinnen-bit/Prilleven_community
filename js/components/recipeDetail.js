@@ -304,17 +304,20 @@ function attachListeners(recipeId, initialRating = 0, recipe = null, activeInfo 
   /* Lokale state voor de huidige rating van deze gebruiker */
   let currentUserRating = initialRating;
 
-  /* Terug knop — gebruik browser-history om terug te keren naar de
-     pagina waar de gebruiker vandaan kwam (receptenlijst, favorieten, ...).
-     Fallback: receptenlijst als er geen in-app geschiedenis is
-     (bv. bij direct openen van een recept-URL). */
-  document.getElementById('btn-back')?.addEventListener('click', () => {
+  /* Terug knop — alleen tonen/actief maken als de gebruiker binnen
+     de app genavigeerd heeft. Bij direct openen van een recept (nieuw
+     tabblad, gedeelde link, bladwijzer) is "terug" niet relevant, dus
+     verbergen we de knop volledig. */
+  const btnBack = document.getElementById('btn-back');
+  if (btnBack) {
     if (Router.hasHistory()) {
-      window.history.back();
+      btnBack.addEventListener('click', () => {
+        window.history.back();
+      });
     } else {
-      Router.navigate('recipes');
+      btnBack.hidden = true;
     }
-  });
+  }
 
   /* Selectiebalk voor aantal dagen (actief weekschema) */
   if (activeInfo && activeInfo.occurrences >= 2) {

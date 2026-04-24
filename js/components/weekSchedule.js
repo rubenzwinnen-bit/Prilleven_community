@@ -83,7 +83,7 @@ function saveActiveSchedule(schedule) {
 ---------------------------------------- */
 function loadSubtab() {
   const v = localStorage.getItem(getSubtabKey());
-  return (v === 'active' || v === 'generate') ? v : 'generate';
+  return (v === 'active' || v === 'generate') ? v : 'active';
 }
 function saveSubtab(v) {
   try { localStorage.setItem(getSubtabKey(), v); } catch {}
@@ -144,13 +144,13 @@ function buildPageHtml() {
   return `
     <h1 style="margin-bottom:1rem">Weekschema</h1>
     <div class="subtab-bar" role="tablist">
-      <button class="subtab-btn ${subtab === 'generate' ? 'active' : ''}"
-              data-subtab="generate" role="tab" type="button">
-        Genereren
-      </button>
       <button class="subtab-btn ${subtab === 'active' ? 'active' : ''}"
               data-subtab="active" role="tab" type="button">
         Actief weekschema
+      </button>
+      <button class="subtab-btn ${subtab === 'generate' ? 'active' : ''}"
+              data-subtab="generate" role="tab" type="button">
+        Genereren
       </button>
     </div>
     <div id="subtab-content">

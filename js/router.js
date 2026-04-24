@@ -14,9 +14,16 @@ let notFoundHandler = null;
 
 /* Bijhouden welk pad we verlaten, zodat we de scroll-positie
    kunnen onthouden (zie handleRoute). Null = nog niet genavigeerd
-   binnen de app — handig om te weten of een "terug" knop
-   history.back() mag gebruiken of moet fallbacken. */
+   binnen de app. */
 let previousPath = null;
+
+/* Wordt pas true nadat de gebruiker minstens één in-app navigatie
+   heeft gedaan (dus een tweede handleRoute-call na de initiële load).
+   Gebruikt door hasHistory() om te beslissen of een "terug" knop
+   history.back() mag gebruiken, of moet fallbacken naar een
+   expliciete route (bv. bij direct openen van een recept in
+   een nieuw tabblad waar er geen echte browser-history is). */
+let hasInAppHistory = false;
 
 /* ----------------------------------------
    ROUTE REGISTREREN
@@ -61,7 +68,7 @@ export function getCurrentPath() {
    van een URL zonder voorgaande navigatie).
 ---------------------------------------- */
 export function hasHistory() {
-  return previousPath !== null;
+  return hasInAppHistory;
 }
 
 /* ----------------------------------------
@@ -112,11 +119,13 @@ function matchRoute(currentPath) {
    herstellen als de gebruiker terugkomt.
 ---------------------------------------- */
 function handleRoute() {
-  /* Scroll-positie van de verlaten pagina bewaren */
+  /* Scroll-positie van de verlaten pagina bewaren en
+     markeren dat er binnen de app genavigeerd is. */
   if (previousPath !== null) {
     try {
       sessionStorage.setItem(`scroll:${previousPath}`, String(window.scrollY));
     } catch { /* storage kan vol of geblokkeerd zijn; negeren */ }
+    hasInAppHistory = true;
   }
 
   const currentPath = getCurrentPath();
