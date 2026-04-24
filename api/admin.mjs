@@ -130,17 +130,11 @@ async function getUsersStats() {
     .from('usage_log').select('user_id, event, tokens_in, tokens_out, cost_cents, created_at')
     .gte('created_at', since);
 
-  const perUser = new Map();
-  for (const row of (usage || [])) {
-    if (!row.user_id) continue;
-    let agg = perUser.get(row.user_id);
-    if (!agg) {
-      agg = {
-        queries: 0, cache_hits: 0, rate_limit_hits: 0,
-        tokens_in: 0, tokens_out: 0, cost_cents: 0, last_activity: null,
-      };
-      perUser.set(row.user_id, agg);
-    }
+  const emptyAgg = () => ({
+    queries: 0, cache_hits: 0, rate_limit_hits: 0,
+    tokens_in: 0, tokens_out: 0, cost_cents: 0, last_activity: null,
+  });
+  const mergeRow = (agg, row) => {
     if (row.event === 'query' || row.event === 'query_with_image') agg.queries++;
     else if (row.event === 'cache_hit') agg.cache_hits++;
     else if (row.event === 'blocked_rate_limit') agg.rate_limit_hits++;
@@ -150,6 +144,20 @@ async function getUsersStats() {
     if (!agg.last_activity || row.created_at > agg.last_activity) {
       agg.last_activity = row.created_at;
     }
+  };
+
+  const perUser = new Map();
+  const nullUserAgg = emptyAgg(); // usage_log rijen zonder user_id
+  let nullUserCount = 0;
+  for (const row of (usage || [])) {
+    if (!row.user_id) {
+      mergeRow(nullUserAgg, row);
+      nullUserCount = 1; // markeren dat er iets is
+      continue;
+    }
+    let agg = perUser.get(row.user_id);
+    if (!agg) { agg = emptyAgg(); perUser.set(row.user_id, agg); }
+    mergeRow(agg, row);
   }
 
   const { data: memCounts } = await supabase.from('chat_user_memory').select('user_id');
@@ -165,8 +173,10 @@ async function getUsersStats() {
     convPerUser.set(c.user_id, (convPerUser.get(c.user_id) || 0) + 1);
   }
 
+  const mappedUserIds = new Set();
   const rows = (users || []).map(u => {
     const userId = emailToId.get((u.email || '').toLowerCase()) || null;
+    if (userId) mappedUserIds.add(userId);
     const stats = userId ? (perUser.get(userId) || {}) : {};
     return {
       email: u.email,
@@ -186,6 +196,66 @@ async function getUsersStats() {
       last_activity: stats.last_activity || null,
     };
   });
+
+  // "Onbekend / verwijderd" — alle usage van user_ids die niet in allowed_users staan
+  // plus usage zonder user_id. Zo klopt het totaal met de overview-statistieken.
+  const orphanAgg = emptyAgg();
+  let orphanUserCount = 0;
+  let orphanConversations = 0;
+  let orphanMemories = 0;
+  for (const [uid, agg] of perUser.entries()) {
+    if (mappedUserIds.has(uid)) continue;
+    orphanUserCount++;
+    orphanAgg.queries += agg.queries;
+    orphanAgg.cache_hits += agg.cache_hits;
+    orphanAgg.rate_limit_hits += agg.rate_limit_hits;
+    orphanAgg.tokens_in += agg.tokens_in;
+    orphanAgg.tokens_out += agg.tokens_out;
+    orphanAgg.cost_cents += agg.cost_cents;
+    if (!orphanAgg.last_activity || (agg.last_activity && agg.last_activity > orphanAgg.last_activity)) {
+      orphanAgg.last_activity = agg.last_activity;
+    }
+    orphanConversations += convPerUser.get(uid) || 0;
+    orphanMemories += memPerUser.get(uid) || 0;
+  }
+  // Null-user_id rijen erbij optellen
+  orphanAgg.queries += nullUserAgg.queries;
+  orphanAgg.cache_hits += nullUserAgg.cache_hits;
+  orphanAgg.rate_limit_hits += nullUserAgg.rate_limit_hits;
+  orphanAgg.tokens_in += nullUserAgg.tokens_in;
+  orphanAgg.tokens_out += nullUserAgg.tokens_out;
+  orphanAgg.cost_cents += nullUserAgg.cost_cents;
+  if (nullUserAgg.last_activity && (!orphanAgg.last_activity || nullUserAgg.last_activity > orphanAgg.last_activity)) {
+    orphanAgg.last_activity = nullUserAgg.last_activity;
+  }
+
+  const hasOrphanActivity = orphanAgg.queries > 0 || orphanAgg.cache_hits > 0
+    || orphanAgg.cost_cents > 0 || orphanConversations > 0 || orphanMemories > 0
+    || nullUserCount > 0;
+
+  if (hasOrphanActivity) {
+    rows.push({
+      email: nullUserCount && orphanUserCount === 0
+        ? 'Onbekend (geen user_id)'
+        : `Onbekend / verwijderd${orphanUserCount ? ` (${orphanUserCount} user${orphanUserCount > 1 ? 's' : ''})` : ''}`,
+      subscription_active: null,
+      subscription_end_date: null,
+      cancelled_at: null,
+      has_registered: false,
+      is_admin: false,
+      orphan: true,
+      queries_30d: orphanAgg.queries,
+      cache_hits_30d: orphanAgg.cache_hits,
+      rate_limit_hits_30d: orphanAgg.rate_limit_hits,
+      tokens_in_30d: orphanAgg.tokens_in,
+      tokens_out_30d: orphanAgg.tokens_out,
+      cost_cents_30d: orphanAgg.cost_cents,
+      conversations: orphanConversations,
+      memories: orphanMemories,
+      last_activity: orphanAgg.last_activity,
+    });
+  }
+
   return { users: rows };
 }
 

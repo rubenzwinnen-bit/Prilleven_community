@@ -158,16 +158,19 @@ function renderUsersTable() {
       </thead>
       <tbody>
         ${rows.map(r => `
-          <tr>
+          <tr${r.orphan ? ' style="background:var(--color-bg);font-style:italic;"' : ''}>
             <td>
               ${esc(r.email)}
               ${r.is_admin ? '<span class="pill ok" style="margin-left:.3rem;">admin</span>' : ''}
-              ${!r.has_registered ? '<span class="pill gray" style="margin-left:.3rem;">niet geregistreerd</span>' : ''}
+              ${r.orphan ? '<span class="pill gray" style="margin-left:.3rem;" title="Gebruikers die niet (meer) in allowed_users staan, of events zonder user_id">losgekoppeld</span>' : ''}
+              ${(!r.has_registered && !r.orphan) ? '<span class="pill gray" style="margin-left:.3rem;">niet geregistreerd</span>' : ''}
             </td>
             <td>
-              ${r.subscription_active
-                ? `<span class="pill ok">actief</span>`
-                : `<span class="pill err">inactief</span>`}
+              ${r.orphan
+                ? '<span class="pill gray">n.v.t.</span>'
+                : (r.subscription_active
+                  ? `<span class="pill ok">actief</span>`
+                  : `<span class="pill err">inactief</span>`)}
               ${r.cancelled_at ? '<div class="row-details">opgezegd ' + fmtRelTime(r.cancelled_at) + '</div>' : ''}
               ${r.subscription_end_date ? '<div class="row-details">einde: ' + fmtDate(r.subscription_end_date) + '</div>' : ''}
             </td>
@@ -180,9 +183,11 @@ function renderUsersTable() {
             <td>${fmtNum(r.memories)}</td>
             <td>${fmtRelTime(r.last_activity)}</td>
             <td>
-              ${r.conversations > 0
-                ? `<button class="btn-link" data-view-conv="${esc(r.email)}">Bekijk</button>`
-                : '<span class="row-details">—</span>'}
+              ${r.orphan
+                ? '<span class="row-details">—</span>'
+                : (r.conversations > 0
+                  ? `<button class="btn-link" data-view-conv="${esc(r.email)}">Bekijk</button>`
+                  : '<span class="row-details">—</span>')}
             </td>
           </tr>
         `).join('')}
