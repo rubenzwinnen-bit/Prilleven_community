@@ -136,11 +136,57 @@ async function deleteUserData(res, userId, email) {
   // 4. Usage log (bevat cost/tokens info per user — GDPR-wise ook user-data)
   await deleteFrom('usage_log', 'user_id', userId);
 
-  // 5. Cache: geen user-specifieke cache in answer_cache (global)
+  // 5. Community-tabellen gebruiken `user_name` (een string, meestal de
+  //    e-mail zoals bij login ingevoerd). Ratings worden lowercased opgeslagen,
+  //    andere tabellen slaan de waarde as-entered op. Matchen we op beide
+  //    varianten om robuust te zijn bij case-verschillen.
+  const nameVariants = email
+    ? Array.from(new Set([email, email.toLowerCase(), email.toUpperCase()].filter(Boolean)))
+    : [];
+
+  if (nameVariants.length > 0) {
+    // 5a. Ratings → anonimiseren (community behoudt rating-data)
+    {
+      const { error } = await supabase
+        .from('ratings')
+        .update({ user_name: 'Anoniem' })
+        .in('user_name', nameVariants);
+      if (error) errors.push(`ratings: ${error.message}`);
+    }
+
+    // 5b. Comments → anonimiseren (community behoudt reacties onder recepten)
+    {
+      const { error } = await supabase
+        .from('comments')
+        .update({ user_name: 'Anoniem' })
+        .in('user_name', nameVariants);
+      if (error) errors.push(`comments: ${error.message}`);
+    }
+
+    // 5c. Favorites → verwijderen (persoonlijke bookmarks, geen community-waarde)
+    {
+      const { error } = await supabase
+        .from('favorites')
+        .delete()
+        .in('user_name', nameVariants);
+      if (error) errors.push(`favorites: ${error.message}`);
+    }
+
+    // 5d. Schedules → verwijderen (persoonlijke weekschema's)
+    {
+      const { error } = await supabase
+        .from('schedules')
+        .delete()
+        .in('user_name', nameVariants);
+      if (error) errors.push(`schedules: ${error.message}`);
+    }
+  }
+
+  // 6. Cache: geen user-specifieke cache in answer_cache (global)
   //    Subscription_events houden we bij (audit-trail, alleen email zonder persoonlijke info)
   //    allowed_users blijft staan (bevat betaalstatus — geen chat-data)
 
-  // 6. Verwijder ook de Supabase auth-user zelf (optioneel — dit deactiveert login)
+  // 7. Verwijder ook de Supabase auth-user zelf (optioneel — dit deactiveert login)
   //    De user kan dan niet meer inloggen met die email.
   //    Als ze later opnieuw een account willen: ze kunnen registreren (allowed_users staat nog).
   try {
