@@ -422,9 +422,7 @@ async function loadFallbacks() {
               <td>${r.retrieved_count}${r.had_image ? ' 📷' : ''}</td>
               <td>
                 <div class="action-links">
-                  ${r.retrieved_count > 0
-                    ? `<button class="btn-link" data-fb-chunks="${i}">Zie chunks</button>`
-                    : '<span class="row-details">—</span>'}
+                  <button class="btn-link" data-fb-chunks="${i}">Zie chunks</button>
                   ${r.email && !r.email.startsWith('(')
                     ? `<button class="btn-link" data-fb-conv="${esc(r.email)}">Zie gesprek</button>`
                     : ''}
