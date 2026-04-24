@@ -2122,3 +2122,132 @@ body.is-hub #app-nav { display: none; }
   height: auto;
   display: inline-block;
 }
+
+/* ============================================
+   WEEKSCHEMA — SUB-TABS & ACTIEVE VIEW
+============================================ */
+.subtab-bar {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--color-border, #e5e5e5);
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.subtab-btn {
+  padding: 0.6rem 1rem;
+  border: none;
+  background: transparent;
+  color: var(--color-text, #333);
+  font-size: 0.95rem;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px; /* overlap with container border */
+  transition: var(--transition);
+}
+
+.subtab-btn:hover {
+  color: var(--color-primary);
+}
+
+.subtab-btn.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+/* Per-dag blok in "Actief weekschema" viewer */
+.active-day-block {
+  background: var(--color-white, #fff);
+  border: 1px solid var(--color-border, #e5e5e5);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-top: 1rem;
+}
+
+.active-day-block-today {
+  border-color: var(--color-primary);
+  border-width: 2px;
+}
+
+.active-day-header {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--color-text, #333);
+}
+
+.active-day-today-badge {
+  background: var(--color-primary);
+  color: var(--color-white, #fff);
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 0.15rem 0.5rem;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.active-day-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--color-border, #eee);
+}
+
+.active-day-row:last-child {
+  border-bottom: none;
+}
+
+.active-day-slot {
+  flex: 0 0 130px;
+  font-weight: 500;
+  color: var(--color-text-muted, #666);
+  font-size: 0.9rem;
+}
+
+.active-day-recipe {
+  flex: 1 1 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: var(--color-text, #333);
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  transition: var(--transition);
+}
+
+.active-day-recipe:hover {
+  background: rgba(201, 137, 102, 0.1);
+  color: var(--color-primary);
+}
+
+.active-day-recipe-name {
+  font-weight: 500;
+}
+
+.active-day-rating {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.active-day-recipe-empty {
+  flex: 1 1 auto;
+  color: var(--color-text-muted, #999);
+  font-style: italic;
+  padding: 0.3rem 0.6rem;
+}
+
+@media (max-width: 600px) {
+  .active-day-slot {
+    flex: 0 0 100px;
+    font-size: 0.85rem;
+  }
+}
