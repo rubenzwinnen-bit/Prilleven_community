@@ -387,11 +387,30 @@ async function loadProfile() {
     if (!res.ok) return null;
     const data = await res.json();
     currentProfile = data.profile;
+    if (data.usage) updateQuotaBar(data.usage);
     return currentProfile;
   } catch (err) {
     console.error('loadProfile:', err);
     return null;
   }
+}
+
+// ---------- Quota barometer ----------
+const quotaBar = document.getElementById('quota-bar');
+const quotaFill = document.getElementById('quota-fill');
+const quotaPct = document.getElementById('quota-pct');
+
+function updateQuotaBar(usage) {
+  if (!usage || !quotaBar) return;
+  const pct = Math.max(0, Math.min(100, Number(usage.percent) || 0));
+  quotaFill.style.width = pct + '%';
+  quotaFill.classList.toggle('warn', pct >= 70 && pct < 90);
+  quotaFill.classList.toggle('danger', pct >= 90);
+  quotaPct.textContent = pct + '%';
+  quotaBar.classList.add('visible');
+  const spent = (Number(usage.spentCents) / 100).toFixed(2);
+  const cap = (Number(usage.capCents) / 100).toFixed(2);
+  quotaBar.title = `AI-budget: €${spent} van €${cap} gebruikt deze maand (reset op de 1e).`;
 }
 
 // Event handlers profile modal
@@ -732,6 +751,7 @@ form.addEventListener('submit', async (e) => {
         data.sources?.length ? `${data.sources.length} bron${data.sources.length > 1 ? 'nen' : ''}` : null,
       ].filter(Boolean).join(' · ');
       appendMsg('bot', stripMarkdown(data.answer), meta);
+      if (data.usage) updateQuotaBar(data.usage);
 
       // Als dit het eerste bericht was (nieuwe conversatie), update state
       const wasNew = currentConversationId !== data.conversation_id;

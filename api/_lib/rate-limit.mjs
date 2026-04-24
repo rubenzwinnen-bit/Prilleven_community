@@ -131,6 +131,28 @@ export async function checkMonthlyCostCap({ key, keyCol, isUser = false }) {
 }
 
 /**
+ * Haal maandgebruik op (zelfde venster als checkMonthlyCostCap).
+ * Gebruikt door de chat-frontend om de barometer te renderen.
+ */
+export async function getMonthlyUsage({ userId }) {
+  const cap = COST_CAP_CENTS_PER_MONTH_USER;
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0).toISOString();
+  const { data, error } = await supabase
+    .from('usage_log')
+    .select('cost_cents')
+    .eq('user_id', userId)
+    .gte('created_at', monthStart);
+  if (error) {
+    console.error(`[usage-month] ${error.message}`);
+    return { spentCents: 0, capCents: cap, percent: 0 };
+  }
+  const spentCents = (data || []).reduce((sum, r) => sum + Number(r.cost_cents || 0), 0);
+  const percent = Math.min(100, Math.round((spentCents / cap) * 100));
+  return { spentCents, capCents: cap, percent };
+}
+
+/**
  * Check specifieke limiet voor image-queries (aparte teller).
  * Telt alle events met had_image=true in laatste 24h.
  * We gebruiken een aparte event-type 'query_with_image' voor simpelheid.

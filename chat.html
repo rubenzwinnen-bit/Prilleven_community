@@ -216,6 +216,41 @@
       font-size: .95rem;
     }
 
+    .quota-bar {
+      margin: 0 0 .75rem;
+      padding: .35rem .6rem .5rem;
+      background: var(--color-white);
+      border: 1px solid var(--color-light);
+      border-radius: var(--radius-md);
+      font-size: .75rem;
+      color: var(--color-dark-light);
+      display: none;
+    }
+    .quota-bar.visible { display: block; }
+    .quota-bar-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: .3rem;
+      font-weight: 500;
+    }
+    .quota-bar-track {
+      width: 100%;
+      height: 6px;
+      background: var(--color-light);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .quota-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: var(--color-primary, #8a5cb0);
+      transition: width .35s ease, background .3s ease;
+    }
+    .quota-bar-fill.warn { background: #f1c40f; }
+    .quota-bar-fill.danger { background: var(--color-danger, #c0392b); }
+    .quota-bar .quota-pct { font-variant-numeric: tabular-nums; }
+
     .chat-log {
       background: var(--color-white);
       border: 1px solid var(--color-light);
@@ -722,6 +757,16 @@
       <div class="chat-wrap">
         <h1>HapjesHeld 2.0</h1>
         <p class="intro">Stel je vraag over kindervoeding. De assistent gebruikt Anneleens eigen gids, masterclass, recepten en roadmap en onthoudt je eerdere gesprekken.</p>
+
+        <div id="quota-bar" class="quota-bar" title="Je AI-budget voor deze maand. Wordt automatisch aangevuld op de 1e van de maand.">
+          <div class="quota-bar-head">
+            <span>AI-gebruik deze maand</span>
+            <span class="quota-pct" id="quota-pct">—</span>
+          </div>
+          <div class="quota-bar-track">
+            <div class="quota-bar-fill" id="quota-fill" style="width:0%"></div>
+          </div>
+        </div>
 
         <div id="log" class="chat-log" aria-live="polite">
           <div class="msg bot">Hallo! Ik ben HapjesHeld 2.0, de AI-assistent van Pril Leven. Je kan me vragen stellen over kindervoeding. Bijvoorbeeld:
