@@ -330,6 +330,39 @@
     }
     .btn-link:hover { opacity: .8; }
 
+    /* Chunk-cards in chunks modal */
+    .chunk-block {
+      border: 1px solid var(--color-light);
+      border-radius: var(--radius-md);
+      margin-bottom: .85rem;
+      overflow: hidden;
+    }
+    .chunk-head {
+      padding: .55rem .9rem;
+      background: var(--color-bg);
+      font-size: .82rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: .4rem;
+      align-items: center;
+    }
+    .chunk-head .chunk-id {
+      font-family: ui-monospace, Menlo, monospace;
+      background: var(--color-light);
+      padding: .1rem .45rem;
+      border-radius: 4px;
+      font-size: .75rem;
+    }
+    .chunk-head .muted { color: var(--color-gray); }
+    .chunk-content {
+      padding: .65rem .9rem;
+      font-size: .85rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+    .chunk-block.missing .chunk-content { color: var(--color-gray); font-style: italic; }
+    .action-links { display: inline-flex; gap: .75rem; }
+
     /* Responsive */
     @media (max-width: 800px) {
       .admin-main { padding: 1rem; }
@@ -359,6 +392,7 @@
         <button class="admin-tab active" data-tab="overview">Overzicht</button>
         <button class="admin-tab" data-tab="users">Gebruikers</button>
         <button class="admin-tab" data-tab="queries">Recente vragen</button>
+        <button class="admin-tab" data-tab="fallbacks">Fallbacks</button>
         <button class="admin-tab" data-tab="events">Abonnement-events</button>
       </div>
 
@@ -394,6 +428,19 @@
         </div>
       </div>
 
+      <!-- Fallbacks -->
+      <div id="tab-fallbacks" class="tab-content">
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Fallback-antwoorden</h3>
+            <span class="muted">Vragen waar de bot geen antwoord op vond (out-of-scope)</span>
+          </div>
+          <div class="panel-body">
+            <div id="fallbacks-table" class="loading">Laden…</div>
+          </div>
+        </div>
+      </div>
+
       <!-- Subscription events -->
       <div id="tab-events" class="tab-content">
         <div class="panel">
@@ -408,6 +455,19 @@
       </div>
     </div>
   </main>
+
+  <!-- Chunks modal -->
+  <div id="chunks-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="chunks-modal-title">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3 id="chunks-modal-title">Opgehaalde bronnen</h3>
+        <button class="close" id="chunks-modal-close" aria-label="Sluiten">×</button>
+      </div>
+      <div class="modal-body" id="chunks-modal-body">
+        <div class="loading">Laden…</div>
+      </div>
+    </div>
+  </div>
 
   <!-- Conversations modal -->
   <div id="conv-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="conv-modal-title">

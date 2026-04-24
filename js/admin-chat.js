@@ -116,7 +116,7 @@ async function loadGlobalStats() {
 
 // ---------- Users ----------
 let usersCache = [];
-let usersSort = { col: 'cost_cents_30d', dir: 'desc' };
+let usersSort = { col: 'cost_cents_month', dir: 'desc' };
 
 function renderUsersTable() {
   const el = document.getElementById('users-table');
@@ -145,11 +145,11 @@ function renderUsersTable() {
         <tr>
           ${header('email', 'Email')}
           <th>Abonnement</th>
-          ${header('queries_30d', 'Vragen 30d')}
-          ${header('tokens_in_30d', 'Tokens in')}
-          ${header('tokens_out_30d', 'Tokens uit')}
-          ${header('cost_cents_30d', 'Kosten 30d')}
-          ${header('rate_limit_hits_30d', 'Rate hits')}
+          ${header('queries_month', 'Vragen deze maand')}
+          ${header('tokens_in_month', 'Tokens in')}
+          ${header('tokens_out_month', 'Tokens uit')}
+          ${header('cost_cents_month', 'Kosten deze maand')}
+          ${header('rate_limit_hits_month', 'Rate hits')}
           ${header('conversations', 'Gesprekken')}
           ${header('memories', 'Geheugen')}
           ${header('last_activity', 'Laatst actief')}
@@ -174,11 +174,11 @@ function renderUsersTable() {
               ${r.cancelled_at ? '<div class="row-details">opgezegd ' + fmtRelTime(r.cancelled_at) + '</div>' : ''}
               ${r.subscription_end_date ? '<div class="row-details">einde: ' + fmtDate(r.subscription_end_date) + '</div>' : ''}
             </td>
-            <td>${fmtNum(r.queries_30d)}</td>
-            <td>${fmtNum(r.tokens_in_30d)}</td>
-            <td>${fmtNum(r.tokens_out_30d)}</td>
-            <td>${fmtCents(r.cost_cents_30d)}</td>
-            <td>${r.rate_limit_hits_30d > 0 ? '<span class="pill warn">' + r.rate_limit_hits_30d + '</span>' : '0'}</td>
+            <td>${fmtNum(r.queries_month)}</td>
+            <td>${fmtNum(r.tokens_in_month)}</td>
+            <td>${fmtNum(r.tokens_out_month)}</td>
+            <td>${fmtCents(r.cost_cents_month)}</td>
+            <td>${r.rate_limit_hits_month > 0 ? '<span class="pill warn">' + r.rate_limit_hits_month + '</span>' : '0'}</td>
             <td>${fmtNum(r.conversations)}</td>
             <td>${fmtNum(r.memories)}</td>
             <td>${fmtRelTime(r.last_activity)}</td>
@@ -294,10 +294,11 @@ async function loadQueries() {
             <th>Model</th>
             <th>Tokens</th>
             <th>Bronnen</th>
+            <th>Acties</th>
           </tr>
         </thead>
         <tbody>
-          ${rows.map(r => `
+          ${rows.map((r, i) => `
             <tr>
               <td>${fmtDate(r.timestamp)}</td>
               <td>${esc(r.email)}</td>
@@ -308,13 +309,141 @@ async function loadQueries() {
               <td>${esc(r.model || '—')}</td>
               <td>${fmtNum(r.tokens_in)} / ${fmtNum(r.tokens_out)}</td>
               <td>${r.retrieved_count} chunks${r.had_image ? ' 📷' : ''}</td>
+              <td>
+                ${r.retrieved_count > 0
+                  ? `<button class="btn-link" data-view-chunks="${i}">Bekijk chunks</button>`
+                  : '<span class="row-details">—</span>'}
+              </td>
             </tr>
           `).join('')}
         </tbody>
       </table>
     `;
+    // Hook "Bekijk chunks" buttons — chunks zijn in rows array per index
+    el.querySelectorAll('button[data-view-chunks]').forEach(btn => {
+      const idx = Number(btn.dataset.viewChunks);
+      btn.addEventListener('click', () => openChunksModal(rows[idx]?.retrieved_ids || [], rows[idx]?.question || ''));
+    });
   } catch (err) {
     el.innerHTML = '<div class="error-box">Kon vragen niet laden: ' + esc(err.message) + '</div>';
+  }
+}
+
+// ---------- Chunks modal ----------
+const chunksModal = document.getElementById('chunks-modal');
+const chunksModalTitle = document.getElementById('chunks-modal-title');
+const chunksModalBody = document.getElementById('chunks-modal-body');
+document.getElementById('chunks-modal-close').addEventListener('click', closeChunksModal);
+chunksModal.addEventListener('click', (e) => {
+  if (e.target === chunksModal) closeChunksModal();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && chunksModal.classList.contains('open')) closeChunksModal();
+});
+
+function closeChunksModal() {
+  chunksModal.classList.remove('open');
+  chunksModalBody.innerHTML = '<div class="loading">Laden…</div>';
+}
+
+async function openChunksModal(ids, question) {
+  chunksModalTitle.textContent = question
+    ? `Bronnen voor: ${truncate(question, 60)}`
+    : 'Opgehaalde bronnen';
+  chunksModalBody.innerHTML = '<div class="loading">Laden…</div>';
+  chunksModal.classList.add('open');
+  if (!ids || ids.length === 0) {
+    chunksModalBody.innerHTML = '<div class="empty">Geen chunks opgehaald voor deze vraag.</div>';
+    return;
+  }
+  try {
+    const data = await authedFetch('/api/admin?section=chunks&ids=' + encodeURIComponent(ids.join(',')));
+    const chunks = data.chunks || [];
+    chunksModalBody.innerHTML = chunks.map((c, i) => {
+      if (c.missing) {
+        return `
+          <div class="chunk-block missing">
+            <div class="chunk-head">
+              <span class="chunk-id">${esc(c.id)}</span>
+              <span class="muted">niet (meer) in kennisbank</span>
+            </div>
+            <div class="chunk-content">Deze chunk bestaat niet meer — mogelijk verwijderd of hernoemd sinds de vraag werd gesteld.</div>
+          </div>`;
+      }
+      const ageInfo = (c.age_min_months != null || c.age_max_months != null)
+        ? ` · ${c.age_min_months ?? 0}-${c.age_max_months ?? '∞'} mnd`
+        : '';
+      return `
+        <div class="chunk-block">
+          <div class="chunk-head">
+            <strong>${i + 1}.</strong>
+            <span class="chunk-id">${esc(c.id)}</span>
+            <span>${esc(c.title || '(geen titel)')}</span>
+            <span class="muted">· ${esc(c.source || '—')}${c.category ? ' · ' + esc(c.category) : ''}${ageInfo}</span>
+          </div>
+          <div class="chunk-content">${esc(c.content || '')}</div>
+        </div>`;
+    }).join('');
+  } catch (err) {
+    chunksModalBody.innerHTML = '<div class="error-box">Kon chunks niet laden: ' + esc(err.message) + '</div>';
+  }
+}
+
+// ---------- Fallbacks ----------
+async function loadFallbacks() {
+  const el = document.getElementById('fallbacks-table');
+  try {
+    const data = await authedFetch('/api/admin?section=fallbacks&limit=100');
+    const rows = data.fallbacks || [];
+    if (rows.length === 0) {
+      el.innerHTML = '<div class="empty">Nog geen fallback-antwoorden. De bot heeft alles kunnen beantwoorden.</div>';
+      return;
+    }
+    el.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Tijd</th>
+            <th>Gebruiker</th>
+            <th>Vraag</th>
+            <th>Bronnen</th>
+            <th>Acties</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((r, i) => `
+            <tr>
+              <td>${fmtDate(r.timestamp)}</td>
+              <td>${esc(r.email)}</td>
+              <td>
+                <div style="max-width:420px;">${esc(truncate(r.question, 160))}</div>
+                <div class="row-details">→ ${esc(truncate(r.answer, 120))}</div>
+              </td>
+              <td>${r.retrieved_count}${r.had_image ? ' 📷' : ''}</td>
+              <td>
+                <div class="action-links">
+                  ${r.retrieved_count > 0
+                    ? `<button class="btn-link" data-fb-chunks="${i}">Zie chunks</button>`
+                    : '<span class="row-details">—</span>'}
+                  ${r.email && !r.email.startsWith('(')
+                    ? `<button class="btn-link" data-fb-conv="${esc(r.email)}">Zie gesprek</button>`
+                    : ''}
+                </div>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+    el.querySelectorAll('button[data-fb-chunks]').forEach(btn => {
+      const idx = Number(btn.dataset.fbChunks);
+      btn.addEventListener('click', () => openChunksModal(rows[idx]?.retrieved_ids || [], rows[idx]?.question || ''));
+    });
+    el.querySelectorAll('button[data-fb-conv]').forEach(btn => {
+      btn.addEventListener('click', () => openConversationsModal(btn.dataset.fbConv));
+    });
+  } catch (err) {
+    el.innerHTML = '<div class="error-box">Kon fallbacks niet laden: ' + esc(err.message) + '</div>';
   }
 }
 
@@ -397,6 +526,7 @@ async function init() {
     loadGlobalStats(),
     loadUsers(),
     loadQueries(),
+    loadFallbacks(),
     loadEvents(),
   ]);
 }

@@ -6,6 +6,8 @@
 //   GET /api/admin?section=queries&limit=50  → recente vragen
 //   GET /api/admin?section=events&limit=100&email=X → subscription-events
 //   GET /api/admin?section=conversations&email=X    → alle conversaties+berichten per user
+//   GET /api/admin?section=chunks&ids=a,b,c          → document-details voor deze chunk-ids
+//   GET /api/admin?section=fallbacks&limit=50        → enkel fallback / onbeantwoorde vragen
 
 import { requireAdmin, AuthError } from './_lib/auth.mjs';
 import { supabase } from './_lib/clients.mjs';
@@ -51,7 +53,15 @@ export default async function handler(req, res) {
       if (!email) return json(res, 400, { error: 'email query-param verplicht' });
       return json(res, 200, await getUserConversations(email));
     }
-    return json(res, 400, { error: 'Unknown section. Use: global, users, queries, events, conversations.' });
+    if (section === 'chunks') {
+      const ids = (url.searchParams.get('ids') || '').split(',').map(s => s.trim()).filter(Boolean);
+      return json(res, 200, await getChunksByIds(ids));
+    }
+    if (section === 'fallbacks') {
+      const limit = Math.min(200, parseInt(url.searchParams.get('limit') || '50', 10));
+      return json(res, 200, await getFallbackQueries(limit));
+    }
+    return json(res, 400, { error: 'Unknown section. Use: global, users, queries, events, conversations, chunks, fallbacks.' });
   } catch (err) {
     console.error('[admin]', err);
     return json(res, 500, { error: err.message || 'Er ging iets mis.' });
@@ -125,10 +135,12 @@ async function getUsersStats() {
     if (u.email) emailToId.set(u.email.toLowerCase(), u.id);
   }
 
-  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  // Kalendermaand (sinds 1e) — zelfde venster als de cost-cap en de overview-tab.
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0).toISOString();
   const { data: usage } = await supabase
     .from('usage_log').select('user_id, event, tokens_in, tokens_out, cost_cents, created_at')
-    .gte('created_at', since);
+    .gte('created_at', monthStart);
 
   const emptyAgg = () => ({
     queries: 0, cache_hits: 0, rate_limit_hits: 0,
@@ -185,12 +197,12 @@ async function getUsersStats() {
       cancelled_at: u.cancelled_at,
       has_registered: u.has_registered,
       is_admin: u.is_admin,
-      queries_30d: stats.queries || 0,
-      cache_hits_30d: stats.cache_hits || 0,
-      rate_limit_hits_30d: stats.rate_limit_hits || 0,
-      tokens_in_30d: stats.tokens_in || 0,
-      tokens_out_30d: stats.tokens_out || 0,
-      cost_cents_30d: stats.cost_cents || 0,
+      queries_month: stats.queries || 0,
+      cache_hits_month: stats.cache_hits || 0,
+      rate_limit_hits_month: stats.rate_limit_hits || 0,
+      tokens_in_month: stats.tokens_in || 0,
+      tokens_out_month: stats.tokens_out || 0,
+      cost_cents_month: stats.cost_cents || 0,
       conversations: userId ? (convPerUser.get(userId) || 0) : 0,
       memories: userId ? (memPerUser.get(userId) || 0) : 0,
       last_activity: stats.last_activity || null,
@@ -244,12 +256,12 @@ async function getUsersStats() {
       has_registered: false,
       is_admin: false,
       orphan: true,
-      queries_30d: orphanAgg.queries,
-      cache_hits_30d: orphanAgg.cache_hits,
-      rate_limit_hits_30d: orphanAgg.rate_limit_hits,
-      tokens_in_30d: orphanAgg.tokens_in,
-      tokens_out_30d: orphanAgg.tokens_out,
-      cost_cents_30d: orphanAgg.cost_cents,
+      queries_month: orphanAgg.queries,
+      cache_hits_month: orphanAgg.cache_hits,
+      rate_limit_hits_month: orphanAgg.rate_limit_hits,
+      tokens_in_month: orphanAgg.tokens_in,
+      tokens_out_month: orphanAgg.tokens_out,
+      cost_cents_month: orphanAgg.cost_cents,
       conversations: orphanConversations,
       memories: orphanMemories,
       last_activity: orphanAgg.last_activity,
@@ -351,6 +363,75 @@ async function getUserConversations(email) {
     messages: byConv.get(c.id) || [],
   }));
   return { email, conversations: result };
+}
+
+async function getChunksByIds(ids) {
+  if (!ids || ids.length === 0) return { chunks: [] };
+  const { data, error } = await supabase
+    .from('documents')
+    .select('id, source, title, content, category, age_min_months, age_max_months')
+    .in('id', ids);
+  if (error) throw new Error(error.message);
+  // Preserve order van de ids-array
+  const byId = new Map((data || []).map(d => [d.id, d]));
+  const ordered = ids.map(id => byId.get(id) || { id, missing: true });
+  return { chunks: ordered };
+}
+
+async function getFallbackQueries(limit) {
+  // Fallback = assistant-antwoord waar de bot niet kon antwoorden (out-of-scope).
+  // Chat-endpoint zet dan model='fallback'.
+  const { data: msgs, error } = await supabase
+    .from('messages')
+    .select('id, conversation_id, role, content, retrieved_ids, had_image, model, created_at')
+    .eq('role', 'assistant')
+    .eq('model', 'fallback')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+
+  const conversationIds = [...new Set((msgs || []).map(m => m.conversation_id))];
+  if (conversationIds.length === 0) return { fallbacks: [] };
+
+  const { data: convs } = await supabase
+    .from('conversations').select('id, user_id, title').in('id', conversationIds);
+  const convMap = new Map((convs || []).map(c => [c.id, c]));
+
+  const { data: authUsers } = await supabase.auth.admin.listUsers();
+  const idToEmail = new Map();
+  for (const u of (authUsers?.users || [])) {
+    if (u.email) idToEmail.set(u.id, u.email);
+  }
+
+  // Voor elke fallback het laatste user-bericht ervoor zoeken (de vraag)
+  const { data: allUserMsgs } = await supabase
+    .from('messages').select('id, conversation_id, content, created_at')
+    .eq('role', 'user').in('conversation_id', conversationIds)
+    .order('created_at', { ascending: true });
+
+  const userMsgsByConv = new Map();
+  for (const u of (allUserMsgs || [])) {
+    if (!userMsgsByConv.has(u.conversation_id)) userMsgsByConv.set(u.conversation_id, []);
+    userMsgsByConv.get(u.conversation_id).push(u);
+  }
+
+  const rows = (msgs || []).map(m => {
+    const conv = convMap.get(m.conversation_id);
+    const userMsgs = userMsgsByConv.get(m.conversation_id) || [];
+    const prevUser = [...userMsgs].reverse().find(u => u.created_at < m.created_at);
+    return {
+      timestamp: m.created_at,
+      email: conv?.user_id ? idToEmail.get(conv.user_id) || '(verwijderd)' : '(onbekend)',
+      conversation_id: m.conversation_id,
+      conversation_title: conv?.title || '(geen titel)',
+      question: prevUser?.content || '(geen vraag gevonden)',
+      answer: m.content || '',
+      had_image: m.had_image,
+      retrieved_ids: m.retrieved_ids || [],
+      retrieved_count: (m.retrieved_ids || []).length,
+    };
+  });
+  return { fallbacks: rows };
 }
 
 async function getSubscriptionEvents(limit, emailFilter) {
