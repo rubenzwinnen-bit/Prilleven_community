@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Account verwijderen — Pril Leven</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+
+  <style>
+    .del-page {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+      font-family: 'Poppins', sans-serif;
+    }
+    .del-logo {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    .del-logo img { max-width: 140px; height: auto; }
+    .del-card {
+      background: var(--color-white, #fff);
+      border: 1px solid var(--color-border, #e5e5e5);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .del-card h2 { margin: 0 0 0.75rem 0; font-size: 1.2rem; }
+    .del-card p, .del-card li { line-height: 1.55; font-size: 0.95rem; }
+    .del-card ul { padding-left: 1.25rem; }
+    .del-card ul li { margin-bottom: 0.35rem; }
+    .del-danger {
+      border: 2px solid #c0392b;
+    }
+    .del-danger h2 { color: #c0392b; }
+    .del-btn-danger {
+      background: #c0392b;
+      color: #fff;
+      border: none;
+      padding: 0.75rem 1.25rem;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .del-btn-danger:hover { background: #a03020; }
+    .del-btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+    .del-warning {
+      background: #fff5e6;
+      border-left: 4px solid #e67e22;
+      padding: 0.75rem 1rem;
+      margin: 1rem 0;
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
+    .del-success {
+      background: #eafaf1;
+      border-left: 4px solid #27ae60;
+      padding: 1rem;
+      border-radius: 4px;
+      font-size: 0.95rem;
+    }
+    .del-error {
+      background: #fdecea;
+      border-left: 4px solid #c0392b;
+      padding: 0.75rem 1rem;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      margin-top: 0.75rem;
+    }
+    .del-input {
+      width: 100%;
+      padding: 0.65rem 0.85rem;
+      border: 1px solid var(--color-border, #d5d5d5);
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      margin-bottom: 0.75rem;
+      box-sizing: border-box;
+    }
+    .del-muted { color: #666; font-size: 0.85rem; }
+    .del-account-line {
+      padding: 0.6rem 0.85rem;
+      background: #f7f7f7;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+    }
+    .del-actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+    .del-btn-secondary {
+      background: transparent;
+      color: var(--color-primary, #C98966);
+      border: 2px solid var(--color-primary, #C98966);
+      padding: 0.6rem 1rem;
+      border-radius: 6px;
+      font-family: inherit;
+      font-weight: 500;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .del-btn-secondary:hover { background: rgba(201, 137, 102, 0.1); }
+    .del-btn-primary {
+      background: var(--color-primary, #C98966);
+      color: #fff;
+      border: none;
+      padding: 0.65rem 1.1rem;
+      border-radius: 6px;
+      font-family: inherit;
+      font-weight: 500;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+    .del-btn-primary:hover { background: #b3765a; }
+    .del-loader { display: inline-block; opacity: 0.7; font-style: italic; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <main class="del-page">
+    <div class="del-logo">
+      <img src="/pril-leven-logo.png" alt="Pril Leven" onerror="this.style.display='none'">
+    </div>
+
+    <h1 style="text-align:center;margin-bottom:0.25rem">Account verwijderen</h1>
+    <p class="del-muted" style="text-align:center;margin-bottom:1.5rem">
+      Je hebt het recht om je gegevens te laten verwijderen (GDPR / Google Play vereiste).
+    </p>
+
+    <!-- UITLEG -->
+    <section class="del-card">
+      <h2>Wat gebeurt er als je je account verwijdert?</h2>
+      <p><strong>Wordt verwijderd:</strong></p>
+      <ul>
+        <li>Je profiel (naam, kinderen, voorkeuren, allergieën)</li>
+        <li>Al je chat-gesprekken en berichten</li>
+        <li>Je persoonlijke AI-memories</li>
+        <li>Je opgeslagen weekschema's en favoriete recepten</li>
+        <li>Je gebruikslog (tokens, kosten)</li>
+        <li>Je login-account (Supabase auth)</li>
+      </ul>
+      <p style="margin-top:1rem"><strong>Wordt geanonimiseerd:</strong></p>
+      <ul>
+        <li>Ratings en reacties die je gaf op recepten — blijven zichtbaar voor de community, maar worden gekoppeld aan de naam "Anoniem"</li>
+      </ul>
+      <p style="margin-top:1rem"><strong>Wordt bewaard:</strong></p>
+      <ul>
+        <li>Subscription-records en webhook-audit-logs — wettelijk verplicht voor financiële administratie (max. 7 jaar)</li>
+      </ul>
+    </section>
+
+    <!-- ABONNEMENT WAARSCHUWING -->
+    <div class="del-warning">
+      <strong>Belangrijk over je abonnement:</strong> Je Plug&amp;Pay abonnement wordt
+      <strong>niet automatisch opgezegd</strong>. Als je een lopend abonnement hebt,
+      moet je dit apart opzeggen via
+      <a href="https://prilleven.be" target="_blank" rel="noopener">prilleven.be</a>
+      om te vermijden dat je blijft betalen.
+    </div>
+
+    <!-- STATE A — NIET INGELOGD -->
+    <section id="login-section" class="del-card hidden">
+      <h2>Log in om je account te verwijderen</h2>
+      <p class="del-muted">Om veiligheidsredenen moet je inloggen voor je je account kan verwijderen.</p>
+      <input type="email" id="login-email" class="del-input" placeholder="jouw@email.com" autocomplete="email">
+      <input type="password" id="login-password" class="del-input" placeholder="Wachtwoord" autocomplete="current-password">
+      <div id="login-error" class="del-error hidden"></div>
+      <button id="login-btn" class="del-btn-primary">Inloggen</button>
+
+      <p class="del-muted" style="margin-top:1.25rem">
+        Kan je niet meer inloggen? Stuur een mail naar
+        <a href="mailto:info@prilleven.be?subject=Account%20verwijderen%20verzoek">info@prilleven.be</a>
+        met je verzoek, dan verwerken we het manueel.
+      </p>
+    </section>
+
+    <!-- STATE B — INGELOGD -->
+    <section id="account-section" class="del-card hidden">
+      <h2>Je bent ingelogd</h2>
+      <div class="del-account-line" id="account-email-line">
+        <strong>E-mail:</strong> <span id="account-email"></span>
+      </div>
+      <p class="del-muted">Je kan je data eerst downloaden voor je alles wist.</p>
+      <div class="del-actions">
+        <button id="download-btn" class="del-btn-secondary">📥 Mijn data downloaden</button>
+        <button id="logout-btn" class="del-btn-secondary">Uitloggen</button>
+      </div>
+    </section>
+
+    <!-- STATE B.2 — DELETE -->
+    <section id="delete-section" class="del-card del-danger hidden">
+      <h2>Gevaarlijke zone: Account verwijderen</h2>
+      <p>Deze actie is <strong>onomkeerbaar</strong>. Type je e-mailadres om te bevestigen:</p>
+      <input type="email" id="confirm-email" class="del-input" placeholder="jouw@email.com" autocomplete="off">
+      <div id="delete-error" class="del-error hidden"></div>
+      <button id="delete-btn" class="del-btn-danger" disabled>Account definitief verwijderen</button>
+      <p class="del-muted" style="margin-top:0.75rem">
+        Je wordt automatisch uitgelogd zodra alles verwijderd is.
+      </p>
+    </section>
+
+    <!-- STATE C — SUCCESS -->
+    <section id="success-section" class="del-card hidden">
+      <div class="del-success">
+        <h2 style="margin-top:0;color:#27ae60">✓ Je account is verwijderd</h2>
+        <p>Alle persoonlijke data is gewist en je bent uitgelogd.</p>
+        <p class="del-muted">
+          Vergeet niet je <a href="https://prilleven.be" target="_blank" rel="noopener">Plug&amp;Pay abonnement</a>
+          op te zeggen als je dat nog niet gedaan hebt.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    /* ----------------------------------------
+       SUPABASE CONFIG (zelfde waarden als js/supabase.js)
+       ---------------------------------------- */
+    const SUPABASE_URL = 'https://ynrdoxukevhzupjvcjuw.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_iksnuXPtWB_mqunZfLarVQ_tPLWaG02';
+    const SESSION_KEY = 'pril_session';
+
+    /* ----------------------------------------
+       SESSION HELPERS (compatibel met hoofdapp)
+       ---------------------------------------- */
+    function sessionGet() {
+      try {
+        const raw = localStorage.getItem(SESSION_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch { return null; }
+    }
+    function sessionSet(authData) {
+      if (!authData || !authData.access_token) return;
+      const now = Math.floor(Date.now() / 1000);
+      const session = {
+        access_token: authData.access_token,
+        refresh_token: authData.refresh_token,
+        expires_at: authData.expires_at || (now + (authData.expires_in || 3600)),
+        user_id: authData.user?.id || null,
+        email: authData.user?.email || null,
+      };
+      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    }
+    function sessionClear() {
+      localStorage.removeItem(SESSION_KEY);
+      /* Ook de user-key uit hoofdapp wissen zodat een volgende bezoeker
+         niet per ongeluk onder deze identiteit verder werkt. */
+      localStorage.removeItem('receptenboek_user');
+    }
+
+    /* ----------------------------------------
+       UI HELPERS
+       ---------------------------------------- */
+    const $ = (id) => document.getElementById(id);
+    function show(id) { $(id).classList.remove('hidden'); }
+    function hide(id) { $(id).classList.add('hidden'); }
+    function setError(id, msg) {
+      const el = $(id);
+      if (msg) { el.textContent = msg; el.classList.remove('hidden'); }
+      else { el.textContent = ''; el.classList.add('hidden'); }
+    }
+
+    /* ----------------------------------------
+       STATE MANAGEMENT
+       ---------------------------------------- */
+    function updateUI() {
+      const s = sessionGet();
+      hide('login-section');
+      hide('account-section');
+      hide('delete-section');
+      hide('success-section');
+      setError('login-error', '');
+      setError('delete-error', '');
+
+      if (s && s.email && s.access_token) {
+        $('account-email').textContent = s.email;
+        show('account-section');
+        show('delete-section');
+      } else {
+        show('login-section');
+      }
+    }
+
+    /* ----------------------------------------
+       LOGIN
+       ---------------------------------------- */
+    async function doLogin() {
+      const email = $('login-email').value.trim();
+      const password = $('login-password').value;
+      if (!email || !password) {
+        setError('login-error', 'Vul je e-mail en wachtwoord in.');
+        return;
+      }
+      setError('login-error', '');
+      $('login-btn').disabled = true;
+      $('login-btn').textContent = 'Bezig met inloggen...';
+      try {
+        const res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error_description || data.msg || 'Inloggen mislukt');
+        }
+        sessionSet(data);
+        updateUI();
+      } catch (err) {
+        setError('login-error', err.message || 'Inloggen mislukt');
+      } finally {
+        $('login-btn').disabled = false;
+        $('login-btn').textContent = 'Inloggen';
+      }
+    }
+
+    /* ----------------------------------------
+       DATA DOWNLOAD (GDPR export)
+       ---------------------------------------- */
+    async function doDownload() {
+      const s = sessionGet();
+      if (!s || !s.access_token) return;
+      $('download-btn').disabled = true;
+      $('download-btn').textContent = 'Bezig...';
+      try {
+        const res = await fetch('/api/me', {
+          method: 'GET',
+          headers: { 'Authorization': 'Bearer ' + s.access_token },
+        });
+        if (!res.ok) throw new Error('Download mislukt (' + res.status + ')');
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'pril-leven-export-' + Date.now() + '.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert('Fout bij downloaden: ' + err.message);
+      } finally {
+        $('download-btn').disabled = false;
+        $('download-btn').textContent = '📥 Mijn data downloaden';
+      }
+    }
+
+    /* ----------------------------------------
+       LOGOUT
+       ---------------------------------------- */
+    function doLogout() {
+      sessionClear();
+      updateUI();
+    }
+
+    /* ----------------------------------------
+       CONFIRM-EMAIL CHECK → enable delete btn
+       ---------------------------------------- */
+    function updateDeleteBtnState() {
+      const s = sessionGet();
+      const typed = ($('confirm-email').value || '').trim().toLowerCase();
+      const expected = (s?.email || '').trim().toLowerCase();
+      $('delete-btn').disabled = !(typed && expected && typed === expected);
+    }
+
+    /* ----------------------------------------
+       DELETE ACCOUNT
+       ---------------------------------------- */
+    async function doDelete() {
+      const s = sessionGet();
+      if (!s || !s.access_token) return;
+      const typed = ($('confirm-email').value || '').trim().toLowerCase();
+      const expected = (s.email || '').trim().toLowerCase();
+      if (typed !== expected) {
+        setError('delete-error', 'E-mail komt niet overeen met je account.');
+        return;
+      }
+      if (!window.confirm('Weet je het 100% zeker? Dit kan niet ongedaan gemaakt worden.')) {
+        return;
+      }
+
+      setError('delete-error', '');
+      $('delete-btn').disabled = true;
+      $('delete-btn').textContent = 'Bezig met verwijderen...';
+
+      try {
+        const res = await fetch('/api/me', {
+          method: 'DELETE',
+          headers: { 'Authorization': 'Bearer ' + s.access_token },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok && res.status !== 207) {
+          throw new Error(data.error || data.message || 'Verwijderen mislukt (' + res.status + ')');
+        }
+
+        /* 207 = partial success — toon warning maar ga door want auth-user
+           is meestal wel verwijderd */
+        if (res.status === 207 && data.errors) {
+          console.warn('[delete-account] partial errors:', data.errors);
+        }
+
+        sessionClear();
+        hide('login-section');
+        hide('account-section');
+        hide('delete-section');
+        show('success-section');
+      } catch (err) {
+        setError('delete-error', 'Fout: ' + (err.message || 'onbekende fout'));
+        $('delete-btn').disabled = false;
+        $('delete-btn').textContent = 'Account definitief verwijderen';
+      }
+    }
+
+    /* ----------------------------------------
+       EVENT LISTENERS
+       ---------------------------------------- */
+    document.addEventListener('DOMContentLoaded', () => {
+      updateUI();
+
+      $('login-btn').addEventListener('click', doLogin);
+      $('login-password').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') doLogin();
+      });
+
+      $('download-btn').addEventListener('click', doDownload);
+      $('logout-btn').addEventListener('click', doLogout);
+
+      $('confirm-email').addEventListener('input', updateDeleteBtnState);
+      $('delete-btn').addEventListener('click', doDelete);
+    });
+  </script>
+</body>
+</html>

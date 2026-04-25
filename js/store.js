@@ -88,13 +88,58 @@ export function setCurrentUser(name) {
 
 /* ----------------------------------------
    ADMIN CHECK
-   Controleert of de huidige gebruiker admin is
----------------------------------------- */
-const ADMIN_EMAILS = ['ruben.zwinnen@hotmail.be', 'anneleen.plettinx@gmail.com'];
+   Admin-status wordt pre-loaded bij app init
+   (refreshAdminStatus). isAdmin() is synchroon
+   en leest uit de in-memory cache.
 
+   Fallback op hardcoded lijst als de DB-lookup
+   niet heeft kunnen gebeuren (eerste render, DB
+   error, enz.).
+---------------------------------------- */
+const ADMIN_EMAILS_FALLBACK = ['ruben.zwinnen@hotmail.be', 'anneleen.plettinx@gmail.com'];
+let _adminCache = { email: null, value: false, loaded: false };
+
+/**
+ * Synchronische check die uit de cache leest.
+ * Voordat de cache geladen is (bv. op allereerste render)
+ * valt terug op de hardcoded fallback-lijst.
+ */
 export function isAdmin() {
   const user = (getCurrentUser() || '').toLowerCase();
-  return ADMIN_EMAILS.includes(user);
+  if (!user) return false;
+  if (_adminCache.loaded && _adminCache.email === user) {
+    return _adminCache.value;
+  }
+  // Fallback tot refreshAdminStatus() geladen is
+  return ADMIN_EMAILS_FALLBACK.includes(user);
+}
+
+/**
+ * Fetcht en cachet admin-status vanuit de DB.
+ * Roep dit aan na login én op app init — dan is de sync
+ * isAdmin() betrouwbaar voor de rest van de sessie.
+ */
+export async function refreshAdminStatus() {
+  const user = (getCurrentUser() || '').toLowerCase();
+  if (!user) {
+    _adminCache = { email: null, value: false, loaded: true };
+    return false;
+  }
+  try {
+    const { fetchSubscriptionStatus } = await import('./supabase.js');
+    const status = await fetchSubscriptionStatus(user);
+    const v = !!status?.is_admin;
+    _adminCache = { email: user, value: v, loaded: true };
+    return v;
+  } catch {
+    const v = ADMIN_EMAILS_FALLBACK.includes(user);
+    _adminCache = { email: user, value: v, loaded: true };
+    return v;
+  }
+}
+
+export function clearAdminCache() {
+  _adminCache = { email: null, value: false, loaded: false };
 }
 
 /* ----------------------------------------

@@ -85,3 +85,9 @@ coverage/
 recepten boeken/
 
 .vercel
+
+# ============================================
+# ENV BACKUPS (geen secrets in repo)
+# ============================================
+.env*.backup
+*.env.backup

@@ -304,10 +304,22 @@ function attachListeners(recipeId, initialRating = 0, recipe = null, activeInfo 
   /* Lokale state voor de huidige rating van deze gebruiker */
   let currentUserRating = initialRating;
 
-  /* Terug knop */
-  document.getElementById('btn-back')?.addEventListener('click', () => {
-    Router.navigate('');
-  });
+  /* Terug knop — alleen tonen/actief maken als de gebruiker binnen
+     de app genavigeerd heeft. Bij direct openen van een recept (nieuw
+     tabblad, gedeelde link, bladwijzer) is "terug" niet relevant, dus
+     verwijderen we de knop volledig uit de DOM.
+     NB: `hidden` attribuut werkt niet op .btn want die class zet
+     `display: inline-flex` met gelijke specificity. Daarom remove(). */
+  const btnBack = document.getElementById('btn-back');
+  if (btnBack) {
+    if (Router.hasHistory()) {
+      btnBack.addEventListener('click', () => {
+        window.history.back();
+      });
+    } else {
+      btnBack.remove();
+    }
+  }
 
   /* Selectiebalk voor aantal dagen (actief weekschema) */
   if (activeInfo && activeInfo.occurrences >= 2) {
@@ -356,11 +368,16 @@ function attachListeners(recipeId, initialRating = 0, recipe = null, activeInfo 
 
   /* Favoriet toggle */
   document.getElementById('btn-toggle-fav')?.addEventListener('click', async (e) => {
-    const id = e.currentTarget.dataset.id;
+    // Bewaar referentie naar de knop — e.currentTarget wordt null na de eerste await
+    // (browser reset currentTarget zodra de event-dispatch klaar is).
+    const btn = e.currentTarget;
+    const id = btn.dataset.id;
     try {
       const isFav = await Store.toggleFavorite(id);
-      e.currentTarget.className = `btn ${isFav ? 'btn-primary' : 'btn-outline'}`;
-      e.currentTarget.innerHTML = isFav ? '&#10084;&#65039; In favorieten' : '&#9825; Favoriet maken';
+      if (btn.isConnected) {
+        btn.className = `btn ${isFav ? 'btn-primary' : 'btn-outline'}`;
+        btn.innerHTML = isFav ? '&#10084;&#65039; In favorieten' : '&#9825; Favoriet maken';
+      }
       showToast(isFav ? 'Toegevoegd aan favorieten' : 'Verwijderd uit favorieten');
     } catch (err) {
       showToast('Fout: ' + err.message, 'error');

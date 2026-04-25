@@ -1,0 +1,23 @@
+{
+  "name": "rag-chunking-scripts",
+  "version": "0.1.0",
+  "description": "Document chunking pipeline for the nutrition RAG assistant",
+  "type": "module",
+  "scripts": {
+    "chunk": "node chunk-documents.js",
+    "chunk:dry": "node chunk-documents.js --dry-run",
+    "chunk:file": "node chunk-documents.js --file",
+    "ingest": "node ingest.js",
+    "ingest:dry": "node ingest.js --dry-run"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
+    "@supabase/supabase-js": "^2.103.3",
+    "dotenv": "^16.4.5",
+    "mammoth": "^1.8.0",
+    "pdf-parse": "^1.1.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

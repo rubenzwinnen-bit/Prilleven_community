@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Pril Leven — Admin Dashboard</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css" />
+
+  <style>
+    body { background: var(--color-bg); min-height: 100vh; }
+
+    .admin-header {
+      background: var(--color-white);
+      color: var(--color-dark);
+      padding: 0.5rem 1.5rem;
+      border-bottom: 1px solid var(--color-light);
+    }
+    .admin-header-inner {
+      max-width: min(1800px, calc(100vw - 2rem));
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+    }
+    .admin-header a.brand {
+      color: var(--color-secondary-dark);
+      font-weight: 700;
+      font-size: 1.4rem;
+      display: inline-flex;
+      align-items: center;
+      gap: .75rem;
+      text-decoration: none;
+    }
+    .admin-header a.brand:hover { opacity: 0.8; }
+    .admin-header .brand-logo {
+      height: 64px;
+      width: auto;
+      display: block;
+    }
+    .admin-header .badge {
+      background: var(--color-light);
+      color: var(--color-dark-light);
+      padding: .15rem .6rem;
+      border-radius: 999px;
+      font-size: .7rem;
+      font-weight: 600;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+    }
+    .admin-header .back {
+      margin-left: auto;
+      color: var(--color-dark);
+      opacity: 1;
+      font-size: .95rem;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--color-light);
+      text-decoration: none;
+      transition: var(--transition);
+    }
+    .admin-header .back:hover { background: var(--color-secondary-dark); color: var(--color-white); }
+
+    .admin-main {
+      max-width: min(1800px, calc(100vw - 2rem));
+      margin: 0 auto;
+      padding: 1.5rem 1.5rem 3rem;
+    }
+
+    .admin-tabs {
+      display: flex;
+      gap: .5rem;
+      border-bottom: 1px solid var(--color-light);
+      margin-bottom: 1.5rem;
+    }
+    .admin-tab {
+      padding: .75rem 1.25rem;
+      border: 0;
+      background: transparent;
+      color: var(--color-dark-light);
+      font-family: inherit;
+      font-weight: 500;
+      font-size: .95rem;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+    }
+    .admin-tab:hover { color: var(--color-dark); }
+    .admin-tab.active {
+      color: var(--color-primary);
+      border-bottom-color: var(--color-primary);
+      font-weight: 600;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .stat-card {
+      background: var(--color-white);
+      padding: 1.1rem 1.25rem;
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--color-light);
+    }
+    .stat-card .label {
+      font-size: .75rem;
+      color: var(--color-gray);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      font-weight: 600;
+      margin-bottom: .4rem;
+    }
+    .stat-card .value {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--color-dark);
+    }
+    .stat-card .sub {
+      font-size: .8rem;
+      color: var(--color-gray);
+      margin-top: .3rem;
+    }
+
+    .panel {
+      background: var(--color-white);
+      border: 1px solid var(--color-light);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 1.5rem;
+      overflow: hidden;
+    }
+    .panel-header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--color-light);
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+    }
+    .panel-header h3 {
+      font-size: 1rem;
+      margin: 0;
+    }
+    .panel-header .muted {
+      font-size: .8rem;
+      color: var(--color-gray);
+      margin-left: auto;
+    }
+    .panel-body { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .88rem;
+    }
+    thead th {
+      text-align: left;
+      padding: .55rem .7rem;
+      background: var(--color-bg);
+      font-weight: 600;
+      color: var(--color-dark-light);
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .02em;
+      border-bottom: 1px solid var(--color-light);
+      white-space: nowrap;
+    }
+    tbody td {
+      padding: .55rem .7rem;
+      border-bottom: 1px solid var(--color-light);
+      vertical-align: top;
+      text-align: left;
+    }
+    tbody tr:hover { background: var(--color-bg); }
+
+    .pill {
+      display: inline-flex;
+      padding: .15rem .55rem;
+      border-radius: 999px;
+      font-size: .72rem;
+      font-weight: 600;
+    }
+    .pill.ok { background: rgba(130,190,147,.2); color: #3d6e50; }
+    .pill.warn { background: rgba(241,196,15,.25); color: #92700c; }
+    .pill.err { background: rgba(192,57,43,.2); color: var(--color-danger-dark); }
+    .pill.gray { background: var(--color-light); color: var(--color-dark-light); }
+
+    .search-input {
+      width: 260px;
+      padding: .5rem .75rem;
+      border: 1px solid var(--color-gray-light);
+      border-radius: var(--radius-md);
+      font-family: inherit;
+      font-size: .9rem;
+    }
+    .search-input:focus {
+      outline: none;
+      border-color: var(--color-primary);
+    }
+
+    .loading, .empty {
+      padding: 2rem;
+      text-align: center;
+      color: var(--color-gray);
+    }
+    .error-box {
+      padding: 1.5rem;
+      background: #fdecea;
+      border: 1px solid #f5c6cb;
+      color: var(--color-danger-dark);
+      border-radius: var(--radius-md);
+      margin-bottom: 1rem;
+    }
+
+    .row-details {
+      font-size: .75rem;
+      color: var(--color-gray);
+      margin-top: .25rem;
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Conversations modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.4);
+      z-index: 1000;
+      display: none;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 2rem 1rem;
+      overflow-y: auto;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-box {
+      background: var(--color-white);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-md, 0 10px 30px rgba(0,0,0,.2));
+      width: 100%;
+      max-width: 900px;
+      max-height: calc(100vh - 4rem);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .modal-head {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--color-light);
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+    }
+    .modal-head h3 { margin: 0; font-size: 1rem; }
+    .modal-head .close {
+      margin-left: auto;
+      border: 0;
+      background: var(--color-light);
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      color: var(--color-dark);
+    }
+    .modal-body {
+      padding: 1rem 1.25rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .conv-block {
+      border: 1px solid var(--color-light);
+      border-radius: var(--radius-md);
+      margin-bottom: 1rem;
+      overflow: hidden;
+    }
+    .conv-head {
+      padding: .65rem 1rem;
+      background: var(--color-bg);
+      font-weight: 600;
+      font-size: .9rem;
+      display: flex;
+      gap: .5rem;
+      align-items: center;
+    }
+    .conv-head .muted { color: var(--color-gray); font-weight: 400; font-size: .8rem; margin-left: auto; }
+    .conv-msgs { padding: .5rem 1rem; }
+    .msg {
+      padding: .5rem 0;
+      border-bottom: 1px dashed var(--color-light);
+      font-size: .88rem;
+    }
+    .msg:last-child { border-bottom: 0; }
+    .msg .role {
+      font-size: .7rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: .04em;
+      margin-right: .4rem;
+    }
+    .msg.user .role { color: var(--color-secondary-dark, #3d6e50); }
+    .msg.assistant .role { color: var(--color-primary, #8a5cb0); }
+    .msg .content {
+      margin-top: .25rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .msg .meta { font-size: .7rem; color: var(--color-gray); margin-top: .2rem; }
+    .btn-link {
+      border: 0;
+      background: transparent;
+      color: var(--color-primary);
+      cursor: pointer;
+      padding: 0;
+      font-size: inherit;
+      font-family: inherit;
+      text-decoration: underline;
+    }
+    .btn-link:hover { opacity: .8; }
+
+    /* Chunk-cards in chunks modal */
+    .chunk-block {
+      border: 1px solid var(--color-light);
+      border-radius: var(--radius-md);
+      margin-bottom: .85rem;
+      overflow: hidden;
+    }
+    .chunk-head {
+      padding: .55rem .9rem;
+      background: var(--color-bg);
+      font-size: .82rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: .4rem;
+      align-items: center;
+    }
+    .chunk-head .chunk-id {
+      font-family: ui-monospace, Menlo, monospace;
+      background: var(--color-light);
+      padding: .1rem .45rem;
+      border-radius: 4px;
+      font-size: .75rem;
+    }
+    .chunk-head .muted { color: var(--color-gray); }
+    .chunk-content {
+      padding: .65rem .9rem;
+      font-size: .85rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+    .chunk-block.missing .chunk-content { color: var(--color-gray); font-style: italic; }
+    .action-links { display: inline-flex; gap: .75rem; }
+
+    /* Responsive */
+    @media (max-width: 800px) {
+      .admin-main { padding: 1rem; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="admin-header">
+    <div class="admin-header-inner">
+      <a class="brand" href="/">
+        <img src="/pril-leven-logo.png" alt="" class="brand-logo" />
+        <span>Community Pril Leven</span>
+      </a>
+      <span class="badge">Admin</span>
+      <a class="back" href="/" title="Naar het hub" aria-label="Naar het hub">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1V9.5Z"/></svg>
+      </a>
+    </div>
+  </header>
+
+  <main class="admin-main">
+    <div id="gate" class="loading">Toegang controleren…</div>
+
+    <div id="dashboard" style="display:none;">
+      <div class="admin-tabs">
+        <button class="admin-tab active" data-tab="overview">Overzicht</button>
+        <button class="admin-tab" data-tab="users">Gebruikers</button>
+        <button class="admin-tab" data-tab="queries">Recente vragen</button>
+        <button class="admin-tab" data-tab="fallbacks">Fallbacks</button>
+        <button class="admin-tab" data-tab="events">Abonnement-events</button>
+      </div>
+
+      <!-- Overview -->
+      <div id="tab-overview" class="tab-content active">
+        <div id="global-stats" class="loading">Laden…</div>
+      </div>
+
+      <!-- Users -->
+      <div id="tab-users" class="tab-content">
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Gebruikers</h3>
+            <input type="text" class="search-input" id="users-search" placeholder="Zoek op email…" />
+            <span class="muted" id="users-count"></span>
+          </div>
+          <div class="panel-body">
+            <div id="users-table" class="loading">Laden…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent queries -->
+      <div id="tab-queries" class="tab-content">
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Laatste vragen</h3>
+            <span class="muted">Laatste 50 assistant-antwoorden</span>
+          </div>
+          <div class="panel-body">
+            <div id="queries-table" class="loading">Laden…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fallbacks -->
+      <div id="tab-fallbacks" class="tab-content">
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Fallback-antwoorden</h3>
+            <span class="muted">Vragen waar de bot geen antwoord op vond (out-of-scope)</span>
+          </div>
+          <div class="panel-body">
+            <div id="fallbacks-table" class="loading">Laden…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Subscription events -->
+      <div id="tab-events" class="tab-content">
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Abonnement-events</h3>
+            <input type="text" class="search-input" id="events-search" placeholder="Filter op email…" />
+          </div>
+          <div class="panel-body">
+            <div id="events-table" class="loading">Laden…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Chunks modal -->
+  <div id="chunks-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="chunks-modal-title">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3 id="chunks-modal-title">Opgehaalde bronnen</h3>
+        <button class="close" id="chunks-modal-close" aria-label="Sluiten">×</button>
+      </div>
+      <div class="modal-body" id="chunks-modal-body">
+        <div class="loading">Laden…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Conversations modal -->
+  <div id="conv-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="conv-modal-title">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3 id="conv-modal-title">Gesprekken</h3>
+        <button class="close" id="conv-modal-close" aria-label="Sluiten">×</button>
+      </div>
+      <div class="modal-body" id="conv-modal-body">
+        <div class="loading">Laden…</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/admin-chat.js" type="module"></script>
+</body>
+</html>
