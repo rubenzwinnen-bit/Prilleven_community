@@ -182,17 +182,18 @@ export async function init() {
   /* --- 1. Data ophalen in parallel --- */
   const [recipes, existingIcons] = await Promise.all([
     getRecipes(),
-    supabaseFetch('/rest/v1/ingredient_icons?select=*'),
+    supabaseFetch('/rest/v1/ingredient_icons?select=name,icon_url,display_name,aliases'),
   ]);
 
-  /* --- 2. Unieke ingrediënten extraheren en normaliseren --- */
-  // Map: normalized_name → { displayName, recipeCount }
+  /* --- 2. Unieke ingrediënten extraheren en normaliseren ---
+     Bouwt tegelijk een omgekeerde index op: per genormaliseerde
+     naam houden we bij in welke recepten het ingrediënt voorkomt.
+     Dat is wat het "X recepten"-modal gebruikt. */
+  // Map: normalized_name → { autoDisplayName, recipeCount, recipes: [{id, title}] }
   const ingredientMap = new Map();
 
   for (const recipe of recipes) {
     const ingredients = recipe.ingredients || [];
-    // Track welke normalized names we al gezien hebben voor dit recept
-    // (zodat we een recept niet dubbel tellen voor hetzelfde ingrediënt)
     const seenInRecipe = new Set();
 
     for (const ing of ingredients) {
@@ -203,35 +204,54 @@ export async function init() {
       if (!normalized) continue;
 
       if (!ingredientMap.has(normalized)) {
-        // Gebruik de genormaliseerde naam als basis voor de weergave
         const display = normalized.charAt(0).toUpperCase() + normalized.slice(1);
         ingredientMap.set(normalized, {
-          displayName: display,
+          autoDisplayName: display,
           recipeCount: 0,
+          recipes: [],
         });
       }
 
       // Tel elk recept maar 1x per ingrediënt
       if (!seenInRecipe.has(normalized)) {
-        ingredientMap.get(normalized).recipeCount++;
+        const entry = ingredientMap.get(normalized);
+        entry.recipeCount++;
+        entry.recipes.push({
+          id: recipe.id,
+          title: recipe.title || recipe.name || 'Naamloos recept',
+        });
         seenInRecipe.add(normalized);
       }
     }
   }
 
-  /* --- 3. Bestaande iconen koppelen --- */
-  const iconUrlMap = new Map();
+  /* --- 3. Bestaande iconen + admin-velden koppelen --- */
+  // Map: normalized_name → { iconUrl, adminDisplayName, aliases[] }
+  const iconRowMap = new Map();
   for (const row of (existingIcons || [])) {
-    iconUrlMap.set(row.name, row.icon_url);
+    iconRowMap.set(row.name, {
+      iconUrl: row.icon_url || null,
+      adminDisplayName: row.display_name || null,
+      aliases: Array.isArray(row.aliases) ? row.aliases : [],
+    });
   }
 
-  /* --- 4. Lijst bouwen --- */
-  let ingredientList = Array.from(ingredientMap.entries()).map(([normalized, info]) => ({
-    normalized,
-    displayName: info.displayName,
-    recipeCount: info.recipeCount,
-    iconUrl: iconUrlMap.get(normalized) || null,
-  }));
+  /* --- 4. Lijst bouwen ---
+     displayName = admin-bewerkbare naam indien gezet, anders de
+     auto-gegenereerde naam (genormaliseerd met hoofdletter). */
+  let ingredientList = Array.from(ingredientMap.entries()).map(([normalized, info]) => {
+    const row = iconRowMap.get(normalized);
+    return {
+      normalized,
+      displayName: row?.adminDisplayName || info.autoDisplayName,
+      autoDisplayName: info.autoDisplayName,
+      adminDisplayName: row?.adminDisplayName || null,
+      aliases: row?.aliases || [],
+      recipeCount: info.recipeCount,
+      recipes: info.recipes,
+      iconUrl: row?.iconUrl || null,
+    };
+  });
 
   /* --- 5. Grid renderen en events koppelen --- */
   const gridEl = document.getElementById('icon-grid');
@@ -287,9 +307,19 @@ export async function init() {
         </div>
         <div class="icon-grid-info">
           <span class="icon-grid-name">${escapeHtml(item.displayName)}</span>
-          <span class="icon-grid-count">${item.recipeCount} ${item.recipeCount === 1 ? 'recept' : 'recepten'}</span>
+          <button type="button" class="icon-grid-count icon-recipes-btn"
+                  data-name="${escapeHtml(item.normalized)}"
+                  title="Bekijk recepten met dit ingrediënt"
+                  style="background:none;border:none;padding:0;cursor:pointer;text-decoration:underline;color:var(--color-primary);font:inherit">
+            ${item.recipeCount} ${item.recipeCount === 1 ? 'recept' : 'recepten'}
+          </button>
         </div>
         <div class="icon-grid-actions">
+          <button class="btn btn-sm btn-outline icon-edit-btn"
+                  data-name="${escapeHtml(item.normalized)}"
+                  title="Bewerk weergavenaam en aliassen">
+            ✏️ Hernoem
+          </button>
           <label class="btn btn-sm btn-outline icon-upload-label">
             ${item.iconUrl ? 'Wijzig' : 'Upload'}
             <input type="file" accept="image/*" class="icon-upload-input"
@@ -695,6 +725,149 @@ ui;ui.png`;
       showToast('Verwijderen mislukt: ' + err.message, 'error');
     }
   });
+
+  /* ======== HERNOEM (display_name + aliases) ======== */
+  gridEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('.icon-edit-btn');
+    if (!btn) return;
+    const normalized = btn.dataset.name;
+    const item = ingredientList.find(i => i.normalized === normalized);
+    if (item) openEditModal(item);
+  });
+
+  /* ======== BEKIJK RECEPTEN ======== */
+  gridEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('.icon-recipes-btn');
+    if (!btn) return;
+    const normalized = btn.dataset.name;
+    const item = ingredientList.find(i => i.normalized === normalized);
+    if (item) openRecipesModal(item);
+  });
+
+  /* ----------------------------------------
+     EDIT MODAL — bewerk display_name + aliases
+     Sla op via UPSERT op `name`.
+  ---------------------------------------- */
+  function openEditModal(item) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal" style="max-width:520px;text-align:left">
+        <h2 style="text-align:center">Hernoem ingrediënt</h2>
+        <p style="text-align:center;font-size:0.85rem;color:var(--color-gray);margin-bottom:1.25rem">
+          De interne sleutel <code>${escapeHtml(item.normalized)}</code> blijft ongewijzigd —
+          recepten blijven matchen.
+        </p>
+
+        <label style="display:block;margin-bottom:0.4rem;font-weight:600">Weergavenaam</label>
+        <input type="text" id="edit-display-name" class="form-control"
+               placeholder="${escapeHtml(item.autoDisplayName)}"
+               value="${escapeHtml(item.adminDisplayName || '')}"
+               style="text-align:left;margin-bottom:1rem">
+
+        <label style="display:block;margin-bottom:0.4rem;font-weight:600">
+          Aliassen
+          <span style="font-weight:400;font-size:0.8rem;color:var(--color-gray)">
+            (komma-gescheiden — extra spellingen die ook deze icoon moeten gebruiken)
+          </span>
+        </label>
+        <input type="text" id="edit-aliases" class="form-control"
+               placeholder="bv. citroenen, citroentje, citroensap"
+               value="${escapeHtml((item.aliases || []).join(', '))}"
+               style="text-align:left;margin-bottom:1.25rem">
+
+        <div style="display:flex;gap:0.75rem;justify-content:flex-end">
+          <button type="button" class="btn btn-secondary" id="edit-cancel">Annuleer</button>
+          <button type="button" class="btn btn-primary" id="edit-save">Opslaan</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const close = () => overlay.remove();
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    overlay.querySelector('#edit-cancel').addEventListener('click', close);
+
+    overlay.querySelector('#edit-save').addEventListener('click', async () => {
+      const dnRaw = overlay.querySelector('#edit-display-name').value.trim();
+      const aliasesRaw = overlay.querySelector('#edit-aliases').value.trim();
+      const aliases = aliasesRaw
+        ? aliasesRaw.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
+        : [];
+
+      try {
+        await supabaseFetch('/rest/v1/ingredient_icons?on_conflict=name', {
+          method: 'POST',
+          body: {
+            name: item.normalized,
+            // Behoud bestaande icon_url; UPSERT mag deze overschrijven met null
+            // niet — dus alleen meesturen als we hem hebben.
+            ...(item.iconUrl ? { icon_url: item.iconUrl } : {}),
+            display_name: dnRaw || null,
+            aliases,
+            updated_at: new Date().toISOString(),
+          },
+          headers: {
+            'Prefer': 'return=representation,resolution=merge-duplicates',
+          },
+        });
+
+        // Update lokale data
+        item.adminDisplayName = dnRaw || null;
+        item.displayName = item.adminDisplayName || item.autoDisplayName;
+        item.aliases = aliases;
+
+        applyFilterAndSort();
+        showToast(`"${item.displayName}" opgeslagen.`);
+        close();
+      } catch (err) {
+        console.error('Opslaan mislukt:', err);
+        showToast('Opslaan mislukt: ' + err.message, 'error');
+      }
+    });
+  }
+
+  /* ----------------------------------------
+     RECEPTEN MODAL — toon recepten met dit
+     ingrediënt; klik = nieuwe tab naar detail.
+  ---------------------------------------- */
+  function openRecipesModal(item) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+
+    const recipesHtml = (item.recipes || [])
+      .slice() // copy
+      .sort((a, b) => a.title.localeCompare(b.title))
+      .map(r => `
+        <li style="margin-bottom:0.4rem">
+          <a href="#/recipe/${encodeURIComponent(r.id)}"
+             target="_blank" rel="noopener"
+             style="color:var(--color-primary);text-decoration:none">
+            ${escapeHtml(r.title)} ↗
+          </a>
+        </li>
+      `).join('');
+
+    overlay.innerHTML = `
+      <div class="modal" style="max-width:520px;text-align:left">
+        <h2 style="text-align:center">${escapeHtml(item.displayName)}</h2>
+        <p style="text-align:center;color:var(--color-gray);margin-bottom:1rem">
+          Komt voor in ${item.recipeCount} ${item.recipeCount === 1 ? 'recept' : 'recepten'}
+        </p>
+        <ul style="list-style:none;padding:0;margin:0 0 1.5rem 0;max-height:400px;overflow-y:auto">
+          ${recipesHtml || '<li style="color:var(--color-gray)">Geen recepten gevonden.</li>'}
+        </ul>
+        <div style="text-align:center">
+          <button type="button" class="btn btn-secondary" id="recipes-close">Sluiten</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const close = () => overlay.remove();
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    overlay.querySelector('#recipes-close').addEventListener('click', close);
+  }
 }
 
 /* ----------------------------------------
