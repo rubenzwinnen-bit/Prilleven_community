@@ -7,7 +7,7 @@ import {
   sanitizeProfileInput,
   upsertUserProfile,
 } from './_lib/profile.mjs';
-import { getMonthlyUsage } from './_lib/rate-limit.mjs';
+import { getMonthlyUsage, getDailyImageUsage } from './_lib/rate-limit.mjs';
 
 function json(res, status, body) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -32,11 +32,12 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const [profile, usage] = await Promise.all([
+      const [profile, usage, imageUsage] = await Promise.all([
         loadUserProfile(auth.userId),
         getMonthlyUsage({ userId: auth.userId }),
+        getDailyImageUsage({ userId: auth.userId }),
       ]);
-      return json(res, 200, { profile, usage });
+      return json(res, 200, { profile, usage, imageUsage });
     }
     if (req.method === 'PUT') {
       let body;

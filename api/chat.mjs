@@ -20,7 +20,7 @@ import { retrieveCombined } from './_lib/retrieve.mjs';
 import { extractAndStoreMemories } from './_lib/user-memory.mjs';
 import {
   checkRateLimit, checkCostCap, checkMonthlyCostCap, checkImageRateLimit, logUsage, hashIp, extractIp,
-  getMonthlyUsage, IMAGE_LIMIT_PER_DAY_USER,
+  getMonthlyUsage, getDailyImageUsage, IMAGE_LIMIT_PER_DAY_USER,
 } from './_lib/rate-limit.mjs';
 import { getCached, setCached } from './_lib/cache.mjs';
 import { pickModel } from './_lib/model-router.mjs';
@@ -282,7 +282,10 @@ export default async function handler(req, res) {
           }
         }
         await logUsage({ userId, ipHash, event: 'cache_hit' });
-        const usage = await getMonthlyUsage({ userId });
+        const [usage, imageUsage] = await Promise.all([
+          getMonthlyUsage({ userId }),
+          getDailyImageUsage({ userId }),
+        ]);
         return json(res, 200, {
           answer: cached.answer,
           sources: cached.retrievedIds,
@@ -291,6 +294,7 @@ export default async function handler(req, res) {
           conversation_id: conversationId,
           assistant_message_id: asstId,
           usage,
+          imageUsage,
         });
       }
     }
@@ -354,7 +358,10 @@ export default async function handler(req, res) {
         }
       }
       await logUsage({ userId, ipHash, event: 'query' });
-      const usage = await getMonthlyUsage({ userId });
+      const [usage, imageUsage] = await Promise.all([
+        getMonthlyUsage({ userId }),
+        getDailyImageUsage({ userId }),
+      ]);
       return json(res, 200, {
         answer: fallback,
         sources: [],
@@ -363,6 +370,7 @@ export default async function handler(req, res) {
         conversation_id: conversationId,
         assistant_message_id: asstId,
         usage,
+        imageUsage,
       });
     }
 
@@ -467,7 +475,10 @@ ${ingredientsBlock}Vraag van de gebruiker: ${questionForPrompt}`;
       }
     }
 
-    const usage = await getMonthlyUsage({ userId });
+    const [usage, imageUsage] = await Promise.all([
+      getMonthlyUsage({ userId }),
+      getDailyImageUsage({ userId }),
+    ]);
     return json(res, 200, {
       answer,
       sources: retrievedIds,
@@ -478,6 +489,7 @@ ${ingredientsBlock}Vraag van de gebruiker: ${questionForPrompt}`;
       conversation_id: conversationId,
       assistant_message_id: asstId,
       usage,
+      imageUsage,
     });
   } catch (err) {
     console.error('[chat]', err);
