@@ -178,6 +178,31 @@ export async function checkImageRateLimit({ key, keyCol }) {
 }
 
 /**
+ * Read-only variant: haal het huidige image-gebruik op voor weergave
+ * in de UI (mobiele app, web). Identiek aan checkImageRateLimit maar
+ * altijd "allowed: true" zodat de UI altijd informatie krijgt.
+ */
+export async function getDailyImageUsage({ userId }) {
+  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { count, error } = await supabase
+    .from('usage_log')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('event', 'query_with_image')
+    .gte('created_at', dayAgo);
+  if (error) {
+    console.error(`[image-usage] ${error.message}`);
+    return { used: 0, limit: IMAGE_LIMIT_PER_DAY_USER, remaining: IMAGE_LIMIT_PER_DAY_USER };
+  }
+  const used = count || 0;
+  return {
+    used,
+    limit: IMAGE_LIMIT_PER_DAY_USER,
+    remaining: Math.max(0, IMAGE_LIMIT_PER_DAY_USER - used),
+  };
+}
+
+/**
  * Log 1 event naar usage_log.
  * ipHash en userId zijn beide optioneel — laat onbekende null.
  */
