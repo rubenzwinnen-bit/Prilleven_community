@@ -5,7 +5,7 @@
    beoordeling en favoriet-knop.
 ============================================ */
 
-import { escapeHtml, renderStarsDisplay, getMealMomentLabel } from '../utils.js';
+import { escapeHtml, renderStarsDisplay, getMealMomentLabel } from '../utils.js?v=2.0.1';
 
 /* ----------------------------------------
    RENDER

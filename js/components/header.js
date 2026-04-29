@@ -4,8 +4,8 @@
    ingelogde gebruiker en een uitlogknop.
 ============================================ */
 
-import * as Store from '../store.js';
-import { sessionClear, invalidateSubscriptionCache } from '../supabase.js';
+import * as Store from '../store.js?v=2.0.1';
+import { sessionClear, invalidateSubscriptionCache } from '../supabase.js?v=2.0.1';
 
 /* ----------------------------------------
    RENDER

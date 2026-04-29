@@ -12,14 +12,14 @@
    - init() haalt alle data parallel op via Promise.all
 ============================================ */
 
-import * as Store from '../store.js';
-import * as Router from '../router.js';
+import * as Store from '../store.js?v=2.0.1';
+import * as Router from '../router.js?v=2.0.1';
 import {
   showToast, escapeHtml, formatDate,
   renderStarsDisplay, renderStarsInteractive,
   getMealMomentLabel, getSlotLabel,
   WEEKDAYS, SCHEDULE_SLOTS
-} from '../utils.js';
+} from '../utils.js?v=2.0.1';
 
 /* ----------------------------------------
    RENDER
