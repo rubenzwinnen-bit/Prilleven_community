@@ -32,6 +32,9 @@ import {
   toggleLike,
   createImageUploadUrl,
   signImageUrls,
+  sanitizePollInput,
+  loadPollsForPosts,
+  votePoll,
 } from './_lib/community.mjs';
 import { findBlockedWord } from './_lib/moderation.mjs';
 
@@ -112,6 +115,11 @@ function matchRoute(req) {
     return { route: 'upload.url' };
   }
 
+  // /posts/:id/poll/vote
+  if (segments.length === 4 && segments[0] === 'posts' && segments[2] === 'poll' && segments[3] === 'vote') {
+    if (method === 'POST') return { route: 'poll.vote', params: { id: segments[1] } };
+  }
+
   return null;
 }
 
@@ -174,14 +182,18 @@ export default async function handler(req, res) {
       const before   = url.searchParams.get('before');
       const limit    = url.searchParams.get('limit');
       const posts = await loadPosts({ category, before, limit });
-      const [likedSet, signedMap] = await Promise.all([
-        loadMyLikesForPosts(auth.userId, posts.map(p => p.id)),
+      const postIds = posts.map(p => p.id);
+      const pollIds = posts.filter(p => p.has_poll).map(p => p.id);
+      const [likedSet, signedMap, pollMap] = await Promise.all([
+        loadMyLikesForPosts(auth.userId, postIds),
         signImageUrls(posts.map(p => p.image_path).filter(Boolean)),
+        loadPollsForPosts(auth.userId, pollIds),
       ]);
       const enriched = posts.map(p => ({
         ...p,
         liked_by_me: likedSet.has(p.id),
         image_url: p.image_path ? (signedMap.get(p.image_path) || null) : null,
+        poll: p.has_poll ? (pollMap.get(p.id) || null) : null,
       }));
       return json(res, 200, { posts: enriched });
     }
@@ -192,8 +204,11 @@ export default async function handler(req, res) {
       const profile = await loadCommunityProfile(auth.userId);
       if (!profile) return json(res, 412, { error: 'Stel eerst een nickname in.' });
 
-      let clean;
-      try { clean = sanitizePostInput(body); }
+      let clean, pollClean = null;
+      try {
+        clean = sanitizePostInput(body);
+        pollClean = sanitizePollInput(body.poll);
+      }
       catch (err) { return json(res, err.status || 422, { error: err.message }); }
 
       // Image_path moet onder de eigen user-folder zitten (anti-spoof).
@@ -206,15 +221,23 @@ export default async function handler(req, res) {
           error: 'Bericht bevat ongepaste taal en kan niet worden geplaatst.',
         });
       }
-      const post = await createPost(auth.userId, clean);
-      const signedMap = post.image_path
-        ? await signImageUrls([post.image_path])
-        : new Map();
+      // Ook poll-vraag checken op blacklist
+      if (pollClean && findBlockedWord(pollClean.question)) {
+        return json(res, 422, {
+          error: 'Poll-vraag bevat ongepaste taal.',
+        });
+      }
+      const post = await createPost(auth.userId, { ...clean, poll: pollClean });
+      const [signedMap, pollMap] = await Promise.all([
+        post.image_path ? signImageUrls([post.image_path]) : Promise.resolve(new Map()),
+        post.has_poll  ? loadPollsForPosts(auth.userId, [post.id]) : Promise.resolve(new Map()),
+      ]);
       return json(res, 201, {
         post: {
           ...post,
           liked_by_me: false,
           image_url: post.image_path ? (signedMap.get(post.image_path) || null) : null,
+          poll:      post.has_poll  ? (pollMap.get(post.id) || null) : null,
         },
       });
     }
@@ -265,6 +288,20 @@ export default async function handler(req, res) {
       if (!profile) return json(res, 412, { error: 'Stel eerst een nickname in.' });
       const result = await createImageUploadUrl(auth.userId);
       return json(res, 200, result);
+    }
+
+    /* ----- poll vote ----- */
+    if (route === 'poll.vote') {
+      if (!isUuid(params.id)) return json(res, 400, { error: 'Ongeldige post-id.' });
+      const body = parseBody(req);
+      if (body === null) return json(res, 400, { error: 'Ongeldige JSON.' });
+      const optionIdx = parseInt(body.option_idx, 10);
+      try {
+        const result = await votePoll(auth.userId, params.id, optionIdx);
+        return json(res, 200, { poll: result });
+      } catch (err) {
+        return json(res, err.status || 500, { error: err.message });
+      }
     }
 
     return json(res, 404, { error: 'Endpoint niet gevonden.' });

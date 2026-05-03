@@ -8,7 +8,7 @@ import { showToast, escapeHtml, processImageForUpload } from '../utils.js?v=2.0.
 import * as Api from '../communityApi.js?v=2.0.1';
 import { ensureNickname, getCachedNickname, openNicknameModal, invalidateNicknameCache }
   from './nicknameModal.js?v=2.0.1';
-import { renderPostCard, renderReplyRow, CATEGORIES } from './timelinePost.js?v=2.0.1';
+import { renderPostCard, renderReplyRow, renderPoll, CATEGORIES } from './timelinePost.js?v=2.0.1';
 
 const MAX_BODY = 4000;
 let currentCategory = null; // null = "Alle"
@@ -46,6 +46,7 @@ export function render() {
               <select id="tl-composer-cat" class="tl-composer-cat">${catOptions}</select>
               <button type="button" class="tl-composer-photo" id="tl-photo-btn" title="Foto toevoegen">📷</button>
               <input type="file" id="tl-photo-input" accept="image/*" class="visually-hidden">
+              <button type="button" class="tl-composer-photo" id="tl-poll-toggle" title="Poll toevoegen">📊</button>
               <span class="tl-counter" id="tl-counter">0 / ${MAX_BODY}</span>
             </div>
             <div class="tl-composer-actions">
@@ -56,6 +57,19 @@ export function render() {
           <div class="tl-photo-preview hidden" id="tl-photo-preview">
             <img id="tl-photo-preview-img" alt="Voorbeeld">
             <button type="button" class="tl-photo-remove" id="tl-photo-remove" title="Foto verwijderen">×</button>
+          </div>
+          <div class="tl-poll-builder hidden" id="tl-poll-builder">
+            <div class="tl-poll-builder-head">
+              <strong>Poll</strong>
+              <button type="button" class="tl-poll-remove" id="tl-poll-remove" title="Poll verwijderen">×</button>
+            </div>
+            <input type="text" id="tl-poll-question" class="tl-poll-input" placeholder="Stel je vraag…" maxlength="200">
+            <div class="tl-poll-options" id="tl-poll-options">
+              <input type="text" class="tl-poll-input tl-poll-option" placeholder="Optie 1" maxlength="80">
+              <input type="text" class="tl-poll-input tl-poll-option" placeholder="Optie 2" maxlength="80">
+            </div>
+            <button type="button" class="btn btn-outline btn-sm" id="tl-poll-add-option">+ Optie toevoegen</button>
+            <div class="tl-poll-hint">Sluit automatisch na 7 dagen · 2-4 opties · 1 stem per persoon</div>
           </div>
           <div id="tl-composer-error" class="auth-error hidden"></div>
         </div>
@@ -105,6 +119,67 @@ export async function init() {
 
   photoBtn?.addEventListener('click', () => photoInput.click());
   photoRemove?.addEventListener('click', clearPhoto);
+
+  /* ----- Poll builder ----- */
+  const pollToggle    = document.getElementById('tl-poll-toggle');
+  const pollBuilder   = document.getElementById('tl-poll-builder');
+  const pollRemove    = document.getElementById('tl-poll-remove');
+  const pollQuestion  = document.getElementById('tl-poll-question');
+  const pollOptionsEl = document.getElementById('tl-poll-options');
+  const pollAddBtn    = document.getElementById('tl-poll-add-option');
+
+  const updatePollAddBtn = () => {
+    const count = pollOptionsEl.querySelectorAll('.tl-poll-option').length;
+    pollAddBtn.disabled = count >= 4;
+  };
+
+  const addPollOption = () => {
+    const count = pollOptionsEl.querySelectorAll('.tl-poll-option').length;
+    if (count >= 4) return;
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.className = 'tl-poll-input tl-poll-option';
+    inp.placeholder = `Optie ${count + 1}`;
+    inp.maxLength = 80;
+    pollOptionsEl.appendChild(inp);
+    inp.focus();
+    updatePollAddBtn();
+  };
+
+  const clearPoll = () => {
+    pollBuilder.classList.add('hidden');
+    pollQuestion.value = '';
+    pollOptionsEl.innerHTML = `
+      <input type="text" class="tl-poll-input tl-poll-option" placeholder="Optie 1" maxlength="80">
+      <input type="text" class="tl-poll-input tl-poll-option" placeholder="Optie 2" maxlength="80">
+    `;
+    updatePollAddBtn();
+  };
+
+  const isPollOpen = () => !pollBuilder.classList.contains('hidden');
+
+  const collectPoll = () => {
+    if (!isPollOpen()) return null;
+    const question = pollQuestion.value.trim();
+    const options = Array.from(pollOptionsEl.querySelectorAll('.tl-poll-option'))
+      .map(i => i.value.trim())
+      .filter(Boolean);
+    if (!question || options.length < 2) {
+      throw new Error('Vul de poll-vraag en minstens 2 opties in.');
+    }
+    return { question, options };
+  };
+
+  pollToggle?.addEventListener('click', () => {
+    if (isPollOpen()) {
+      clearPoll();
+    } else {
+      pollBuilder.classList.remove('hidden');
+      setTimeout(() => pollQuestion.focus(), 0);
+    }
+  });
+  pollRemove?.addEventListener('click', clearPoll);
+  pollAddBtn?.addEventListener('click', addPollOption);
 
   photoInput?.addEventListener('change', async () => {
     const file = photoInput.files?.[0];
@@ -177,6 +252,15 @@ export async function init() {
 
       const category = catEl?.value || 'algemeen';
 
+      // Verzamel poll-data (throwt bij ongeldig)
+      let pollData = null;
+      try {
+        pollData = collectPoll();
+      } catch (err) {
+        setError(err.message);
+        return;
+      }
+
       // Upload eerst de foto (indien aanwezig) → krijg image_path
       let image_path = null;
       if (pendingImage?.blob) {
@@ -195,7 +279,7 @@ export async function init() {
       }
 
       submitBtn.textContent = 'Plaatsen…';
-      const { ok, data, error, status } = await Api.createPost({ body: text, category, image_path });
+      const { ok, data, error, status } = await Api.createPost({ body: text, category, image_path, poll: pollData });
       if (!ok) {
         // Sommige fouten verdienen een specifieke melding
         if (status === 412) {
@@ -210,6 +294,7 @@ export async function init() {
       counter.textContent = `0 / ${MAX_BODY}`;
       if (catEl) catEl.value = 'algemeen';
       clearPhoto();
+      clearPoll();
       prependPost(data.post);
       showToast('Geplaatst');
       await refreshNickDisplay();
@@ -256,7 +341,35 @@ async function onFeedClick(e) {
     await handleLikeToggle(card, btn);
   } else if (action === 'toggle-replies') {
     await handleRepliesToggle(card, btn);
+  } else if (action === 'vote-poll') {
+    await handlePollVote(card, btn);
   }
+}
+
+async function handlePollVote(card, btn) {
+  if (btn.disabled) return;
+  const optionIdx = parseInt(btn.dataset.optionIdx, 10);
+  if (Number.isNaN(optionIdx)) return;
+
+  // Disable alle vote-knoppen tijdens request
+  const allBtns = card.querySelectorAll('[data-action="vote-poll"]');
+  allBtns.forEach(b => b.disabled = true);
+
+  const { ok, data, error } = await Api.votePoll(card.dataset.postId, optionIdx);
+  if (!ok || !data?.poll) {
+    allBtns.forEach(b => b.disabled = false);
+    showToast(error || 'Kon stem niet registreren', 'error');
+    return;
+  }
+
+  // Vervang het hele poll-blok met de nieuwe (resultaat-view)
+  const pollEl = card.querySelector('[data-role="poll"]');
+  if (pollEl) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = renderPoll(data.poll);
+    pollEl.replaceWith(tmp.firstElementChild);
+  }
+  showToast('Stem geregistreerd');
 }
 
 async function onFeedSubmit(e) {

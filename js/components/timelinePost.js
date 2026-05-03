@@ -57,6 +57,7 @@ export function renderPostCard(post) {
           <img class="tl-post-image" src="${escapeHtml(post.image_url)}" alt="Bijgevoegde foto" loading="lazy">
         </a>
       ` : ''}
+      ${post.poll ? renderPoll(post.poll) : ''}
       <footer class="tl-post-actions">
         <button type="button" class="tl-action tl-like ${liked ? 'is-liked' : ''}" data-action="like" aria-label="Like">
           <span class="tl-action-icon">${liked ? '❤' : '♡'}</span>
@@ -80,6 +81,63 @@ export function renderPostCard(post) {
       </div>
     </article>
   `;
+}
+
+/**
+ * Render een poll-blok. Toont stem-knoppen tot user heeft gestemd of poll
+ * gesloten is, daarna resultaat-bars met percentage.
+ */
+export function renderPoll(poll) {
+  if (!poll || !Array.isArray(poll.options)) return '';
+  const total = Number(poll.total || 0);
+  const myVote = poll.my_vote;
+  const closed = !!poll.closed;
+  const showResults = closed || myVote !== null;
+
+  const opts = poll.options.map((label, idx) => {
+    const count = Number(poll.counts?.[idx] || 0);
+    const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+    const mine = myVote === idx ? ' is-mine' : '';
+
+    if (showResults) {
+      return `
+        <div class="tl-poll-result${mine}">
+          <div class="tl-poll-bar" style="width:${pct}%"></div>
+          <div class="tl-poll-result-label">
+            <span>${escapeHtml(label)}${mine ? ' ✓' : ''}</span>
+            <span class="tl-poll-pct">${pct}%</span>
+          </div>
+        </div>
+      `;
+    }
+    return `
+      <button type="button" class="tl-poll-vote-btn" data-action="vote-poll" data-option-idx="${idx}">
+        ${escapeHtml(label)}
+      </button>
+    `;
+  }).join('');
+
+  const closeText = closed
+    ? 'Gesloten'
+    : `Sluit ${formatRelativeFuture(poll.closes_at)}`;
+
+  return `
+    <div class="tl-poll" data-role="poll">
+      <div class="tl-poll-question">${escapeHtml(poll.question)}</div>
+      <div class="tl-poll-options-list">${opts}</div>
+      <div class="tl-poll-meta">${total} stem${total === 1 ? '' : 'men'} · ${closeText}</div>
+    </div>
+  `;
+}
+
+function formatRelativeFuture(isoString) {
+  if (!isoString) return '';
+  const ms = new Date(isoString).getTime() - Date.now();
+  if (ms <= 0) return 'binnenkort';
+  const sec = Math.floor(ms / 1000);
+  if (sec < 3600)         return `over ${Math.max(1, Math.floor(sec / 60))} min`;
+  if (sec < 86400)        return `over ${Math.floor(sec / 3600)} u`;
+  return `over ${Math.floor(sec / 86400)} d`;
 }
 
 /** Render één reply-rij. Gebruikt door timeline.js bij expand of nieuwe reply. */

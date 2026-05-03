@@ -49,8 +49,15 @@ export function getPosts({ category = null, before = null, limit = 20 } = {}) {
   const qs = params.toString();
   return call('/posts' + (qs ? '?' + qs : ''));
 }
-export const createPost = ({ body, category, image_path = null }) =>
-  call('/posts', { method: 'POST', body: { body, category, image_path } });
+export const createPost = ({ body, category, image_path = null, poll = null }) =>
+  call('/posts', { method: 'POST', body: { body, category, image_path, poll } });
+
+/* ----- Polls ----- */
+export const votePoll = (postId, optionIdx) =>
+  call(`/posts/${encodeURIComponent(postId)}/poll/vote`, {
+    method: 'POST',
+    body: { option_idx: optionIdx },
+  });
 
 /* ----- Image upload (signed URL flow) ----- */
 export const getUploadUrl = () => call('/upload-url', { method: 'POST' });

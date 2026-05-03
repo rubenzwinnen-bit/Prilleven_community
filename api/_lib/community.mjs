@@ -148,13 +148,30 @@ export function sanitizePostInput(input) {
 }
 
 /** Maak een nieuwe post aan. Returnt de hydrated row uit de view. */
-export async function createPost(userId, { body, category, image_path = null }) {
+export async function createPost(userId, { body, category, image_path = null, poll = null }) {
   const { data: inserted, error } = await supabase
     .from('community_posts')
     .insert({ user_id: userId, body, category, image_path })
     .select('id')
     .single();
   if (error) throw new Error('Post insert: ' + error.message);
+
+  // Optionele poll meteen toevoegen.
+  if (poll) {
+    const { error: pollErr } = await supabase
+      .from('community_polls')
+      .insert({
+        post_id: inserted.id,
+        question: poll.question,
+        options: poll.options,
+      });
+    if (pollErr) {
+      // Rollback: post zonder poll bestaat al, beter weggooien zodat
+      // de feed niet "has_poll = false" toont voor een mislukte poll-create.
+      await supabase.from('community_posts').delete().eq('id', inserted.id);
+      throw new Error('Poll insert: ' + pollErr.message);
+    }
+  }
 
   // Hydrate via view (krijgt nickname + counts mee).
   const { data: hydrated, error: viewErr } = await supabase
@@ -165,6 +182,33 @@ export async function createPost(userId, { body, category, image_path = null }) 
   if (viewErr) throw new Error('Post hydrate: ' + viewErr.message);
 
   return hydrated;
+}
+
+/** Validatie + sanitisatie van poll-input. Returnt object of null. */
+export function sanitizePollInput(input) {
+  if (!input || typeof input !== 'object') return null;
+  const question = typeof input.question === 'string' ? input.question.trim() : '';
+  if (!question) {
+    throw Object.assign(new Error('Poll-vraag mag niet leeg zijn.'), { status: 422 });
+  }
+  if (question.length > 200) {
+    throw Object.assign(new Error('Poll-vraag mag maximaal 200 tekens zijn.'), { status: 422 });
+  }
+  if (!Array.isArray(input.options)) {
+    throw Object.assign(new Error('Poll moet opties bevatten.'), { status: 422 });
+  }
+  const options = input.options
+    .map(o => typeof o === 'string' ? o.trim() : '')
+    .filter(Boolean);
+  if (options.length < 2 || options.length > 4) {
+    throw Object.assign(new Error('Poll moet 2 tot 4 opties hebben.'), { status: 422 });
+  }
+  for (const o of options) {
+    if (o.length > 80) {
+      throw Object.assign(new Error('Poll-optie mag maximaal 80 tekens zijn.'), { status: 422 });
+    }
+  }
+  return { question, options };
 }
 
 /* ============================================
@@ -356,4 +400,93 @@ export async function createReply(userId, postId, { body }) {
     .maybeSingle();
 
   return { ...inserted, nickname: prof?.nickname || null, post_author_id: post.user_id };
+}
+
+/* ============================================
+   POLLS
+============================================ */
+
+/**
+ * Voor een lijst van postIds: laad polls + vote-counts + my_vote.
+ * Returnt Map<post_id, { question, options, closes_at, counts: int[],
+ *                         total: int, my_vote: int|null, closed: bool }>.
+ */
+export async function loadPollsForPosts(userId, postIds) {
+  const ids = (postIds || []).filter(Boolean);
+  if (ids.length === 0) return new Map();
+
+  // Load polls + votes in parallel
+  const [pollsRes, votesRes] = await Promise.all([
+    supabase
+      .from('community_polls')
+      .select('post_id, question, options, closes_at')
+      .in('post_id', ids),
+    supabase
+      .from('community_poll_votes')
+      .select('post_id, user_id, option_idx')
+      .in('post_id', ids),
+  ]);
+  if (pollsRes.error) throw new Error('Polls load: ' + pollsRes.error.message);
+  if (votesRes.error) throw new Error('Poll votes load: ' + votesRes.error.message);
+
+  const map = new Map();
+  const now = Date.now();
+  for (const p of pollsRes.data || []) {
+    const optsCount = Array.isArray(p.options) ? p.options.length : 0;
+    map.set(p.post_id, {
+      question: p.question,
+      options: p.options,
+      closes_at: p.closes_at,
+      counts: new Array(optsCount).fill(0),
+      total: 0,
+      my_vote: null,
+      closed: new Date(p.closes_at).getTime() <= now,
+    });
+  }
+  for (const v of votesRes.data || []) {
+    const entry = map.get(v.post_id);
+    if (!entry) continue;
+    if (v.option_idx >= 0 && v.option_idx < entry.counts.length) {
+      entry.counts[v.option_idx] += 1;
+      entry.total += 1;
+      if (v.user_id === userId) entry.my_vote = v.option_idx;
+    }
+  }
+  return map;
+}
+
+/**
+ * Stem op een poll. Faalt als poll niet bestaat, gesloten is, of optie ongeldig.
+ * Returnt vernieuwde poll-data: { counts, total, my_vote, closed }.
+ */
+export async function votePoll(userId, postId, optionIdx) {
+  if (!Number.isInteger(optionIdx) || optionIdx < 0 || optionIdx > 3) {
+    throw Object.assign(new Error('Ongeldige stem-optie.'), { status: 422 });
+  }
+  // Poll bestaat? Niet gesloten? Optie binnen range?
+  const { data: poll, error: pollErr } = await supabase
+    .from('community_polls')
+    .select('post_id, options, closes_at')
+    .eq('post_id', postId)
+    .maybeSingle();
+  if (pollErr) throw new Error('Poll check: ' + pollErr.message);
+  if (!poll) throw Object.assign(new Error('Poll bestaat niet.'), { status: 404 });
+  if (new Date(poll.closes_at).getTime() <= Date.now()) {
+    throw Object.assign(new Error('Poll is gesloten.'), { status: 409 });
+  }
+  const optsCount = Array.isArray(poll.options) ? poll.options.length : 0;
+  if (optionIdx >= optsCount) {
+    throw Object.assign(new Error('Ongeldige stem-optie.'), { status: 422 });
+  }
+
+  // Upsert: één stem per (post_id, user_id) door PK; we staan toe te wijzigen.
+  const { error: upErr } = await supabase
+    .from('community_poll_votes')
+    .upsert({ post_id: postId, user_id: userId, option_idx: optionIdx },
+            { onConflict: 'post_id,user_id' });
+  if (upErr) throw new Error('Vote upsert: ' + upErr.message);
+
+  // Vernieuw counts
+  const map = await loadPollsForPosts(userId, [postId]);
+  return map.get(postId) || null;
 }

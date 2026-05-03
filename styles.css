@@ -2780,3 +2780,153 @@ body.is-hub #app-nav { display: none; }
   max-height: 600px;
   object-fit: cover;
 }
+
+/* ============================================
+   COMMUNITY TIMELINE — STAP 7: polls
+============================================ */
+
+/* Composer poll-builder */
+.tl-poll-builder {
+  margin-top: 0.75rem;
+  border: 1px solid var(--color-light);
+  border-radius: 10px;
+  padding: 0.75rem;
+  background: var(--color-bg);
+}
+.tl-poll-builder.hidden { display: none; }
+.tl-poll-builder-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+.tl-poll-builder-head strong {
+  color: var(--color-secondary-dark);
+  font-size: 0.9rem;
+}
+.tl-poll-remove {
+  background: transparent;
+  border: 0;
+  color: var(--color-gray);
+  font-size: 1.2rem;
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  line-height: 1;
+}
+.tl-poll-remove:hover {
+  color: var(--color-danger);
+  background: var(--color-light);
+}
+.tl-poll-input {
+  width: 100%;
+  border: 1px solid var(--color-light);
+  border-radius: 6px;
+  padding: 0.45rem 0.6rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: var(--color-dark);
+  background: var(--color-white);
+  transition: var(--transition);
+  margin-bottom: 0.4rem;
+  display: block;
+}
+.tl-poll-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+.tl-poll-options {
+  display: flex;
+  flex-direction: column;
+}
+.tl-poll-hint {
+  font-size: 0.75rem;
+  color: var(--color-gray);
+  margin-top: 0.4rem;
+}
+
+/* Poll in postkaart */
+.tl-poll {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: var(--color-bg);
+  border: 1px solid var(--color-light);
+  border-radius: 10px;
+}
+.tl-poll-question {
+  font-weight: 600;
+  color: var(--color-dark);
+  margin-bottom: 0.6rem;
+  font-size: 0.95rem;
+}
+.tl-poll-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-bottom: 0.5rem;
+}
+.tl-poll-vote-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--color-white);
+  border: 1px solid var(--color-light);
+  border-radius: 8px;
+  padding: 0.55rem 0.85rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: var(--color-dark);
+  cursor: pointer;
+  transition: var(--transition);
+}
+.tl-poll-vote-btn:hover:not(:disabled) {
+  border-color: var(--color-secondary-dark);
+  background: var(--color-light);
+}
+.tl-poll-vote-btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* Resultaat-bars (na stemmen of na sluiten) */
+.tl-poll-result {
+  position: relative;
+  background: var(--color-white);
+  border: 1px solid var(--color-light);
+  border-radius: 8px;
+  padding: 0.55rem 0.85rem;
+  overflow: hidden;
+  font-size: 0.9rem;
+}
+.tl-poll-result.is-mine {
+  border-color: var(--color-secondary-dark);
+}
+.tl-poll-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--color-secondary);
+  opacity: 0.35;
+  transition: width 0.4s ease;
+}
+.tl-poll-result.is-mine .tl-poll-bar {
+  background: var(--color-primary);
+  opacity: 0.35;
+}
+.tl-poll-result-label {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-dark);
+}
+.tl-poll-pct {
+  font-weight: 600;
+  color: var(--color-dark-light);
+}
+.tl-poll-meta {
+  font-size: 0.75rem;
+  color: var(--color-gray);
+}
