@@ -424,7 +424,38 @@ async function onFeedClick(e) {
   } else if (action === 'admin-delete-reply') {
     closeAllMenus();
     await handleAdminDeleteReply(card, btn.closest('.tl-reply'));
+  } else if (action === 'like-reply') {
+    await handleReplyLikeToggle(btn.closest('.tl-reply'), btn);
   }
+}
+
+async function handleReplyLikeToggle(replyEl, btn) {
+  if (btn.disabled) return;
+  btn.disabled = true;
+  const replyId = replyEl.dataset.replyId;
+  const countEl = btn.querySelector('[data-role="reply-like-count"]');
+  const iconEl  = btn.querySelector('.tl-action-icon');
+  const wasLiked = replyEl.dataset.liked === '1';
+  const oldCount = parseInt(countEl.textContent, 10) || 0;
+
+  setReplyLikeUI(replyEl, btn, iconEl, countEl, !wasLiked, oldCount + (wasLiked ? -1 : 1));
+
+  const { ok, data, error } = await Api.toggleReplyLike(replyId);
+  if (!ok) {
+    setReplyLikeUI(replyEl, btn, iconEl, countEl, wasLiked, oldCount);
+    showToast(error || 'Kon like niet bijwerken', 'error');
+    btn.disabled = false;
+    return;
+  }
+  setReplyLikeUI(replyEl, btn, iconEl, countEl, !!data.liked, Number(data.count || 0));
+  btn.disabled = false;
+}
+
+function setReplyLikeUI(replyEl, btn, iconEl, countEl, liked, count) {
+  replyEl.dataset.liked = liked ? '1' : '0';
+  btn.classList.toggle('is-liked', liked);
+  iconEl.textContent = liked ? '❤' : '♡';
+  countEl.textContent = String(count);
 }
 
 /* ----- Admin: pin / unpin ----- */

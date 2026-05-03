@@ -56,6 +56,7 @@ export function renderPostCard(post, currentUserId = null, isAdminUser = false) 
         ${renderAvatar(post.avatar_url, color, initials, 'tl-avatar')}
         <div class="tl-post-meta">
           <span class="tl-nickname">${escapeHtml(nickname)}</span>
+          ${post.author_is_admin ? '<span class="tl-admin-badge" title="Administrator">🛡 Admin</span>' : ''}
           <span class="tl-meta-sep">·</span>
           <span class="tl-time">${escapeHtml(time)}${edited}</span>
         </div>
@@ -161,18 +162,27 @@ export function renderReplyRow(reply, currentUserId = null, isAdminUser = false)
   const body     = nl2br(escapeHtml(reply.body));
   const isOwn    = currentUserId && reply.user_id === currentUserId;
   const canEdit  = isOwn && (Date.now() - new Date(reply.created_at).getTime() < 15 * 60 * 1000);
+  const likes    = Number(reply.likes_count || 0);
+  const liked    = !!reply.liked_by_me;
 
   return `
-    <div class="tl-reply" data-reply-id="${escapeHtml(reply.id)}">
+    <div class="tl-reply" data-reply-id="${escapeHtml(reply.id)}" data-liked="${liked ? '1' : '0'}">
       ${renderAvatar(reply.avatar_url, color, initials, 'tl-avatar tl-avatar-sm')}
       <div class="tl-reply-bubble">
         <div class="tl-reply-meta">
           <span class="tl-nickname">${escapeHtml(nickname)}</span>
+          ${reply.author_is_admin ? '<span class="tl-admin-badge tl-admin-badge-sm" title="Administrator">🛡</span>' : ''}
           <span class="tl-meta-sep">·</span>
           <span class="tl-time">${escapeHtml(time)}${edited}</span>
           ${renderMenu({ isOwn, canEdit, type: 'reply', isAdminUser })}
         </div>
         <div class="tl-reply-body" data-role="reply-body">${body}</div>
+        <div class="tl-reply-foot-actions">
+          <button type="button" class="tl-action tl-action-sm tl-like ${liked ? 'is-liked' : ''}" data-action="like-reply" aria-label="Like">
+            <span class="tl-action-icon">${liked ? '❤' : '♡'}</span>
+            <span class="tl-action-count" data-role="reply-like-count">${likes}</span>
+          </button>
+        </div>
       </div>
     </div>
   `;

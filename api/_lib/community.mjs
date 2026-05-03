@@ -282,6 +282,25 @@ export async function signImageUrls(paths) {
 }
 
 /* ============================================
+   ADMIN-USERIDS — wie van een lijst user_ids is admin.
+   Gebruikt voor "Admin" badge naast nickname.
+============================================ */
+export async function loadAdminUserIds(userIds) {
+  if (!userIds?.length) return new Set();
+  const unique = [...new Set(userIds.filter(Boolean))];
+  const { data, error } = await supabase
+    .from('community_admin_user_ids')
+    .select('user_id')
+    .in('user_id', unique);
+  if (error) {
+    // View kan ontbreken (migratie nog niet gerund) — niet fatal
+    console.warn('[admin user_ids] ' + error.message);
+    return new Set();
+  }
+  return new Set((data || []).map(r => r.user_id));
+}
+
+/* ============================================
    LIKES — vraag op welke posts deze user al likete.
    Gebruikt door /api/community/posts om "liked_by_me"
    te kunnen mergen op de feed-rows.
@@ -343,6 +362,75 @@ export async function toggleLike(userId, postId) {
     .select('*', { count: 'exact', head: true })
     .eq('post_id', postId);
   if (countErr) throw new Error('Like count: ' + countErr.message);
+
+  return { liked: !existing, count: count || 0 };
+}
+
+/* ============================================
+   REPLY LIKES
+============================================ */
+
+export async function loadMyLikesForReplies(userId, replyIds) {
+  if (!replyIds?.length) return new Set();
+  const { data, error } = await supabase
+    .from('community_reply_likes')
+    .select('reply_id')
+    .eq('user_id', userId)
+    .in('reply_id', replyIds);
+  if (error) {
+    console.warn('[reply likes] ' + error.message);
+    return new Set();
+  }
+  return new Set((data || []).map(r => r.reply_id));
+}
+
+export async function loadReplyLikeCounts(replyIds) {
+  if (!replyIds?.length) return new Map();
+  // 1 query met group by zou ideaal zijn maar Supabase JS heeft geen
+  // directe group-by support. We doen een select all + reduce in JS.
+  // Voor v1 is dit OK (aantal replies per feed-load is klein).
+  const { data, error } = await supabase
+    .from('community_reply_likes')
+    .select('reply_id')
+    .in('reply_id', replyIds);
+  if (error) {
+    console.warn('[reply like counts] ' + error.message);
+    return new Map();
+  }
+  const map = new Map();
+  for (const row of (data || [])) {
+    map.set(row.reply_id, (map.get(row.reply_id) || 0) + 1);
+  }
+  return map;
+}
+
+export async function toggleReplyLike(userId, replyId) {
+  const { data: existing } = await supabase
+    .from('community_reply_likes')
+    .select('reply_id')
+    .eq('reply_id', replyId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (existing) {
+    const { error } = await supabase
+      .from('community_reply_likes')
+      .delete()
+      .eq('reply_id', replyId)
+      .eq('user_id', userId);
+    if (error) throw new Error('Reply-like remove: ' + error.message);
+  } else {
+    const { error } = await supabase
+      .from('community_reply_likes')
+      .insert({ reply_id: replyId, user_id: userId });
+    if (error) throw new Error('Reply-like add: ' + error.message);
+  }
+
+  const { count, error: countErr } = await supabase
+    .from('community_reply_likes')
+    .select('*', { count: 'exact', head: true })
+    .eq('reply_id', replyId);
+  if (countErr) throw new Error('Reply-like count: ' + countErr.message);
 
   return { liked: !existing, count: count || 0 };
 }

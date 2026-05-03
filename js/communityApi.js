@@ -95,6 +95,8 @@ export const createReply = (postId, body)  =>
 /* ----- Likes ----- */
 export const toggleLike  = (postId)        =>
   call(`/posts/${encodeURIComponent(postId)}/like`, { method: 'POST' });
+export const toggleReplyLike = (replyId)   =>
+  call(`/replies/${encodeURIComponent(replyId)}/like`, { method: 'POST' });
 
 /* ----- Edit / delete ----- */
 export const editPost   = (postId, body) =>

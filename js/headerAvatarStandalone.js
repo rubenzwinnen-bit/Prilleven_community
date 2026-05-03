@@ -6,10 +6,28 @@
    de profile-modal eraan.
 ============================================ */
 
-import { sessionGet } from './supabase.js?v=2.0.1';
+import { sessionGet, sessionClear, invalidateSubscriptionCache } from './supabase.js?v=2.0.1';
 import { initialsFromName, colorFromSeed, escapeHtml } from './utils.js?v=2.0.1';
 import * as Api from './communityApi.js?v=2.0.1';
 import { openProfileModal } from './components/profileModal.js?v=2.0.1';
+
+/**
+ * Hang een logout-handler aan een button. Werkt voor de standalone
+ * pagina's (chat.html, admin-chat.html) waar Store/Router niet beschikbaar
+ * zijn op dezelfde manier als in de SPA.
+ */
+export function attachLogoutHandler(btn) {
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    const session = sessionGet();
+    const email = session?.email || null;
+    try { localStorage.removeItem('receptenboek_user'); } catch {}
+    sessionClear();
+    if (email) invalidateSubscriptionCache(email);
+    // Terug naar hub (of inlog-scherm als sessie weg is).
+    window.location.href = '/';
+  });
+}
 
 /**
  * Mount een avatar-pill in `container`. Returnt een functie om opnieuw

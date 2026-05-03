@@ -26,10 +26,14 @@ import {
   sanitizePostInput,
   createPost,
   loadMyLikesForPosts,
+  loadAdminUserIds,
   loadReplies,
   sanitizeReplyInput,
   createReply,
   toggleLike,
+  loadMyLikesForReplies,
+  loadReplyLikeCounts,
+  toggleReplyLike,
   createImageUploadUrl,
   createAvatarUploadUrl,
   signImageUrls,
@@ -135,6 +139,11 @@ function matchRoute(req) {
   // /posts/:id/like
   if (segments.length === 3 && segments[0] === 'posts' && segments[2] === 'like') {
     if (method === 'POST') return { route: 'like.toggle', params: { id: segments[1] } };
+  }
+
+  // /replies/:id/like
+  if (segments.length === 3 && segments[0] === 'replies' && segments[2] === 'like') {
+    if (method === 'POST') return { route: 'reply.like.toggle', params: { id: segments[1] } };
   }
 
   // /report
@@ -276,15 +285,16 @@ export default async function handler(req, res) {
       const posts = await loadPosts({ category, before, limit });
       const postIds = posts.map(p => p.id);
       const pollIds = posts.filter(p => p.has_poll).map(p => p.id);
-      // Verzamel alle paths (image + avatars) en sign in één batch.
+      const authorIds = posts.map(p => p.user_id);
       const allPaths = [
         ...posts.map(p => p.image_path).filter(Boolean),
         ...posts.map(p => p.avatar_path).filter(Boolean),
       ];
-      const [likedSet, signedMap, pollMap] = await Promise.all([
+      const [likedSet, signedMap, pollMap, adminSet] = await Promise.all([
         loadMyLikesForPosts(auth.userId, postIds),
         signImageUrls(allPaths),
         loadPollsForPosts(auth.userId, pollIds),
+        loadAdminUserIds(authorIds),
       ]);
       const enriched = posts.map(p => ({
         ...p,
@@ -292,6 +302,7 @@ export default async function handler(req, res) {
         image_url:  p.image_path  ? (signedMap.get(p.image_path)  || null) : null,
         avatar_url: p.avatar_path ? (signedMap.get(p.avatar_path) || null) : null,
         poll: p.has_poll ? (pollMap.get(p.id) || null) : null,
+        author_is_admin: adminSet.has(p.user_id),
       }));
       return json(res, 200, { posts: enriched });
     }
@@ -327,9 +338,10 @@ export default async function handler(req, res) {
       }
       const post = await createPost(auth.userId, { ...clean, poll: pollClean });
       const allPaths = [post.image_path, post.avatar_path].filter(Boolean);
-      const [signedMap, pollMap] = await Promise.all([
+      const [signedMap, pollMap, adminSet] = await Promise.all([
         allPaths.length ? signImageUrls(allPaths) : Promise.resolve(new Map()),
         post.has_poll   ? loadPollsForPosts(auth.userId, [post.id]) : Promise.resolve(new Map()),
+        loadAdminUserIds([post.user_id]),
       ]);
       return json(res, 201, {
         post: {
@@ -338,6 +350,7 @@ export default async function handler(req, res) {
           image_url:  post.image_path  ? (signedMap.get(post.image_path)  || null) : null,
           avatar_url: post.avatar_path ? (signedMap.get(post.avatar_path) || null) : null,
           poll:       post.has_poll    ? (pollMap.get(post.id) || null) : null,
+          author_is_admin: adminSet.has(post.user_id),
         },
       });
     }
@@ -349,10 +362,20 @@ export default async function handler(req, res) {
     if (route === 'replies.list') {
       const replies = await loadReplies(params.id);
       const avatarPaths = replies.map(r => r.avatar_path).filter(Boolean);
-      const signedMap = avatarPaths.length ? await signImageUrls(avatarPaths) : new Map();
+      const replyIds = replies.map(r => r.id);
+      const authorIds = replies.map(r => r.user_id);
+      const [signedMap, likedSet, countMap, adminSet] = await Promise.all([
+        avatarPaths.length ? signImageUrls(avatarPaths) : Promise.resolve(new Map()),
+        loadMyLikesForReplies(auth.userId, replyIds),
+        loadReplyLikeCounts(replyIds),
+        loadAdminUserIds(authorIds),
+      ]);
       const enriched = replies.map(r => ({
         ...r,
         avatar_url: r.avatar_path ? (signedMap.get(r.avatar_path) || null) : null,
+        likes_count: countMap.get(r.id) || 0,
+        liked_by_me: likedSet.has(r.id),
+        author_is_admin: adminSet.has(r.user_id),
       }));
       return json(res, 200, { replies: enriched });
     }
@@ -374,15 +397,25 @@ export default async function handler(req, res) {
       }
       try {
         const reply = await createReply(auth.userId, params.id, clean);
-        // Auteur heeft mogelijk avatar — de reply zelf krijgt die niet uit
-        // createReply, dus halen we ze los op uit profiel.
-        const me = await loadCommunityProfile(auth.userId);
+        const [me, adminSet] = await Promise.all([
+          loadCommunityProfile(auth.userId),
+          loadAdminUserIds([auth.userId]),
+        ]);
         let avatar_url = null;
         if (me?.avatar_path) {
           const m = await signImageUrls([me.avatar_path]);
           avatar_url = m.get(me.avatar_path) || null;
         }
-        return json(res, 201, { reply: { ...reply, avatar_path: me?.avatar_path || null, avatar_url } });
+        return json(res, 201, {
+          reply: {
+            ...reply,
+            avatar_path: me?.avatar_path || null,
+            avatar_url,
+            likes_count: 0,
+            liked_by_me: false,
+            author_is_admin: adminSet.has(auth.userId),
+          },
+        });
       } catch (err) {
         if (err.status === 404) return json(res, 404, { error: err.message });
         throw err;
@@ -394,6 +427,15 @@ export default async function handler(req, res) {
       if (!isUuid(params.id)) return json(res, 400, { error: 'Ongeldige post-id.' });
       const result = await toggleLike(auth.userId, params.id);
       return json(res, 200, result);
+    }
+    if (route === 'reply.like.toggle') {
+      if (!isUuid(params.id)) return json(res, 400, { error: 'Ongeldige reply-id.' });
+      try {
+        const result = await toggleReplyLike(auth.userId, params.id);
+        return json(res, 200, result);
+      } catch (err) {
+        return json(res, err.status || 500, { error: err.message });
+      }
     }
 
     /* ----- upload ----- */
@@ -435,9 +477,10 @@ export default async function handler(req, res) {
       try {
         const post = await editPost(auth.userId, params.id, body.body);
         const allPaths = [post.image_path, post.avatar_path].filter(Boolean);
-        const [signedMap, pollMap] = await Promise.all([
+        const [signedMap, pollMap, adminSet] = await Promise.all([
           allPaths.length ? signImageUrls(allPaths) : Promise.resolve(new Map()),
           post.has_poll   ? loadPollsForPosts(auth.userId, [post.id]) : Promise.resolve(new Map()),
+          loadAdminUserIds([post.user_id]),
         ]);
         return json(res, 200, {
           post: {
@@ -445,6 +488,7 @@ export default async function handler(req, res) {
             image_url:  post.image_path  ? (signedMap.get(post.image_path)  || null) : null,
             avatar_url: post.avatar_path ? (signedMap.get(post.avatar_path) || null) : null,
             poll:       post.has_poll    ? (pollMap.get(post.id) || null) : null,
+            author_is_admin: adminSet.has(post.user_id),
           },
         });
       } catch (err) {
@@ -471,13 +515,27 @@ export default async function handler(req, res) {
       }
       try {
         const reply = await editReply(auth.userId, params.id, body.body);
-        const me = await loadCommunityProfile(auth.userId);
+        const [me, adminSet, likeCountMap, likedSet] = await Promise.all([
+          loadCommunityProfile(auth.userId),
+          loadAdminUserIds([auth.userId]),
+          loadReplyLikeCounts([reply.id]),
+          loadMyLikesForReplies(auth.userId, [reply.id]),
+        ]);
         let avatar_url = null;
         if (me?.avatar_path) {
           const m = await signImageUrls([me.avatar_path]);
           avatar_url = m.get(me.avatar_path) || null;
         }
-        return json(res, 200, { reply: { ...reply, avatar_path: me?.avatar_path || null, avatar_url } });
+        return json(res, 200, {
+          reply: {
+            ...reply,
+            avatar_path: me?.avatar_path || null,
+            avatar_url,
+            likes_count: likeCountMap.get(reply.id) || 0,
+            liked_by_me: likedSet.has(reply.id),
+            author_is_admin: adminSet.has(auth.userId),
+          },
+        });
       } catch (err) {
         return json(res, err.status || 500, { error: err.message });
       }
