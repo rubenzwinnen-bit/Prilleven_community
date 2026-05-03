@@ -2,7 +2,10 @@
 // Wordt door Vercel als ÉÉN serverless function geteld i.p.v. één per pad.
 // Dit houdt ons onder de Hobby-limiet (12 functions per deployment).
 //
-// Routes:
+// Vercel routet hier naartoe via een rewrite in vercel.json:
+//   /api/community/(.*) → /api/community
+//
+// Routes (intern):
 //   GET    /api/community/profile
 //   PUT    /api/community/profile
 //   GET    /api/community/posts?category=&before=&limit=
@@ -11,7 +14,7 @@
 //   POST   /api/community/posts/:id/replies
 //   POST   /api/community/posts/:id/like
 
-import { requireAuth, AuthError } from '../_lib/auth.mjs';
+import { requireAuth, AuthError } from './_lib/auth.mjs';
 import {
   loadCommunityProfile,
   validateNickname,
@@ -26,8 +29,8 @@ import {
   sanitizeReplyInput,
   createReply,
   toggleLike,
-} from '../_lib/community.mjs';
-import { findBlockedWord } from '../_lib/moderation.mjs';
+} from './_lib/community.mjs';
+import { findBlockedWord } from './_lib/moderation.mjs';
 
 function json(res, status, body) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
