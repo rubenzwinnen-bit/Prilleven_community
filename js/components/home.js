@@ -7,6 +7,7 @@
 
 import * as Store from '../store.js?v=2.0.1';
 import * as Router from '../router.js?v=2.0.1';
+import * as Timeline from './timeline.js?v=2.0.1';
 
 export function render() {
   const user = Store.getCurrentUser() || '';
@@ -62,6 +63,7 @@ export function render() {
       <div class="home-tiles">
         ${tileCards}
       </div>
+      ${Timeline.render()}
     </div>
   `;
 }
@@ -81,4 +83,7 @@ export function init() {
     }
     // Externe paden (/chat.html, /admin-chat.html) volgen normale browser-navigatie
   });
+
+  // Timeline initialiseren (eigen interne event-handlers + feed laden).
+  Timeline.init();
 }
