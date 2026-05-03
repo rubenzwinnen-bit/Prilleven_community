@@ -51,3 +51,12 @@ export function getPosts({ category = null, before = null, limit = 20 } = {}) {
 }
 export const createPost = ({ body, category }) =>
   call('/posts', { method: 'POST', body: { body, category } });
+
+/* ----- Replies ----- */
+export const getReplies  = (postId)        => call(`/posts/${encodeURIComponent(postId)}/replies`);
+export const createReply = (postId, body)  =>
+  call(`/posts/${encodeURIComponent(postId)}/replies`, { method: 'POST', body: { body } });
+
+/* ----- Likes ----- */
+export const toggleLike  = (postId)        =>
+  call(`/posts/${encodeURIComponent(postId)}/like`, { method: 'POST' });

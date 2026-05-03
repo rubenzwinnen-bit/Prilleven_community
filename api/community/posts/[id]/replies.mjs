@@ -1,17 +1,16 @@
-// GET  /api/community/posts?category=&before=&limit=20  → { posts }
-// POST /api/community/posts  body: { body, category? }   → { post }
+// GET  /api/community/posts/:id/replies  → { replies }
+// POST /api/community/posts/:id/replies  body: { body } → { reply }
 //
-// POST vereist een aangemaakt nickname-profiel + woord-blacklist check.
+// Replies vereisen ingelogde user + nickname-profiel + blacklist-check.
 
-import { requireAuth, AuthError } from '../_lib/auth.mjs';
+import { requireAuth, AuthError } from '../../../_lib/auth.mjs';
 import {
-  loadPosts,
-  sanitizePostInput,
-  createPost,
+  loadReplies,
+  sanitizeReplyInput,
+  createReply,
   loadCommunityProfile,
-  loadMyLikesForPosts,
-} from '../_lib/community.mjs';
-import { findBlockedWord } from '../_lib/moderation.mjs';
+} from '../../../_lib/community.mjs';
+import { findBlockedWord } from '../../../_lib/moderation.mjs';
 
 function json(res, status, body) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -34,17 +33,15 @@ export default async function handler(req, res) {
     throw e;
   }
 
+  const postId = req.query?.id || extractIdFromUrl(req.url);
+  if (!postId || !isUuid(postId)) {
+    return json(res, 400, { error: 'Ongeldige post-id.' });
+  }
+
   try {
     if (req.method === 'GET') {
-      const url = new URL(req.url, `http://${req.headers.host || 'x'}`);
-      const category = url.searchParams.get('category');
-      const before   = url.searchParams.get('before');
-      const limit    = url.searchParams.get('limit');
-      const posts = await loadPosts({ category, before, limit });
-      // Verrijk met liked_by_me voor de huidige user.
-      const likedSet = await loadMyLikesForPosts(auth.userId, posts.map(p => p.id));
-      const enriched = posts.map(p => ({ ...p, liked_by_me: likedSet.has(p.id) }));
-      return json(res, 200, { posts: enriched });
+      const replies = await loadReplies(postId);
+      return json(res, 200, { replies });
     }
 
     if (req.method === 'POST') {
@@ -55,7 +52,6 @@ export default async function handler(req, res) {
         return json(res, 400, { error: 'Ongeldige JSON.' });
       }
 
-      // Vereist een ingestelde nickname.
       const profile = await loadCommunityProfile(auth.userId);
       if (!profile) {
         return json(res, 412, { error: 'Stel eerst een nickname in.' });
@@ -63,7 +59,7 @@ export default async function handler(req, res) {
 
       let clean;
       try {
-        clean = sanitizePostInput(body);
+        clean = sanitizeReplyInput(body);
       } catch (err) {
         return json(res, err.status || 422, { error: err.message });
       }
@@ -71,17 +67,31 @@ export default async function handler(req, res) {
       const blocked = findBlockedWord(clean.body);
       if (blocked) {
         return json(res, 422, {
-          error: 'Bericht bevat ongepaste taal en kan niet worden geplaatst.',
+          error: 'Reactie bevat ongepaste taal en kan niet worden geplaatst.',
         });
       }
 
-      const post = await createPost(auth.userId, clean);
-      return json(res, 201, { post: { ...post, liked_by_me: false } });
+      try {
+        const reply = await createReply(auth.userId, postId, clean);
+        return json(res, 201, { reply });
+      } catch (err) {
+        if (err.status === 404) return json(res, 404, { error: err.message });
+        throw err;
+      }
     }
 
     return json(res, 405, { error: 'Method not allowed' });
   } catch (err) {
-    console.error('[community/posts]', err);
+    console.error('[community/posts/:id/replies]', err);
     return json(res, 500, { error: err.message || 'Er ging iets mis.' });
   }
+}
+
+function isUuid(s) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(s));
+}
+function extractIdFromUrl(url) {
+  // /api/community/posts/<uuid>/replies(?...)
+  const m = /\/posts\/([^/?]+)\/replies/i.exec(String(url || ''));
+  return m ? m[1] : null;
 }

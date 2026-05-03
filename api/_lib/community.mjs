@@ -156,3 +156,148 @@ export async function createPost(userId, { body, category }) {
 
   return hydrated;
 }
+
+/* ============================================
+   LIKES — vraag op welke posts deze user al likete.
+   Gebruikt door /api/community/posts om "liked_by_me"
+   te kunnen mergen op de feed-rows.
+============================================ */
+export async function loadMyLikesForPosts(userId, postIds) {
+  if (!postIds?.length) return new Set();
+  const { data, error } = await supabase
+    .from('community_likes')
+    .select('post_id')
+    .eq('user_id', userId)
+    .in('post_id', postIds);
+  if (error) throw new Error('Likes load: ' + error.message);
+  return new Set((data || []).map(r => r.post_id));
+}
+
+/** Toggle een like. Returnt { liked: boolean, count: int }. */
+export async function toggleLike(userId, postId) {
+  // Bestaat de like al? → delete; anders insert.
+  const { data: existing } = await supabase
+    .from('community_likes')
+    .select('post_id')
+    .eq('post_id', postId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (existing) {
+    const { error } = await supabase
+      .from('community_likes')
+      .delete()
+      .eq('post_id', postId)
+      .eq('user_id', userId);
+    if (error) throw new Error('Like remove: ' + error.message);
+  } else {
+    const { error } = await supabase
+      .from('community_likes')
+      .insert({ post_id: postId, user_id: userId });
+    if (error) throw new Error('Like add: ' + error.message);
+  }
+
+  // Tel opnieuw
+  const { count, error: countErr } = await supabase
+    .from('community_likes')
+    .select('*', { count: 'exact', head: true })
+    .eq('post_id', postId);
+  if (countErr) throw new Error('Like count: ' + countErr.message);
+
+  return { liked: !existing, count: count || 0 };
+}
+
+/* ============================================
+   REPLIES
+============================================ */
+
+/**
+ * Laad replies voor een post, oudste boven (chronologisch).
+ * Joint nickname via view-style aanpak: we doen een select met embed
+ * op community_profiles via FK alias.
+ */
+export async function loadReplies(postId, { limit = 100 } = {}) {
+  const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 200);
+  const { data, error } = await supabase
+    .from('community_replies')
+    .select(`
+      id, post_id, user_id, body, edited_at, created_at,
+      profile:community_profiles!community_replies_user_id_fkey(nickname)
+    `)
+    .eq('post_id', postId)
+    .order('created_at', { ascending: true })
+    .limit(safeLimit);
+  if (error) {
+    // Fallback zonder embed als de FK-naam niet matcht (sommige Supabase-versies)
+    if (error.code === 'PGRST200' || /relationship/i.test(error.message)) {
+      return loadRepliesFallback(postId, safeLimit);
+    }
+    throw new Error('Replies load: ' + error.message);
+  }
+  return (data || []).map(r => ({
+    ...r,
+    nickname: r.profile?.nickname || null,
+    profile: undefined,
+  }));
+}
+
+async function loadRepliesFallback(postId, limit) {
+  const { data: replies, error } = await supabase
+    .from('community_replies')
+    .select('id, post_id, user_id, body, edited_at, created_at')
+    .eq('post_id', postId)
+    .order('created_at', { ascending: true })
+    .limit(limit);
+  if (error) throw new Error('Replies load: ' + error.message);
+
+  const userIds = [...new Set((replies || []).map(r => r.user_id))];
+  let nickMap = new Map();
+  if (userIds.length) {
+    const { data: profs } = await supabase
+      .from('community_profiles')
+      .select('user_id, nickname')
+      .in('user_id', userIds);
+    nickMap = new Map((profs || []).map(p => [p.user_id, p.nickname]));
+  }
+  return (replies || []).map(r => ({ ...r, nickname: nickMap.get(r.user_id) || null }));
+}
+
+export function sanitizeReplyInput(input) {
+  const body = typeof input?.body === 'string' ? input.body.trim() : '';
+  if (!body) {
+    throw Object.assign(new Error('Reactie mag niet leeg zijn.'), { status: 422 });
+  }
+  if (body.length > 2000) {
+    throw Object.assign(new Error('Reactie mag maximaal 2000 tekens lang zijn.'), { status: 422 });
+  }
+  return { body };
+}
+
+export async function createReply(userId, postId, { body }) {
+  // Check eerst of de post bestaat (anders krijgen we een lelijke FK-error).
+  const { data: post, error: postErr } = await supabase
+    .from('community_posts')
+    .select('id, user_id')
+    .eq('id', postId)
+    .maybeSingle();
+  if (postErr) throw new Error('Reply parent check: ' + postErr.message);
+  if (!post) {
+    throw Object.assign(new Error('Post bestaat niet (meer).'), { status: 404 });
+  }
+
+  const { data: inserted, error } = await supabase
+    .from('community_replies')
+    .insert({ post_id: postId, user_id: userId, body })
+    .select('id, post_id, user_id, body, edited_at, created_at')
+    .single();
+  if (error) throw new Error('Reply insert: ' + error.message);
+
+  // Voeg nickname toe vanuit profile.
+  const { data: prof } = await supabase
+    .from('community_profiles')
+    .select('nickname')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  return { ...inserted, nickname: prof?.nickname || null, post_author_id: post.user_id };
+}
