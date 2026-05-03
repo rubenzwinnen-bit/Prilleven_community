@@ -56,11 +56,12 @@ export function getPosts({ category = null, before = null, limit = 20 } = {}) {
 export const createPost = ({ body, category, image_path = null, poll = null }) =>
   call('/posts', { method: 'POST', body: { body, category, image_path, poll } });
 
-/* ----- Polls ----- */
-export const votePoll = (postId, optionIdx) =>
+/* ----- Polls -----
+   action: 'set' (single, default) | 'toggle' (multi) | 'unvote' */
+export const votePoll = (postId, optionIdx, action = 'set') =>
   call(`/posts/${encodeURIComponent(postId)}/poll/vote`, {
     method: 'POST',
-    body: { option_idx: optionIdx },
+    body: { option_idx: optionIdx, action },
   });
 
 /* ----- Image upload (signed URL flow) ----- */

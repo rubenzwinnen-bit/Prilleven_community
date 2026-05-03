@@ -79,7 +79,11 @@ export function render() {
               <input type="text" class="tl-poll-input tl-poll-option" placeholder="Optie 2" maxlength="80">
             </div>
             <button type="button" class="btn btn-outline btn-sm" id="tl-poll-add-option">+ Optie toevoegen</button>
-            <div class="tl-poll-hint">Sluit automatisch na 7 dagen · 2-4 opties · 1 stem per persoon</div>
+            <label class="tl-poll-multi-label">
+              <input type="checkbox" id="tl-poll-allow-multi">
+              <span>Meerdere antwoorden mogelijk</span>
+            </label>
+            <div class="tl-poll-hint">Sluit automatisch na 7 dagen · 2-4 opties · klik je stem opnieuw aan om hem terug te trekken</div>
           </div>
           <div id="tl-composer-error" class="auth-error hidden"></div>
         </div>
@@ -187,6 +191,8 @@ export async function init() {
       <input type="text" class="tl-poll-input tl-poll-option" placeholder="Optie 1" maxlength="80">
       <input type="text" class="tl-poll-input tl-poll-option" placeholder="Optie 2" maxlength="80">
     `;
+    const multiCb = document.getElementById('tl-poll-allow-multi');
+    if (multiCb) multiCb.checked = false;
     updatePollAddBtn();
   };
 
@@ -198,10 +204,11 @@ export async function init() {
     const options = Array.from(pollOptionsEl.querySelectorAll('.tl-poll-option'))
       .map(i => i.value.trim())
       .filter(Boolean);
+    const allow_multi = !!document.getElementById('tl-poll-allow-multi')?.checked;
     if (!question || options.length < 2) {
       throw new Error('Vul de poll-vraag en minstens 2 opties in.');
     }
-    return { question, options };
+    return { question, options, allow_multi };
   };
 
   pollToggle?.addEventListener('click', () => {
@@ -606,8 +613,22 @@ function initBell() {
     }, 300);
   });
 
-  // Klik buiten bell sluit dropdown (gebruikt al closeAllMenus()-pattern niet,
-  // dus aparte handler).
+  // Klik op een notificatie → navigeer naar de post (en open replies bij type 'reply')
+  dropdown.addEventListener('click', async (e) => {
+    const notif = e.target.closest('[data-action="open-notif"]');
+    if (!notif) return;
+    const postId  = notif.dataset.postId;
+    const replyId = notif.dataset.replyId;
+    if (!postId) return;
+
+    // Sluit dropdown
+    dropdown.classList.add('hidden');
+    btn.setAttribute('aria-expanded', 'false');
+
+    await navigateToPost(postId, replyId);
+  });
+
+  // Klik buiten bell sluit dropdown
   document.addEventListener('click', (e) => {
     if (!e.target.closest('[data-role="bell"]')) {
       dropdown.classList.add('hidden');
@@ -668,6 +689,63 @@ async function refreshBellList() {
   list.innerHTML = items.map(renderNotifRow).join('');
 }
 
+/**
+ * Scroll naar een post in de feed. Als de post niet zichtbaar is door
+ * een actieve filter → reset de filter naar "Alle" en herlaad. Bij een
+ * reply-notificatie: open de replies-sectie en scroll naar de specifieke
+ * reply.
+ */
+async function navigateToPost(postId, replyId = null) {
+  // Probeer direct in de huidige feed
+  let card = document.querySelector(`.tl-post[data-post-id="${CSS.escape(postId)}"]`);
+  if (!card) {
+    // Reset filter naar "Alle" en herlaad de feed
+    if (currentCategory) {
+      currentCategory = null;
+      const filterBar = document.getElementById('tl-filterbar');
+      if (filterBar) {
+        filterBar.querySelectorAll('.tl-filter-chip').forEach(c =>
+          c.classList.toggle('is-active', !c.dataset.cat)
+        );
+      }
+      await loadAndRenderFeed(document.getElementById('tl-feed'));
+      card = document.querySelector(`.tl-post[data-post-id="${CSS.escape(postId)}"]`);
+    }
+  }
+  if (!card) {
+    // Post staat niet (meer) in de feed — kan verwijderd zijn of paginatie
+    showToast('Bericht niet meer beschikbaar.', 'error');
+    return;
+  }
+
+  // Open replies bij reply-notif
+  if (replyId) {
+    const toggle = card.querySelector('[data-action="toggle-replies"]');
+    const container = card.querySelector('[data-role="replies-container"]');
+    if (toggle && container?.classList.contains('hidden')) {
+      toggle.click(); // dat triggert lazy-load + open
+    }
+  }
+
+  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+  // Highlight pulse
+  card.classList.add('is-highlighted');
+  setTimeout(() => card.classList.remove('is-highlighted'), 1500);
+
+  // Bij reply-notif: scroll naar specifieke reply ná lazy-load
+  if (replyId) {
+    setTimeout(() => {
+      const replyEl = card.querySelector(`.tl-reply[data-reply-id="${CSS.escape(replyId)}"]`);
+      if (replyEl) {
+        replyEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        replyEl.classList.add('is-highlighted');
+        setTimeout(() => replyEl.classList.remove('is-highlighted'), 1500);
+      }
+    }, 600);
+  }
+}
+
 function renderNotifRow(n) {
   const unread = !n.read_at ? ' is-unread' : '';
   const time = formatRelativeTime(n.created_at);
@@ -677,8 +755,12 @@ function renderNotifRow(n) {
   if (n.type === 'reply') label = `<strong>${actor}</strong> reageerde op je post`;
   else if (n.type === 'like') label = `<strong>${actor}</strong> liked je post`;
   else label = `<strong>${actor}</strong> · ${escapeHtml(n.type)}`;
+  // Klikbare wrapper als er een post_id is om naartoe te navigeren
+  const postId  = n.post_id  ? escapeHtml(n.post_id)  : '';
+  const replyId = n.reply_id ? escapeHtml(n.reply_id) : '';
+  const cursor = postId ? ' tl-notif-clickable' : '';
   return `
-    <div class="tl-notif${unread}">
+    <div class="tl-notif${unread}${cursor}" data-action="open-notif" data-post-id="${postId}" data-reply-id="${replyId}">
       <div class="tl-notif-text">${label}</div>
       ${preview}
       <div class="tl-notif-time">${escapeHtml(time)}</div>
@@ -891,28 +973,30 @@ function openReportModal() {
 
 async function handlePollVote(card, btn) {
   if (btn.disabled) return;
-  const optionIdx = parseInt(btn.dataset.optionIdx, 10);
-  if (Number.isNaN(optionIdx)) return;
+  const action = btn.dataset.voteAction || 'set';
+  const optionIdx = action === 'unvote' ? -1 : parseInt(btn.dataset.optionIdx, 10);
+  if (action !== 'unvote' && Number.isNaN(optionIdx)) return;
 
   // Disable alle vote-knoppen tijdens request
   const allBtns = card.querySelectorAll('[data-action="vote-poll"]');
   allBtns.forEach(b => b.disabled = true);
 
-  const { ok, data, error } = await Api.votePoll(card.dataset.postId, optionIdx);
+  const { ok, data, error } = await Api.votePoll(card.dataset.postId, optionIdx, action);
   if (!ok || !data?.poll) {
     allBtns.forEach(b => b.disabled = false);
     showToast(error || 'Kon stem niet registreren', 'error');
     return;
   }
 
-  // Vervang het hele poll-blok met de nieuwe (resultaat-view)
+  // Vervang het hele poll-blok met de nieuwe view
   const pollEl = card.querySelector('[data-role="poll"]');
   if (pollEl) {
     const tmp = document.createElement('div');
     tmp.innerHTML = renderPoll(data.poll);
     pollEl.replaceWith(tmp.firstElementChild);
   }
-  showToast('Stem geregistreerd');
+  const total = (data.poll.my_votes || []).length;
+  showToast(action === 'unvote' || total === 0 ? 'Stem teruggetrokken' : 'Stem geregistreerd');
 }
 
 async function onFeedSubmit(e) {

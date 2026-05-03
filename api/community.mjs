@@ -457,9 +457,12 @@ export default async function handler(req, res) {
       if (!isUuid(params.id)) return json(res, 400, { error: 'Ongeldige post-id.' });
       const body = parseBody(req);
       if (body === null) return json(res, 400, { error: 'Ongeldige JSON.' });
-      const optionIdx = parseInt(body.option_idx, 10);
+      const action = body.action === 'unvote' ? 'unvote'
+                   : body.action === 'toggle' ? 'toggle'
+                   : 'set';
+      const optionIdx = action === 'unvote' ? -1 : parseInt(body.option_idx, 10);
       try {
-        const result = await votePoll(auth.userId, params.id, optionIdx);
+        const result = await votePoll(auth.userId, params.id, optionIdx, action);
         return json(res, 200, { poll: result });
       } catch (err) {
         return json(res, err.status || 500, { error: err.message });

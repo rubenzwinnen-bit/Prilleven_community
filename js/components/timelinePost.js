@@ -96,35 +96,65 @@ export function renderPostCard(post, currentUserId = null, isAdminUser = false) 
 }
 
 /**
- * Render een poll-blok. Toont stem-knoppen tot user heeft gestemd of poll
- * gesloten is, daarna resultaat-bars met percentage.
+ * Render een poll-blok.
+ *
+ * Single-vote (allow_multi=false):
+ *   - Niet gestemd → knoppen
+ *   - Gestemd → resultaat-bars; klik op je gekozen optie = unvote
+ *
+ * Multi-vote (allow_multi=true):
+ *   - Altijd checkbox-stijl knoppen die je individueel kan toggelen
+ *   - Toont meteen counts naast elke optie
+ *
+ * Gesloten polls: alleen resultaat-bars, niets klikbaar.
+ *
+ * Backwards-compat: oude payload met `my_vote` (int|null) wordt
+ * automatisch geconverteerd naar `my_votes` array.
  */
 export function renderPoll(poll) {
   if (!poll || !Array.isArray(poll.options)) return '';
   const total = Number(poll.total || 0);
-  const myVote = poll.my_vote;
+  const myVotes = Array.isArray(poll.my_votes)
+    ? poll.my_votes
+    : (typeof poll.my_vote === 'number' ? [poll.my_vote] : []);
+  const myVoteSet = new Set(myVotes);
   const closed = !!poll.closed;
-  const showResults = closed || myVote !== null;
+  const allowMulti = !!poll.allow_multi;
+  const hasVoted = myVotes.length > 0;
+  const showResultsOnly = closed || (!allowMulti && hasVoted);
 
   const opts = poll.options.map((label, idx) => {
     const count = Number(poll.counts?.[idx] || 0);
     const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-    const mine = myVote === idx ? ' is-mine' : '';
+    const mine = myVoteSet.has(idx);
 
-    if (showResults) {
+    if (showResultsOnly) {
+      // Bij single-vote en niet-gesloten: klik op eigen keuze = unvote
+      const clickable = !closed && !allowMulti && mine;
+      const tag = clickable ? 'button' : 'div';
+      const cls = `tl-poll-result${mine ? ' is-mine' : ''}${clickable ? ' is-clickable' : ''}`;
+      const attrs = clickable
+        ? ` type="button" data-action="vote-poll" data-option-idx="${idx}" data-vote-action="unvote" title="Klik om je stem terug te trekken"`
+        : '';
       return `
-        <div class="tl-poll-result${mine}">
+        <${tag} class="${cls}"${attrs}>
           <div class="tl-poll-bar" style="width:${pct}%"></div>
           <div class="tl-poll-result-label">
             <span>${escapeHtml(label)}${mine ? ' ✓' : ''}</span>
             <span class="tl-poll-pct">${pct}%</span>
           </div>
-        </div>
+        </${tag}>
       `;
     }
+
+    // Knop-view: single (nog niet gestemd) of multi (altijd)
+    const action = allowMulti ? 'toggle' : 'set';
+    const checkedCls = mine ? ' is-checked' : '';
     return `
-      <button type="button" class="tl-poll-vote-btn" data-action="vote-poll" data-option-idx="${idx}">
-        ${escapeHtml(label)}
+      <button type="button" class="tl-poll-vote-btn${checkedCls}" data-action="vote-poll" data-option-idx="${idx}" data-vote-action="${action}">
+        ${allowMulti ? `<span class="tl-poll-checkbox">${mine ? '☑' : '☐'}</span>` : ''}
+        <span class="tl-poll-vote-label">${escapeHtml(label)}</span>
+        ${allowMulti && (count > 0 || mine) ? `<span class="tl-poll-vote-count">${count}</span>` : ''}
       </button>
     `;
   }).join('');
@@ -132,12 +162,14 @@ export function renderPoll(poll) {
   const closeText = closed
     ? 'Gesloten'
     : `Sluit ${formatRelativeFuture(poll.closes_at)}`;
+  const modeText = allowMulti ? ' · meerdere keuzes' : '';
+  const totalText = `${total} stem${total === 1 ? '' : 'men'}`;
 
   return `
-    <div class="tl-poll" data-role="poll">
+    <div class="tl-poll" data-role="poll" data-allow-multi="${allowMulti ? '1' : '0'}">
       <div class="tl-poll-question">${escapeHtml(poll.question)}</div>
       <div class="tl-poll-options-list">${opts}</div>
-      <div class="tl-poll-meta">${total} stem${total === 1 ? '' : 'men'} · ${closeText}</div>
+      <div class="tl-poll-meta">${totalText}${modeText} · ${closeText}</div>
     </div>
   `;
 }

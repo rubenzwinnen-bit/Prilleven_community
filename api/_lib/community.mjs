@@ -175,6 +175,7 @@ export async function createPost(userId, { body, category, image_path = null, po
         post_id: inserted.id,
         question: poll.question,
         options: poll.options,
+        allow_multi: !!poll.allow_multi,
       });
     if (pollErr) {
       // Rollback: post zonder poll bestaat al, beter weggooien zodat
@@ -219,7 +220,8 @@ export function sanitizePollInput(input) {
       throw Object.assign(new Error('Poll-optie mag maximaal 80 tekens zijn.'), { status: 422 });
     }
   }
-  return { question, options };
+  const allow_multi = input.allow_multi === true;
+  return { question, options, allow_multi };
 }
 
 /* ============================================
@@ -946,19 +948,22 @@ export async function markAllNotificationsRead(userId) {
 ============================================ */
 
 /**
- * Voor een lijst van postIds: laad polls + vote-counts + my_vote.
+ * Voor een lijst van postIds: laad polls + vote-counts + my_votes.
  * Returnt Map<post_id, { question, options, closes_at, counts: int[],
- *                         total: int, my_vote: int|null, closed: bool }>.
+ *                         total: int, my_votes: int[], closed: bool,
+ *                         allow_multi: bool }>.
+ *
+ * NB: my_votes is een array (kan 0..N opties bevatten); voor single-vote
+ * polls is het max 1 element.
  */
 export async function loadPollsForPosts(userId, postIds) {
   const ids = (postIds || []).filter(Boolean);
   if (ids.length === 0) return new Map();
 
-  // Load polls + votes in parallel
   const [pollsRes, votesRes] = await Promise.all([
     supabase
       .from('community_polls')
-      .select('post_id, question, options, closes_at')
+      .select('post_id, question, options, closes_at, allow_multi')
       .in('post_id', ids),
     supabase
       .from('community_poll_votes')
@@ -978,8 +983,9 @@ export async function loadPollsForPosts(userId, postIds) {
       closes_at: p.closes_at,
       counts: new Array(optsCount).fill(0),
       total: 0,
-      my_vote: null,
+      my_votes: [],
       closed: new Date(p.closes_at).getTime() <= now,
+      allow_multi: !!p.allow_multi,
     });
   }
   for (const v of votesRes.data || []) {
@@ -988,24 +994,28 @@ export async function loadPollsForPosts(userId, postIds) {
     if (v.option_idx >= 0 && v.option_idx < entry.counts.length) {
       entry.counts[v.option_idx] += 1;
       entry.total += 1;
-      if (v.user_id === userId) entry.my_vote = v.option_idx;
+      if (v.user_id === userId) entry.my_votes.push(v.option_idx);
     }
   }
   return map;
 }
 
 /**
- * Stem op een poll. Faalt als poll niet bestaat, gesloten is, of optie ongeldig.
- * Returnt vernieuwde poll-data: { counts, total, my_vote, closed }.
+ * Stem op een poll. Drie acties mogelijk:
+ *   - 'set'    (single-vote): vervang bestaande stem met deze optie.
+ *              Als zelfde optie als huidige → unvote (verwijder).
+ *   - 'toggle' (multi-vote):  toggle deze optie aan/uit.
+ *   - 'unvote' (beide):       verwijder alle stemmen van deze user.
+ *
+ * Returnt vernieuwde poll-data uit loadPollsForPosts.
  */
-export async function votePoll(userId, postId, optionIdx) {
-  if (!Number.isInteger(optionIdx) || optionIdx < 0 || optionIdx > 3) {
+export async function votePoll(userId, postId, optionIdx, action = 'set') {
+  if (action !== 'unvote' && (!Number.isInteger(optionIdx) || optionIdx < 0 || optionIdx > 3)) {
     throw Object.assign(new Error('Ongeldige stem-optie.'), { status: 422 });
   }
-  // Poll bestaat? Niet gesloten? Optie binnen range?
   const { data: poll, error: pollErr } = await supabase
     .from('community_polls')
-    .select('post_id, options, closes_at')
+    .select('post_id, options, closes_at, allow_multi')
     .eq('post_id', postId)
     .maybeSingle();
   if (pollErr) throw new Error('Poll check: ' + pollErr.message);
@@ -1014,18 +1024,73 @@ export async function votePoll(userId, postId, optionIdx) {
     throw Object.assign(new Error('Poll is gesloten.'), { status: 409 });
   }
   const optsCount = Array.isArray(poll.options) ? poll.options.length : 0;
-  if (optionIdx >= optsCount) {
+  if (action !== 'unvote' && optionIdx >= optsCount) {
     throw Object.assign(new Error('Ongeldige stem-optie.'), { status: 422 });
   }
 
-  // Upsert: één stem per (post_id, user_id) door PK; we staan toe te wijzigen.
-  const { error: upErr } = await supabase
-    .from('community_poll_votes')
-    .upsert({ post_id: postId, user_id: userId, option_idx: optionIdx },
-            { onConflict: 'post_id,user_id' });
-  if (upErr) throw new Error('Vote upsert: ' + upErr.message);
+  const allowMulti = !!poll.allow_multi;
 
-  // Vernieuw counts
+  if (action === 'unvote') {
+    // Verwijder alle stemmen van deze user op deze poll.
+    const { error } = await supabase
+      .from('community_poll_votes')
+      .delete()
+      .eq('post_id', postId)
+      .eq('user_id', userId);
+    if (error) throw new Error('Vote unvote: ' + error.message);
+  } else if (allowMulti) {
+    // Toggle: bestaat (post_id, user_id, option_idx)? → delete; anders insert.
+    const { data: existing } = await supabase
+      .from('community_poll_votes')
+      .select('option_idx')
+      .eq('post_id', postId)
+      .eq('user_id', userId)
+      .eq('option_idx', optionIdx)
+      .maybeSingle();
+    if (existing) {
+      const { error } = await supabase
+        .from('community_poll_votes')
+        .delete()
+        .eq('post_id', postId)
+        .eq('user_id', userId)
+        .eq('option_idx', optionIdx);
+      if (error) throw new Error('Vote toggle delete: ' + error.message);
+    } else {
+      const { error } = await supabase
+        .from('community_poll_votes')
+        .insert({ post_id: postId, user_id: userId, option_idx: optionIdx });
+      if (error) throw new Error('Vote toggle insert: ' + error.message);
+    }
+  } else {
+    // Single-vote: huidige stemmen ophalen, vergelijken met nieuwe.
+    const { data: current } = await supabase
+      .from('community_poll_votes')
+      .select('option_idx')
+      .eq('post_id', postId)
+      .eq('user_id', userId);
+    const currentIdx = current?.[0]?.option_idx;
+    if (currentIdx === optionIdx) {
+      // Klik op huidige optie = unvote
+      const { error } = await supabase
+        .from('community_poll_votes')
+        .delete()
+        .eq('post_id', postId)
+        .eq('user_id', userId);
+      if (error) throw new Error('Vote single delete: ' + error.message);
+    } else {
+      // Vervang: delete bestaande + insert nieuwe
+      await supabase
+        .from('community_poll_votes')
+        .delete()
+        .eq('post_id', postId)
+        .eq('user_id', userId);
+      const { error } = await supabase
+        .from('community_poll_votes')
+        .insert({ post_id: postId, user_id: userId, option_idx: optionIdx });
+      if (error) throw new Error('Vote single insert: ' + error.message);
+    }
+  }
+
   const map = await loadPollsForPosts(userId, [postId]);
   return map.get(postId) || null;
 }
