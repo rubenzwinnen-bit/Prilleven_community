@@ -726,18 +726,28 @@ async function insertNotification({ userId, type, postId = null, replyId = null,
 /**
  * Laad notificaties voor user, met actor-nickname + post-preview.
  * Sorteert ongelezen eerst, dan op datum desc. Limiet 30.
+ *
+ * NB: we vermijden `nullsFirst` op .order() omdat de optie in sommige
+ * supabase-js versies niet correct wordt geserialiseerd. Sortering doen
+ * we in JS na de fetch.
  */
 export async function loadMyNotifications(userId, { limit = 30 } = {}) {
   const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 30, 1), 100);
-  const { data: notifs, error } = await supabase
+  const { data: rawNotifs, error } = await supabase
     .from('community_notifications')
     .select('id, type, post_id, reply_id, actor_id, read_at, created_at')
     .eq('user_id', userId)
-    .order('read_at', { ascending: true, nullsFirst: true })
     .order('created_at', { ascending: false })
     .limit(safeLimit);
   if (error) throw new Error('Notifications load: ' + error.message);
-  if (!notifs?.length) return [];
+  if (!rawNotifs?.length) return [];
+  // Re-sort in JS: ongelezen (read_at = null) eerst, dan chronologisch desc.
+  const notifs = [...rawNotifs].sort((a, b) => {
+    const aRead = a.read_at ? 1 : 0;
+    const bRead = b.read_at ? 1 : 0;
+    if (aRead !== bRead) return aRead - bRead;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
 
   const actorIds = [...new Set(notifs.map(n => n.actor_id).filter(Boolean))];
   const postIds  = [...new Set(notifs.map(n => n.post_id).filter(Boolean))];
