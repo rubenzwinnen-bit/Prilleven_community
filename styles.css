@@ -2689,6 +2689,11 @@ body.is-hub #app-nav { display: none; }
   font-weight: 500;
   white-space: nowrap;
 }
+/* Wanneer er een menu naast staat, mag de chip niet meer naar rechts gepushed
+   worden — anders wordt het menu uit de header geduwd. */
+.tl-post-head:has(.tl-menu) .tl-cat {
+  margin-left: 0;
+}
 .tl-cat--vraag    { background: #ffe9d9; color: var(--color-primary-dark); }
 .tl-cat--tip      { background: #e7f1d4; color: #5a7c2f; }
 .tl-cat--mijlpaal { background: #fff4d1; color: #8a6a08; }
@@ -2938,7 +2943,9 @@ body.is-hub #app-nav { display: none; }
 /* "..." menu in header van post/reply */
 .tl-menu {
   position: relative;
-  margin-left: 0.4rem;
+  margin-left: auto;
+  flex-shrink: 0;
+  order: 99; /* zorg dat menu altijd helemaal rechts in de header staat */
 }
 .tl-menu-toggle {
   background: transparent;
