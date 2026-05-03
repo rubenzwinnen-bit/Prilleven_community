@@ -329,6 +329,12 @@ export async function init() {
       clearPhoto();
       clearPoll();
       prependPost(data.post);
+      // Op mobile staat de feed onder de composer + filterbar — scroll
+      // de nieuwe post in beeld zodat user feedback krijgt.
+      const newCard = document.querySelector(
+        `.tl-post[data-post-id="${CSS.escape(data.post.id)}"]`
+      );
+      newCard?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       showToast('Geplaatst');
       await refreshNickDisplay();
     } catch (err) {
@@ -555,6 +561,11 @@ function initBell() {
     setBellBadge(0);
     // Re-style alle rows als gelezen
     document.querySelectorAll('.tl-notif').forEach(n => n.classList.remove('is-unread'));
+    // Sluit dropdown na korte vertraging zodat user de update ziet
+    setTimeout(() => {
+      dropdown.classList.add('hidden');
+      btn.setAttribute('aria-expanded', 'false');
+    }, 300);
   });
 
   // Klik buiten bell sluit dropdown (gebruikt al closeAllMenus()-pattern niet,
