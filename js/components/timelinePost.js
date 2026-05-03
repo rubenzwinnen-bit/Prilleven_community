@@ -25,7 +25,7 @@ export function categoryMeta(id) {
   return CATEGORIES.find(c => c.id === id) || CATEGORIES[0];
 }
 
-export function renderPostCard(post) {
+export function renderPostCard(post, currentUserId = null) {
   const nickname = post.nickname || '(naamloos)';
   const initials = initialsFromName(nickname);
   const color    = colorFromSeed(post.user_id);
@@ -38,6 +38,8 @@ export function renderPostCard(post) {
   const likes    = Number(post.likes_count || 0);
   const replies  = Number(post.replies_count || 0);
   const liked    = !!post.liked_by_me;
+  const isOwn    = currentUserId && post.user_id === currentUserId;
+  const canEdit  = isOwn && (Date.now() - new Date(post.created_at).getTime() < 15 * 60 * 1000);
 
   return `
     <article class="tl-post${pinned}" data-post-id="${escapeHtml(post.id)}" data-category="${escapeHtml(cat.id)}" data-likes="${likes}" data-replies="${replies}" data-liked="${liked ? '1' : '0'}">
@@ -50,8 +52,9 @@ export function renderPostCard(post) {
           <span class="tl-time">${escapeHtml(time)}${edited}</span>
         </div>
         <span class="tl-cat tl-cat--${escapeHtml(cat.id)}" title="Categorie">${cat.emoji} ${escapeHtml(cat.label)}</span>
+        ${renderMenu({ isOwn, canEdit, type: 'post' })}
       </header>
-      <div class="tl-post-body">${body}</div>
+      <div class="tl-post-body" data-role="post-body">${body}</div>
       ${post.image_url ? `
         <a class="tl-post-image-link" href="${escapeHtml(post.image_url)}" target="_blank" rel="noopener" title="Open in nieuw tabblad">
           <img class="tl-post-image" src="${escapeHtml(post.image_url)}" alt="Bijgevoegde foto" loading="lazy">
@@ -141,13 +144,15 @@ function formatRelativeFuture(isoString) {
 }
 
 /** Render één reply-rij. Gebruikt door timeline.js bij expand of nieuwe reply. */
-export function renderReplyRow(reply) {
+export function renderReplyRow(reply, currentUserId = null) {
   const nickname = reply.nickname || '(naamloos)';
   const initials = initialsFromName(nickname);
   const color    = colorFromSeed(reply.user_id);
   const time     = formatRelativeTime(reply.created_at);
   const edited   = reply.edited_at ? ' · bewerkt' : '';
   const body     = nl2br(escapeHtml(reply.body));
+  const isOwn    = currentUserId && reply.user_id === currentUserId;
+  const canEdit  = isOwn && (Date.now() - new Date(reply.created_at).getTime() < 15 * 60 * 1000);
 
   return `
     <div class="tl-reply" data-reply-id="${escapeHtml(reply.id)}">
@@ -157,9 +162,32 @@ export function renderReplyRow(reply) {
           <span class="tl-nickname">${escapeHtml(nickname)}</span>
           <span class="tl-meta-sep">·</span>
           <span class="tl-time">${escapeHtml(time)}${edited}</span>
+          ${renderMenu({ isOwn, canEdit, type: 'reply' })}
         </div>
-        <div class="tl-reply-body">${body}</div>
+        <div class="tl-reply-body" data-role="reply-body">${body}</div>
       </div>
+    </div>
+  `;
+}
+
+/**
+ * Render een "..." menu-knop met dropdown. Inhoud:
+ * - eigen item: Bewerken (binnen 15 min) + Verwijderen
+ * - andermans item: Rapporteren
+ */
+function renderMenu({ isOwn, canEdit, type }) {
+  const items = [];
+  if (isOwn) {
+    if (canEdit) items.push(`<button type="button" class="tl-menu-item" data-action="edit-${type}">Bewerken</button>`);
+    items.push(`<button type="button" class="tl-menu-item tl-menu-danger" data-action="delete-${type}">Verwijderen</button>`);
+  } else {
+    items.push(`<button type="button" class="tl-menu-item" data-action="report-${type}">Rapporteren</button>`);
+  }
+  if (items.length === 0) return '';
+  return `
+    <div class="tl-menu" data-role="menu">
+      <button type="button" class="tl-menu-toggle" data-action="toggle-menu" aria-label="Acties" aria-expanded="false">⋯</button>
+      <div class="tl-menu-dropdown hidden" data-role="menu-dropdown">${items.join('')}</div>
     </div>
   `;
 }

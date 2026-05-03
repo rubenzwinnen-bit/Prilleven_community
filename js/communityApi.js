@@ -91,3 +91,17 @@ export const createReply = (postId, body)  =>
 /* ----- Likes ----- */
 export const toggleLike  = (postId)        =>
   call(`/posts/${encodeURIComponent(postId)}/like`, { method: 'POST' });
+
+/* ----- Edit / delete ----- */
+export const editPost   = (postId, body) =>
+  call(`/posts/${encodeURIComponent(postId)}`, { method: 'PATCH', body: { body } });
+export const deletePost = (postId) =>
+  call(`/posts/${encodeURIComponent(postId)}`, { method: 'DELETE' });
+export const editReply  = (replyId, body) =>
+  call(`/replies/${encodeURIComponent(replyId)}`, { method: 'PATCH', body: { body } });
+export const deleteReply = (replyId) =>
+  call(`/replies/${encodeURIComponent(replyId)}`, { method: 'DELETE' });
+
+/* ----- Report ----- */
+export const reportTarget = ({ target_type, target_id, reason }) =>
+  call('/report', { method: 'POST', body: { target_type, target_id, reason } });

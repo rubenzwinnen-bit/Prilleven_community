@@ -35,6 +35,11 @@ import {
   sanitizePollInput,
   loadPollsForPosts,
   votePoll,
+  editPost,
+  deletePost,
+  editReply,
+  deleteReply,
+  createReport,
 } from './_lib/community.mjs';
 import { findBlockedWord } from './_lib/moderation.mjs';
 
@@ -98,6 +103,13 @@ function matchRoute(req) {
     if (method === 'POST') return { route: 'posts.create' };
   }
 
+  // /posts/:id   (edit / delete)
+  if (segments.length === 2 && segments[0] === 'posts') {
+    const id = segments[1];
+    if (method === 'PATCH')  return { route: 'posts.edit',   params: { id } };
+    if (method === 'DELETE') return { route: 'posts.delete', params: { id } };
+  }
+
   // /posts/:id/replies
   if (segments.length === 3 && segments[0] === 'posts' && segments[2] === 'replies') {
     const id = segments[1];
@@ -105,9 +117,21 @@ function matchRoute(req) {
     if (method === 'POST') return { route: 'replies.create', params: { id } };
   }
 
+  // /replies/:id   (edit / delete)
+  if (segments.length === 2 && segments[0] === 'replies') {
+    const id = segments[1];
+    if (method === 'PATCH')  return { route: 'replies.edit',   params: { id } };
+    if (method === 'DELETE') return { route: 'replies.delete', params: { id } };
+  }
+
   // /posts/:id/like
   if (segments.length === 3 && segments[0] === 'posts' && segments[2] === 'like') {
     if (method === 'POST') return { route: 'like.toggle', params: { id: segments[1] } };
+  }
+
+  // /report
+  if (segments.length === 1 && segments[0] === 'report' && method === 'POST') {
+    return { route: 'report.create' };
   }
 
   // /upload-url
@@ -299,6 +323,82 @@ export default async function handler(req, res) {
       try {
         const result = await votePoll(auth.userId, params.id, optionIdx);
         return json(res, 200, { poll: result });
+      } catch (err) {
+        return json(res, err.status || 500, { error: err.message });
+      }
+    }
+
+    /* ----- post edit / delete ----- */
+    if (route === 'posts.edit') {
+      if (!isUuid(params.id)) return json(res, 400, { error: 'Ongeldige post-id.' });
+      const body = parseBody(req);
+      if (body === null) return json(res, 400, { error: 'Ongeldige JSON.' });
+      if (typeof body.body === 'string' && findBlockedWord(body.body)) {
+        return json(res, 422, { error: 'Bericht bevat ongepaste taal.' });
+      }
+      try {
+        const post = await editPost(auth.userId, params.id, body.body);
+        const [signedMap, pollMap] = await Promise.all([
+          post.image_path ? signImageUrls([post.image_path]) : Promise.resolve(new Map()),
+          post.has_poll  ? loadPollsForPosts(auth.userId, [post.id]) : Promise.resolve(new Map()),
+        ]);
+        return json(res, 200, {
+          post: {
+            ...post,
+            image_url: post.image_path ? (signedMap.get(post.image_path) || null) : null,
+            poll:      post.has_poll  ? (pollMap.get(post.id) || null) : null,
+          },
+        });
+      } catch (err) {
+        return json(res, err.status || 500, { error: err.message });
+      }
+    }
+    if (route === 'posts.delete') {
+      if (!isUuid(params.id)) return json(res, 400, { error: 'Ongeldige post-id.' });
+      try {
+        await deletePost(auth.userId, params.id);
+        return json(res, 200, { ok: true });
+      } catch (err) {
+        return json(res, err.status || 500, { error: err.message });
+      }
+    }
+
+    /* ----- reply edit / delete ----- */
+    if (route === 'replies.edit') {
+      if (!isUuid(params.id)) return json(res, 400, { error: 'Ongeldige reply-id.' });
+      const body = parseBody(req);
+      if (body === null) return json(res, 400, { error: 'Ongeldige JSON.' });
+      if (typeof body.body === 'string' && findBlockedWord(body.body)) {
+        return json(res, 422, { error: 'Reactie bevat ongepaste taal.' });
+      }
+      try {
+        const reply = await editReply(auth.userId, params.id, body.body);
+        return json(res, 200, { reply });
+      } catch (err) {
+        return json(res, err.status || 500, { error: err.message });
+      }
+    }
+    if (route === 'replies.delete') {
+      if (!isUuid(params.id)) return json(res, 400, { error: 'Ongeldige reply-id.' });
+      try {
+        await deleteReply(auth.userId, params.id);
+        return json(res, 200, { ok: true });
+      } catch (err) {
+        return json(res, err.status || 500, { error: err.message });
+      }
+    }
+
+    /* ----- report ----- */
+    if (route === 'report.create') {
+      const body = parseBody(req);
+      if (body === null) return json(res, 400, { error: 'Ongeldige JSON.' });
+      try {
+        await createReport(auth.userId, {
+          target_type: body.target_type,
+          target_id:   body.target_id,
+          reason:      body.reason,
+        });
+        return json(res, 201, { ok: true });
       } catch (err) {
         return json(res, err.status || 500, { error: err.message });
       }

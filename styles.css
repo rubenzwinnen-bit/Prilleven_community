@@ -2930,3 +2930,98 @@ body.is-hub #app-nav { display: none; }
   font-size: 0.75rem;
   color: var(--color-gray);
 }
+
+/* ============================================
+   COMMUNITY TIMELINE — STAP 8: menu + edit + report
+============================================ */
+
+/* "..." menu in header van post/reply */
+.tl-menu {
+  position: relative;
+  margin-left: 0.4rem;
+}
+.tl-menu-toggle {
+  background: transparent;
+  border: 0;
+  color: var(--color-gray);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0.15rem 0.4rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.tl-menu-toggle:hover {
+  background: var(--color-light);
+  color: var(--color-dark);
+}
+.tl-menu-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.25rem;
+  background: var(--color-white);
+  border: 1px solid var(--color-light);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  z-index: 50;
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  padding: 0.25rem;
+}
+.tl-menu-dropdown.hidden { display: none; }
+.tl-menu-item {
+  background: transparent;
+  border: 0;
+  text-align: left;
+  padding: 0.45rem 0.7rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+  color: var(--color-dark);
+  cursor: pointer;
+  border-radius: 6px;
+}
+.tl-menu-item:hover {
+  background: var(--color-light);
+}
+.tl-menu-item.tl-menu-danger {
+  color: var(--color-danger);
+}
+.tl-menu-item.tl-menu-danger:hover {
+  background: #fceaea;
+}
+
+/* Inline edit-form (post + reply) */
+.tl-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.tl-edit-input {
+  width: 100%;
+  resize: vertical;
+  min-height: 60px;
+  border: 1px solid var(--color-primary);
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: var(--color-dark);
+  background: var(--color-white);
+}
+.tl-edit-input:focus {
+  outline: none;
+  border-color: var(--color-primary-dark);
+}
+.tl-edit-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  align-items: center;
+}
+.tl-edit-actions .auth-error {
+  flex: 1;
+  margin: 0;
+  font-size: 0.8rem;
+}

@@ -403,6 +403,156 @@ export async function createReply(userId, postId, { body }) {
 }
 
 /* ============================================
+   EDIT / DELETE — posts en replies
+   Server doet authoritatieve eigenaar + 15-min check.
+============================================ */
+
+const EDIT_WINDOW_MS = 15 * 60 * 1000;
+
+export async function editPost(userId, postId, newBody) {
+  const body = typeof newBody === 'string' ? newBody.trim() : '';
+  if (!body) throw Object.assign(new Error('Bericht mag niet leeg zijn.'), { status: 422 });
+  if (body.length > 4000) throw Object.assign(new Error('Bericht te lang.'), { status: 422 });
+
+  const { data: existing, error: getErr } = await supabase
+    .from('community_posts')
+    .select('user_id, created_at')
+    .eq('id', postId)
+    .maybeSingle();
+  if (getErr) throw new Error('Post fetch: ' + getErr.message);
+  if (!existing) throw Object.assign(new Error('Post bestaat niet.'), { status: 404 });
+  if (existing.user_id !== userId) {
+    throw Object.assign(new Error('Geen rechten om deze post te wijzigen.'), { status: 403 });
+  }
+  if (Date.now() - new Date(existing.created_at).getTime() > EDIT_WINDOW_MS) {
+    throw Object.assign(new Error('Bewerken kan alleen binnen 15 minuten na plaatsen.'), { status: 409 });
+  }
+
+  const { error } = await supabase
+    .from('community_posts')
+    .update({ body, edited_at: new Date().toISOString() })
+    .eq('id', postId);
+  if (error) throw new Error('Post update: ' + error.message);
+
+  const { data, error: viewErr } = await supabase
+    .from('community_posts_view')
+    .select('*')
+    .eq('id', postId)
+    .single();
+  if (viewErr) throw new Error('Post hydrate: ' + viewErr.message);
+  return data;
+}
+
+export async function deletePost(userId, postId, { isAdmin = false } = {}) {
+  const { data: existing, error: getErr } = await supabase
+    .from('community_posts')
+    .select('user_id, image_path')
+    .eq('id', postId)
+    .maybeSingle();
+  if (getErr) throw new Error('Post fetch: ' + getErr.message);
+  if (!existing) throw Object.assign(new Error('Post bestaat niet.'), { status: 404 });
+  if (!isAdmin && existing.user_id !== userId) {
+    throw Object.assign(new Error('Geen rechten om deze post te verwijderen.'), { status: 403 });
+  }
+
+  // Verwijder gekoppelde foto uit storage (best-effort).
+  if (existing.image_path) {
+    await supabase.storage.from(BUCKET).remove([existing.image_path]).catch(() => {});
+  }
+
+  const { error } = await supabase
+    .from('community_posts')
+    .delete()
+    .eq('id', postId);
+  if (error) throw new Error('Post delete: ' + error.message);
+  return { ok: true };
+}
+
+export async function editReply(userId, replyId, newBody) {
+  const body = typeof newBody === 'string' ? newBody.trim() : '';
+  if (!body) throw Object.assign(new Error('Reactie mag niet leeg zijn.'), { status: 422 });
+  if (body.length > 2000) throw Object.assign(new Error('Reactie te lang.'), { status: 422 });
+
+  const { data: existing, error: getErr } = await supabase
+    .from('community_replies')
+    .select('user_id, created_at')
+    .eq('id', replyId)
+    .maybeSingle();
+  if (getErr) throw new Error('Reply fetch: ' + getErr.message);
+  if (!existing) throw Object.assign(new Error('Reactie bestaat niet.'), { status: 404 });
+  if (existing.user_id !== userId) {
+    throw Object.assign(new Error('Geen rechten om deze reactie te wijzigen.'), { status: 403 });
+  }
+  if (Date.now() - new Date(existing.created_at).getTime() > EDIT_WINDOW_MS) {
+    throw Object.assign(new Error('Bewerken kan alleen binnen 15 minuten na plaatsen.'), { status: 409 });
+  }
+
+  const { error } = await supabase
+    .from('community_replies')
+    .update({ body, edited_at: new Date().toISOString() })
+    .eq('id', replyId);
+  if (error) throw new Error('Reply update: ' + error.message);
+
+  const { data: prof } = await supabase
+    .from('community_profiles')
+    .select('nickname')
+    .eq('user_id', userId)
+    .maybeSingle();
+  const { data: hydrated, error: hErr } = await supabase
+    .from('community_replies')
+    .select('id, post_id, user_id, body, edited_at, created_at')
+    .eq('id', replyId)
+    .single();
+  if (hErr) throw new Error('Reply hydrate: ' + hErr.message);
+  return { ...hydrated, nickname: prof?.nickname || null };
+}
+
+export async function deleteReply(userId, replyId, { isAdmin = false } = {}) {
+  const { data: existing, error: getErr } = await supabase
+    .from('community_replies')
+    .select('user_id')
+    .eq('id', replyId)
+    .maybeSingle();
+  if (getErr) throw new Error('Reply fetch: ' + getErr.message);
+  if (!existing) throw Object.assign(new Error('Reactie bestaat niet.'), { status: 404 });
+  if (!isAdmin && existing.user_id !== userId) {
+    throw Object.assign(new Error('Geen rechten om deze reactie te verwijderen.'), { status: 403 });
+  }
+
+  const { error } = await supabase
+    .from('community_replies')
+    .delete()
+    .eq('id', replyId);
+  if (error) throw new Error('Reply delete: ' + error.message);
+  return { ok: true };
+}
+
+/* ============================================
+   REPORTS
+============================================ */
+
+export async function createReport(userId, { target_type, target_id, reason }) {
+  if (!['post', 'reply'].includes(target_type)) {
+    throw Object.assign(new Error('Ongeldig target_type.'), { status: 422 });
+  }
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(target_id))) {
+    throw Object.assign(new Error('Ongeldige target_id.'), { status: 422 });
+  }
+  const cleanReason = typeof reason === 'string' ? reason.trim().slice(0, 500) : null;
+
+  const { error } = await supabase
+    .from('community_reports')
+    .insert({
+      target_type,
+      target_id,
+      reporter_id: userId,
+      reason: cleanReason || null,
+    });
+  if (error) throw new Error('Report insert: ' + error.message);
+  return { ok: true };
+}
+
+/* ============================================
    POLLS
 ============================================ */
 

@@ -4,11 +4,16 @@
    Stap 4: voegt like + replies toe via event-delegation.
 ============================================ */
 
-import { showToast, escapeHtml, processImageForUpload } from '../utils.js?v=2.0.1';
+import { showToast, escapeHtml, processImageForUpload, confirm as confirmDialog, nl2br } from '../utils.js?v=2.0.1';
 import * as Api from '../communityApi.js?v=2.0.1';
+import { sessionGet } from '../supabase.js?v=2.0.1';
 import { ensureNickname, getCachedNickname, openNicknameModal, invalidateNicknameCache }
   from './nicknameModal.js?v=2.0.1';
 import { renderPostCard, renderReplyRow, renderPoll, CATEGORIES } from './timelinePost.js?v=2.0.1';
+
+function currentUserId() {
+  return sessionGet()?.user_id || null;
+}
 
 const MAX_BODY = 4000;
 let currentCategory = null; // null = "Alle"
@@ -343,7 +348,205 @@ async function onFeedClick(e) {
     await handleRepliesToggle(card, btn);
   } else if (action === 'vote-poll') {
     await handlePollVote(card, btn);
+  } else if (action === 'toggle-menu') {
+    handleToggleMenu(btn);
+  } else if (action === 'edit-post') {
+    closeAllMenus();
+    enterEditMode(card, 'post');
+  } else if (action === 'delete-post') {
+    closeAllMenus();
+    await handleDeletePost(card);
+  } else if (action === 'report-post') {
+    closeAllMenus();
+    await handleReport('post', card.dataset.postId);
+  } else if (action === 'edit-reply') {
+    closeAllMenus();
+    enterEditMode(btn.closest('.tl-reply'), 'reply');
+  } else if (action === 'delete-reply') {
+    closeAllMenus();
+    await handleDeleteReply(card, btn.closest('.tl-reply'));
+  } else if (action === 'report-reply') {
+    closeAllMenus();
+    await handleReport('reply', btn.closest('.tl-reply').dataset.replyId);
   }
+}
+
+/* ----- Menu (popover) ----- */
+function handleToggleMenu(btn) {
+  const menu = btn.closest('[data-role="menu"]');
+  const dropdown = menu.querySelector('[data-role="menu-dropdown"]');
+  const wasOpen = !dropdown.classList.contains('hidden');
+  closeAllMenus();
+  if (!wasOpen) {
+    dropdown.classList.remove('hidden');
+    btn.setAttribute('aria-expanded', 'true');
+  }
+}
+
+function closeAllMenus() {
+  document.querySelectorAll('[data-role="menu-dropdown"]').forEach(d => d.classList.add('hidden'));
+  document.querySelectorAll('[data-action="toggle-menu"]').forEach(b => b.setAttribute('aria-expanded', 'false'));
+}
+
+// Klikken buiten een menu sluit alle menus.
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('[data-role="menu"]')) closeAllMenus();
+});
+
+/* ----- Edit-modus (inline) ----- */
+function enterEditMode(container, type) {
+  const bodyEl = container.querySelector(`[data-role="${type}-body"]`);
+  if (!bodyEl) return;
+  const original = bodyEl.textContent.trim();
+  const maxLen = type === 'post' ? 4000 : 2000;
+  const editorHtml = `
+    <div class="tl-edit-form" data-role="edit-form">
+      <textarea class="tl-edit-input" maxlength="${maxLen}" rows="3">${escapeHtml(original)}</textarea>
+      <div class="tl-edit-actions">
+        <span class="tl-edit-error auth-error hidden" data-role="edit-error"></span>
+        <button type="button" class="btn btn-outline btn-sm" data-action="cancel-edit">Annuleren</button>
+        <button type="button" class="btn btn-primary btn-sm" data-action="save-edit-${type}">Opslaan</button>
+      </div>
+    </div>
+  `;
+  // Onthoud originele body zodat cancel kan terugzetten
+  bodyEl.dataset.originalHtml = bodyEl.innerHTML;
+  bodyEl.innerHTML = editorHtml;
+  const ta = bodyEl.querySelector('.tl-edit-input');
+  ta.focus();
+  ta.setSelectionRange(ta.value.length, ta.value.length);
+}
+
+function exitEditMode(container, type, newBody = null) {
+  const bodyEl = container.querySelector(`[data-role="${type}-body"]`);
+  if (!bodyEl) return;
+  if (newBody !== null) {
+    bodyEl.innerHTML = nl2br(escapeHtml(newBody));
+    // Update "bewerkt" suffix in meta
+    const time = container.querySelector('.tl-time');
+    if (time && !time.textContent.includes('bewerkt')) {
+      time.textContent += ' · bewerkt';
+    }
+  } else if (bodyEl.dataset.originalHtml) {
+    bodyEl.innerHTML = bodyEl.dataset.originalHtml;
+  }
+  delete bodyEl.dataset.originalHtml;
+}
+
+// Extra delegation voor edit-form acties (cancel + save)
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  const action = btn.dataset.action;
+
+  if (action === 'cancel-edit') {
+    const card = btn.closest('.tl-post') || btn.closest('.tl-reply');
+    const type = btn.closest('.tl-post') ? 'post' : 'reply';
+    if (card) exitEditMode(card, type);
+  } else if (action === 'save-edit-post') {
+    const card = btn.closest('.tl-post');
+    if (card) await handleSaveEdit(card, 'post');
+  } else if (action === 'save-edit-reply') {
+    const reply = btn.closest('.tl-reply');
+    if (reply) await handleSaveEdit(reply, 'reply');
+  }
+});
+
+async function handleSaveEdit(container, type) {
+  const ta = container.querySelector('.tl-edit-input');
+  const errorEl = container.querySelector('[data-role="edit-error"]');
+  const saveBtn = container.querySelector(`[data-action="save-edit-${type}"]`);
+  const text = ta.value.trim();
+  errorEl.classList.add('hidden');
+  if (!text) {
+    errorEl.textContent = 'Mag niet leeg zijn.';
+    errorEl.classList.remove('hidden');
+    return;
+  }
+  saveBtn.disabled = true;
+  const id = type === 'post' ? container.dataset.postId : container.dataset.replyId;
+  const fn = type === 'post' ? Api.editPost : Api.editReply;
+  const { ok, data, error } = await fn(id, text);
+  saveBtn.disabled = false;
+  if (!ok) {
+    errorEl.textContent = error || 'Kon niet opslaan.';
+    errorEl.classList.remove('hidden');
+    return;
+  }
+  const newBody = type === 'post' ? data.post.body : data.reply.body;
+  exitEditMode(container, type, newBody);
+  showToast('Bijgewerkt');
+}
+
+/* ----- Delete ----- */
+async function handleDeletePost(card) {
+  const ok = await confirmDialog('Weet je zeker dat je dit bericht wilt verwijderen?');
+  if (!ok) return;
+  const { ok: success, error } = await Api.deletePost(card.dataset.postId);
+  if (!success) {
+    showToast(error || 'Kon niet verwijderen', 'error');
+    return;
+  }
+  card.remove();
+  showToast('Bericht verwijderd');
+}
+
+async function handleDeleteReply(card, replyEl) {
+  const ok = await confirmDialog('Weet je zeker dat je deze reactie wilt verwijderen?');
+  if (!ok) return;
+  const { ok: success, error } = await Api.deleteReply(replyEl.dataset.replyId);
+  if (!success) {
+    showToast(error || 'Kon niet verwijderen', 'error');
+    return;
+  }
+  replyEl.remove();
+  bumpReplyCount(card, -1);
+  showToast('Reactie verwijderd');
+}
+
+/* ----- Rapporteer ----- */
+async function handleReport(targetType, targetId) {
+  const reason = await openReportModal();
+  if (reason === null) return; // user annuleerde
+  const { ok, error } = await Api.reportTarget({
+    target_type: targetType,
+    target_id: targetId,
+    reason: reason || null,
+  });
+  if (!ok) {
+    showToast(error || 'Kon niet rapporteren', 'error');
+    return;
+  }
+  showToast('Bedankt — gerapporteerd aan een admin.');
+}
+
+function openReportModal() {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal nickname-modal">
+        <h2>Rapporteren</h2>
+        <p class="nickname-modal-desc">
+          Een admin krijgt deze melding te zien. Geef optioneel kort aan wat
+          er aan schort (max 500 tekens).
+        </p>
+        <textarea id="tl-report-reason" class="tl-reply-input" rows="3" maxlength="500" placeholder="Reden (optioneel)…"></textarea>
+        <div class="nickname-actions">
+          <button class="btn btn-outline" data-action="report-cancel">Annuleren</button>
+          <button class="btn btn-danger" data-action="report-confirm">Verstuur</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    const close = (val) => { overlay.remove(); resolve(val); };
+    overlay.querySelector('[data-action="report-cancel"]').addEventListener('click', () => close(null));
+    overlay.querySelector('[data-action="report-confirm"]').addEventListener('click', () => {
+      const reason = overlay.querySelector('#tl-report-reason').value.trim();
+      close(reason);
+    });
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(null); });
+  });
 }
 
 async function handlePollVote(card, btn) {
@@ -442,7 +645,8 @@ async function handleRepliesToggle(card, btn) {
   if (replies.length === 0) {
     list.innerHTML = '<div class="tl-replies-empty">Nog geen reacties — wees de eerste!</div>';
   } else {
-    list.innerHTML = replies.map(renderReplyRow).join('');
+    const me = currentUserId();
+    list.innerHTML = replies.map(r => renderReplyRow(r, me)).join('');
   }
 }
 
@@ -488,7 +692,7 @@ async function handleReplySubmit(card, form) {
   const list = card.querySelector('[data-role="replies-list"]');
   const empty = list.querySelector('.tl-replies-empty, .tl-empty');
   if (empty) list.innerHTML = '';
-  list.insertAdjacentHTML('beforeend', renderReplyRow(data.reply));
+  list.insertAdjacentHTML('beforeend', renderReplyRow(data.reply, currentUserId()));
   list.dataset.loaded = '1';
 
   textarea.value = '';
@@ -520,7 +724,7 @@ async function loadAndRenderFeed(feedEl) {
     feedEl.innerHTML = `<div class="tl-empty">${escapeHtml(msg)}</div>`;
     return;
   }
-  feedEl.innerHTML = posts.map(renderPostCard).join('');
+  feedEl.innerHTML = posts.map(p => renderPostCard(p, currentUserId())).join('');
 }
 
 function prependPost(post) {
@@ -536,7 +740,7 @@ function prependPost(post) {
   if (empty) feedEl.innerHTML = '';
 
   const wrap = document.createElement('div');
-  wrap.innerHTML = renderPostCard(post);
+  wrap.innerHTML = renderPostCard(post, currentUserId());
   const card = wrap.firstElementChild;
   // Niet-pinned posts gaan boven andere niet-pinned, maar onder pinned.
   if (post.is_pinned) {
