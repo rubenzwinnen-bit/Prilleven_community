@@ -2111,6 +2111,9 @@ select.form-control {
 /* Verberg de navigatiebalk op de hub-landingspagina */
 body.is-hub #app-nav { display: none; }
 
+/* Op de hub-landingspagina is de "naar het hub"-knop overbodig */
+body.is-hub .header-home-btn { display: none; }
+
 /* Logo op het inlog-scherm */
 .auth-logo {
   text-align: center;
@@ -2250,4 +2253,1276 @@ body.is-hub #app-nav { display: none; }
     flex: 0 0 100px;
     font-size: 0.85rem;
   }
+}
+
+/* ============================================
+   COMMUNITY TIMELINE — STAP 2: NICKNAME MODAL
+   Volgt het bestaande modal/auth-patroon en
+   gebruikt enkel bestaande --color-* variabelen.
+============================================ */
+.nickname-modal {
+  max-width: 440px;
+  padding: 2rem;
+}
+.nickname-modal h2 {
+  color: var(--color-secondary-dark);
+  margin-bottom: 0.5rem;
+}
+.nickname-modal-desc {
+  color: var(--color-dark-light);
+  font-size: 0.95rem;
+  margin-bottom: 1.25rem;
+  line-height: 1.5;
+}
+.nickname-rules {
+  font-size: 0.8rem;
+  color: var(--color-gray);
+  margin-top: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+.nickname-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  justify-content: flex-end;
+}
+.nickname-actions .btn {
+  min-width: 120px;
+}
+@media (max-width: 480px) {
+  .nickname-actions {
+    flex-direction: column-reverse;
+  }
+  .nickname-actions .btn {
+    width: 100%;
+  }
+}
+
+/* ============================================
+   COMMUNITY TIMELINE — STAP 3: composer + feed
+============================================ */
+.tl-wrap {
+  margin: 3rem auto 4rem;
+  padding: 0 1rem;
+  max-width: 720px;
+  width: 100%;
+}
+.tl-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* ----- Composer ----- */
+.tl-composer {
+  background: var(--color-white);
+  border: 1px solid var(--color-light);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+}
+.tl-composer-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.5rem;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.tl-composer-title {
+  font-weight: 600;
+  color: var(--color-secondary-dark);
+  font-size: 1rem;
+}
+.tl-composer-nick {
+  font-size: 0.8rem;
+  color: var(--color-gray);
+}
+.tl-composer-input {
+  width: 100%;
+  resize: vertical;
+  min-height: 70px;
+  border: 1px solid var(--color-light);
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.95rem;
+  color: var(--color-dark);
+  background: var(--color-bg);
+  transition: var(--transition);
+}
+.tl-composer-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  background: var(--color-white);
+}
+.tl-composer-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.6rem;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.tl-counter {
+  font-size: 0.75rem;
+  color: var(--color-gray);
+}
+.tl-composer-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.tl-composer-actions .btn-sm {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+}
+
+/* ----- Feed ----- */
+.tl-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.tl-empty {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--color-gray);
+  background: var(--color-white);
+  border: 1px dashed var(--color-light);
+  border-radius: 12px;
+}
+.tl-empty.tl-error {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+/* ----- Postkaart ----- */
+.tl-post {
+  background: var(--color-white);
+  border: 1px solid var(--color-light);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+}
+.tl-post.is-pinned {
+  border-color: var(--color-secondary);
+  box-shadow: 0 1px 4px rgba(152, 195, 164, 0.25);
+}
+.tl-pinned-tag {
+  display: inline-block;
+  background: var(--color-secondary);
+  color: var(--color-white);
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.03em;
+}
+.tl-post-head {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.5rem;
+}
+.tl-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-white);
+  font-weight: 600;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+.tl-post-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+}
+.tl-nickname {
+  font-weight: 600;
+  color: var(--color-dark);
+}
+.tl-meta-sep {
+  color: var(--color-gray-light);
+}
+.tl-time {
+  color: var(--color-gray);
+}
+.tl-post-body {
+  color: var(--color-dark);
+  font-size: 0.95rem;
+  line-height: 1.55;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* ----- Postkaart actions (like + replies-toggle) ----- */
+.tl-post-actions {
+  display: flex;
+  gap: 1.25rem;
+  margin-top: 0.85rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--color-light);
+}
+.tl-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: transparent;
+  border: 0;
+  padding: 0.25rem 0.4rem;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--color-gray);
+  cursor: pointer;
+  transition: var(--transition);
+}
+.tl-action:hover {
+  color: var(--color-dark);
+  background: var(--color-light);
+}
+.tl-action:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.tl-action-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+.tl-like.is-liked {
+  color: var(--color-primary);
+}
+.tl-like.is-liked .tl-action-icon {
+  color: var(--color-primary);
+}
+.tl-action-label {
+  margin-left: 0.1rem;
+}
+
+/* ----- Replies sectie ----- */
+.tl-replies {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px dashed var(--color-light);
+}
+.tl-replies.hidden { display: none; }
+.tl-replies-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 0.85rem;
+}
+.tl-replies-empty,
+.tl-replies-loading {
+  text-align: left;
+  font-size: 0.85rem;
+  color: var(--color-gray);
+  padding: 0.4rem 0.2rem;
+}
+.tl-reply {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+}
+.tl-avatar-sm {
+  width: 28px;
+  height: 28px;
+  font-size: 0.7rem;
+}
+.tl-reply-bubble {
+  flex: 1;
+  background: var(--color-bg);
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-light);
+}
+.tl-reply-meta {
+  display: flex;
+  gap: 0.35rem;
+  align-items: baseline;
+  font-size: 0.8rem;
+  margin-bottom: 0.2rem;
+}
+.tl-reply-meta .tl-nickname { font-weight: 600; color: var(--color-dark); }
+.tl-reply-meta .tl-time     { color: var(--color-gray); }
+.tl-reply-body {
+  color: var(--color-dark);
+  font-size: 0.9rem;
+  line-height: 1.45;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* ----- Reply-formulier ----- */
+.tl-reply-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.tl-reply-input {
+  width: 100%;
+  resize: vertical;
+  min-height: 56px;
+  border: 1px solid var(--color-light);
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: var(--color-dark);
+  background: var(--color-white);
+  transition: var(--transition);
+}
+.tl-reply-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+.tl-reply-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+.tl-reply-error {
+  flex: 1;
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+/* ----- Mobiel ----- */
+@media (max-width: 600px) {
+  .tl-wrap {
+    margin: 2rem auto 3rem;
+  }
+  .tl-composer,
+  .tl-post {
+    padding: 0.85rem 1rem;
+  }
+  .tl-composer-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+/* ============================================
+   COMMUNITY TIMELINE — STAP 5: categorieën + filterbalk
+============================================ */
+
+/* Composer: categorie-select naast counter */
+.tl-composer-left {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+.tl-composer-cat {
+  border: 1px solid var(--color-light);
+  border-radius: 6px;
+  background: var(--color-white);
+  color: var(--color-dark);
+  padding: 0.3rem 0.5rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.tl-composer-cat:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+/* Visually-hidden helper voor labels */
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Filterbalk boven feed */
+.tl-filterbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.25rem 0;
+  margin-bottom: -0.25rem;
+}
+.tl-filter-chip {
+  background: var(--color-white);
+  border: 1px solid var(--color-light);
+  color: var(--color-dark-light);
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.tl-filter-chip:hover {
+  background: var(--color-light);
+  color: var(--color-dark);
+}
+.tl-filter-chip.is-active {
+  background: var(--color-secondary-dark);
+  color: var(--color-white);
+  border-color: var(--color-secondary-dark);
+}
+
+/* Categorie-chip op postkaart */
+.tl-post-head {
+  flex-wrap: wrap;
+}
+.tl-cat {
+  margin-left: auto;
+  background: var(--color-light);
+  color: var(--color-dark-light);
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+/* Wanneer er een menu naast staat, mag de chip niet meer naar rechts gepushed
+   worden — anders wordt het menu uit de header geduwd. */
+.tl-post-head:has(.tl-menu) .tl-cat {
+  margin-left: 0;
+}
+.tl-cat--vraag    { background: #ffe9d9; color: var(--color-primary-dark); }
+.tl-cat--tip      { background: #e7f1d4; color: #5a7c2f; }
+.tl-cat--mijlpaal { background: #fff4d1; color: #8a6a08; }
+.tl-cat--voeding  { background: #ffe1d6; color: var(--color-primary-dark); }
+.tl-cat--slapen   { background: #dde9f7; color: #2e5d92; }
+.tl-cat--algemeen { background: var(--color-light); color: var(--color-dark-light); }
+
+@media (max-width: 600px) {
+  .tl-cat {
+    margin-left: 0;
+    margin-top: 0.25rem;
+  }
+}
+
+/* ============================================
+   COMMUNITY TIMELINE — STAP 6: foto upload + display
+============================================ */
+
+/* Composer: paperclip-knop + preview */
+.tl-composer-photo {
+  background: var(--color-white);
+  border: 1px solid var(--color-light);
+  border-radius: 6px;
+  padding: 0.25rem 0.5rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: var(--transition);
+  line-height: 1;
+}
+.tl-composer-photo:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  background: var(--color-light);
+}
+.tl-composer-photo:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+.tl-photo-preview {
+  position: relative;
+  margin-top: 0.6rem;
+  display: inline-block;
+  max-width: 100%;
+}
+.tl-photo-preview.hidden { display: none; }
+.tl-photo-preview img {
+  max-width: 100%;
+  max-height: 240px;
+  border-radius: 8px;
+  border: 1px solid var(--color-light);
+  display: block;
+}
+.tl-photo-remove {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-danger);
+  color: var(--color-white);
+  border: 2px solid var(--color-white);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.tl-photo-remove:hover {
+  background: var(--color-danger-dark);
+}
+
+/* Postkaart: ingebouwde foto */
+.tl-post-image-link {
+  display: block;
+  margin-top: 0.75rem;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--color-light);
+  background: var(--color-bg);
+}
+.tl-post-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 600px;
+  object-fit: cover;
+}
+
+/* ============================================
+   COMMUNITY TIMELINE — STAP 7: polls
+============================================ */
+
+/* Composer poll-builder */
+.tl-poll-builder {
+  margin-top: 0.75rem;
+  border: 1px solid var(--color-light);
+  border-radius: 10px;
+  padding: 0.75rem;
+  background: var(--color-bg);
+}
+.tl-poll-builder.hidden { display: none; }
+.tl-poll-builder-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+.tl-poll-builder-head strong {
+  color: var(--color-secondary-dark);
+  font-size: 0.9rem;
+}
+.tl-poll-remove {
+  background: transparent;
+  border: 0;
+  color: var(--color-gray);
+  font-size: 1.2rem;
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  line-height: 1;
+}
+.tl-poll-remove:hover {
+  color: var(--color-danger);
+  background: var(--color-light);
+}
+.tl-poll-input {
+  width: 100%;
+  border: 1px solid var(--color-light);
+  border-radius: 6px;
+  padding: 0.45rem 0.6rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: var(--color-dark);
+  background: var(--color-white);
+  transition: var(--transition);
+  margin-bottom: 0.4rem;
+  display: block;
+}
+.tl-poll-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+.tl-poll-options {
+  display: flex;
+  flex-direction: column;
+}
+.tl-poll-hint {
+  font-size: 0.75rem;
+  color: var(--color-gray);
+  margin-top: 0.4rem;
+}
+
+/* Poll in postkaart */
+.tl-poll {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: var(--color-bg);
+  border: 1px solid var(--color-light);
+  border-radius: 10px;
+}
+.tl-poll-question {
+  font-weight: 600;
+  color: var(--color-dark);
+  margin-bottom: 0.6rem;
+  font-size: 0.95rem;
+}
+.tl-poll-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-bottom: 0.5rem;
+}
+.tl-poll-vote-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--color-white);
+  border: 1px solid var(--color-light);
+  border-radius: 8px;
+  padding: 0.55rem 0.85rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: var(--color-dark);
+  cursor: pointer;
+  transition: var(--transition);
+}
+.tl-poll-vote-btn:hover:not(:disabled) {
+  border-color: var(--color-secondary-dark);
+  background: var(--color-light);
+}
+.tl-poll-vote-btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* Resultaat-bars (na stemmen of na sluiten) */
+.tl-poll-result {
+  position: relative;
+  background: var(--color-white);
+  border: 1px solid var(--color-light);
+  border-radius: 8px;
+  padding: 0.55rem 0.85rem;
+  overflow: hidden;
+  font-size: 0.9rem;
+}
+.tl-poll-result.is-mine {
+  border-color: var(--color-secondary-dark);
+}
+.tl-poll-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--color-secondary);
+  opacity: 0.35;
+  transition: width 0.4s ease;
+}
+.tl-poll-result.is-mine .tl-poll-bar {
+  background: var(--color-primary);
+  opacity: 0.35;
+}
+.tl-poll-result-label {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-dark);
+}
+.tl-poll-pct {
+  font-weight: 600;
+  color: var(--color-dark-light);
+}
+.tl-poll-meta {
+  font-size: 0.75rem;
+  color: var(--color-gray);
+}
+
+/* ============================================
+   COMMUNITY TIMELINE — STAP 8: menu + edit + report
+============================================ */
+
+/* "..." menu in header van post/reply */
+.tl-menu {
+  position: relative;
+  margin-left: auto;
+  flex-shrink: 0;
+  order: 99; /* zorg dat menu altijd helemaal rechts in de header staat */
+}
+.tl-menu-toggle {
+  background: transparent;
+  border: 0;
+  color: var(--color-gray);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0.15rem 0.4rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.tl-menu-toggle:hover {
+  background: var(--color-light);
+  color: var(--color-dark);
+}
+.tl-menu-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.25rem;
+  background: var(--color-white);
+  border: 1px solid var(--color-light);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  z-index: 50;
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  padding: 0.25rem;
+}
+.tl-menu-dropdown.hidden { display: none; }
+.tl-menu-item {
+  background: transparent;
+  border: 0;
+  text-align: left;
+  padding: 0.45rem 0.7rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+  color: var(--color-dark);
+  cursor: pointer;
+  border-radius: 6px;
+}
+.tl-menu-item:hover {
+  background: var(--color-light);
+}
+.tl-menu-item.tl-menu-danger {
+  color: var(--color-danger);
+}
+.tl-menu-item.tl-menu-danger:hover {
+  background: #fceaea;
+}
+
+/* Inline edit-form (post + reply) */
+.tl-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.tl-edit-input {
+  width: 100%;
+  resize: vertical;
+  min-height: 60px;
+  border: 1px solid var(--color-primary);
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: var(--color-dark);
+  background: var(--color-white);
+}
+.tl-edit-input:focus {
+  outline: none;
+  border-color: var(--color-primary-dark);
+}
+.tl-edit-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  align-items: center;
+}
+.tl-edit-actions .auth-error {
+  flex: 1;
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+/* Admin menu-items met badge-streep */
+.tl-menu-admin {
+  position: relative;
+}
+.tl-menu-admin::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 6px; bottom: 6px;
+  width: 3px;
+  background: var(--color-secondary-dark);
+  border-radius: 2px;
+}
+
+/* ============================================
+   COMMUNITY TIMELINE — STAP 9: admin balk + reports queue
+============================================ */
+
+.tl-admin-bar {
+  background: var(--color-white);
+  border: 1px dashed var(--color-secondary);
+  border-radius: 10px;
+  padding: 0.5rem 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.tl-admin-label {
+  font-size: 0.85rem;
+  color: var(--color-secondary-dark);
+  font-weight: 600;
+}
+
+/* Reports modal */
+.tl-reports-modal {
+  max-width: 720px;
+  width: 100%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+.tl-reports-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0 1rem;
+  border-bottom: 1px solid var(--color-light);
+  margin-bottom: 0.75rem;
+}
+.tl-reports-head h2 {
+  margin: 0;
+  color: var(--color-secondary-dark);
+}
+.tl-reports-head .tl-photo-remove {
+  position: static;
+  width: 32px;
+  height: 32px;
+  background: var(--color-light);
+  color: var(--color-dark);
+  border: 0;
+}
+.tl-reports-head .tl-photo-remove:hover {
+  background: var(--color-danger);
+  color: var(--color-white);
+}
+.tl-reports-list {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-right: 0.25rem;
+}
+
+.tl-report-row {
+  background: var(--color-bg);
+  border: 1px solid var(--color-light);
+  border-radius: 10px;
+  padding: 0.85rem;
+}
+.tl-report-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+.tl-report-type {
+  background: var(--color-secondary);
+  color: var(--color-white);
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.tl-report-target {
+  background: var(--color-white);
+  border: 1px solid var(--color-light);
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 0.5rem;
+}
+.tl-report-target-meta {
+  font-size: 0.8rem;
+  color: var(--color-gray);
+  margin-bottom: 0.25rem;
+}
+.tl-report-target-body {
+  font-size: 0.9rem;
+  color: var(--color-dark);
+  line-height: 1.45;
+  word-wrap: break-word;
+}
+.tl-report-reason {
+  font-size: 0.85rem;
+  color: var(--color-dark-light);
+  background: #fff8e7;
+  border-left: 3px solid var(--color-warning);
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+}
+.tl-report-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+/* ============================================
+   COMMUNITY TIMELINE — STAP 10: bell + notificaties
+============================================ */
+
+/* Toolbar = filterbalk + bell op één lijn */
+.tl-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.tl-toolbar .tl-filterbar {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.tl-bell {
+  position: relative;
+  flex-shrink: 0;
+}
+.tl-bell-btn {
+  position: relative;
+  background: var(--color-white);
+  border: 1px solid var(--color-light);
+  border-radius: 999px;
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  transition: var(--transition);
+}
+.tl-bell-btn:hover {
+  background: var(--color-light);
+}
+.tl-bell-icon {
+  line-height: 1;
+}
+.tl-bell-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: var(--color-primary);
+  color: var(--color-white);
+  font-size: 0.65rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.1rem 0.35rem;
+  min-width: 18px;
+  text-align: center;
+  line-height: 1.2;
+  border: 2px solid var(--color-white);
+}
+
+.tl-bell-dropdown {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  width: 320px;
+  max-width: calc(100vw - 2rem);
+  background: var(--color-white);
+  border: 1px solid var(--color-light);
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+  z-index: 60;
+  overflow: hidden;
+}
+.tl-bell-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid var(--color-light);
+  background: var(--color-bg);
+}
+.tl-bell-head strong {
+  color: var(--color-secondary-dark);
+  font-size: 0.9rem;
+}
+.tl-bell-mark-read {
+  background: transparent;
+  border: 0;
+  color: var(--color-primary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0;
+}
+.tl-bell-mark-read:hover {
+  text-decoration: underline;
+}
+.tl-bell-list {
+  max-height: 340px;
+  overflow-y: auto;
+}
+.tl-notif {
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid var(--color-light);
+  font-size: 0.85rem;
+  color: var(--color-dark);
+}
+.tl-notif:last-child {
+  border-bottom: 0;
+}
+.tl-notif.is-unread {
+  background: #fff7f0;
+  border-left: 3px solid var(--color-primary);
+}
+.tl-notif strong {
+  color: var(--color-dark);
+}
+.tl-notif-preview {
+  display: block;
+  color: var(--color-gray);
+  font-style: italic;
+  margin-top: 0.2rem;
+  word-wrap: break-word;
+}
+.tl-notif-time {
+  font-size: 0.7rem;
+  color: var(--color-gray);
+  margin-top: 0.2rem;
+}
+
+/* Mobile: dropdown breder + rechts uitlijnen */
+@media (max-width: 480px) {
+  .tl-bell-dropdown {
+    width: 280px;
+  }
+}
+
+/* ============================================
+   PROFIEL — header avatar + modal
+============================================ */
+
+/* Header avatar-knop (vervangt user-name tekst) */
+.header-avatar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--color-light);
+  color: var(--color-dark);
+  border: 0;
+  padding: 0.25rem 0.7rem 0.25rem 0.3rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.85rem;
+  transition: var(--transition);
+}
+.header-avatar-btn:hover {
+  background: var(--color-gray-light);
+}
+.header-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: var(--color-white);
+  font-weight: 600;
+  font-size: 0.7rem;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.header-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.header-avatar-name {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 600px) {
+  .header-avatar-name {
+    display: none;
+  }
+  .header-avatar-btn {
+    padding: 0.25rem;
+  }
+}
+
+/* Avatar in posts/replies krijgt foto */
+.tl-avatar.has-photo {
+  padding: 0;
+  overflow: hidden;
+}
+.tl-avatar.has-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Profile-modal (uitbreiding op nickname-modal stijl) */
+.profile-modal {
+  max-width: 460px;
+}
+.profile-avatar-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding: 0.75rem;
+  background: var(--color-bg);
+  border-radius: 10px;
+}
+.profile-avatar-preview {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--color-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.profile-avatar-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.profile-avatar-placeholder {
+  width: 72px !important;
+  height: 72px !important;
+  font-size: 1.2rem !important;
+}
+.profile-avatar-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex: 1;
+}
+
+/* ============================================
+   ADMIN BADGE + REPLY LIKES
+============================================ */
+
+/* Admin-badge naast nickname — outline-stijl in salie-groen
+   (zelfde uitstraling als de Uitloggen-knop) */
+.tl-admin-badge {
+  display: inline-flex;
+  align-items: center;
+  background: transparent;
+  color: var(--color-secondary-dark);
+  border: 1px solid var(--color-secondary-dark);
+  padding: 0.1rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin-left: 0.4rem;
+  white-space: nowrap;
+}
+.tl-admin-badge-sm {
+  padding: 0.05rem 0.5rem;
+  font-size: 0.65rem;
+}
+
+/* Like-knop in reply-bubble */
+.tl-reply-foot-actions {
+  margin-top: 0.4rem;
+  display: flex;
+  gap: 0.5rem;
+}
+.tl-action-sm {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.4rem;
+  gap: 0.25rem;
+}
+.tl-action-sm .tl-action-icon {
+  font-size: 0.85rem;
+}
+
+/* ============================================
+   POLL EXTRA: multi-vote + unvote
+============================================ */
+
+/* Checkbox in poll-builder */
+.tl-poll-multi-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--color-dark-light);
+  cursor: pointer;
+}
+.tl-poll-multi-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-secondary-dark);
+  cursor: pointer;
+}
+
+/* Multi-vote knop met checkbox + count */
+.tl-poll-vote-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.tl-poll-checkbox {
+  font-size: 1.1rem;
+  line-height: 1;
+  flex-shrink: 0;
+  color: var(--color-gray);
+}
+.tl-poll-vote-btn.is-checked .tl-poll-checkbox {
+  color: var(--color-secondary-dark);
+}
+.tl-poll-vote-btn.is-checked {
+  border-color: var(--color-secondary-dark);
+  background: #f0f7f2;
+}
+.tl-poll-vote-label {
+  flex: 1;
+  text-align: left;
+}
+.tl-poll-vote-count {
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--color-dark-light);
+  flex-shrink: 0;
+}
+
+/* Klikbaar resultaat (single-vote unvote) */
+.tl-poll-result.is-clickable {
+  cursor: pointer;
+  border: 0;
+  font: inherit;
+  text-align: inherit;
+  transition: var(--transition);
+  width: 100%;
+}
+.tl-poll-result.is-clickable:hover {
+  filter: brightness(0.97);
+}
+
+/* ============================================
+   NOTIFICATIE: klikbaar + highlight pulse
+============================================ */
+
+.tl-notif.tl-notif-clickable {
+  cursor: pointer;
+  transition: var(--transition);
+}
+.tl-notif.tl-notif-clickable:hover {
+  background: var(--color-light);
+}
+
+@keyframes tl-highlight-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(201, 137, 102, 0.4); }
+  100% { box-shadow: 0 0 0 12px rgba(201, 137, 102, 0); }
+}
+.tl-post.is-highlighted,
+.tl-reply.is-highlighted {
+  animation: tl-highlight-pulse 1.4s ease-out;
 }

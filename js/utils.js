@@ -236,3 +236,110 @@ export function escapeHtml(str) {
   div.textContent = str;
   return div.innerHTML;
 }
+
+/* ----------------------------------------
+   RELATIEVE TIJD (NL)
+   "net" / "5 min" / "2 u" / "3 d" / "12 mei"
+---------------------------------------- */
+export function formatRelativeTime(isoString) {
+  if (!isoString) return '';
+  const then = new Date(isoString).getTime();
+  if (Number.isNaN(then)) return '';
+  const diffSec = Math.max(0, Math.floor((Date.now() - then) / 1000));
+  if (diffSec < 30)            return 'net';
+  if (diffSec < 60)            return 'minder dan 1 min';
+  if (diffSec < 3600)          return Math.floor(diffSec / 60) + ' min';
+  if (diffSec < 86400)         return Math.floor(diffSec / 3600) + ' u';
+  if (diffSec < 86400 * 7)     return Math.floor(diffSec / 86400) + ' d';
+  return new Date(isoString).toLocaleDateString('nl-BE', {
+    day: 'numeric',
+    month: 'short',
+  });
+}
+
+/* ----------------------------------------
+   AVATAR-KLEUR & INITIALEN op basis van een seed
+   Roteert tussen bestaande --color-* accent-vars.
+---------------------------------------- */
+const _AVATAR_COLORS = [
+  'var(--color-primary)',
+  'var(--color-secondary-dark)',
+  'var(--color-info)',
+  'var(--color-warning)',
+  'var(--color-primary-dark)',
+  'var(--color-secondary)',
+];
+export function colorFromSeed(seed) {
+  const s = String(seed || '');
+  let hash = 0;
+  for (let i = 0; i < s.length; i++) {
+    hash = (hash * 31 + s.charCodeAt(i)) >>> 0;
+  }
+  return _AVATAR_COLORS[hash % _AVATAR_COLORS.length];
+}
+export function initialsFromName(name) {
+  if (!name) return '?';
+  const parts = String(name).trim().split(/[\s_-]+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
+/* ----------------------------------------
+   NL2BR — bewaar regelafbrekingen na escapeHtml
+---------------------------------------- */
+export function nl2br(escapedText) {
+  return String(escapedText || '').replace(/\n/g, '<br>');
+}
+
+/* ----------------------------------------
+   PROCESS IMAGE FOR UPLOAD
+   - Verwijdert EXIF (locatie, telefoon-info, ...)
+   - Schaalt naar max 1920px lange zijde
+   - Re-encoded als JPEG q=0.85
+   Returnt { blob, width, height } of throwt bij ongeldige input.
+---------------------------------------- */
+const MAX_IMAGE_DIM = 1920;
+const IMAGE_QUALITY = 0.85;
+
+export async function processImageForUpload(file) {
+  if (!file || !(file instanceof Blob)) {
+    throw new Error('Geen bestand geselecteerd.');
+  }
+  if (!file.type.startsWith('image/')) {
+    throw new Error('Alleen afbeeldingen zijn toegestaan.');
+  }
+  if (file.size > 15 * 1024 * 1024) {
+    throw new Error('Afbeelding is te groot (max 15MB).');
+  }
+
+  // createImageBitmap is breed ondersteund + sneller dan <img> + crossOrigin
+  let bitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    throw new Error('Kon afbeelding niet lezen.');
+  }
+
+  // Schaal indien groter dan max
+  const scale = Math.min(1, MAX_IMAGE_DIM / Math.max(bitmap.width, bitmap.height));
+  const w = Math.round(bitmap.width  * scale);
+  const h = Math.round(bitmap.height * scale);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  bitmap.close?.();
+
+  const blob = await new Promise((resolve, reject) =>
+    canvas.toBlob(
+      b => b ? resolve(b) : reject(new Error('Kon afbeelding niet exporteren.')),
+      'image/jpeg',
+      IMAGE_QUALITY,
+    )
+  );
+
+  return { blob, width: w, height: h };
+}

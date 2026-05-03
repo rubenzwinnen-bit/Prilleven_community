@@ -6,6 +6,7 @@
   "outputDirectory": ".",
   "trailingSlash": false,
   "rewrites": [
+    { "source": "/api/community/:path*", "destination": "/api/community" },
     { "source": "/((?!api/)(?!.*\\.).*)", "destination": "/index.html" }
   ],
   "functions": {
