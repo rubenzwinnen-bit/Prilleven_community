@@ -7,7 +7,11 @@ alter table public.community_profiles
   add column if not exists avatar_path text;
 
 -- 2. Herbouw view met avatar_path uit community_profiles
-create or replace view public.community_posts_view as
+-- DROP eerst — Postgres staat geen CREATE OR REPLACE toe als de
+-- kolom-volgorde of types wijzigen.
+drop view if exists public.community_posts_view;
+
+create view public.community_posts_view as
   select
     p.id,
     p.user_id,
