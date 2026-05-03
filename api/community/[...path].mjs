@@ -54,11 +54,27 @@ function parseBody(req) {
  *   /api/community/posts/abc/replies
  * is req.query.path === ['posts','abc','replies'] (of soms een /-string).
  */
-function matchRoute(req) {
+/**
+ * Verzamel pad-segmenten ná /api/community/.
+ * Probeert eerst req.query.path (Vercel auto-parse), valt terug op
+ * parsen van req.url (zoals andere api/*[id].mjs in dit project).
+ */
+function getSegments(req) {
   const raw = req.query?.path;
-  const segments = Array.isArray(raw)
-    ? raw
-    : (typeof raw === 'string' ? raw.split('/').filter(Boolean) : []);
+  if (Array.isArray(raw) && raw.length > 0) return raw;
+  if (typeof raw === 'string' && raw.length > 0) {
+    return raw.split('/').filter(Boolean);
+  }
+  if (req.url) {
+    const pathname = new URL(req.url, 'http://x').pathname;
+    const stripped = pathname.replace(/^\/api\/community\/?/, '');
+    return stripped.split('/').filter(Boolean);
+  }
+  return [];
+}
+
+function matchRoute(req) {
+  const segments = getSegments(req);
   const method = req.method;
 
   // /profile
