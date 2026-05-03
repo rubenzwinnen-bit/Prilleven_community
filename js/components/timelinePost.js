@@ -56,7 +56,7 @@ export function renderPostCard(post, currentUserId = null, isAdminUser = false) 
         ${renderAvatar(post.avatar_url, color, initials, 'tl-avatar')}
         <div class="tl-post-meta">
           <span class="tl-nickname">${escapeHtml(nickname)}</span>
-          ${post.author_is_admin ? '<span class="tl-admin-badge" title="Administrator">🛡 Admin</span>' : ''}
+          ${post.author_is_admin ? '<span class="tl-admin-badge" title="Administrator">Admin</span>' : ''}
           <span class="tl-meta-sep">·</span>
           <span class="tl-time">${escapeHtml(time)}${edited}</span>
         </div>
@@ -171,7 +171,7 @@ export function renderReplyRow(reply, currentUserId = null, isAdminUser = false)
       <div class="tl-reply-bubble">
         <div class="tl-reply-meta">
           <span class="tl-nickname">${escapeHtml(nickname)}</span>
-          ${reply.author_is_admin ? '<span class="tl-admin-badge tl-admin-badge-sm" title="Administrator">🛡</span>' : ''}
+          ${reply.author_is_admin ? '<span class="tl-admin-badge tl-admin-badge-sm" title="Administrator">Admin</span>' : ''}
           <span class="tl-meta-sep">·</span>
           <span class="tl-time">${escapeHtml(time)}${edited}</span>
           ${renderMenu({ isOwn, canEdit, type: 'reply', isAdminUser })}
