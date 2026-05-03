@@ -3289,3 +3289,111 @@ body.is-hub #app-nav { display: none; }
     width: 280px;
   }
 }
+
+/* ============================================
+   PROFIEL — header avatar + modal
+============================================ */
+
+/* Header avatar-knop (vervangt user-name tekst) */
+.header-avatar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--color-light);
+  color: var(--color-dark);
+  border: 0;
+  padding: 0.25rem 0.7rem 0.25rem 0.3rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.85rem;
+  transition: var(--transition);
+}
+.header-avatar-btn:hover {
+  background: var(--color-gray-light);
+}
+.header-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: var(--color-white);
+  font-weight: 600;
+  font-size: 0.7rem;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.header-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.header-avatar-name {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 600px) {
+  .header-avatar-name {
+    display: none;
+  }
+  .header-avatar-btn {
+    padding: 0.25rem;
+  }
+}
+
+/* Avatar in posts/replies krijgt foto */
+.tl-avatar.has-photo {
+  padding: 0;
+  overflow: hidden;
+}
+.tl-avatar.has-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Profile-modal (uitbreiding op nickname-modal stijl) */
+.profile-modal {
+  max-width: 460px;
+}
+.profile-avatar-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding: 0.75rem;
+  background: var(--color-bg);
+  border-radius: 10px;
+}
+.profile-avatar-preview {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--color-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.profile-avatar-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.profile-avatar-placeholder {
+  width: 72px !important;
+  height: 72px !important;
+  font-size: 1.2rem !important;
+}
+.profile-avatar-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex: 1;
+}

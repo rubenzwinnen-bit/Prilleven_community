@@ -8,7 +8,7 @@ const NICKNAME_RE = /^[A-Za-z0-9_\- ]{2,30}$/;
 export async function loadCommunityProfile(userId) {
   const { data, error } = await supabase
     .from('community_profiles')
-    .select('user_id, nickname, created_at, updated_at')
+    .select('user_id, nickname, avatar_path, created_at, updated_at')
     .eq('user_id', userId)
     .maybeSingle();
   if (error) throw new Error('Community profile load: ' + error.message);
@@ -68,15 +68,26 @@ export async function isNicknameTaken(nickname, exceptUserId = null) {
   return !!data;
 }
 
-/** Upsert eigen nickname (wijzigt bestaande rij of maakt nieuwe). */
-export async function upsertCommunityProfile(userId, nickname) {
+/**
+ * Upsert eigen profiel. Velden die undefined zijn worden niet gewijzigd.
+ * `nickname` is verplicht bij eerste insert. `avatar_path` mag null
+ * zijn (= verwijder avatar).
+ */
+export async function upsertCommunityProfile(userId, { nickname, avatar_path } = {}) {
+  // Bij eerste create moet nickname mee
+  const existing = await loadCommunityProfile(userId);
+  const row = { user_id: userId };
+  if (nickname !== undefined) row.nickname = nickname;
+  else if (existing) row.nickname = existing.nickname;
+  if (avatar_path !== undefined) row.avatar_path = avatar_path;
+  else if (existing) row.avatar_path = existing.avatar_path;
+
   const { data, error } = await supabase
     .from('community_profiles')
-    .upsert({ user_id: userId, nickname }, { onConflict: 'user_id' })
-    .select('user_id, nickname, created_at, updated_at')
+    .upsert(row, { onConflict: 'user_id' })
+    .select('user_id, nickname, avatar_path, created_at, updated_at')
     .single();
   if (error) {
-    // 23505 = unique violation (race condition op nickname)
     if (error.code === '23505') {
       throw Object.assign(new Error('Deze nickname is al in gebruik.'), { status: 409 });
     }
@@ -219,22 +230,35 @@ const BUCKET = 'community-images';
 const SIGNED_READ_TTL_SEC = 60 * 60;        // 1u — feed wordt vaak ververst
 const SIGNED_UPLOAD_TTL_SEC = 5 * 60;       // 5 min — upload moet snel gebeuren
 
+function newRandomId() {
+  return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 /**
- * Maak een signed upload URL voor een nieuwe foto van deze user.
+ * Maak een signed upload URL voor een nieuwe post-foto.
  * Pad: <userId>/<random>.jpg — RLS staat alleen owner uploads toe.
  */
 export async function createImageUploadUrl(userId) {
-  const id = (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  const path = `${userId}/${id}.jpg`;
+  const path = `${userId}/${newRandomId()}.jpg`;
   const { data, error } = await supabase
     .storage.from(BUCKET)
     .createSignedUploadUrl(path);
   if (error) throw new Error('Upload URL: ' + error.message);
-  return {
-    path,
-    uploadUrl: data.signedUrl,
-    token: data.token,
-  };
+  return { path, uploadUrl: data.signedUrl, token: data.token };
+}
+
+/**
+ * Maak een signed upload URL voor een avatar (profielfoto).
+ * Pad: <userId>/avatars/<random>.jpg — onder eigen folder, dezelfde
+ * RLS-policy. Aparte sub-folder voorkomt verwarring met post-foto's.
+ */
+export async function createAvatarUploadUrl(userId) {
+  const path = `${userId}/avatars/${newRandomId()}.jpg`;
+  const { data, error } = await supabase
+    .storage.from(BUCKET)
+    .createSignedUploadUrl(path);
+  if (error) throw new Error('Avatar URL: ' + error.message);
+  return { path, uploadUrl: data.signedUrl, token: data.token };
 }
 
 /**
@@ -338,7 +362,7 @@ export async function loadReplies(postId, { limit = 100 } = {}) {
     .from('community_replies')
     .select(`
       id, post_id, user_id, body, edited_at, created_at,
-      profile:community_profiles!community_replies_user_id_fkey(nickname)
+      profile:community_profiles!community_replies_user_id_fkey(nickname, avatar_path)
     `)
     .eq('post_id', postId)
     .order('created_at', { ascending: true })
@@ -353,6 +377,7 @@ export async function loadReplies(postId, { limit = 100 } = {}) {
   return (data || []).map(r => ({
     ...r,
     nickname: r.profile?.nickname || null,
+    avatar_path: r.profile?.avatar_path || null,
     profile: undefined,
   }));
 }
@@ -367,15 +392,18 @@ async function loadRepliesFallback(postId, limit) {
   if (error) throw new Error('Replies load: ' + error.message);
 
   const userIds = [...new Set((replies || []).map(r => r.user_id))];
-  let nickMap = new Map();
+  let profMap = new Map();
   if (userIds.length) {
     const { data: profs } = await supabase
       .from('community_profiles')
-      .select('user_id, nickname')
+      .select('user_id, nickname, avatar_path')
       .in('user_id', userIds);
-    nickMap = new Map((profs || []).map(p => [p.user_id, p.nickname]));
+    profMap = new Map((profs || []).map(p => [p.user_id, p]));
   }
-  return (replies || []).map(r => ({ ...r, nickname: nickMap.get(r.user_id) || null }));
+  return (replies || []).map(r => {
+    const p = profMap.get(r.user_id);
+    return { ...r, nickname: p?.nickname || null, avatar_path: p?.avatar_path || null };
+  });
 }
 
 export function sanitizeReplyInput(input) {

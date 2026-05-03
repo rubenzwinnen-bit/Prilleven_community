@@ -31,6 +31,7 @@ import {
   createReply,
   toggleLike,
   createImageUploadUrl,
+  createAvatarUploadUrl,
   signImageUrls,
   sanitizePollInput,
   loadPollsForPosts,
@@ -160,6 +161,11 @@ function matchRoute(req) {
     return { route: 'upload.url' };
   }
 
+  // /profile/avatar-url
+  if (segments.length === 2 && segments[0] === 'profile' && segments[1] === 'avatar-url' && method === 'POST') {
+    return { route: 'profile.avatar.url' };
+  }
+
   // /posts/:id/poll/vote
   if (segments.length === 4 && segments[0] === 'posts' && segments[2] === 'poll' && segments[3] === 'vote') {
     if (method === 'POST') return { route: 'poll.vote', params: { id: segments[1] } };
@@ -203,25 +209,59 @@ export default async function handler(req, res) {
     /* ----- profile ----- */
     if (route === 'profile.get') {
       const profile = await loadCommunityProfile(auth.userId);
-      return json(res, 200, { profile });
+      let avatar_url = null;
+      if (profile?.avatar_path) {
+        const m = await signImageUrls([profile.avatar_path]);
+        avatar_url = m.get(profile.avatar_path) || null;
+      }
+      return json(res, 200, { profile: profile ? { ...profile, avatar_url } : null });
     }
     if (route === 'profile.put') {
       const body = parseBody(req);
       if (body === null) return json(res, 400, { error: 'Ongeldige JSON.' });
 
-      const validation = validateNickname(body.nickname);
-      if (!validation.ok) return json(res, 422, { error: validation.error });
-      const nickname = validation.value;
+      const updates = {};
 
-      if (await isNicknameReserved(nickname)) {
-        return json(res, 409, { error: 'Deze nickname is gereserveerd. Kies een andere.' });
+      // Nickname is optioneel — alleen valideren als meegestuurd.
+      if (body.nickname !== undefined) {
+        const validation = validateNickname(body.nickname);
+        if (!validation.ok) return json(res, 422, { error: validation.error });
+        const nickname = validation.value;
+        if (await isNicknameReserved(nickname)) {
+          return json(res, 409, { error: 'Deze nickname is gereserveerd. Kies een andere.' });
+        }
+        if (await isNicknameTaken(nickname, auth.userId)) {
+          return json(res, 409, { error: 'Deze nickname is al in gebruik.' });
+        }
+        updates.nickname = nickname;
       }
-      if (await isNicknameTaken(nickname, auth.userId)) {
-        return json(res, 409, { error: 'Deze nickname is al in gebruik.' });
+
+      // Avatar_path is ook optioneel; null = verwijderen
+      if (body.avatar_path !== undefined) {
+        if (body.avatar_path === null) {
+          updates.avatar_path = null;
+        } else if (typeof body.avatar_path === 'string'
+                && body.avatar_path.startsWith(auth.userId + '/avatars/')
+                && /^[A-Za-z0-9/_.-]{1,200}$/.test(body.avatar_path)) {
+          updates.avatar_path = body.avatar_path;
+        } else {
+          return json(res, 422, { error: 'Ongeldig avatar-pad.' });
+        }
       }
+
+      if (Object.keys(updates).length === 0) {
+        return json(res, 422, { error: 'Geen wijzigingen meegegeven.' });
+      }
+
       try {
-        const profile = await upsertCommunityProfile(auth.userId, nickname);
-        return json(res, 200, { profile });
+        const profile = await upsertCommunityProfile(auth.userId, updates);
+        // Voeg avatar_url toe aan response
+        let avatar_url = null;
+        if (profile.avatar_path) {
+          const m = await signImageUrls([profile.avatar_path]);
+          avatar_url = m.get(profile.avatar_path) || null;
+        }
+        return json(res, 200, { profile: { ...profile, avatar_url } });
       } catch (err) {
         if (err.status === 409) return json(res, 409, { error: err.message });
         throw err;
@@ -236,15 +276,21 @@ export default async function handler(req, res) {
       const posts = await loadPosts({ category, before, limit });
       const postIds = posts.map(p => p.id);
       const pollIds = posts.filter(p => p.has_poll).map(p => p.id);
+      // Verzamel alle paths (image + avatars) en sign in één batch.
+      const allPaths = [
+        ...posts.map(p => p.image_path).filter(Boolean),
+        ...posts.map(p => p.avatar_path).filter(Boolean),
+      ];
       const [likedSet, signedMap, pollMap] = await Promise.all([
         loadMyLikesForPosts(auth.userId, postIds),
-        signImageUrls(posts.map(p => p.image_path).filter(Boolean)),
+        signImageUrls(allPaths),
         loadPollsForPosts(auth.userId, pollIds),
       ]);
       const enriched = posts.map(p => ({
         ...p,
         liked_by_me: likedSet.has(p.id),
-        image_url: p.image_path ? (signedMap.get(p.image_path) || null) : null,
+        image_url:  p.image_path  ? (signedMap.get(p.image_path)  || null) : null,
+        avatar_url: p.avatar_path ? (signedMap.get(p.avatar_path) || null) : null,
         poll: p.has_poll ? (pollMap.get(p.id) || null) : null,
       }));
       return json(res, 200, { posts: enriched });
@@ -280,16 +326,18 @@ export default async function handler(req, res) {
         });
       }
       const post = await createPost(auth.userId, { ...clean, poll: pollClean });
+      const allPaths = [post.image_path, post.avatar_path].filter(Boolean);
       const [signedMap, pollMap] = await Promise.all([
-        post.image_path ? signImageUrls([post.image_path]) : Promise.resolve(new Map()),
-        post.has_poll  ? loadPollsForPosts(auth.userId, [post.id]) : Promise.resolve(new Map()),
+        allPaths.length ? signImageUrls(allPaths) : Promise.resolve(new Map()),
+        post.has_poll   ? loadPollsForPosts(auth.userId, [post.id]) : Promise.resolve(new Map()),
       ]);
       return json(res, 201, {
         post: {
           ...post,
           liked_by_me: false,
-          image_url: post.image_path ? (signedMap.get(post.image_path) || null) : null,
-          poll:      post.has_poll  ? (pollMap.get(post.id) || null) : null,
+          image_url:  post.image_path  ? (signedMap.get(post.image_path)  || null) : null,
+          avatar_url: post.avatar_path ? (signedMap.get(post.avatar_path) || null) : null,
+          poll:       post.has_poll    ? (pollMap.get(post.id) || null) : null,
         },
       });
     }
@@ -300,7 +348,13 @@ export default async function handler(req, res) {
     }
     if (route === 'replies.list') {
       const replies = await loadReplies(params.id);
-      return json(res, 200, { replies });
+      const avatarPaths = replies.map(r => r.avatar_path).filter(Boolean);
+      const signedMap = avatarPaths.length ? await signImageUrls(avatarPaths) : new Map();
+      const enriched = replies.map(r => ({
+        ...r,
+        avatar_url: r.avatar_path ? (signedMap.get(r.avatar_path) || null) : null,
+      }));
+      return json(res, 200, { replies: enriched });
     }
     if (route === 'replies.create') {
       const body = parseBody(req);
@@ -320,7 +374,15 @@ export default async function handler(req, res) {
       }
       try {
         const reply = await createReply(auth.userId, params.id, clean);
-        return json(res, 201, { reply });
+        // Auteur heeft mogelijk avatar — de reply zelf krijgt die niet uit
+        // createReply, dus halen we ze los op uit profiel.
+        const me = await loadCommunityProfile(auth.userId);
+        let avatar_url = null;
+        if (me?.avatar_path) {
+          const m = await signImageUrls([me.avatar_path]);
+          avatar_url = m.get(me.avatar_path) || null;
+        }
+        return json(res, 201, { reply: { ...reply, avatar_path: me?.avatar_path || null, avatar_url } });
       } catch (err) {
         if (err.status === 404) return json(res, 404, { error: err.message });
         throw err;
@@ -339,6 +401,12 @@ export default async function handler(req, res) {
       const profile = await loadCommunityProfile(auth.userId);
       if (!profile) return json(res, 412, { error: 'Stel eerst een nickname in.' });
       const result = await createImageUploadUrl(auth.userId);
+      return json(res, 200, result);
+    }
+    if (route === 'profile.avatar.url') {
+      // Avatar mag ook vóór nickname-set, want soms wil je avatar +
+      // nickname samen kiezen in de profile-modal.
+      const result = await createAvatarUploadUrl(auth.userId);
       return json(res, 200, result);
     }
 
@@ -366,15 +434,17 @@ export default async function handler(req, res) {
       }
       try {
         const post = await editPost(auth.userId, params.id, body.body);
+        const allPaths = [post.image_path, post.avatar_path].filter(Boolean);
         const [signedMap, pollMap] = await Promise.all([
-          post.image_path ? signImageUrls([post.image_path]) : Promise.resolve(new Map()),
-          post.has_poll  ? loadPollsForPosts(auth.userId, [post.id]) : Promise.resolve(new Map()),
+          allPaths.length ? signImageUrls(allPaths) : Promise.resolve(new Map()),
+          post.has_poll   ? loadPollsForPosts(auth.userId, [post.id]) : Promise.resolve(new Map()),
         ]);
         return json(res, 200, {
           post: {
             ...post,
-            image_url: post.image_path ? (signedMap.get(post.image_path) || null) : null,
-            poll:      post.has_poll  ? (pollMap.get(post.id) || null) : null,
+            image_url:  post.image_path  ? (signedMap.get(post.image_path)  || null) : null,
+            avatar_url: post.avatar_path ? (signedMap.get(post.avatar_path) || null) : null,
+            poll:       post.has_poll    ? (pollMap.get(post.id) || null) : null,
           },
         });
       } catch (err) {
@@ -401,7 +471,13 @@ export default async function handler(req, res) {
       }
       try {
         const reply = await editReply(auth.userId, params.id, body.body);
-        return json(res, 200, { reply });
+        const me = await loadCommunityProfile(auth.userId);
+        let avatar_url = null;
+        if (me?.avatar_path) {
+          const m = await signImageUrls([me.avatar_path]);
+          avatar_url = m.get(me.avatar_path) || null;
+        }
+        return json(res, 200, { reply: { ...reply, avatar_path: me?.avatar_path || null, avatar_url } });
       } catch (err) {
         return json(res, err.status || 500, { error: err.message });
       }

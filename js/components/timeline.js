@@ -8,8 +8,9 @@ import { showToast, escapeHtml, processImageForUpload, confirm as confirmDialog,
 import * as Api from '../communityApi.js?v=2.0.1';
 import { sessionGet } from '../supabase.js?v=2.0.1';
 import * as Store from '../store.js?v=2.0.1';
-import { ensureNickname, getCachedNickname, openNicknameModal, invalidateNicknameCache }
+import { ensureNickname, getCachedNickname, invalidateNicknameCache }
   from './nicknameModal.js?v=2.0.1';
+import { openProfileModal } from './profileModal.js?v=2.0.1';
 import { renderPostCard, renderReplyRow, renderPoll, CATEGORIES } from './timelinePost.js?v=2.0.1';
 
 function currentUserId() {
@@ -249,13 +250,19 @@ export async function init() {
   });
 
   editNick.addEventListener('click', async () => {
-    const current = getCachedNickname() || '';
-    const chosen  = await openNicknameModal({ current });
-    if (chosen) {
+    const updated = await openProfileModal();
+    if (updated) {
       invalidateNicknameCache();
       await refreshNickDisplay();
-      showToast('Nickname bijgewerkt');
+      document.dispatchEvent(new CustomEvent('community:profile-updated', { detail: updated }));
+      showToast('Profiel bijgewerkt');
     }
+  });
+
+  // Luister naar profile-updates vanuit de header (avatar/nickname wijziging)
+  document.addEventListener('community:profile-updated', () => {
+    invalidateNicknameCache();
+    refreshNickDisplay();
   });
 
   const setError = (msg) => {

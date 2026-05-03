@@ -39,6 +39,10 @@ async function call(path, { method = 'GET', body = null } = {}) {
 /* ----- Profile ----- */
 export const getMyProfile  = ()         => call('/profile');
 export const setMyNickname = (nickname) => call('/profile', { method: 'PUT', body: { nickname } });
+export const updateMyProfile = (updates) =>
+  call('/profile', { method: 'PUT', body: updates });
+export const getAvatarUploadUrl = () =>
+  call('/profile/avatar-url', { method: 'POST' });
 
 /* ----- Posts ----- */
 export function getPosts({ category = null, before = null, limit = 20 } = {}) {

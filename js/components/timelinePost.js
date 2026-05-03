@@ -25,6 +25,14 @@ export function categoryMeta(id) {
   return CATEGORIES.find(c => c.id === id) || CATEGORIES[0];
 }
 
+/** Render een avatar — foto als url aanwezig, anders gekleurde initialen-bol. */
+function renderAvatar(url, color, initials, className) {
+  if (url) {
+    return `<span class="${className} has-photo"><img src="${escapeHtml(url)}" alt=""></span>`;
+  }
+  return `<span class="${className}" style="background:${color};">${escapeHtml(initials)}</span>`;
+}
+
 export function renderPostCard(post, currentUserId = null, isAdminUser = false) {
   const nickname = post.nickname || '(naamloos)';
   const initials = initialsFromName(nickname);
@@ -45,7 +53,7 @@ export function renderPostCard(post, currentUserId = null, isAdminUser = false) 
     <article class="tl-post${pinned}" data-post-id="${escapeHtml(post.id)}" data-category="${escapeHtml(cat.id)}" data-likes="${likes}" data-replies="${replies}" data-liked="${liked ? '1' : '0'}">
       ${post.is_pinned ? '<div class="tl-pinned-tag">📌 Mededeling</div>' : ''}
       <header class="tl-post-head">
-        <span class="tl-avatar" style="background:${color};">${escapeHtml(initials)}</span>
+        ${renderAvatar(post.avatar_url, color, initials, 'tl-avatar')}
         <div class="tl-post-meta">
           <span class="tl-nickname">${escapeHtml(nickname)}</span>
           <span class="tl-meta-sep">·</span>
@@ -156,7 +164,7 @@ export function renderReplyRow(reply, currentUserId = null, isAdminUser = false)
 
   return `
     <div class="tl-reply" data-reply-id="${escapeHtml(reply.id)}">
-      <span class="tl-avatar tl-avatar-sm" style="background:${color};">${escapeHtml(initials)}</span>
+      ${renderAvatar(reply.avatar_url, color, initials, 'tl-avatar tl-avatar-sm')}
       <div class="tl-reply-bubble">
         <div class="tl-reply-meta">
           <span class="tl-nickname">${escapeHtml(nickname)}</span>
