@@ -116,3 +116,7 @@ export const resolveReport = (reportId, { delete_target = false } = {}) =>
     method: 'POST',
     body: { delete_target },
   });
+
+/* ----- Notifications ----- */
+export const getNotifications  = () => call('/notifications');
+export const markNotificationsRead = () => call('/notifications/read', { method: 'POST' });

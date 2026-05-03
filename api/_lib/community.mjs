@@ -295,6 +295,22 @@ export async function toggleLike(userId, postId) {
       .from('community_likes')
       .insert({ post_id: postId, user_id: userId });
     if (error) throw new Error('Like add: ' + error.message);
+
+    // Notificatie naar post-auteur (alleen bij toevoegen, niet bij unlike,
+    // en niet als je je eigen post liked).
+    const { data: post } = await supabase
+      .from('community_posts')
+      .select('user_id')
+      .eq('id', postId)
+      .maybeSingle();
+    if (post && post.user_id !== userId) {
+      await insertNotification({
+        userId: post.user_id,
+        type: 'like',
+        postId,
+        actorId: userId,
+      }).catch(err => console.error('[notif:like]', err));
+    }
   }
 
   // Tel opnieuw
@@ -398,6 +414,17 @@ export async function createReply(userId, postId, { body }) {
     .select('nickname')
     .eq('user_id', userId)
     .maybeSingle();
+
+  // Notificatie naar post-auteur (niet naar zichzelf).
+  if (post.user_id !== userId) {
+    await insertNotification({
+      userId: post.user_id,
+      type: 'reply',
+      postId: post.id,
+      replyId: inserted.id,
+      actorId: userId,
+    }).catch(err => console.error('[notif:reply]', err));
+  }
 
   return { ...inserted, nickname: prof?.nickname || null, post_author_id: post.user_id };
 }
@@ -673,6 +700,87 @@ export async function adminResolveAndDelete(reportId, adminUserId) {
   if (rep.target_type === 'post')  await deletePost(adminUserId, rep.target_id, { isAdmin: true });
   if (rep.target_type === 'reply') await deleteReply(adminUserId, rep.target_id, { isAdmin: true });
   await adminResolveReportsForTarget(rep.target_type, rep.target_id);
+}
+
+/* ============================================
+   NOTIFICATIES
+============================================ */
+
+/**
+ * Insert een notificatie. Failt geen aanroepende actie als deze faalt
+ * (callers gebruiken .catch om door te gaan).
+ */
+async function insertNotification({ userId, type, postId = null, replyId = null, actorId = null }) {
+  const { error } = await supabase
+    .from('community_notifications')
+    .insert({
+      user_id: userId,
+      type,
+      post_id: postId,
+      reply_id: replyId,
+      actor_id: actorId,
+    });
+  if (error) throw new Error('Notification insert: ' + error.message);
+}
+
+/**
+ * Laad notificaties voor user, met actor-nickname + post-preview.
+ * Sorteert ongelezen eerst, dan op datum desc. Limiet 30.
+ */
+export async function loadMyNotifications(userId, { limit = 30 } = {}) {
+  const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 30, 1), 100);
+  const { data: notifs, error } = await supabase
+    .from('community_notifications')
+    .select('id, type, post_id, reply_id, actor_id, read_at, created_at')
+    .eq('user_id', userId)
+    .order('read_at', { ascending: true, nullsFirst: true })
+    .order('created_at', { ascending: false })
+    .limit(safeLimit);
+  if (error) throw new Error('Notifications load: ' + error.message);
+  if (!notifs?.length) return [];
+
+  const actorIds = [...new Set(notifs.map(n => n.actor_id).filter(Boolean))];
+  const postIds  = [...new Set(notifs.map(n => n.post_id).filter(Boolean))];
+
+  const [profsRes, postsRes] = await Promise.all([
+    actorIds.length
+      ? supabase.from('community_profiles').select('user_id, nickname').in('user_id', actorIds)
+      : Promise.resolve({ data: [] }),
+    postIds.length
+      ? supabase.from('community_posts').select('id, body').in('id', postIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+  const nickMap = new Map((profsRes.data || []).map(p => [p.user_id, p.nickname]));
+  const postMap = new Map((postsRes.data || []).map(p => [p.id, p]));
+
+  return notifs.map(n => ({
+    ...n,
+    actor_nickname: n.actor_id ? (nickMap.get(n.actor_id) || null) : null,
+    post_preview: n.post_id
+      ? (postMap.get(n.post_id)?.body?.slice(0, 80) || null)
+      : null,
+  }));
+}
+
+/** Aantal ongelezen notificaties. */
+export async function countUnreadNotifications(userId) {
+  const { count, error } = await supabase
+    .from('community_notifications')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .is('read_at', null);
+  if (error) throw new Error('Unread count: ' + error.message);
+  return count || 0;
+}
+
+/** Markeer alle notificaties van een user als gelezen. */
+export async function markAllNotificationsRead(userId) {
+  const { error } = await supabase
+    .from('community_notifications')
+    .update({ read_at: new Date().toISOString() })
+    .eq('user_id', userId)
+    .is('read_at', null);
+  if (error) throw new Error('Mark read: ' + error.message);
 }
 
 /* ============================================

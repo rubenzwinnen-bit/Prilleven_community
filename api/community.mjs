@@ -44,6 +44,9 @@ import {
   adminListReports,
   adminResolveReport,
   adminResolveAndDelete,
+  loadMyNotifications,
+  countUnreadNotifications,
+  markAllNotificationsRead,
 } from './_lib/community.mjs';
 import { findBlockedWord } from './_lib/moderation.mjs';
 
@@ -160,6 +163,13 @@ function matchRoute(req) {
   // /posts/:id/poll/vote
   if (segments.length === 4 && segments[0] === 'posts' && segments[2] === 'poll' && segments[3] === 'vote') {
     if (method === 'POST') return { route: 'poll.vote', params: { id: segments[1] } };
+  }
+
+  // /notifications        → GET lijst + unread count
+  // /notifications/read   → POST markeer alles gelezen
+  if (segments[0] === 'notifications') {
+    if (segments.length === 1 && method === 'GET')                        return { route: 'notifications.list' };
+    if (segments.length === 2 && segments[1] === 'read' && method === 'POST') return { route: 'notifications.read' };
   }
 
   return null;
@@ -420,6 +430,19 @@ export default async function handler(req, res) {
       } catch (err) {
         return json(res, err.status || 500, { error: err.message });
       }
+    }
+
+    /* ----- notifications ----- */
+    if (route === 'notifications.list') {
+      const [items, unread] = await Promise.all([
+        loadMyNotifications(auth.userId),
+        countUnreadNotifications(auth.userId),
+      ]);
+      return json(res, 200, { notifications: items, unread });
+    }
+    if (route === 'notifications.read') {
+      await markAllNotificationsRead(auth.userId);
+      return json(res, 200, { ok: true });
     }
 
     /* ----- ADMIN routes ----- */

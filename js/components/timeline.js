@@ -83,8 +83,25 @@ export function render() {
           <div id="tl-composer-error" class="auth-error hidden"></div>
         </div>
 
-        <div class="tl-filterbar" id="tl-filterbar" role="tablist" aria-label="Filter op categorie">
-          ${filterChips}
+        <div class="tl-toolbar">
+          <div class="tl-filterbar" id="tl-filterbar" role="tablist" aria-label="Filter op categorie">
+            ${filterChips}
+          </div>
+          <div class="tl-bell" data-role="bell">
+            <button type="button" class="tl-bell-btn" id="tl-bell-btn" aria-label="Notificaties" aria-expanded="false">
+              <span class="tl-bell-icon">🔔</span>
+              <span class="tl-bell-badge hidden" id="tl-bell-badge">0</span>
+            </button>
+            <div class="tl-bell-dropdown hidden" id="tl-bell-dropdown" data-role="bell-dropdown">
+              <div class="tl-bell-head">
+                <strong>Notificaties</strong>
+                <button type="button" class="tl-bell-mark-read" id="tl-bell-mark-read">Markeer gelezen</button>
+              </div>
+              <div class="tl-bell-list" id="tl-bell-list">
+                <div class="tl-empty">Laden…</div>
+              </div>
+            </div>
+          </div>
         </div>
 
         ${Store.isAdmin() ? `
@@ -325,6 +342,9 @@ export async function init() {
   /* ----- Admin-balk ----- */
   document.getElementById('tl-admin-reports')?.addEventListener('click', openReportsQueue);
 
+  /* ----- Notificatie-bell ----- */
+  initBell();
+
   /* ----- Filterbalk ----- */
   filterBar?.addEventListener('click', async (e) => {
     const chip = e.target.closest('.tl-filter-chip');
@@ -502,6 +522,119 @@ function ensureEmptyState(list) {
   if (!list.querySelector('.tl-report-row')) {
     list.innerHTML = `<div class="tl-empty">Geen openstaande meldingen 🎉</div>`;
   }
+}
+
+/* ============================================
+   Notificatie-bell + polling
+============================================ */
+const POLL_INTERVAL_MS = 60 * 1000;
+let _bellPollTimer = null;
+
+function initBell() {
+  const btn = document.getElementById('tl-bell-btn');
+  const dropdown = document.getElementById('tl-bell-dropdown');
+  const markBtn = document.getElementById('tl-bell-mark-read');
+  if (!btn) return;
+
+  btn.addEventListener('click', async () => {
+    const wasOpen = !dropdown.classList.contains('hidden');
+    closeAllMenus();
+    if (wasOpen) {
+      dropdown.classList.add('hidden');
+      btn.setAttribute('aria-expanded', 'false');
+      return;
+    }
+    dropdown.classList.remove('hidden');
+    btn.setAttribute('aria-expanded', 'true');
+    await refreshBellList();
+  });
+
+  markBtn?.addEventListener('click', async () => {
+    const { ok, error } = await Api.markNotificationsRead();
+    if (!ok) { showToast(error || 'Mislukt', 'error'); return; }
+    setBellBadge(0);
+    // Re-style alle rows als gelezen
+    document.querySelectorAll('.tl-notif').forEach(n => n.classList.remove('is-unread'));
+  });
+
+  // Klik buiten bell sluit dropdown (gebruikt al closeAllMenus()-pattern niet,
+  // dus aparte handler).
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('[data-role="bell"]')) {
+      dropdown.classList.add('hidden');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  // Eerste fetch + start polling
+  refreshBellCount();
+  startBellPolling();
+}
+
+function startBellPolling() {
+  if (_bellPollTimer) clearInterval(_bellPollTimer);
+  _bellPollTimer = setInterval(() => {
+    if (document.visibilityState === 'visible') {
+      refreshBellCount();
+    }
+  }, POLL_INTERVAL_MS);
+  // Bij switch naar visible: meteen verversen
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') refreshBellCount();
+  });
+}
+
+async function refreshBellCount() {
+  // Lichte fetch — gebruikt /notifications zelf maar negeert items
+  const { ok, data } = await Api.getNotifications();
+  if (!ok || !data) return;
+  setBellBadge(Number(data.unread || 0));
+}
+
+function setBellBadge(n) {
+  const badge = document.getElementById('tl-bell-badge');
+  if (!badge) return;
+  if (n > 0) {
+    badge.textContent = n > 99 ? '99+' : String(n);
+    badge.classList.remove('hidden');
+  } else {
+    badge.classList.add('hidden');
+  }
+}
+
+async function refreshBellList() {
+  const list = document.getElementById('tl-bell-list');
+  list.innerHTML = '<div class="tl-empty">Laden…</div>';
+  const { ok, data, error } = await Api.getNotifications();
+  if (!ok) {
+    list.innerHTML = `<div class="tl-empty tl-error">${escapeHtml(error)}</div>`;
+    return;
+  }
+  setBellBadge(Number(data.unread || 0));
+  const items = data.notifications || [];
+  if (items.length === 0) {
+    list.innerHTML = `<div class="tl-empty">Geen notificaties.</div>`;
+    return;
+  }
+  list.innerHTML = items.map(renderNotifRow).join('');
+}
+
+function renderNotifRow(n) {
+  const unread = !n.read_at ? ' is-unread' : '';
+  const time = formatRelativeTime(n.created_at);
+  const actor = escapeHtml(n.actor_nickname || 'Iemand');
+  const preview = n.post_preview ? `<span class="tl-notif-preview">"${escapeHtml(n.post_preview)}…"</span>` : '';
+  let label = '';
+  if (n.type === 'reply') label = `<strong>${actor}</strong> reageerde op je post`;
+  else if (n.type === 'like') label = `<strong>${actor}</strong> liked je post`;
+  else label = `<strong>${actor}</strong> · ${escapeHtml(n.type)}`;
+  return `
+    <div class="tl-notif${unread}">
+      <div class="tl-notif-text">${label}</div>
+      ${preview}
+      <div class="tl-notif-time">${escapeHtml(time)}</div>
+    </div>
+  `;
 }
 
 function renderReportRow(rep) {
