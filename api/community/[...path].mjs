@@ -50,36 +50,39 @@ function parseBody(req) {
 
 /**
  * Bepaal welke route past bij het pad. Returnt { route, params } of null.
- * Pad is wat na /api/community/ komt (zonder leading slash).
+ * Gebruikt req.query.path (Vercel catch-all conventie): voor request
+ *   /api/community/posts/abc/replies
+ * is req.query.path === ['posts','abc','replies'] (of soms een /-string).
  */
-function matchRoute(pathname, method) {
-  // Strip /api/community prefix (Vercel geeft volledig pad in req.url).
-  let p = pathname.replace(/^\/api\/community\/?/, '');
-  // Drop trailing slash
-  p = p.replace(/\/+$/, '');
+function matchRoute(req) {
+  const raw = req.query?.path;
+  const segments = Array.isArray(raw)
+    ? raw
+    : (typeof raw === 'string' ? raw.split('/').filter(Boolean) : []);
+  const method = req.method;
 
-  if (p === 'profile') {
+  // /profile
+  if (segments.length === 1 && segments[0] === 'profile') {
     if (method === 'GET') return { route: 'profile.get' };
     if (method === 'PUT') return { route: 'profile.put' };
   }
 
-  if (p === 'posts') {
+  // /posts
+  if (segments.length === 1 && segments[0] === 'posts') {
     if (method === 'GET')  return { route: 'posts.list' };
     if (method === 'POST') return { route: 'posts.create' };
   }
 
   // /posts/:id/replies
-  let m = /^posts\/([^/]+)\/replies$/.exec(p);
-  if (m) {
-    const id = m[1];
+  if (segments.length === 3 && segments[0] === 'posts' && segments[2] === 'replies') {
+    const id = segments[1];
     if (method === 'GET')  return { route: 'replies.list',   params: { id } };
     if (method === 'POST') return { route: 'replies.create', params: { id } };
   }
 
   // /posts/:id/like
-  m = /^posts\/([^/]+)\/like$/.exec(p);
-  if (m && method === 'POST') {
-    return { route: 'like.toggle', params: { id: m[1] } };
+  if (segments.length === 3 && segments[0] === 'posts' && segments[2] === 'like') {
+    if (method === 'POST') return { route: 'like.toggle', params: { id: segments[1] } };
   }
 
   return null;
@@ -100,9 +103,9 @@ export default async function handler(req, res) {
     throw e;
   }
 
-  // Vercel zet het volledige pad in req.url (zonder host).
+  // Voor query-params (category=, before=, limit=) parsen we wel req.url.
   const url = new URL(req.url, `http://${req.headers.host || 'x'}`);
-  const matched = matchRoute(url.pathname, req.method);
+  const matched = matchRoute(req);
   if (!matched) {
     return json(res, 404, { error: 'Endpoint niet gevonden.' });
   }
