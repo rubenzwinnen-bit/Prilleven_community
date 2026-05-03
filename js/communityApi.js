@@ -49,8 +49,32 @@ export function getPosts({ category = null, before = null, limit = 20 } = {}) {
   const qs = params.toString();
   return call('/posts' + (qs ? '?' + qs : ''));
 }
-export const createPost = ({ body, category }) =>
-  call('/posts', { method: 'POST', body: { body, category } });
+export const createPost = ({ body, category, image_path = null }) =>
+  call('/posts', { method: 'POST', body: { body, category, image_path } });
+
+/* ----- Image upload (signed URL flow) ----- */
+export const getUploadUrl = () => call('/upload-url', { method: 'POST' });
+
+/**
+ * Upload een Blob direct naar Supabase via de signed upload URL.
+ * Returnt { ok, error }.
+ */
+export async function uploadToStorage(uploadUrl, blob) {
+  try {
+    const res = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': blob.type || 'image/jpeg' },
+      body: blob,
+    });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      return { ok: false, error: `Upload mislukt (${res.status}): ${txt.slice(0, 100)}` };
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err.message || 'Netwerkfout bij upload.' };
+  }
+}
 
 /* ----- Replies ----- */
 export const getReplies  = (postId)        => call(`/posts/${encodeURIComponent(postId)}/replies`);

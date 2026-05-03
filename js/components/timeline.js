@@ -4,7 +4,7 @@
    Stap 4: voegt like + replies toe via event-delegation.
 ============================================ */
 
-import { showToast, escapeHtml } from '../utils.js?v=2.0.1';
+import { showToast, escapeHtml, processImageForUpload } from '../utils.js?v=2.0.1';
 import * as Api from '../communityApi.js?v=2.0.1';
 import { ensureNickname, getCachedNickname, openNicknameModal, invalidateNicknameCache }
   from './nicknameModal.js?v=2.0.1';
@@ -44,12 +44,18 @@ export function render() {
             <div class="tl-composer-left">
               <label for="tl-composer-cat" class="visually-hidden">Categorie</label>
               <select id="tl-composer-cat" class="tl-composer-cat">${catOptions}</select>
+              <button type="button" class="tl-composer-photo" id="tl-photo-btn" title="Foto toevoegen">📷</button>
+              <input type="file" id="tl-photo-input" accept="image/*" class="visually-hidden">
               <span class="tl-counter" id="tl-counter">0 / ${MAX_BODY}</span>
             </div>
             <div class="tl-composer-actions">
               <button class="btn btn-outline btn-sm" id="tl-edit-nick" title="Wijzig nickname">Wijzig nickname</button>
               <button class="btn btn-primary" id="tl-submit">Plaats</button>
             </div>
+          </div>
+          <div class="tl-photo-preview hidden" id="tl-photo-preview">
+            <img id="tl-photo-preview-img" alt="Voorbeeld">
+            <button type="button" class="tl-photo-remove" id="tl-photo-remove" title="Foto verwijderen">×</button>
           </div>
           <div id="tl-composer-error" class="auth-error hidden"></div>
         </div>
@@ -78,8 +84,46 @@ export async function init() {
   const editNick  = document.getElementById('tl-edit-nick');
   const nickEl    = document.getElementById('tl-composer-nick');
   const feedEl    = document.getElementById('tl-feed');
-  const catEl     = document.getElementById('tl-composer-cat');
-  const filterBar = document.getElementById('tl-filterbar');
+  const catEl       = document.getElementById('tl-composer-cat');
+  const filterBar   = document.getElementById('tl-filterbar');
+  const photoBtn    = document.getElementById('tl-photo-btn');
+  const photoInput  = document.getElementById('tl-photo-input');
+  const photoPrev   = document.getElementById('tl-photo-preview');
+  const photoPrevImg= document.getElementById('tl-photo-preview-img');
+  const photoRemove = document.getElementById('tl-photo-remove');
+
+  // State voor de huidig geselecteerde (en al EXIF-gestripte) afbeelding.
+  let pendingImage = null; // { blob, previewUrl }
+
+  const clearPhoto = () => {
+    if (pendingImage?.previewUrl) URL.revokeObjectURL(pendingImage.previewUrl);
+    pendingImage = null;
+    photoInput.value = '';
+    photoPrev.classList.add('hidden');
+    photoPrevImg.removeAttribute('src');
+  };
+
+  photoBtn?.addEventListener('click', () => photoInput.click());
+  photoRemove?.addEventListener('click', clearPhoto);
+
+  photoInput?.addEventListener('change', async () => {
+    const file = photoInput.files?.[0];
+    if (!file) return;
+    photoBtn.disabled = true;
+    try {
+      const { blob } = await processImageForUpload(file);
+      if (pendingImage?.previewUrl) URL.revokeObjectURL(pendingImage.previewUrl);
+      const previewUrl = URL.createObjectURL(blob);
+      pendingImage = { blob, previewUrl };
+      photoPrevImg.src = previewUrl;
+      photoPrev.classList.remove('hidden');
+    } catch (err) {
+      showToast(err.message || 'Kon foto niet verwerken.', 'error');
+      clearPhoto();
+    } finally {
+      photoBtn.disabled = false;
+    }
+  });
 
   /* ----- Nickname display ----- */
   const refreshNickDisplay = async () => {
@@ -132,7 +176,26 @@ export async function init() {
       }
 
       const category = catEl?.value || 'algemeen';
-      const { ok, data, error, status } = await Api.createPost({ body: text, category });
+
+      // Upload eerst de foto (indien aanwezig) → krijg image_path
+      let image_path = null;
+      if (pendingImage?.blob) {
+        submitBtn.textContent = 'Foto uploaden…';
+        const urlRes = await Api.getUploadUrl();
+        if (!urlRes.ok) {
+          setError(urlRes.error || 'Kon upload-URL niet ophalen.');
+          return;
+        }
+        const upRes = await Api.uploadToStorage(urlRes.data.uploadUrl, pendingImage.blob);
+        if (!upRes.ok) {
+          setError(upRes.error || 'Foto-upload mislukt.');
+          return;
+        }
+        image_path = urlRes.data.path;
+      }
+
+      submitBtn.textContent = 'Plaatsen…';
+      const { ok, data, error, status } = await Api.createPost({ body: text, category, image_path });
       if (!ok) {
         // Sommige fouten verdienen een specifieke melding
         if (status === 412) {
@@ -146,6 +209,7 @@ export async function init() {
       bodyEl.value = '';
       counter.textContent = `0 / ${MAX_BODY}`;
       if (catEl) catEl.value = 'algemeen';
+      clearPhoto();
       prependPost(data.post);
       showToast('Geplaatst');
       await refreshNickDisplay();

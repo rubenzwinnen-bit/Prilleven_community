@@ -52,6 +52,11 @@ export function renderPostCard(post) {
         <span class="tl-cat tl-cat--${escapeHtml(cat.id)}" title="Categorie">${cat.emoji} ${escapeHtml(cat.label)}</span>
       </header>
       <div class="tl-post-body">${body}</div>
+      ${post.image_url ? `
+        <a class="tl-post-image-link" href="${escapeHtml(post.image_url)}" target="_blank" rel="noopener" title="Open in nieuw tabblad">
+          <img class="tl-post-image" src="${escapeHtml(post.image_url)}" alt="Bijgevoegde foto" loading="lazy">
+        </a>
+      ` : ''}
       <footer class="tl-post-actions">
         <button type="button" class="tl-action tl-like ${liked ? 'is-liked' : ''}" data-action="like" aria-label="Like">
           <span class="tl-action-icon">${liked ? '❤' : '♡'}</span>

@@ -13,6 +13,7 @@
 //   GET    /api/community/posts/:id/replies
 //   POST   /api/community/posts/:id/replies
 //   POST   /api/community/posts/:id/like
+//   POST   /api/community/upload-url
 
 import { requireAuth, AuthError } from './_lib/auth.mjs';
 import {
@@ -29,6 +30,8 @@ import {
   sanitizeReplyInput,
   createReply,
   toggleLike,
+  createImageUploadUrl,
+  signImageUrls,
 } from './_lib/community.mjs';
 import { findBlockedWord } from './_lib/moderation.mjs';
 
@@ -104,6 +107,11 @@ function matchRoute(req) {
     if (method === 'POST') return { route: 'like.toggle', params: { id: segments[1] } };
   }
 
+  // /upload-url
+  if (segments.length === 1 && segments[0] === 'upload-url' && method === 'POST') {
+    return { route: 'upload.url' };
+  }
+
   return null;
 }
 
@@ -166,8 +174,15 @@ export default async function handler(req, res) {
       const before   = url.searchParams.get('before');
       const limit    = url.searchParams.get('limit');
       const posts = await loadPosts({ category, before, limit });
-      const likedSet = await loadMyLikesForPosts(auth.userId, posts.map(p => p.id));
-      const enriched = posts.map(p => ({ ...p, liked_by_me: likedSet.has(p.id) }));
+      const [likedSet, signedMap] = await Promise.all([
+        loadMyLikesForPosts(auth.userId, posts.map(p => p.id)),
+        signImageUrls(posts.map(p => p.image_path).filter(Boolean)),
+      ]);
+      const enriched = posts.map(p => ({
+        ...p,
+        liked_by_me: likedSet.has(p.id),
+        image_url: p.image_path ? (signedMap.get(p.image_path) || null) : null,
+      }));
       return json(res, 200, { posts: enriched });
     }
     if (route === 'posts.create') {
@@ -181,13 +196,27 @@ export default async function handler(req, res) {
       try { clean = sanitizePostInput(body); }
       catch (err) { return json(res, err.status || 422, { error: err.message }); }
 
+      // Image_path moet onder de eigen user-folder zitten (anti-spoof).
+      if (clean.image_path && !clean.image_path.startsWith(auth.userId + '/')) {
+        return json(res, 403, { error: 'Ongeldig pad voor afbeelding.' });
+      }
+
       if (findBlockedWord(clean.body)) {
         return json(res, 422, {
           error: 'Bericht bevat ongepaste taal en kan niet worden geplaatst.',
         });
       }
       const post = await createPost(auth.userId, clean);
-      return json(res, 201, { post: { ...post, liked_by_me: false } });
+      const signedMap = post.image_path
+        ? await signImageUrls([post.image_path])
+        : new Map();
+      return json(res, 201, {
+        post: {
+          ...post,
+          liked_by_me: false,
+          image_url: post.image_path ? (signedMap.get(post.image_path) || null) : null,
+        },
+      });
     }
 
     /* ----- replies ----- */
@@ -227,6 +256,14 @@ export default async function handler(req, res) {
     if (route === 'like.toggle') {
       if (!isUuid(params.id)) return json(res, 400, { error: 'Ongeldige post-id.' });
       const result = await toggleLike(auth.userId, params.id);
+      return json(res, 200, result);
+    }
+
+    /* ----- upload ----- */
+    if (route === 'upload.url') {
+      const profile = await loadCommunityProfile(auth.userId);
+      if (!profile) return json(res, 412, { error: 'Stel eerst een nickname in.' });
+      const result = await createImageUploadUrl(auth.userId);
       return json(res, 200, result);
     }
 

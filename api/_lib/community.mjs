@@ -134,14 +134,24 @@ export function sanitizePostInput(input) {
     throw Object.assign(new Error('Bericht mag maximaal 4000 tekens lang zijn.'), { status: 422 });
   }
 
-  return { body, category };
+  // image_path is optioneel; valideer formaat als aanwezig
+  let image_path = null;
+  if (typeof input?.image_path === 'string' && input.image_path.trim()) {
+    const p = input.image_path.trim();
+    if (!/^[A-Za-z0-9/_.-]{1,200}$/.test(p)) {
+      throw Object.assign(new Error('Ongeldige afbeelding-pad.'), { status: 422 });
+    }
+    image_path = p;
+  }
+
+  return { body, category, image_path };
 }
 
 /** Maak een nieuwe post aan. Returnt de hydrated row uit de view. */
-export async function createPost(userId, { body, category }) {
+export async function createPost(userId, { body, category, image_path = null }) {
   const { data: inserted, error } = await supabase
     .from('community_posts')
-    .insert({ user_id: userId, body, category })
+    .insert({ user_id: userId, body, category, image_path })
     .select('id')
     .single();
   if (error) throw new Error('Post insert: ' + error.message);
@@ -155,6 +165,52 @@ export async function createPost(userId, { body, category }) {
   if (viewErr) throw new Error('Post hydrate: ' + viewErr.message);
 
   return hydrated;
+}
+
+/* ============================================
+   STORAGE — community-images bucket
+============================================ */
+
+const BUCKET = 'community-images';
+const SIGNED_READ_TTL_SEC = 60 * 60;        // 1u — feed wordt vaak ververst
+const SIGNED_UPLOAD_TTL_SEC = 5 * 60;       // 5 min — upload moet snel gebeuren
+
+/**
+ * Maak een signed upload URL voor een nieuwe foto van deze user.
+ * Pad: <userId>/<random>.jpg — RLS staat alleen owner uploads toe.
+ */
+export async function createImageUploadUrl(userId) {
+  const id = (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  const path = `${userId}/${id}.jpg`;
+  const { data, error } = await supabase
+    .storage.from(BUCKET)
+    .createSignedUploadUrl(path);
+  if (error) throw new Error('Upload URL: ' + error.message);
+  return {
+    path,
+    uploadUrl: data.signedUrl,
+    token: data.token,
+  };
+}
+
+/**
+ * Genereer signed read-URLs voor een lijst image_paths.
+ * Returnt Map<path, signedUrl>. Onbestaande paden worden overgeslagen.
+ */
+export async function signImageUrls(paths) {
+  const unique = [...new Set((paths || []).filter(Boolean))];
+  if (unique.length === 0) return new Map();
+  const { data, error } = await supabase
+    .storage.from(BUCKET)
+    .createSignedUrls(unique, SIGNED_READ_TTL_SEC);
+  if (error) throw new Error('Signed URLs: ' + error.message);
+  const map = new Map();
+  for (const item of (data || [])) {
+    if (item.signedUrl && !item.error) {
+      map.set(item.path, item.signedUrl);
+    }
+  }
+  return map;
 }
 
 /* ============================================

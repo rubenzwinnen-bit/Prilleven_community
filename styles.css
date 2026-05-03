@@ -2702,3 +2702,81 @@ body.is-hub #app-nav { display: none; }
     margin-top: 0.25rem;
   }
 }
+
+/* ============================================
+   COMMUNITY TIMELINE — STAP 6: foto upload + display
+============================================ */
+
+/* Composer: paperclip-knop + preview */
+.tl-composer-photo {
+  background: var(--color-white);
+  border: 1px solid var(--color-light);
+  border-radius: 6px;
+  padding: 0.25rem 0.5rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: var(--transition);
+  line-height: 1;
+}
+.tl-composer-photo:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  background: var(--color-light);
+}
+.tl-composer-photo:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+.tl-photo-preview {
+  position: relative;
+  margin-top: 0.6rem;
+  display: inline-block;
+  max-width: 100%;
+}
+.tl-photo-preview.hidden { display: none; }
+.tl-photo-preview img {
+  max-width: 100%;
+  max-height: 240px;
+  border-radius: 8px;
+  border: 1px solid var(--color-light);
+  display: block;
+}
+.tl-photo-remove {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-danger);
+  color: var(--color-white);
+  border: 2px solid var(--color-white);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.tl-photo-remove:hover {
+  background: var(--color-danger-dark);
+}
+
+/* Postkaart: ingebouwde foto */
+.tl-post-image-link {
+  display: block;
+  margin-top: 0.75rem;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--color-light);
+  background: var(--color-bg);
+}
+.tl-post-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 600px;
+  object-fit: cover;
+}
