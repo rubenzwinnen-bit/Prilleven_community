@@ -283,21 +283,53 @@ export async function signImageUrls(paths) {
 
 /* ============================================
    ADMIN-USERIDS — wie van een lijst user_ids is admin.
-   Gebruikt voor "Admin" badge naast nickname.
+   Probeert eerst de community_admin_user_ids view; valt
+   terug op een directe join via auth.admin.getUserById +
+   allowed_users zodat het ook werkt zonder de view.
 ============================================ */
 export async function loadAdminUserIds(userIds) {
   if (!userIds?.length) return new Set();
   const unique = [...new Set(userIds.filter(Boolean))];
-  const { data, error } = await supabase
+
+  // Attempt 1: gebruik view (snel)
+  const viewRes = await supabase
     .from('community_admin_user_ids')
     .select('user_id')
     .in('user_id', unique);
-  if (error) {
-    // View kan ontbreken (migratie nog niet gerund) — niet fatal
-    console.warn('[admin user_ids] ' + error.message);
+  if (!viewRes.error && Array.isArray(viewRes.data) && viewRes.data.length > 0) {
+    return new Set(viewRes.data.map(r => r.user_id));
+  }
+  if (viewRes.error) {
+    console.warn('[admin user_ids] view query error: ' + viewRes.error.message);
+  }
+
+  // Attempt 2: fallback via auth.admin (alleen service-role)
+  // Haal admin-emails op + match user-ids via getUserById.
+  try {
+    const { data: adminRows, error: aErr } = await supabase
+      .from('allowed_users')
+      .select('email')
+      .eq('is_admin', true);
+    if (aErr) throw aErr;
+
+    const adminEmails = new Set(
+      (adminRows || []).map(r => String(r.email || '').toLowerCase().trim()).filter(Boolean)
+    );
+    if (adminEmails.size === 0) return new Set();
+
+    const adminSet = new Set();
+    await Promise.all(unique.map(async (uid) => {
+      try {
+        const { data } = await supabase.auth.admin.getUserById(uid);
+        const email = String(data?.user?.email || '').toLowerCase().trim();
+        if (email && adminEmails.has(email)) adminSet.add(uid);
+      } catch { /* ignore individual lookups */ }
+    }));
+    return adminSet;
+  } catch (err) {
+    console.warn('[admin user_ids] fallback failed: ' + err.message);
     return new Set();
   }
-  return new Set((data || []).map(r => r.user_id));
 }
 
 /* ============================================

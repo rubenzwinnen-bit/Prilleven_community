@@ -29,6 +29,26 @@ export function attachLogoutHandler(btn) {
   });
 }
 
+/* Cache key voor nickname + avatar-url. Gedeeld met header.js zodat
+   alle pagina's hetzelfde profiel meteen kunnen tonen. */
+const PROFILE_CACHE_KEY = 'community.profile.cache.v1';
+
+function getCachedProfile() {
+  try {
+    const raw = localStorage.getItem(PROFILE_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+function setCachedProfile(profile) {
+  try {
+    localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({
+      nickname: profile.nickname || null,
+      avatar_url: profile.avatar_url || null,
+      user_id: profile.user_id || null,
+    }));
+  } catch {}
+}
+
 /**
  * Mount een avatar-pill in `container`. Returnt een functie om opnieuw
  * te renderen na update.
@@ -39,13 +59,20 @@ export function mountHeaderAvatar(container, { showName = true } = {}) {
   const session = sessionGet();
   const email   = session?.email || 'Gast';
   const userId  = session?.user_id || '';
-  const initials = initialsFromName(email);
+  const cached  = getCachedProfile();
+
+  const displayName = cached?.nickname || email;
+  const initials = initialsFromName(cached?.nickname || email);
   const color    = colorFromSeed(userId);
+  const avatarHtml = cached?.avatar_url
+    ? `<img src="${escapeHtml(cached.avatar_url)}" alt="">`
+    : escapeHtml(initials);
+  const avatarBg = cached?.avatar_url ? 'transparent' : color;
 
   container.innerHTML = `
     <button type="button" class="header-avatar-btn" data-role="standalone-avatar" title="Mijn profiel" aria-label="Mijn profiel">
-      <span class="header-avatar" data-role="standalone-avatar-icon" style="background:${color};">${escapeHtml(initials)}</span>
-      ${showName ? `<span class="header-avatar-name" data-role="standalone-avatar-name">${escapeHtml(email)}</span>` : ''}
+      <span class="header-avatar" data-role="standalone-avatar-icon" style="background:${avatarBg};">${avatarHtml}</span>
+      ${showName ? `<span class="header-avatar-name" data-role="standalone-avatar-name">${escapeHtml(displayName)}</span>` : ''}
     </button>
   `;
 

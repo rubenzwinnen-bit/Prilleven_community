@@ -10,14 +10,43 @@ import { initialsFromName, colorFromSeed, escapeHtml } from '../utils.js?v=2.0.1
 import * as Api from '../communityApi.js?v=2.0.1';
 import { openProfileModal } from './profileModal.js?v=2.0.1';
 
+/* Cache key voor nickname + avatar-url zodat header bij volgende
+   page-load meteen de juiste pill kan tonen (geen email-flicker). */
+const PROFILE_CACHE_KEY = 'community.profile.cache.v1';
+
+function getCachedProfile() {
+  try {
+    const raw = localStorage.getItem(PROFILE_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+function setCachedProfile(profile) {
+  try {
+    localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({
+      nickname: profile.nickname || null,
+      avatar_url: profile.avatar_url || null,
+      user_id: profile.user_id || null,
+    }));
+  } catch {}
+}
+
 /* ----------------------------------------
    RENDER
 ---------------------------------------- */
 export function render() {
   const user = Store.getCurrentUser();
   const userId = sessionGet()?.user_id || '';
-  const initials = initialsFromName(user || '?');
+  const cached = getCachedProfile();
+
+  // Gebruik gecachet profiel als beschikbaar, anders fallback op email-initialen
+  const displayName = cached?.nickname || user || 'Gast';
+  const initials = initialsFromName(cached?.nickname || user || '?');
   const color = colorFromSeed(userId);
+  const avatarHtml = cached?.avatar_url
+    ? `<img src="${escapeHtml(cached.avatar_url)}" alt="">`
+    : escapeHtml(initials);
+  const avatarBg = cached?.avatar_url ? 'transparent' : color;
+
   return `
     <div class="header-inner">
       <a class="header-title" href="#/" id="header-home-link" title="Naar het hub">
@@ -29,8 +58,8 @@ export function render() {
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1V9.5Z"/></svg>
         </a>
         <button class="header-avatar-btn" id="header-avatar-btn" title="Mijn profiel" aria-label="Mijn profiel">
-          <span class="header-avatar" id="header-avatar" style="background:${color};">${escapeHtml(initials)}</span>
-          <span class="header-avatar-name" id="header-avatar-name">${escapeHtml(user || 'Gast')}</span>
+          <span class="header-avatar" id="header-avatar" style="background:${avatarBg};">${avatarHtml}</span>
+          <span class="header-avatar-name" id="header-avatar-name">${escapeHtml(displayName)}</span>
         </button>
         <button class="btn-logout" id="header-logout-btn" title="Uitloggen">Uitloggen</button>
       </div>
@@ -77,6 +106,7 @@ async function loadInitialAvatar() {
   const { ok, data } = await Api.getMyProfile();
   if (!ok || !data?.profile) return;
   refreshHeaderAvatar(data.profile);
+  setCachedProfile(data.profile);
 }
 
 function refreshHeaderAvatar(profile) {
@@ -93,4 +123,5 @@ function refreshHeaderAvatar(profile) {
   if (nameEl && profile.nickname) {
     nameEl.textContent = profile.nickname;
   }
+  setCachedProfile(profile);
 }
