@@ -3032,3 +3032,129 @@ body.is-hub #app-nav { display: none; }
   margin: 0;
   font-size: 0.8rem;
 }
+
+/* Admin menu-items met badge-streep */
+.tl-menu-admin {
+  position: relative;
+}
+.tl-menu-admin::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 6px; bottom: 6px;
+  width: 3px;
+  background: var(--color-secondary-dark);
+  border-radius: 2px;
+}
+
+/* ============================================
+   COMMUNITY TIMELINE — STAP 9: admin balk + reports queue
+============================================ */
+
+.tl-admin-bar {
+  background: var(--color-white);
+  border: 1px dashed var(--color-secondary);
+  border-radius: 10px;
+  padding: 0.5rem 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.tl-admin-label {
+  font-size: 0.85rem;
+  color: var(--color-secondary-dark);
+  font-weight: 600;
+}
+
+/* Reports modal */
+.tl-reports-modal {
+  max-width: 720px;
+  width: 100%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+.tl-reports-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0 1rem;
+  border-bottom: 1px solid var(--color-light);
+  margin-bottom: 0.75rem;
+}
+.tl-reports-head h2 {
+  margin: 0;
+  color: var(--color-secondary-dark);
+}
+.tl-reports-head .tl-photo-remove {
+  position: static;
+  width: 32px;
+  height: 32px;
+  background: var(--color-light);
+  color: var(--color-dark);
+  border: 0;
+}
+.tl-reports-head .tl-photo-remove:hover {
+  background: var(--color-danger);
+  color: var(--color-white);
+}
+.tl-reports-list {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-right: 0.25rem;
+}
+
+.tl-report-row {
+  background: var(--color-bg);
+  border: 1px solid var(--color-light);
+  border-radius: 10px;
+  padding: 0.85rem;
+}
+.tl-report-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+.tl-report-type {
+  background: var(--color-secondary);
+  color: var(--color-white);
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.tl-report-target {
+  background: var(--color-white);
+  border: 1px solid var(--color-light);
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 0.5rem;
+}
+.tl-report-target-meta {
+  font-size: 0.8rem;
+  color: var(--color-gray);
+  margin-bottom: 0.25rem;
+}
+.tl-report-target-body {
+  font-size: 0.9rem;
+  color: var(--color-dark);
+  line-height: 1.45;
+  word-wrap: break-word;
+}
+.tl-report-reason {
+  font-size: 0.85rem;
+  color: var(--color-dark-light);
+  background: #fff8e7;
+  border-left: 3px solid var(--color-warning);
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+}
+.tl-report-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}

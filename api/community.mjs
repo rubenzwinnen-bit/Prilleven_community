@@ -15,7 +15,7 @@
 //   POST   /api/community/posts/:id/like
 //   POST   /api/community/upload-url
 
-import { requireAuth, AuthError } from './_lib/auth.mjs';
+import { requireAuth, requireAdmin, AuthError } from './_lib/auth.mjs';
 import {
   loadCommunityProfile,
   validateNickname,
@@ -40,6 +40,10 @@ import {
   editReply,
   deleteReply,
   createReport,
+  adminTogglePin,
+  adminListReports,
+  adminResolveReport,
+  adminResolveAndDelete,
 } from './_lib/community.mjs';
 import { findBlockedWord } from './_lib/moderation.mjs';
 
@@ -132,6 +136,20 @@ function matchRoute(req) {
   // /report
   if (segments.length === 1 && segments[0] === 'report' && method === 'POST') {
     return { route: 'report.create' };
+  }
+
+  // /posts/:id/pin   (admin)
+  if (segments.length === 3 && segments[0] === 'posts' && segments[2] === 'pin' && method === 'POST') {
+    return { route: 'admin.pin', params: { id: segments[1] } };
+  }
+
+  // /admin/reports               (GET lijst)
+  // /admin/reports/:id/resolve   (POST sluiten)
+  if (segments[0] === 'admin' && segments[1] === 'reports') {
+    if (segments.length === 2 && method === 'GET') return { route: 'admin.reports.list' };
+    if (segments.length === 4 && segments[3] === 'resolve' && method === 'POST') {
+      return { route: 'admin.reports.resolve', params: { id: segments[2] } };
+    }
   }
 
   // /upload-url
@@ -401,6 +419,50 @@ export default async function handler(req, res) {
         return json(res, 201, { ok: true });
       } catch (err) {
         return json(res, err.status || 500, { error: err.message });
+      }
+    }
+
+    /* ----- ADMIN routes ----- */
+    if (route.startsWith('admin.')) {
+      // Re-auth voor admin-rechten
+      try {
+        await requireAdmin(req);
+      } catch (e) {
+        if (e instanceof AuthError) return json(res, e.status, { error: e.message });
+        throw e;
+      }
+
+      if (route === 'admin.pin') {
+        if (!isUuid(params.id)) return json(res, 400, { error: 'Ongeldige post-id.' });
+        const body = parseBody(req) || {};
+        try {
+          const result = await adminTogglePin(params.id, {
+            wantPinned: typeof body.pin === 'boolean' ? body.pin : undefined,
+          });
+          return json(res, 200, result);
+        } catch (err) {
+          return json(res, err.status || 500, { error: err.message });
+        }
+      }
+
+      if (route === 'admin.reports.list') {
+        const reports = await adminListReports();
+        return json(res, 200, { reports });
+      }
+
+      if (route === 'admin.reports.resolve') {
+        if (!isUuid(params.id)) return json(res, 400, { error: 'Ongeldige report-id.' });
+        const body = parseBody(req) || {};
+        try {
+          if (body.delete_target === true) {
+            await adminResolveAndDelete(params.id, auth.userId);
+          } else {
+            await adminResolveReport(params.id);
+          }
+          return json(res, 200, { ok: true });
+        } catch (err) {
+          return json(res, err.status || 500, { error: err.message });
+        }
       }
     }
 

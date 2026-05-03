@@ -105,3 +105,14 @@ export const deleteReply = (replyId) =>
 /* ----- Report ----- */
 export const reportTarget = ({ target_type, target_id, reason }) =>
   call('/report', { method: 'POST', body: { target_type, target_id, reason } });
+
+/* ----- Admin ----- */
+export const togglePin = (postId, pin) =>
+  call(`/posts/${encodeURIComponent(postId)}/pin`, { method: 'POST', body: { pin } });
+export const listReports = () =>
+  call('/admin/reports');
+export const resolveReport = (reportId, { delete_target = false } = {}) =>
+  call(`/admin/reports/${encodeURIComponent(reportId)}/resolve`, {
+    method: 'POST',
+    body: { delete_target },
+  });

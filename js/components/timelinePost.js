@@ -25,7 +25,7 @@ export function categoryMeta(id) {
   return CATEGORIES.find(c => c.id === id) || CATEGORIES[0];
 }
 
-export function renderPostCard(post, currentUserId = null) {
+export function renderPostCard(post, currentUserId = null, isAdminUser = false) {
   const nickname = post.nickname || '(naamloos)';
   const initials = initialsFromName(nickname);
   const color    = colorFromSeed(post.user_id);
@@ -52,7 +52,7 @@ export function renderPostCard(post, currentUserId = null) {
           <span class="tl-time">${escapeHtml(time)}${edited}</span>
         </div>
         <span class="tl-cat tl-cat--${escapeHtml(cat.id)}" title="Categorie">${cat.emoji} ${escapeHtml(cat.label)}</span>
-        ${renderMenu({ isOwn, canEdit, type: 'post' })}
+        ${renderMenu({ isOwn, canEdit, type: 'post', isAdminUser, isPinned: post.is_pinned })}
       </header>
       <div class="tl-post-body" data-role="post-body">${body}</div>
       ${post.image_url ? `
@@ -144,7 +144,7 @@ function formatRelativeFuture(isoString) {
 }
 
 /** Render één reply-rij. Gebruikt door timeline.js bij expand of nieuwe reply. */
-export function renderReplyRow(reply, currentUserId = null) {
+export function renderReplyRow(reply, currentUserId = null, isAdminUser = false) {
   const nickname = reply.nickname || '(naamloos)';
   const initials = initialsFromName(nickname);
   const color    = colorFromSeed(reply.user_id);
@@ -162,7 +162,7 @@ export function renderReplyRow(reply, currentUserId = null) {
           <span class="tl-nickname">${escapeHtml(nickname)}</span>
           <span class="tl-meta-sep">·</span>
           <span class="tl-time">${escapeHtml(time)}${edited}</span>
-          ${renderMenu({ isOwn, canEdit, type: 'reply' })}
+          ${renderMenu({ isOwn, canEdit, type: 'reply', isAdminUser })}
         </div>
         <div class="tl-reply-body" data-role="reply-body">${body}</div>
       </div>
@@ -174,14 +174,28 @@ export function renderReplyRow(reply, currentUserId = null) {
  * Render een "..." menu-knop met dropdown. Inhoud:
  * - eigen item: Bewerken (binnen 15 min) + Verwijderen
  * - andermans item: Rapporteren
+ * - admin krijgt extra "Pin" / "Unpin" + admin "Verwijderen" (op posts)
  */
-function renderMenu({ isOwn, canEdit, type }) {
+function renderMenu({ isOwn, canEdit, type, isAdminUser = false, isPinned = false }) {
   const items = [];
   if (isOwn) {
     if (canEdit) items.push(`<button type="button" class="tl-menu-item" data-action="edit-${type}">Bewerken</button>`);
     items.push(`<button type="button" class="tl-menu-item tl-menu-danger" data-action="delete-${type}">Verwijderen</button>`);
   } else {
     items.push(`<button type="button" class="tl-menu-item" data-action="report-${type}">Rapporteren</button>`);
+  }
+  if (isAdminUser && type === 'post') {
+    items.push(
+      isPinned
+        ? `<button type="button" class="tl-menu-item tl-menu-admin" data-action="unpin-post">📌 Losmaken</button>`
+        : `<button type="button" class="tl-menu-item tl-menu-admin" data-action="pin-post">📌 Vastpinnen</button>`
+    );
+    if (!isOwn) {
+      items.push(`<button type="button" class="tl-menu-item tl-menu-danger tl-menu-admin" data-action="admin-delete-post">Verwijderen (admin)</button>`);
+    }
+  }
+  if (isAdminUser && type === 'reply' && !isOwn) {
+    items.push(`<button type="button" class="tl-menu-item tl-menu-danger tl-menu-admin" data-action="admin-delete-reply">Verwijderen (admin)</button>`);
   }
   if (items.length === 0) return '';
   return `

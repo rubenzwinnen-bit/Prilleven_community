@@ -553,6 +553,129 @@ export async function createReport(userId, { target_type, target_id, reason }) {
 }
 
 /* ============================================
+   ADMIN — pin + reports queue
+============================================ */
+
+const MAX_PINNED = 5;
+
+/**
+ * Toggle is_pinned op een post (admin-only). Houdt rekening met max
+ * gepinde posts: weigert nieuwe pin als er al MAX_PINNED zijn.
+ */
+export async function adminTogglePin(postId, { wantPinned } = {}) {
+  const { data: existing, error: getErr } = await supabase
+    .from('community_posts')
+    .select('id, is_pinned')
+    .eq('id', postId)
+    .maybeSingle();
+  if (getErr) throw new Error('Post fetch: ' + getErr.message);
+  if (!existing) throw Object.assign(new Error('Post bestaat niet.'), { status: 404 });
+
+  const newVal = typeof wantPinned === 'boolean' ? wantPinned : !existing.is_pinned;
+
+  if (newVal && !existing.is_pinned) {
+    const { count, error: cErr } = await supabase
+      .from('community_posts')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_pinned', true);
+    if (cErr) throw new Error('Pin count: ' + cErr.message);
+    if ((count || 0) >= MAX_PINNED) {
+      throw Object.assign(
+        new Error(`Maximum ${MAX_PINNED} gepinde posts bereikt — maak er eerst een los.`),
+        { status: 409 }
+      );
+    }
+  }
+
+  const { error } = await supabase
+    .from('community_posts')
+    .update({ is_pinned: newVal })
+    .eq('id', postId);
+  if (error) throw new Error('Pin update: ' + error.message);
+  return { is_pinned: newVal };
+}
+
+/**
+ * Lijst open (resolved_at IS NULL) reports, met gekoppelde target-content
+ * voor snelle moderatie. Limiet 50.
+ */
+export async function adminListReports({ limit = 50 } = {}) {
+  const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200);
+  const { data: reports, error } = await supabase
+    .from('community_reports')
+    .select('id, target_type, target_id, reporter_id, reason, created_at')
+    .is('resolved_at', null)
+    .order('created_at', { ascending: false })
+    .limit(safeLimit);
+  if (error) throw new Error('Reports list: ' + error.message);
+
+  const postIds  = [...new Set(reports.filter(r => r.target_type === 'post').map(r => r.target_id))];
+  const replyIds = [...new Set(reports.filter(r => r.target_type === 'reply').map(r => r.target_id))];
+
+  const [postsRes, repliesRes] = await Promise.all([
+    postIds.length
+      ? supabase.from('community_posts_view').select('id, body, nickname, user_id, created_at, image_path').in('id', postIds)
+      : Promise.resolve({ data: [] }),
+    replyIds.length
+      ? supabase.from('community_replies').select('id, body, user_id, created_at').in('id', replyIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+  const postMap  = new Map((postsRes.data || []).map(p => [p.id, p]));
+  const replyMap = new Map((repliesRes.data || []).map(r => [r.id, r]));
+
+  return reports.map(r => ({
+    id: r.id,
+    target_type: r.target_type,
+    target_id: r.target_id,
+    reason: r.reason,
+    created_at: r.created_at,
+    target: r.target_type === 'post'
+      ? (postMap.get(r.target_id) || null)
+      : (replyMap.get(r.target_id) || null),
+  }));
+}
+
+/** Markeer een report als opgelost (zonder verdere actie). */
+export async function adminResolveReport(reportId) {
+  const { error } = await supabase
+    .from('community_reports')
+    .update({ resolved_at: new Date().toISOString() })
+    .eq('id', reportId);
+  if (error) throw new Error('Resolve: ' + error.message);
+  return { ok: true };
+}
+
+/** Markeer alle reports voor een target als opgelost (na delete-actie). */
+export async function adminResolveReportsForTarget(targetType, targetId) {
+  const { error } = await supabase
+    .from('community_reports')
+    .update({ resolved_at: new Date().toISOString() })
+    .eq('target_type', targetType)
+    .eq('target_id', targetId)
+    .is('resolved_at', null);
+  if (error) throw new Error('Resolve target: ' + error.message);
+}
+
+/**
+ * Combo-actie: lees report → verwijder target → resolve alle reports
+ * voor dat target. Wrapper rond bestaande helpers zodat /community.mjs
+ * geen directe supabase-import nodig heeft.
+ */
+export async function adminResolveAndDelete(reportId, adminUserId) {
+  const { data: rep, error } = await supabase
+    .from('community_reports')
+    .select('target_type, target_id')
+    .eq('id', reportId)
+    .maybeSingle();
+  if (error) throw new Error('Report fetch: ' + error.message);
+  if (!rep) throw Object.assign(new Error('Report bestaat niet.'), { status: 404 });
+
+  if (rep.target_type === 'post')  await deletePost(adminUserId, rep.target_id, { isAdmin: true });
+  if (rep.target_type === 'reply') await deleteReply(adminUserId, rep.target_id, { isAdmin: true });
+  await adminResolveReportsForTarget(rep.target_type, rep.target_id);
+}
+
+/* ============================================
    POLLS
 ============================================ */
 

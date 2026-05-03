@@ -7,12 +7,16 @@
 import { showToast, escapeHtml, processImageForUpload, confirm as confirmDialog, nl2br } from '../utils.js?v=2.0.1';
 import * as Api from '../communityApi.js?v=2.0.1';
 import { sessionGet } from '../supabase.js?v=2.0.1';
+import * as Store from '../store.js?v=2.0.1';
 import { ensureNickname, getCachedNickname, openNicknameModal, invalidateNicknameCache }
   from './nicknameModal.js?v=2.0.1';
 import { renderPostCard, renderReplyRow, renderPoll, CATEGORIES } from './timelinePost.js?v=2.0.1';
 
 function currentUserId() {
   return sessionGet()?.user_id || null;
+}
+function isAdminUser() {
+  return Store.isAdmin();
 }
 
 const MAX_BODY = 4000;
@@ -82,6 +86,13 @@ export function render() {
         <div class="tl-filterbar" id="tl-filterbar" role="tablist" aria-label="Filter op categorie">
           ${filterChips}
         </div>
+
+        ${Store.isAdmin() ? `
+          <div class="tl-admin-bar">
+            <span class="tl-admin-label">🛡 Admin</span>
+            <button type="button" class="btn btn-outline btn-sm" id="tl-admin-reports">Reports queue</button>
+          </div>
+        ` : ''}
 
         <div class="tl-feed" id="tl-feed">
           <div class="tl-empty" id="tl-loading">Posts laden…</div>
@@ -311,6 +322,9 @@ export async function init() {
     }
   });
 
+  /* ----- Admin-balk ----- */
+  document.getElementById('tl-admin-reports')?.addEventListener('click', openReportsQueue);
+
   /* ----- Filterbalk ----- */
   filterBar?.addEventListener('click', async (e) => {
     const chip = e.target.closest('.tl-filter-chip');
@@ -368,7 +382,151 @@ async function onFeedClick(e) {
   } else if (action === 'report-reply') {
     closeAllMenus();
     await handleReport('reply', btn.closest('.tl-reply').dataset.replyId);
+  } else if (action === 'pin-post' || action === 'unpin-post') {
+    closeAllMenus();
+    await handleTogglePin(card, action === 'pin-post');
+  } else if (action === 'admin-delete-post') {
+    closeAllMenus();
+    await handleAdminDeletePost(card);
+  } else if (action === 'admin-delete-reply') {
+    closeAllMenus();
+    await handleAdminDeleteReply(card, btn.closest('.tl-reply'));
   }
+}
+
+/* ----- Admin: pin / unpin ----- */
+async function handleTogglePin(card, wantPinned) {
+  const { ok, data, error } = await Api.togglePin(card.dataset.postId, wantPinned);
+  if (!ok) {
+    showToast(error || 'Kon pin niet wijzigen', 'error');
+    return;
+  }
+  showToast(data.is_pinned ? 'Vastgepind' : 'Losgemaakt');
+  // Re-render de hele feed zodat pin-volgorde klopt
+  await loadAndRenderFeed(document.getElementById('tl-feed'));
+}
+
+async function handleAdminDeletePost(card) {
+  const ok = await confirmDialog('Verwijderen als admin? Dit kan niet ongedaan worden gemaakt.');
+  if (!ok) return;
+  const { ok: success, error } = await Api.deletePost(card.dataset.postId);
+  if (!success) { showToast(error || 'Kon niet verwijderen', 'error'); return; }
+  card.remove();
+  showToast('Verwijderd');
+}
+
+async function handleAdminDeleteReply(card, replyEl) {
+  const ok = await confirmDialog('Verwijderen als admin?');
+  if (!ok) return;
+  const { ok: success, error } = await Api.deleteReply(replyEl.dataset.replyId);
+  if (!success) { showToast(error || 'Kon niet verwijderen', 'error'); return; }
+  replyEl.remove();
+  bumpReplyCount(card, -1);
+  showToast('Verwijderd');
+}
+
+/* ----- Admin: reports queue (modal) ----- */
+async function openReportsQueue() {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal tl-reports-modal">
+      <div class="tl-reports-head">
+        <h2>Reports queue</h2>
+        <button type="button" class="tl-photo-remove" data-action="reports-close">×</button>
+      </div>
+      <div class="tl-reports-list" data-role="reports-list">
+        <div class="tl-empty">Laden…</div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  const close = () => overlay.remove();
+  overlay.querySelector('[data-action="reports-close"]').addEventListener('click', close);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+  const list = overlay.querySelector('[data-role="reports-list"]');
+  await refreshReportsQueue(list);
+
+  // Delegation voor resolve / delete-resolve binnen de modal
+  list.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const reportEl = btn.closest('.tl-report-row');
+    if (!reportEl) return;
+    const reportId = reportEl.dataset.reportId;
+
+    if (btn.dataset.action === 'report-dismiss') {
+      btn.disabled = true;
+      const { ok, error } = await Api.resolveReport(reportId);
+      if (!ok) { btn.disabled = false; showToast(error || 'Mislukt', 'error'); return; }
+      reportEl.remove();
+      showToast('Melding gesloten');
+      ensureEmptyState(list);
+    } else if (btn.dataset.action === 'report-delete') {
+      const ok = await confirmDialog('Verwijder dit bericht én sluit de melding?');
+      if (!ok) return;
+      btn.disabled = true;
+      const { ok: success, error } = await Api.resolveReport(reportId, { delete_target: true });
+      if (!success) { btn.disabled = false; showToast(error || 'Mislukt', 'error'); return; }
+      // Verwijder ook uit feed als zichtbaar
+      const targetType = reportEl.dataset.targetType;
+      const targetId = reportEl.dataset.targetId;
+      if (targetType === 'post') {
+        document.querySelector(`.tl-post[data-post-id="${CSS.escape(targetId)}"]`)?.remove();
+      } else if (targetType === 'reply') {
+        document.querySelector(`.tl-reply[data-reply-id="${CSS.escape(targetId)}"]`)?.remove();
+      }
+      reportEl.remove();
+      showToast('Verwijderd en gesloten');
+      ensureEmptyState(list);
+    }
+  });
+}
+
+async function refreshReportsQueue(list) {
+  const { ok, data, error } = await Api.listReports();
+  if (!ok) {
+    list.innerHTML = `<div class="tl-empty tl-error">Kon reports niet laden: ${escapeHtml(error)}</div>`;
+    return;
+  }
+  const reports = data.reports || [];
+  if (reports.length === 0) {
+    list.innerHTML = `<div class="tl-empty">Geen openstaande meldingen 🎉</div>`;
+    return;
+  }
+  list.innerHTML = reports.map(renderReportRow).join('');
+}
+
+function ensureEmptyState(list) {
+  if (!list.querySelector('.tl-report-row')) {
+    list.innerHTML = `<div class="tl-empty">Geen openstaande meldingen 🎉</div>`;
+  }
+}
+
+function renderReportRow(rep) {
+  const t = rep.target;
+  const targetBody = t?.body ? nl2br(escapeHtml(t.body.slice(0, 240))) + (t.body.length > 240 ? '…' : '') : '<em>(verwijderd)</em>';
+  const targetMeta = t
+    ? `${escapeHtml(t.nickname || '(naamloos)')} · ${escapeHtml(formatRelativeTime(t.created_at))}`
+    : '<em>doel bestaat niet meer</em>';
+  return `
+    <article class="tl-report-row" data-report-id="${escapeHtml(rep.id)}" data-target-type="${escapeHtml(rep.target_type)}" data-target-id="${escapeHtml(rep.target_id)}">
+      <div class="tl-report-meta">
+        <span class="tl-report-type">${rep.target_type === 'post' ? '📄 Post' : '💬 Reactie'}</span>
+        <span class="tl-time">${escapeHtml(formatRelativeTime(rep.created_at))}</span>
+      </div>
+      <div class="tl-report-target">
+        <div class="tl-report-target-meta">${targetMeta}</div>
+        <div class="tl-report-target-body">${targetBody}</div>
+      </div>
+      ${rep.reason ? `<div class="tl-report-reason"><strong>Reden:</strong> ${escapeHtml(rep.reason)}</div>` : ''}
+      <div class="tl-report-actions">
+        <button type="button" class="btn btn-outline btn-sm" data-action="report-dismiss">Niets doen</button>
+        <button type="button" class="btn btn-danger btn-sm" data-action="report-delete">Verwijder bericht</button>
+      </div>
+    </article>
+  `;
 }
 
 /* ----- Menu (popover) ----- */
@@ -646,7 +804,8 @@ async function handleRepliesToggle(card, btn) {
     list.innerHTML = '<div class="tl-replies-empty">Nog geen reacties — wees de eerste!</div>';
   } else {
     const me = currentUserId();
-    list.innerHTML = replies.map(r => renderReplyRow(r, me)).join('');
+    const admin = isAdminUser();
+    list.innerHTML = replies.map(r => renderReplyRow(r, me, admin)).join('');
   }
 }
 
@@ -692,7 +851,7 @@ async function handleReplySubmit(card, form) {
   const list = card.querySelector('[data-role="replies-list"]');
   const empty = list.querySelector('.tl-replies-empty, .tl-empty');
   if (empty) list.innerHTML = '';
-  list.insertAdjacentHTML('beforeend', renderReplyRow(data.reply, currentUserId()));
+  list.insertAdjacentHTML('beforeend', renderReplyRow(data.reply, currentUserId(), isAdminUser()));
   list.dataset.loaded = '1';
 
   textarea.value = '';
@@ -724,7 +883,7 @@ async function loadAndRenderFeed(feedEl) {
     feedEl.innerHTML = `<div class="tl-empty">${escapeHtml(msg)}</div>`;
     return;
   }
-  feedEl.innerHTML = posts.map(p => renderPostCard(p, currentUserId())).join('');
+  feedEl.innerHTML = posts.map(p => renderPostCard(p, currentUserId(), isAdminUser())).join('');
 }
 
 function prependPost(post) {
@@ -740,7 +899,7 @@ function prependPost(post) {
   if (empty) feedEl.innerHTML = '';
 
   const wrap = document.createElement('div');
-  wrap.innerHTML = renderPostCard(post, currentUserId());
+  wrap.innerHTML = renderPostCard(post, currentUserId(), isAdminUser());
   const card = wrap.firstElementChild;
   // Niet-pinned posts gaan boven andere niet-pinned, maar onder pinned.
   if (post.is_pinned) {
