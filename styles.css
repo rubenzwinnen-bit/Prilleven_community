@@ -2111,6 +2111,9 @@ select.form-control {
 /* Verberg de navigatiebalk op de hub-landingspagina */
 body.is-hub #app-nav { display: none; }
 
+/* Op de hub-landingspagina is de "naar het hub"-knop overbodig */
+body.is-hub .header-home-btn { display: none; }
+
 /* Logo op het inlog-scherm */
 .auth-logo {
   text-align: center;
