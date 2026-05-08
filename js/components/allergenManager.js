@@ -6,12 +6,12 @@
    Returnt Promise<void> — caller herlaadt zelf.
 ============================================ */
 
-import { escapeHtml, ALLERGENS, showToast } from '../utils.js?v=2.6.0';
+import { escapeHtml, ALLERGENS, showToast } from '../utils.js?v=2.7.0';
 import {
   getAllergensForChild,
   upsertAllergen,
   deleteAllergen,
-} from '../eersteHapjesApi.js?v=2.6.0';
+} from '../eersteHapjesApi.js?v=2.7.0';
 
 const STATUSES = [
   { value: 'gepland',    label: 'Gepland'    },

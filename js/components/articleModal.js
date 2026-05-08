@@ -6,13 +6,13 @@
      klik op een item opent de detail-weergave (zelfde modal).
 ============================================ */
 
-import { escapeHtml } from '../utils.js?v=2.6.0';
+import { escapeHtml } from '../utils.js?v=2.7.0';
 import {
   getArticlesByCategory,
   getArticleBySlug,
   formatAgeRange,
-} from '../eersteHapjesContent.js?v=2.6.0';
-import { CATEGORY_LABEL } from '../content/eersteHapjes-content.js?v=2.6.0';
+} from '../eersteHapjesContent.js?v=2.7.0';
+import { CATEGORY_LABEL } from '../content/eersteHapjes-content.js?v=2.7.0';
 
 /**
  * Toon één artikel in een modal.

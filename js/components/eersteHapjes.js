@@ -5,27 +5,34 @@
    Brok C — maaltijd- en symptoom-logging.
    Brok D — allergenen-tracker + recept-warning.
    Brok E — microlearning-content (Volgende stap + Alle tips).
+   Brok F — fasen-systeem (banner + detail + overzicht).
 ============================================ */
 
-import { escapeHtml, colorFromSeed, initialsFromName, showToast } from '../utils.js?v=2.6.0';
+import { escapeHtml, colorFromSeed, initialsFromName, showToast } from '../utils.js?v=2.7.0';
 import {
   getMyChildren,
   getMealsForChild,
   getSymptomsForChild,
   getAllergensForChild,
+  getPhases,
   deleteMealLog,
   deleteSymptom,
-} from '../eersteHapjesApi.js?v=2.6.0';
+} from '../eersteHapjesApi.js?v=2.7.0';
 import {
   ageMonthsFromBirthdate,
   getNextStepArticle,
   formatAgeRange,
-} from '../eersteHapjesContent.js?v=2.6.0';
-import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.6.0';
-import { openMealLogModal } from './mealLogModal.js?v=2.6.0';
-import { openSymptomLogModal } from './symptomLogModal.js?v=2.6.0';
-import { openAllergenManager } from './allergenManager.js?v=2.6.0';
-import { openArticleModal, openArticleListModal } from './articleModal.js?v=2.6.0';
+} from '../eersteHapjesContent.js?v=2.7.0';
+import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.7.0';
+import { openMealLogModal } from './mealLogModal.js?v=2.7.0';
+import { openSymptomLogModal } from './symptomLogModal.js?v=2.7.0';
+import { openAllergenManager } from './allergenManager.js?v=2.7.0';
+import { openArticleModal, openArticleListModal } from './articleModal.js?v=2.7.0';
+import {
+  renderPhaseBanner,
+  openPhaseDetailModal,
+  openPhaseOverviewModal,
+} from './phaseModal.js?v=2.7.0';
 
 // Module-state
 let state = {
@@ -35,6 +42,7 @@ let state = {
   meals: [],
   symptoms: [],
   allergens: [],
+  phaseState: null,
   logsLoadedFor: null, // child_id waarvoor logs geladen zijn
 };
 
@@ -112,15 +120,17 @@ async function loadLogs(childId) {
   // Symptomen: laatste 7 dagen voor patroonherkenning
   const fromIsoWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [mealsRes, sympRes, allergRes] = await Promise.all([
+  const [mealsRes, sympRes, allergRes, phasesRes] = await Promise.all([
     getMealsForChild(childId, { from: fromIsoToday }),
     getSymptomsForChild(childId, { from: fromIsoWeek }),
     getAllergensForChild(childId),
+    getPhases(childId),
   ]);
 
   state.meals = mealsRes.ok ? (mealsRes.data?.meals || []) : [];
   state.symptoms = sympRes.ok ? (sympRes.data?.symptoms || []) : [];
   state.allergens = allergRes.ok ? (allergRes.data?.allergens || []) : [];
+  state.phaseState = phasesRes.ok ? phasesRes.data : null;
   state.logsLoadedFor = childId;
 }
 
@@ -218,6 +228,8 @@ function renderToday(child) {
         </p>
       </header>
 
+      ${renderPhaseBanner(state.phaseState)}
+
       <div class="eh-today-grid">
         ${renderMealsCard(child)}
         ${renderSymptomsCard(child)}
@@ -226,6 +238,9 @@ function renderToday(child) {
       </div>
 
       <div class="eh-today-foot">
+        <button class="eh-tips-link" data-action="open-phases" type="button">
+          Mijn fasen →
+        </button>
         <button class="eh-tips-link" data-action="open-tips" type="button">
           Bekijk alle tips & artikels →
         </button>
@@ -464,7 +479,7 @@ function bindLogActions(root, child) {
   const articleBtn = root.querySelector('[data-action="open-article"]');
   if (articleBtn) {
     articleBtn.addEventListener('click', async () => {
-      const { getArticleBySlug } = await import('../eersteHapjesContent.js?v=2.6.0');
+      const { getArticleBySlug } = await import('../eersteHapjesContent.js?v=2.7.0');
       const article = getArticleBySlug(articleBtn.dataset.slug);
       if (article) await openArticleModal(article);
     });
@@ -476,6 +491,36 @@ function bindLogActions(root, child) {
     tipsBtn.addEventListener('click', async () => {
       const months = ageMonthsFromBirthdate(child.birthdate);
       await openArticleListModal({ ageMonths: months });
+    });
+  }
+
+  // Fase-banner → detail-modal
+  const phaseBannerBtn = root.querySelector('[data-action="open-phase-detail"]');
+  if (phaseBannerBtn) {
+    phaseBannerBtn.addEventListener('click', async () => {
+      const { changed } = await openPhaseDetailModal({
+        child,
+        phaseState: state.phaseState,
+      });
+      if (changed) {
+        await loadLogs(child.id);
+        await renderApp(root);
+      }
+    });
+  }
+
+  // "Mijn fasen"-link → overzicht-modal
+  const phasesBtn = root.querySelector('[data-action="open-phases"]');
+  if (phasesBtn) {
+    phasesBtn.addEventListener('click', async () => {
+      const { changed } = await openPhaseOverviewModal({
+        child,
+        phaseState: state.phaseState,
+      });
+      if (changed) {
+        await loadLogs(child.id);
+        await renderApp(root);
+      }
     });
   }
 

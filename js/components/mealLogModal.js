@@ -6,9 +6,9 @@
    Returnt Promise<meal|null>.
 ============================================ */
 
-import { escapeHtml } from '../utils.js?v=2.6.0';
-import { createMealLog } from '../eersteHapjesApi.js?v=2.6.0';
-import { getRecipes } from '../store.js?v=2.6.0';
+import { escapeHtml } from '../utils.js?v=2.7.0';
+import { createMealLog } from '../eersteHapjesApi.js?v=2.7.0';
+import { getRecipes } from '../store.js?v=2.7.0';
 
 const MEAL_TYPES = [
   { value: 'ontbijt', label: 'Ontbijt' },
