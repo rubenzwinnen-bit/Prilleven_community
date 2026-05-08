@@ -2219,6 +2219,312 @@ select.form-control {
   .eh-coming { padding: 1.25rem; }
 }
 
+/* ============================================
+   EERSTE HAPJES — onboarding & Vandaag (brok B)
+============================================ */
+
+.eh-page-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Loading shell */
+.eh-loading-shell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 4rem 1rem;
+  color: var(--color-gray);
+}
+.eh-loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--color-light);
+  border-top-color: var(--color-secondary);
+  border-radius: 50%;
+  animation: eh-spin 0.8s linear infinite;
+}
+@keyframes eh-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Welkomscherm (geen kindjes nog) */
+.eh-welcome {
+  background: var(--color-white);
+  border: 1px solid var(--color-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+  padding: 3rem 1.5rem;
+}
+.eh-welcome-icon {
+  font-size: 3rem;
+  line-height: 1;
+  margin-bottom: 1rem;
+}
+.eh-welcome-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0 0 .5rem;
+  color: var(--color-dark);
+}
+.eh-welcome-sub {
+  margin: 0 0 1.5rem;
+  color: var(--color-dark-light);
+}
+
+/* Switcher (kindje-selectie) */
+.eh-switcher {
+  background: var(--color-white);
+  border: 1px solid var(--color-light);
+  border-radius: var(--radius-lg);
+  padding: .75rem;
+  box-shadow: var(--shadow-sm);
+}
+.eh-switcher-chips {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+.eh-child-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  padding: .4rem .85rem .4rem .4rem;
+  background: var(--color-bg);
+  border: 1px solid var(--color-light);
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: .92rem;
+  color: var(--color-dark);
+  transition: background .15s, border-color .15s, transform .1s;
+}
+.eh-child-chip:hover {
+  background: var(--color-light);
+}
+.eh-child-chip.active {
+  background: var(--color-secondary);
+  border-color: var(--color-secondary-dark);
+  color: var(--color-white);
+}
+.eh-child-chip.active .eh-child-name {
+  color: var(--color-white);
+}
+.eh-child-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--color-secondary);
+  color: var(--color-white);
+  font-weight: 700;
+  font-size: .78rem;
+  letter-spacing: .5px;
+}
+.eh-child-avatar-add {
+  background: transparent;
+  border: 1.5px dashed var(--color-gray);
+  color: var(--color-gray);
+  font-size: 1.1rem;
+  font-weight: 400;
+}
+.eh-child-chip-add {
+  color: var(--color-gray);
+  background: transparent;
+}
+.eh-child-chip-add:hover {
+  background: var(--color-light);
+  color: var(--color-dark);
+}
+
+/* Vandaag-skeleton */
+.eh-today {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.eh-today-header h1.eh-today-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 .25rem;
+  color: var(--color-dark);
+}
+.eh-today-meta {
+  margin: 0;
+  color: var(--color-gray);
+  font-size: .9rem;
+}
+.eh-today-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: .85rem;
+}
+@media (min-width: 720px) {
+  .eh-today-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.eh-today-card {
+  background: var(--color-white);
+  border: 1px solid var(--color-light);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+.eh-today-card h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--color-dark);
+}
+.eh-today-card p {
+  margin: 0;
+  color: var(--color-dark-light);
+  font-size: .92rem;
+  line-height: 1.5;
+}
+.eh-today-pill {
+  align-self: flex-start;
+  margin-top: .25rem;
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  color: var(--color-secondary-dark);
+  background: var(--color-light);
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+/* Onboarding-modal */
+.eh-onboarding-modal {
+  max-width: 460px;
+  width: 100%;
+  padding: 1.75rem;
+}
+.eh-onboarding-modal h2 {
+  margin: 0 0 .5rem;
+  font-size: 1.25rem;
+  color: var(--color-dark);
+}
+.eh-onb-desc {
+  color: var(--color-dark-light);
+  margin: 0 0 1rem;
+  font-size: .92rem;
+  line-height: 1.5;
+}
+.eh-onb-progress {
+  display: flex;
+  gap: .4rem;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+}
+.eh-onb-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-light);
+  transition: background .2s;
+}
+.eh-onb-dot.active {
+  background: var(--color-secondary);
+}
+.eh-onb-step.hidden { display: none; }
+
+.eh-onb-actions {
+  display: flex;
+  gap: .5rem;
+  justify-content: flex-end;
+  margin-top: 1.25rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.eh-onb-error {
+  margin-top: .65rem;
+  padding: .6rem .8rem;
+  background: rgba(220, 53, 69, 0.08);
+  color: var(--color-danger);
+  border-radius: var(--radius-md);
+  font-size: .88rem;
+}
+.eh-onb-error.hidden { display: none; }
+.eh-onb-loading {
+  margin-top: .65rem;
+  color: var(--color-gray);
+  font-size: .88rem;
+  text-align: center;
+}
+.eh-onb-loading.hidden { display: none; }
+
+.eh-onb-textures {
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+}
+.eh-onb-texture {
+  text-align: left;
+  padding: .85rem 1rem;
+  background: var(--color-bg);
+  border: 1.5px solid var(--color-light);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+  transition: border-color .15s, background .15s;
+}
+.eh-onb-texture:hover {
+  background: var(--color-light);
+}
+.eh-onb-texture.selected {
+  border-color: var(--color-secondary);
+  background: var(--color-white);
+  box-shadow: 0 0 0 3px rgba(152, 195, 164, 0.18);
+}
+.eh-onb-texture-label {
+  font-weight: 600;
+  color: var(--color-dark);
+}
+.eh-onb-texture-hint {
+  font-size: .82rem;
+  color: var(--color-gray);
+}
+
+.eh-onb-link-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-gray);
+  font-family: inherit;
+  font-size: .92rem;
+  cursor: pointer;
+  padding: .5rem .75rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.eh-onb-link-btn:hover {
+  color: var(--color-dark);
+}
+.eh-onb-link-btn:disabled {
+  opacity: .5;
+  cursor: default;
+}
+
+@media (max-width: 480px) {
+  .eh-onboarding-modal { padding: 1.25rem; }
+  .eh-onb-actions { justify-content: stretch; }
+  .eh-onb-actions .btn,
+  .eh-onb-actions .eh-onb-link-btn { flex: 1; }
+}
+
 /* Verberg de navigatiebalk op de hub-landingspagina */
 body.is-hub #app-nav { display: none; }
 
