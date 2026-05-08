@@ -4,9 +4,10 @@
    Brok B — onboarding & kindje-switcher.
    Brok C — maaltijd- en symptoom-logging.
    Brok D — allergenen-tracker + recept-warning.
+   Brok E — microlearning-content (Volgende stap + Alle tips).
 ============================================ */
 
-import { escapeHtml, colorFromSeed, initialsFromName, showToast } from '../utils.js?v=2.5.0';
+import { escapeHtml, colorFromSeed, initialsFromName, showToast } from '../utils.js?v=2.6.0';
 import {
   getMyChildren,
   getMealsForChild,
@@ -14,11 +15,17 @@ import {
   getAllergensForChild,
   deleteMealLog,
   deleteSymptom,
-} from '../eersteHapjesApi.js?v=2.5.0';
-import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.5.0';
-import { openMealLogModal } from './mealLogModal.js?v=2.5.0';
-import { openSymptomLogModal } from './symptomLogModal.js?v=2.5.0';
-import { openAllergenManager } from './allergenManager.js?v=2.5.0';
+} from '../eersteHapjesApi.js?v=2.6.0';
+import {
+  ageMonthsFromBirthdate,
+  getNextStepArticle,
+  formatAgeRange,
+} from '../eersteHapjesContent.js?v=2.6.0';
+import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.6.0';
+import { openMealLogModal } from './mealLogModal.js?v=2.6.0';
+import { openSymptomLogModal } from './symptomLogModal.js?v=2.6.0';
+import { openAllergenManager } from './allergenManager.js?v=2.6.0';
+import { openArticleModal, openArticleListModal } from './articleModal.js?v=2.6.0';
 
 // Module-state
 let state = {
@@ -215,13 +222,45 @@ function renderToday(child) {
         ${renderMealsCard(child)}
         ${renderSymptomsCard(child)}
         ${renderAllergensCard(child)}
-        <div class="eh-today-card eh-today-card-soon">
-          <h3>Volgende stap</h3>
-          <p>Korte uitleg per fase, op het moment dat het relevant wordt.</p>
-          <span class="eh-today-pill">Binnenkort</span>
-        </div>
+        ${renderNextStepCard(child)}
+      </div>
+
+      <div class="eh-today-foot">
+        <button class="eh-tips-link" data-action="open-tips" type="button">
+          Bekijk alle tips & artikels →
+        </button>
       </div>
     </section>
+  `;
+}
+
+function renderNextStepCard(child) {
+  const months = ageMonthsFromBirthdate(child.birthdate);
+  const article = getNextStepArticle(months);
+
+  if (!article) {
+    return `
+      <div class="eh-today-card eh-log-card eh-log-card-nextstep">
+        <header class="eh-log-card-header">
+          <h3>Volgende stap</h3>
+        </header>
+        <p class="eh-log-empty">Geen artikel voor deze leeftijd. Check 'Alle tips' onderaan.</p>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="eh-today-card eh-log-card eh-log-card-nextstep">
+      <header class="eh-log-card-header">
+        <h3>Volgende stap</h3>
+        <span class="eh-nextstep-age">${escapeHtml(formatAgeRange(article.ageMinMonths, article.ageMaxMonths))}</span>
+      </header>
+      <h4 class="eh-nextstep-title">${escapeHtml(article.title)}</h4>
+      <p class="eh-nextstep-summary">${escapeHtml(article.summary)}</p>
+      <button class="eh-nextstep-link" data-action="open-article" data-slug="${escapeHtml(article.slug)}">
+        Lees meer →
+      </button>
+    </div>
   `;
 }
 
@@ -418,6 +457,25 @@ function bindLogActions(root, child) {
       // Bij sluiten: herlaad logs (allergenen kunnen gewijzigd zijn).
       await loadLogs(child.id);
       await renderApp(root);
+    });
+  }
+
+  // "Volgende stap"-artikel openen
+  const articleBtn = root.querySelector('[data-action="open-article"]');
+  if (articleBtn) {
+    articleBtn.addEventListener('click', async () => {
+      const { getArticleBySlug } = await import('../eersteHapjesContent.js?v=2.6.0');
+      const article = getArticleBySlug(articleBtn.dataset.slug);
+      if (article) await openArticleModal(article);
+    });
+  }
+
+  // "Alle tips"-modal
+  const tipsBtn = root.querySelector('[data-action="open-tips"]');
+  if (tipsBtn) {
+    tipsBtn.addEventListener('click', async () => {
+      const months = ageMonthsFromBirthdate(child.birthdate);
+      await openArticleListModal({ ageMonths: months });
     });
   }
 
