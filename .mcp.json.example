@@ -1,0 +1,37 @@
+{
+  "_comment": "Template voor .mcp.json — kopieer naar .mcp.json en vul je eigen token in. .mcp.json staat in .gitignore.",
+  "_setup_supabase": [
+    "1. Kopieer dit bestand naar .mcp.json:    cp .mcp.json.example .mcp.json",
+    "2. Maak een Personal Access Token aan op: https://supabase.com/dashboard/account/tokens",
+    "3. Vervang REPLACE_WITH_YOUR_PERSONAL_ACCESS_TOKEN met je echte token (begint met sbp_...).",
+    "4. Herstart Claude Code zodat de MCP-server geladen wordt.",
+    "5. Test in Claude met: 'Lijst de tabellen in mijn Supabase project.'"
+  ],
+  "_setup_vercel": [
+    "Vercel MCP gebruikt OAuth — geen token nodig in dit bestand.",
+    "1. Na herstart van Claude Code: typ /mcp om de Vercel-server te authenticeren.",
+    "2. Browser opent → log in op Vercel → goedkeuren.",
+    "3. Test in Claude met: 'Toon de status van mijn Vercel projecten.'"
+  ],
+  "_note_readonly": "Supabase staat op --read-only: Claude kan ALLEEN lezen. Geen schrijfacties. Verwijder die flag als je later schrijftoegang wil.",
+  "_note_project_scope": "Supabase staat op --project-ref=ynrdoxukevhzupjvcjuw: alleen toegang tot het Pril Leven project, niet andere Supabase projecten.",
+
+  "mcpServers": {
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--read-only",
+        "--project-ref=ynrdoxukevhzupjvcjuw"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "REPLACE_WITH_YOUR_PERSONAL_ACCESS_TOKEN"
+      }
+    },
+    "vercel": {
+      "type": "http",
+      "url": "https://mcp.vercel.com"
+    }
+  }
+}

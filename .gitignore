@@ -91,3 +91,16 @@ recepten boeken/
 # ============================================
 .env*.backup
 *.env.backup
+
+# ============================================
+# MCP CONFIG (bevat Supabase Personal Access Token)
+# .mcp.json.example wordt wel gecommit als template
+# ============================================
+.mcp.json
+
+# ============================================
+# WERKBESTANDEN — niet in productie
+# /mockups/ bevat design-iteraties (HTML mockups)
+# voor lopende features. Niet onderdeel van product.
+# ============================================
+/mockups/
