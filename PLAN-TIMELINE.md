@@ -418,8 +418,11 @@ Branch: `eerste-hapjes`
 - D.2 — `_lib/eersteHapjes-allergens.mjs` + 2 endpoints (`allergens.mjs` met upsert, `allergens/[id].mjs`).
 - D.3 — frontend: `allergenManager.js` (accordion-modal met 13 allergenen, upsert per rij), Vandaag-card met groepen geprobeerd/gepland/vermijden + reactie-tags, recipe-warning in `mealLogModal` (waarschuwt bij overlap met `vermijden` of `geprobeerd+matig/heftig`).
 
-## E. Microlearning + content — later
-- Aanpak: Markdown-files in `/content/eerste-hapjes/` (geen DB-tabel in v1)
+## E. Microlearning + content — afgerond ✅ (skeleton-content)
+- E.1 — content-module `js/content/eersteHapjes-content.js` met 7 skeleton-artikels (titels + leeftijdsranges + categorieën vast, body's als placeholder voor Anneleen om aan te vullen). HTML-string i.p.v. markdown — geen parser nodig, geen build step.
+- E.2 — `js/eersteHapjesContent.js` helpers (`ageMonthsFromBirthdate`, `getNextStepArticle`, `getRelevantArticles`, `getArticlesByCategory`, `getArticleBySlug`, `formatAgeRange`).
+- E.3 — `articleModal.js` (één component met detail + lijst-weergave, slug-navigatie tussen views).
+- E.4 — `eersteHapjes.js`: "Volgende stap"-card vervangt placeholder met live artikel op basis van leeftijd, plus "Alle tips"-link onderaan Vandaag-pagina.
 
 ---
 

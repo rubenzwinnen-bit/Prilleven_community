@@ -44,6 +44,7 @@ Node ≥ 20.
   communityApi.js
   headerAvatarStandalone.js
   /components              → UI componenten (header, nav, recipeCard, weekSchedule, timeline, ...)
+  /content                 → statische content-modules (bv. eerste-hapjes microlearning)
 
 /api                       → Vercel Functions (.mjs)
   chat.mjs                 → AI chat endpoint (RAG)
