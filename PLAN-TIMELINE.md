@@ -481,3 +481,34 @@ Branch: `eerste-hapjes`
 - **`archived` flag via PATCH** ipv aparte DELETE. `{ archived: true }` zet `archived_at = now()`, `{ archived: false }` zet `null`. Hard delete blijft beschikbaar via DELETE.
 - **Onboarding op `#/eerste-hapjes`-route, niet bij eerste login** — bewust opt-in, niet alle users zullen Eerste Hapjes gebruiken.
 - **Module-state voor actief kindje** in `eersteHapjes.js` (niet localStorage). Reset bij elke nieuwe SPA-bezoek; jongste actieve kindje wordt default. Bij meerdere kindjes is dat OK; bij één kindje doet 't er niet toe.
+
+---
+
+## 2026-05-08 (laat-avond) — Brokken C, D en E afgerond — Eerste Hapjes v1 compleet
+
+**Context**: in één doorloop alle resterende functionaliteit voor de eerste versie van het Eerste Hapjes-traject gebouwd. Werken we nog optimalisaties achter na testen, maar de hele kern (logging, allergenen, microlearning) staat in productie-staat op de `eerste-hapjes` branch.
+
+### Vandaag afgerond
+- ✅ **Brok C — maaltijd- + symptomen-logging.** Migratie `meal_logs` + `child_symptoms` (additief, owner-only RLS, soft FK naar `recipes` voor recept-koppeling). `_lib/eersteHapjes-logs.mjs` met cross-table ownership-checks. 4 endpoints (`meals`, `meals/[id]`, `symptoms`, `symptoms/[id]`). Frontend: `mealLogModal.js` met **client-side recept-typeahead via bestaande `getRecipes()` cache** (geen extra endpoint nodig — kan later afgezonderd worden), `symptomLogModal.js` met 10-tegel grid + severity + optionele meal-koppeling. Vandaag-cards "Maaltijden vandaag" + "Symptomen 7 dagen" met `+` en `×`-acties.
+- ✅ **Brok D — allergenen + recipe-warning.** Migratie `child_allergens` met unique `(child_id, allergen_key)`. 2 endpoints met upsert-pattern. Allergeen-vocabulaire (13 keys uit `js/utils.js ALLERGENS`) **client-side gevalideerd, geen DB-constraint** zodat lijst zonder migratie kan groeien. `allergenManager.js` accordion-modal: per allergeen status (`gepland/geprobeerd/vermijden`), reactie (`geen/mild/matig/heftig/onbekend`), datum + notes. Vandaag-card toont allergenen gegroepeerd op status met reactie-tags. **Recipe-warning in `mealLogModal`**: als ouder een recept kiest dat een te-vermijden allergeen bevat (status=vermijden of geprobeerd+matig/heftig) verschijnt waarschuwingsbalk — niet-blokkerend.
+- ✅ **Brok E — microlearning + content.** Statisch `js/content/eersteHapjes-content.js` met 7 skeleton-artikels (titels, leeftijdsranges, categorieën vast — body's zijn placeholders die jij later vult). Helpers in `js/eersteHapjesContent.js` (`getNextStepArticle` kiest hoogste `ageMin` binnen leeftijdsrange, skipt categorie 'veiligheid'). `articleModal.js` met detail- én lijst-weergave in één component met slug-navigatie. Vandaag: "Volgende stap"-card live + "Alle tips & artikels"-link voor de volledige bibliotheek gegroepeerd per categorie.
+- ✅ **9 commits** gepusht naar `eerste-hapjes`: 3× per brok (backend / frontend / docs). Cache-buster 3× gebumped: `v2.3.0` → `v2.4.0` → `v2.5.0` → `v2.6.0`.
+- ✅ **Docs gesyncd** in `api/CLAUDE.md`, `js/CLAUDE.md`, `supabase-migrations/CLAUDE.md`, `CLAUDE.md` (root mappenstructuur), en deze PLAN-TIMELINE.
+
+### Open / nog te doen
+- ⬜ **Testen op Vercel preview** (`https://prillevencommunity-git-eerste-hapjes-prilleven-community.vercel.app`): volledige flow door — onboarding, meal log, recipe-typeahead, recipe-warning bij allergeen-overlap, symptoom-tracker, allergenen-manager, artikel-modals.
+- ⬜ **Body's van de 7 microlearning-artikels schrijven** in `js/content/eersteHapjes-content.js` — structuur staat, alleen content invullen vanuit Anneleen's eigen content.
+- ⬜ **Optimalisatie-ronde** (na testen): UX-tweaks, eventuele edge-cases, mogelijke uitbreidingen zoals recept-filter in receptenboek-UI (bewust uitgesteld, raakt legacy code).
+- ⬜ **Merge `eerste-hapjes` → `main`** wanneer alles getest en goedgekeurd is. Pas dán komt het in productie. Bewust additief tot nu toe — bestaande HapjesHeld-flow ongewijzigd.
+- ⬜ **Geplande HapjesHeld-migratie** (bewust uitgesteld): `loadUserProfile()` switchen van `chat_user_profiles.children` (jsonb) naar de nieuwe `children`-tabel. Doen we in één gecoördineerde release op het einde.
+
+### Beslissingen genomen vandaag
+- **Recept-typeahead client-side via `getRecipes()` cache** ipv server-endpoint. Recepten zijn publiek leesbaar via anon key, dus extra endpoint zou enkel een dunne wrapper zijn. Later afzonderen kan met minimale wijziging.
+- **Allergeen-vocabulaire zonder DB-constraint** maar wel server-side gevalideerd in `_lib/eersteHapjes-allergens.mjs`. Reden: lijst kan in `js/utils.js ALLERGENS` groeien zonder migratie. Backend en frontend constants moeten wel in sync blijven (manueel — let op bij wijzigingen).
+- **NL enum-waarden** voor user-facing data in DB-checks: `gepland/geprobeerd/vermijden`, `geen/mild/matig/heftig/onbekend`. Maakt SQL-queries in dashboard leesbaar.
+- **Soft FK `meal_logs.recipe_id text → recipes(id) ON DELETE SET NULL`** — referentie-integriteit zonder dat een verwijderd recept een log breekt.
+- **HTML-string body's voor content** ipv markdown. Geen parser of build-step nodig. Body's worden door Anneleen zelf geschreven, dus geen sanitize-risico.
+- **Soft skeleton-content**: Brok E afgerond als infrastructuur + structuur staan, body-tekst aanvullen is geen blocker voor de volgende fase.
+
+### Open vragen / blockers
+- Geen blockers. Alleen handmatige test-cycle nodig op Vercel preview.
