@@ -18,6 +18,7 @@ Dit bestand geeft Claude Code (en andere AI-assistenten) de context om effectief
 - **AI:** Anthropic SDK (`@anthropic-ai/sdk`) voor chat, Voyage AI voor embeddings (RAG).
 - **Hosting:** Vercel (zie `vercel.json`).
 - **Betalingen:** Plug&Pay (webhook → `allowed_users` / `subscriptions` tabel).
+- **Plan-niveau:** Vercel **Pro** + Supabase **Pro**. Geen Hobby-limieten op functions, executions, DB-grootte etc. — niet zelf gaan optimaliseren voor die limieten.
 
 Node ≥ 20.
 
