@@ -5,9 +5,9 @@
    (chatbot) en Admin (alleen voor admins).
 ============================================ */
 
-import * as Store from '../store.js?v=2.1.0';
-import * as Router from '../router.js?v=2.1.0';
-import * as Timeline from './timeline.js?v=2.1.0';
+import * as Store from '../store.js?v=2.2.0';
+import * as Router from '../router.js?v=2.2.0';
+import * as Timeline from './timeline.js?v=2.2.0';
 
 export function render() {
   const user = Store.getCurrentUser() || '';
@@ -31,6 +31,14 @@ export function render() {
       accent: 'sage',
       hoverImg: '/fotos/HapjesHeld_2.png',
     },
+    {
+      id: 'eerste-hapjes',
+      title: 'Eerste Hapjes',
+      desc: 'Stap voor stap met je kindje door de wereld van vaste voeding — op zijn eigen tempo.',
+      href: '#/eerste-hapjes',
+      accent: 'sage-deep',
+      badge: 'Nieuw',
+    },
   ];
 
   if (admin) {
@@ -48,7 +56,10 @@ export function render() {
     <a class="home-tile home-tile--${t.accent}" href="${t.href}">
       ${t.hoverImg ? `<img class="home-tile-hover-img" src="${t.hoverImg}" alt="" loading="lazy" />` : ''}
       <div class="home-tile-body">
-        <h3 class="home-tile-title">${t.title}</h3>
+        <h3 class="home-tile-title">
+          ${t.title}
+          ${t.badge ? `<span class="home-tile-badge">${t.badge}</span>` : ''}
+        </h3>
         <p class="home-tile-desc">${t.desc}</p>
       </div>
       <div class="home-tile-arrow">→</div>

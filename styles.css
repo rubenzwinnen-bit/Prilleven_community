@@ -2096,6 +2096,34 @@ select.form-control {
   color: var(--color-secondary-dark);
 }
 
+/* ============================================
+   EERSTE HAPJES — sage-deep tegel-variant
+   Onderscheidt zich van de terracotta tegels door
+   een salie-gradient. Featured tegel voor nieuwe
+   feature; krijgt een "Nieuw"-badge naast de titel.
+============================================ */
+.home-tile--sage-deep {
+  background: linear-gradient(135deg, var(--color-secondary) 0%, var(--color-secondary-dark) 100%);
+  border-color: var(--color-secondary-dark);
+}
+.home-tile--sage-deep:hover {
+  background: linear-gradient(135deg, var(--color-secondary-dark) 0%, #5e8c6b 100%);
+  border-color: #5e8c6b;
+}
+.home-tile-badge {
+  display: inline-block;
+  margin-left: .5rem;
+  padding: 2px 9px;
+  background: var(--color-white);
+  color: var(--color-secondary-dark);
+  border-radius: 999px;
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .3px;
+  vertical-align: middle;
+  text-transform: uppercase;
+}
+
 @media (max-width: 640px) {
   .home-hub { margin: 1.25rem auto; }
   .home-welcome h1 { font-size: 1.6rem; }
@@ -2106,6 +2134,89 @@ select.form-control {
   .home-tile-icon { width: 48px; height: 48px; font-size: 1.5rem; }
   .home-tile-title { font-size: 1.05rem; }
   .home-tile-desc { font-size: .85rem; }
+  .home-tile-badge { font-size: .6rem; padding: 2px 7px; }
+}
+
+/* ============================================
+   EERSTE HAPJES — placeholder-pagina
+   Wordt vervangen door de echte sub-app bij
+   verdere brokken (onboarding, vandaag, logging).
+============================================ */
+.eh-page {
+  max-width: 720px;
+  margin: 1.5rem auto;
+  padding: 0 1rem;
+}
+.eh-hero {
+  background: linear-gradient(135deg, var(--color-secondary) 0%, var(--color-secondary-dark) 100%);
+  color: var(--color-white);
+  border-radius: var(--radius-lg);
+  padding: 2.25rem 1.75rem;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+}
+.eh-hero-icon {
+  font-size: 3rem;
+  margin-bottom: .75rem;
+  line-height: 1;
+}
+.eh-hero-title {
+  font-size: 1.85rem;
+  font-weight: 700;
+  margin: 0 0 .5rem;
+  color: var(--color-white);
+}
+.eh-hero-sub {
+  font-size: 1rem;
+  margin: 0 0 1rem;
+  opacity: .92;
+}
+.eh-hero-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  background: var(--color-white);
+  color: var(--color-secondary-dark);
+  border-radius: 999px;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+}
+.eh-coming {
+  background: var(--color-white);
+  border: 1px solid var(--color-light);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem 1.5rem;
+  margin-top: 1.25rem;
+  box-shadow: var(--shadow-sm);
+}
+.eh-coming-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0 0 .85rem;
+  color: var(--color-dark);
+}
+.eh-coming-list {
+  margin: 0 0 1rem;
+  padding: 0 0 0 1.1rem;
+  color: var(--color-dark-light);
+  font-size: .95rem;
+  line-height: 1.6;
+}
+.eh-coming-list li { margin-bottom: .45rem; }
+.eh-coming-list strong { color: var(--color-dark); }
+.eh-coming-note {
+  font-size: .88rem;
+  color: var(--color-gray);
+  margin: 0;
+  font-style: italic;
+}
+
+@media (max-width: 640px) {
+  .eh-hero { padding: 1.75rem 1.25rem; }
+  .eh-hero-title { font-size: 1.5rem; }
+  .eh-hero-sub { font-size: .92rem; }
+  .eh-coming { padding: 1.25rem; }
 }
 
 /* Verberg de navigatiebalk op de hub-landingspagina */
