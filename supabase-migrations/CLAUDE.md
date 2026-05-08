@@ -160,6 +160,10 @@ Alle tabellen `auth.role() = 'authenticated'` voor read; mutations enkel eigen r
 - **`community_poll_votes`** — PK `(post_id, user_id, option_idx)` (multi-vote support).
 - **`community_notifications`** — `id, user_id (ontvanger), type ∈ ('reply','like','poll_result','poll_reply'), post_id, reply_id, actor_id (veroorzaker), read_at, created_at`. Inserts alleen via service-role (anti-spoof).
 
+### Eerste Hapjes Traject (in opbouw)
+Owner-only RLS via `auth.uid() = user_id`. Wordt op termijn de single source of truth voor kindjes-data; HapjesHeld leest later hier i.p.v. `chat_user_profiles.children`.
+- **`children`** — `id, user_id (FK auth.users), name (1-50), birthdate (max 10 jaar terug, niet in toekomst), texture_preference ∈ ('puree','stukjes','combi') NULL, archived_at, created_at, updated_at`. Index `(user_id, archived_at, birthdate)`. updated_at trigger.
+
 ### Views
 - **`community_posts_view`** — post + nickname + avatar_path + likes_count + replies_count + has_poll. `security_invoker = true`.
 - **`community_admin_user_ids`** — resolveert admin user_ids via email-join `auth.users ↔ allowed_users.is_admin`. `security_invoker = true`. Bevat ook email + nickname (na `2026-05-03-community-admin-view-email.sql`).
