@@ -6,8 +6,8 @@
    Returnt Promise<symptom|null>.
 ============================================ */
 
-import { escapeHtml } from '../utils.js?v=2.4.0';
-import { createSymptom, getMealsForChild } from '../eersteHapjesApi.js?v=2.4.0';
+import { escapeHtml } from '../utils.js?v=2.5.0';
+import { createSymptom, getMealsForChild } from '../eersteHapjesApi.js?v=2.5.0';
 
 const SYMPTOM_TYPES = [
   { value: 'huid',       label: 'Huid',       icon: '🌡' },

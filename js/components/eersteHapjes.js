@@ -3,19 +3,22 @@
    SPA-pagina met onboarding + Vandaag.
    Brok B — onboarding & kindje-switcher.
    Brok C — maaltijd- en symptoom-logging.
+   Brok D — allergenen-tracker + recept-warning.
 ============================================ */
 
-import { escapeHtml, colorFromSeed, initialsFromName, showToast } from '../utils.js?v=2.4.0';
+import { escapeHtml, colorFromSeed, initialsFromName, showToast } from '../utils.js?v=2.5.0';
 import {
   getMyChildren,
   getMealsForChild,
   getSymptomsForChild,
+  getAllergensForChild,
   deleteMealLog,
   deleteSymptom,
-} from '../eersteHapjesApi.js?v=2.4.0';
-import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.4.0';
-import { openMealLogModal } from './mealLogModal.js?v=2.4.0';
-import { openSymptomLogModal } from './symptomLogModal.js?v=2.4.0';
+} from '../eersteHapjesApi.js?v=2.5.0';
+import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.5.0';
+import { openMealLogModal } from './mealLogModal.js?v=2.5.0';
+import { openSymptomLogModal } from './symptomLogModal.js?v=2.5.0';
+import { openAllergenManager } from './allergenManager.js?v=2.5.0';
 
 // Module-state
 let state = {
@@ -24,6 +27,7 @@ let state = {
   activeId: null,
   meals: [],
   symptoms: [],
+  allergens: [],
   logsLoadedFor: null, // child_id waarvoor logs geladen zijn
 };
 
@@ -101,13 +105,15 @@ async function loadLogs(childId) {
   // Symptomen: laatste 7 dagen voor patroonherkenning
   const fromIsoWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [mealsRes, sympRes] = await Promise.all([
+  const [mealsRes, sympRes, allergRes] = await Promise.all([
     getMealsForChild(childId, { from: fromIsoToday }),
     getSymptomsForChild(childId, { from: fromIsoWeek }),
+    getAllergensForChild(childId),
   ]);
 
   state.meals = mealsRes.ok ? (mealsRes.data?.meals || []) : [];
   state.symptoms = sympRes.ok ? (sympRes.data?.symptoms || []) : [];
+  state.allergens = allergRes.ok ? (allergRes.data?.allergens || []) : [];
   state.logsLoadedFor = childId;
 }
 
@@ -208,11 +214,7 @@ function renderToday(child) {
       <div class="eh-today-grid">
         ${renderMealsCard(child)}
         ${renderSymptomsCard(child)}
-        <div class="eh-today-card eh-today-card-soon">
-          <h3>Allergenen</h3>
-          <p>Houd bij welke allergenen al geprobeerd zijn en hoe ${escapeHtml(child.name)} reageerde.</p>
-          <span class="eh-today-pill">Binnenkort</span>
-        </div>
+        ${renderAllergensCard(child)}
         <div class="eh-today-card eh-today-card-soon">
           <h3>Volgende stap</h3>
           <p>Korte uitleg per fase, op het moment dat het relevant wordt.</p>
@@ -263,6 +265,67 @@ function renderMealRow(m) {
       <button class="eh-log-delete" data-action="delete-meal" data-id="${m.id}" aria-label="Verwijder maaltijd">×</button>
     </li>
   `;
+}
+
+function renderAllergensCard(child) {
+  const all = state.allergens || [];
+  const tried = all.filter(a => a.status === 'geprobeerd');
+  const planned = all.filter(a => a.status === 'gepland');
+  const avoid = all.filter(a => a.status === 'vermijden');
+
+  const chip = (a) => `
+    <span class="eh-al-chip eh-al-chip-${escapeHtml(a.status)}${
+      a.reaction && a.reaction !== 'geen' && a.reaction !== 'onbekend'
+        ? ' eh-al-chip-react-' + escapeHtml(a.reaction)
+        : ''
+    }">
+      ${escapeHtml(capitalize(a.allergen_key))}${
+        a.reaction && a.reaction !== 'geen' && a.reaction !== 'onbekend'
+          ? ` <span class="eh-al-chip-tag">${escapeHtml(a.reaction)}</span>`
+          : ''
+      }
+    </span>
+  `;
+
+  let body;
+  if (all.length === 0) {
+    body = `<p class="eh-log-empty">Nog geen allergenen bijgehouden voor ${escapeHtml(child.name)}.</p>`;
+  } else {
+    body = `
+      <div class="eh-al-groups">
+        ${tried.length ? `
+          <div class="eh-al-group">
+            <div class="eh-al-group-label">Geprobeerd</div>
+            <div class="eh-al-chips-row">${tried.map(chip).join('')}</div>
+          </div>` : ''}
+        ${planned.length ? `
+          <div class="eh-al-group">
+            <div class="eh-al-group-label">Gepland</div>
+            <div class="eh-al-chips-row">${planned.map(chip).join('')}</div>
+          </div>` : ''}
+        ${avoid.length ? `
+          <div class="eh-al-group">
+            <div class="eh-al-group-label">Vermijden</div>
+            <div class="eh-al-chips-row">${avoid.map(chip).join('')}</div>
+          </div>` : ''}
+      </div>
+    `;
+  }
+
+  return `
+    <div class="eh-today-card eh-log-card eh-log-card-allergens">
+      <header class="eh-log-card-header">
+        <h3>Allergenen</h3>
+        <button class="eh-log-add" data-action="manage-allergens" aria-label="Allergenen beheren">✎</button>
+      </header>
+      ${body}
+    </div>
+  `;
+}
+
+function capitalize(s) {
+  if (!s) return '';
+  return s[0].toUpperCase() + s.slice(1);
 }
 
 function renderSymptomsCard() {
@@ -322,7 +385,11 @@ function bindLogActions(root, child) {
   const addMealBtn = root.querySelector('[data-action="add-meal"]');
   if (addMealBtn) {
     addMealBtn.addEventListener('click', async () => {
-      const meal = await openMealLogModal({ childId: child.id, childName: child.name });
+      const meal = await openMealLogModal({
+        childId: child.id,
+        childName: child.name,
+        childAllergens: state.allergens,
+      });
       if (meal) {
         showToast('Maaltijd opgeslagen.', 'success');
         await loadLogs(child.id);
@@ -340,6 +407,17 @@ function bindLogActions(root, child) {
         await loadLogs(child.id);
         await renderApp(root);
       }
+    });
+  }
+
+  // Allergenen-manager
+  const manageAlBtn = root.querySelector('[data-action="manage-allergens"]');
+  if (manageAlBtn) {
+    manageAlBtn.addEventListener('click', async () => {
+      await openAllergenManager({ childId: child.id, childName: child.name });
+      // Bij sluiten: herlaad logs (allergenen kunnen gewijzigd zijn).
+      await loadLogs(child.id);
+      await renderApp(root);
     });
   }
 

@@ -6,9 +6,9 @@
    Returnt Promise<meal|null>.
 ============================================ */
 
-import { escapeHtml } from '../utils.js?v=2.4.0';
-import { createMealLog } from '../eersteHapjesApi.js?v=2.4.0';
-import { getRecipes } from '../store.js?v=2.4.0';
+import { escapeHtml } from '../utils.js?v=2.5.0';
+import { createMealLog } from '../eersteHapjesApi.js?v=2.5.0';
+import { getRecipes } from '../store.js?v=2.5.0';
 
 const MEAL_TYPES = [
   { value: 'ontbijt', label: 'Ontbijt' },
@@ -34,9 +34,20 @@ const REACTIONS = [
  * @param {object} opts
  * @param {string} opts.childId  — verplicht
  * @param {string} opts.childName — voor titel
+ * @param {Array}  [opts.childAllergens] — voor recept-warning
  * @returns {Promise<object|null>} aangemaakte meal-rij of null
  */
-export function openMealLogModal({ childId, childName }) {
+export function openMealLogModal({ childId, childName, childAllergens = [] }) {
+  // Reken één keer uit welke allergens een waarschuwing geven:
+  // 'vermijden' of 'geprobeerd' met reactie matig/heftig.
+  const warnSet = new Set(
+    (childAllergens || [])
+      .filter(a =>
+        a.status === 'vermijden'
+        || (a.status === 'geprobeerd' && (a.reaction === 'matig' || a.reaction === 'heftig'))
+      )
+      .map(a => a.allergen_key.toLowerCase())
+  );
   return new Promise((resolve) => {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay eh-meal-modal-overlay';
@@ -82,6 +93,7 @@ export function openMealLogModal({ childId, childName }) {
               <span class="eh-meal-pill-label" data-pill-label></span>
               <button type="button" class="eh-meal-pill-clear" data-pill-clear aria-label="Recept loskoppelen">×</button>
             </div>
+            <div class="eh-meal-allergen-warning hidden" data-allergen-warning></div>
           </div>
 
           <!-- Hoeveelheid -->
@@ -184,6 +196,7 @@ export function openMealLogModal({ childId, childName }) {
     let recipesCache = null;
     let suggestionTimer = null;
 
+    const warningEl = $('[data-allergen-warning]');
     const hideSuggestions = () => suggBox.classList.add('hidden');
     const setRecipe = (recipe) => {
       state.recipe_id = recipe.id;
@@ -191,11 +204,24 @@ export function openMealLogModal({ childId, childName }) {
       pillLabel.textContent = '🍲 ' + recipe.name;
       recipePill.classList.remove('hidden');
       hideSuggestions();
+      // Allergeen-warning?
+      const recipeAllergens = (recipe.allergens || []).map(a => String(a).toLowerCase());
+      const hits = recipeAllergens.filter(a => warnSet.has(a));
+      if (hits.length > 0) {
+        warningEl.innerHTML =
+          `<span class="eh-meal-warn-icon" aria-hidden="true">⚠️</span> ` +
+          `Dit recept bevat <strong>${hits.map(escapeHtml).join(', ')}</strong>. ` +
+          `Je hebt aangegeven dat ${escapeHtml(childName || 'je kindje')} dit beter vermijdt.`;
+        warningEl.classList.remove('hidden');
+      } else {
+        warningEl.classList.add('hidden');
+      }
     };
     const clearRecipe = () => {
       state.recipe_id = null;
       recipePill.classList.add('hidden');
       pillLabel.textContent = '';
+      warningEl.classList.add('hidden');
     };
 
     pillClear.addEventListener('click', () => clearRecipe());

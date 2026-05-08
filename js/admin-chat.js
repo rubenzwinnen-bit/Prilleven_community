@@ -1,7 +1,7 @@
 // Admin dashboard — laadt stats uit /api/admin/* endpoints.
 // Toegang: vereist een ingelogde user met is_admin = true.
 
-import { sessionGet, sessionRefreshIfNeeded, sessionClear, fetchSubscriptionStatus } from './supabase.js?v=2.4.0';
+import { sessionGet, sessionRefreshIfNeeded, sessionClear, fetchSubscriptionStatus } from './supabase.js?v=2.5.0';
 
 const gate = document.getElementById('gate');
 const dashboard = document.getElementById('dashboard');

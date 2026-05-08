@@ -8,8 +8,8 @@
    null = gebruiker annuleerde.
 ============================================ */
 
-import { escapeHtml } from '../utils.js?v=2.4.0';
-import { createChild } from '../eersteHapjesApi.js?v=2.4.0';
+import { escapeHtml } from '../utils.js?v=2.5.0';
+import { createChild } from '../eersteHapjesApi.js?v=2.5.0';
 
 const TEXTURE_OPTIONS = [
   { value: 'puree',   label: 'Puree',   hint: 'Glad, zonder stukjes' },
