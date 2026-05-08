@@ -424,6 +424,12 @@ Branch: `eerste-hapjes`
 - E.3 — `articleModal.js` (één component met detail + lijst-weergave, slug-navigatie tussen views).
 - E.4 — `eersteHapjes.js`: "Volgende stap"-card vervangt placeholder met live artikel op basis van leeftijd, plus "Alle tips"-link onderaan Vandaag-pagina.
 
+## F. Fasen-systeem — afgerond ✅
+- F.1 — statische config `js/content/eersteHapjes-phases.js`: 6 fases (0..5) met "ten vroegste vanaf"-leeftijd, intro-tekst, advance-label en checklist (5 mijlpalen per fase, fase 5 = eindstation zonder checks). Texten letterlijk uit het PDF-productoverzicht. `AUTO_FASE5_AGE_MONTHS = 14` (drempel waarboven kindjes meteen op fase 5 starten).
+- F.2 — migratie `2026-05-08-child-phases.sql`: `child_phases` (PK `(child_id, phase_number)`) + `child_phase_checks` (PK `(child_id, phase_number, check_key)`). State-only — fase-definities blijven frontend. Owner-only RLS, updated_at trigger.
+- F.3 — `_lib/eersteHapjes-phases.mjs` met `loadPhaseState` (auto-init bij eerste GET op basis van leeftijd), `togglePhaseCheck`, `advancePhase` (vereist alle checks gedaan + leeftijd ≥ minAge volgende). Endpoints: `GET /phases`, `POST /phases/check`, `POST /phases/advance`.
+- F.4 — frontend: `phaseModal.js` met `renderPhaseBanner` (sticky banner bovenaan Vandaag) + `openPhaseDetailModal` (huidige fase met afvinkbare checklist + advance-knop, disabled met copy "Ten vroegste vanaf X mnd" als leeftijd te jong) + `openPhaseOverviewModal` (alle 6 fases als kaartjes, klik op actieve = naar detail). "Mijn fasen"-link onderaan Vandaag. Cache-buster `v2.6.0` → `v2.7.0`.
+
 ---
 
 ## 2026-05-08 — Brok A afgerond + branchstrategie opgezet
@@ -512,3 +518,35 @@ Branch: `eerste-hapjes`
 
 ### Open vragen / blockers
 - Geen blockers. Alleen handmatige test-cycle nodig op Vercel preview.
+
+---
+
+## 2026-05-08 (laat-laat-avond) — Brok F afgerond — fasen-systeem live
+
+**Context**: na review van het PDF-productoverzicht bleek dat de fases helemaal nog niet gebouwd waren — wel in de mockup, niet in brok-A-tot-E. Brok F gaat enkel over het fasen-skelet (banner + checklist + advance), latere brokken (G/H/I/J/K) dekken symptoom-detail-content, allergeen-reminders, vandaag-suggesties, recipe-filter en microlearning-search.
+
+### Vandaag afgerond
+- ✅ **Brok F.1** — statische config `js/content/eersteHapjes-phases.js` met 6 fases (0=Opstart, 1=Eerste hapjes, 2=Tweede maaltijd, 3=Ontbijt, 4=Eerste snack, 5=Tweede snack/eindfase). Per fase: number, name, label, minAgeMonths (0/6/7/8/10/12), intro, advanceLabel, 5 checks (fase 5 heeft er 0). Alle texten **letterlijk uit het PDF-productoverzicht** ("Productoverzicht — Eerste Hapjes Traject" van Anneleen).
+- ✅ **Brok F.2** — migratie `2026-05-08-child-phases.sql`. Twee tabellen: `child_phases` (PK `(child_id, phase_number)`, `unlocked_at`, `completed_at`) en `child_phase_checks` (PK `(child_id, phase_number, check_key)`, `checked_at`). Owner-only RLS (4 policies elk), updated_at trigger op phases. Alle constraints additief, geen wijziging aan bestaande tabellen.
+- ✅ **Brok F.3** — `_lib/eersteHapjes-phases.mjs` + 3 endpoints. `loadPhaseState(userId, childId)` auto-initialiseert bij eerste call: `ageMonths >= 14` → fases 0..4 als `completed` + fase 5 actief; anders → enkel fase 0 actief. `togglePhaseCheck` insert/delete idempotent. `advancePhase` vereist alle 5 checks + `ageMonths >= minAge` van volgende fase, anders 409. Server-side mirror van fase-config: alleen `{number, minAgeMonths, checkCount}` voor validatie — labels/intros blijven exclusief frontend.
+- ✅ **Brok F.4** — frontend in één component (`phaseModal.js`): `renderPhaseBanner(state)` voor sticky banner bovenaan Vandaag (klik opent detail), `openPhaseDetailModal({child, phaseState})` met afvinkbare checklist + voortgangsbalk + advance-knop (disabled met copy "Ten vroegste vanaf X mnd — geen haast" als leeftijd te jong), `openPhaseOverviewModal({child, phaseState})` met alle 6 fases als kaartjes (locked/active/completed). Detail- en overzichts-view delen modal-shell met interne `swap()`. Resolves `{changed: bool}` zodat caller kan herladen. `eersteHapjes.js` integreert: phaseState laden in `loadLogs`, banner inserten in `renderToday`, "Mijn fasen"-link onderaan, bind voor banner + link. Cache-buster gebumped: `v2.6.0` → `v2.7.0` in alle JS/CSS/HTML (37 files).
+- ✅ **Privacy.html** sectie 2.8 explicieter over fase 0..5 en "geen automatisch doorzetten".
+- ✅ **Docs gesyncd** in `api/CLAUDE.md` (endpoint-sectie + helpers-tabel), `js/CLAUDE.md` (eersteHapjesApi + content/eersteHapjes-phases + phaseModal + cache-buster voorbeelden), `supabase-migrations/CLAUDE.md` (schema-sectie).
+- ✅ **5 commits** gepusht naar `eerste-hapjes`: F.1 → F.2 → F.3 → F.4 → docs.
+
+### Open / nog te doen
+- ⬜ **SQL handmatig draaien** in Supabase Dashboard — `supabase-migrations/2026-05-08-child-phases.sql` (al getoond in chat F.2).
+- ⬜ **Testen op Vercel preview**: nieuwe kindjes (jong + oud), checklist afvinken, advance met te jonge leeftijd (moet blokken), advance met juiste leeftijd, overzichts-modal navigatie.
+- ⬜ **Brokken G/H/I/J/K** (uit PDF-gap-analyse): symptoom-detail-content + rode-vlag, allergeen-reminders + risicovoedingen + max-1-nieuw-guard, vandaag-suggesties + adaptieve nudges, recipe-filter + alternatieven, microlearning-search.
+- ⬜ **Body's van de 7 microlearning-artikels** schrijven (was al open van brok E).
+
+### Beslissingen genomen vandaag
+- **6 fases (0..5) i.p.v. 5** zoals mockup suggereerde — PDF is leidend.
+- **Auto-init op basis van leeftijd**: kindjes ≥14 mnd starten direct op fase 5 (alle eerdere fases als 'completed' gemarkeerd zonder checks). Onder 14 mnd → fase 0 actief, ouder vinkt zelf door.
+- **Geen automatisch doorzetten ooit**: ouder klikt expliciet "Klaar voor fase X+1". Leeftijd is alleen blokkerend, nooit triggerend.
+- **State-only DB**: fase-definities (labels, intros, check-labels) blijven exclusief in `js/content/eersteHapjes-phases.js`. Texten aanpassen vereist geen migratie. Backend houdt enkel `{number, minAgeMonths, checkCount}` voor validatie — kleine duplicatie maar bewust gekozen.
+- **Eén modal voor detail + overzicht**: zelfde patroon als `articleModal.js` — minder bestanden, makkelijker te navigeren.
+- **PDF-texten letterlijk overgenomen** zonder paraphrase, zoals user expliciet vroeg.
+
+### Open vragen / blockers
+- Geen blockers. SQL moet nog manueel gedraaid worden voor de preview kan testen.
