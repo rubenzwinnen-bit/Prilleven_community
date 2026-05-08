@@ -413,8 +413,10 @@ Branch: `eerste-hapjes`
 - C.2 — `_lib/eersteHapjes-logs.mjs` + 4 endpoints (`meals.mjs`, `meals/[id].mjs`, `symptoms.mjs`, `symptoms/[id].mjs`).
 - C.3 — frontend: api-helpers + `mealLogModal.js` (recept-typeahead via bestaande `getRecipes()`) + `symptomLogModal.js` (10-grid, severity-chips, optionele meal-koppeling) + Vandaag-cards met `+`/`×`-acties.
 
-## D. Allergenen + recept-koppeling — later
-- `child_allergens` (intro + reactie), recept-filter (gebruikt bestaande `recipes.allergens`)
+## D. Allergenen + recept-koppeling — afgerond ✅
+- D.1 — migratie `child_allergens` (additief, unique `(child_id, allergen_key)`, owner-only RLS, soft FK naar `child_symptoms`).
+- D.2 — `_lib/eersteHapjes-allergens.mjs` + 2 endpoints (`allergens.mjs` met upsert, `allergens/[id].mjs`).
+- D.3 — frontend: `allergenManager.js` (accordion-modal met 13 allergenen, upsert per rij), Vandaag-card met groepen geprobeerd/gepland/vermijden + reactie-tags, recipe-warning in `mealLogModal` (waarschuwt bij overlap met `vermijden` of `geprobeerd+matig/heftig`).
 
 ## E. Microlearning + content — later
 - Aanpak: Markdown-files in `/content/eerste-hapjes/` (geen DB-tabel in v1)

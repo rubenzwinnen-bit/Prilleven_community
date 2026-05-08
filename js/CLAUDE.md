@@ -47,7 +47,7 @@ Pril Leven heeft historisch **twee** parallel-lopende auth-systemen. Begrijp het
 | `chat.js` | Logic voor `chat.html` — chat-interface met sidebar (conversations), profile-modal, memory-modal. |
 | `admin-chat.js` | Logic voor `admin-chat.html` — admin dashboard tabs (overview, users, queries, conversations, fallbacks). |
 | `communityApi.js` | Wrapper rond `/api/community/*`. Doet `sessionRefreshIfNeeded()` vóór elke call, returnt `{ ok, status, data, error }`. Exporteert: `getMyProfile`, `setMyNickname`, `updateMyProfile`, `getAvatarUploadUrl`, `getPosts`, `createPost`, `votePoll`, `getUploadUrl`, `uploadToStorage`, replies, likes, edit/delete, `reportTarget`, admin (`togglePin`, `listReports`, `resolveReport`), notifications. |
-| `eersteHapjesApi.js` | Wrapper rond `/api/eerste-hapjes/*`. Zelfde patroon als `communityApi.js`. Exporteert: children (`getMyChildren`, `createChild`, `updateChild`, `deleteChild`), meals (`getMealsForChild`, `createMealLog`, `updateMealLog`, `deleteMealLog`) en symptoms (`getSymptomsForChild`, `createSymptom`, `updateSymptom`, `deleteSymptom`). |
+| `eersteHapjesApi.js` | Wrapper rond `/api/eerste-hapjes/*`. Zelfde patroon als `communityApi.js`. Exporteert: children (`getMyChildren`, `createChild`, `updateChild`, `deleteChild`), meals (`getMealsForChild`, `createMealLog`, `updateMealLog`, `deleteMealLog`), symptoms (`getSymptomsForChild`, `createSymptom`, `updateSymptom`, `deleteSymptom`) en allergens (`getAllergensForChild`, `upsertAllergen`, `updateAllergen`, `deleteAllergen`). |
 | `headerAvatarStandalone.js` | Klein avatar-component voor losse pagina's (`chat.html`, `admin-chat.html`) zonder de volledige header. |
 | `components/` | Pagina/feature-componenten. |
 
@@ -66,10 +66,11 @@ Pril Leven heeft historisch **twee** parallel-lopende auth-systemen. Begrijp het
 | `timeline.js`, `timelinePost.js` | Community-feed pagina + losse post-detail. |
 | `nicknameModal.js` | Modal om community-nickname in te stellen vóór posten. |
 | `profileModal.js` | Modal voor community-profiel (nickname + avatar). |
-| `eersteHapjes.js` | Eerste Hapjes-pagina (SPA-route `#/eerste-hapjes`). Laadt kindjes + logs (vandaag's meals + 7d symptoms), rendert switcher-chips + Vandaag met live cards: maaltijden vandaag, symptomen 7d, plus 'Allergenen' en 'Volgende stap' placeholders. Heeft `+`-knoppen voor nieuwe meal/symptom modals en `×`-delete. Module-state houdt `logsLoadedFor` bij om refetch bij kindjes-switch goed te doen. |
+| `eersteHapjes.js` | Eerste Hapjes-pagina (SPA-route `#/eerste-hapjes`). Laadt kindjes + logs (vandaag's meals + 7d symptoms + alle allergenen). Vandaag-cards: maaltijden vandaag, symptomen 7d, allergenen (gegroepeerd op status: geprobeerd/gepland/vermijden), 'Volgende stap' placeholder. `+`-knoppen openen meal/symptom modals; `✎` opent allergen manager. Geeft `state.allergens` door aan `mealLogModal` voor recipe-warning. Module-state houdt `logsLoadedFor` bij om refetch bij kindjes-switch goed te doen. |
 | `childOnboardingModal.js` | 3-staps wizard voor nieuw kindje: naam → geboortedatum → structuurvoorkeur (skippable). Returnt `Promise<child\|null>`. Roept `createChild()` uit `eersteHapjesApi.js`. |
 | `mealLogModal.js` | Eerste Hapjes brok C — eenstaps modal voor maaltijd-log. Velden: type-chips (default = guess op uur), tijdstip (`datetime-local`), voeding met **client-side recept-typeahead** via `getRecipes()` uit `store.js` (geen extra endpoint), hoeveelheid-chips, reactie-emoji-chips, notes. Roept `createMealLog()`. |
 | `symptomLogModal.js` | Eerste Hapjes brok C — eenstaps modal voor symptoom-log. 10-tegel-grid voor type, 3 chips voor severity, tijdstip, optionele koppeling aan een recente maaltijd (laatste 48u via `getMealsForChild`), notes. Roept `createSymptom()`. |
+| `allergenManager.js` | Eerste Hapjes brok D — accordion-modal met alle 13 allergenen. Per rij: status-chips (gepland/geprobeerd/vermijden), reactie-chips (geen/mild/matig/heftig/onbekend) + datum als status=geprobeerd, notes. Per rij `upsertAllergen()` of `deleteAllergen()`. Eén tegelijk geopend via `toggleRow()`. |
 
 ---
 
@@ -78,7 +79,7 @@ Pril Leven heeft historisch **twee** parallel-lopende auth-systemen. Begrijp het
 ### 4.1 Supabase REST calls (legacy data)
 **Altijd** via `supabaseFetch(path, options)` uit `supabase.js`. Niet zelf `fetch()` op `/rest/v1/...`.
 ```js
-import { supabaseFetch } from './supabase.js?v=2.4.0';
+import { supabaseFetch } from './supabase.js?v=2.5.0';
 const data = await supabaseFetch('/rest/v1/recipes?select=*&id=eq.' + encodeURIComponent(id));
 ```
 Voor grote tabellen: voeg `Range`-header toe om PostgREST 1000-rij default te omzeilen:
@@ -90,7 +91,7 @@ Voor grote tabellen: voeg `Range`-header toe om PostgREST 1000-rij default te om
 Voor community: gebruik `communityApi.js` — die wrapt het al.
 Voor andere endpoints (chat, profile, memory, conversations, me):
 ```js
-import { sessionRefreshIfNeeded } from './supabase.js?v=2.4.0';
+import { sessionRefreshIfNeeded } from './supabase.js?v=2.5.0';
 const session = await sessionRefreshIfNeeded();
 if (!session) { /* redirect naar login */ return; }
 
@@ -148,29 +149,29 @@ Het project heeft **geen build step**, dus de browser cachet JS-files agressief 
 ### Waar staat hij?
 - **Alle HTML-bestanden** (`index.html`, `chat.html`, `admin-chat.html`, `delete-account.html`, `privacy.html`):
   ```html
-  <script type="module" src="script.js?v=2.4.0"></script>
-  <link rel="stylesheet" href="styles.css?v=2.4.0">
+  <script type="module" src="script.js?v=2.5.0"></script>
+  <link rel="stylesheet" href="styles.css?v=2.5.0">
   ```
 - **`script.js`** (entry point) — 14× in import statements:
   ```js
-  import * as Store from './js/store.js?v=2.4.0';
+  import * as Store from './js/store.js?v=2.5.0';
   ```
 - **Elke module in `/js`** die andere modules importeert — `store.js`, `chat.js`, `admin-chat.js`, `headerAvatarStandalone.js`, `communityApi.js`, en **alle** componenten in `js/components/*`. Voorbeeld uit `header.js`:
   ```js
-  import * as Store from '../store.js?v=2.4.0';
-  import { sessionClear, sessionGet } from '../supabase.js?v=2.4.0';
+  import * as Store from '../store.js?v=2.5.0';
+  import { sessionClear, sessionGet } from '../supabase.js?v=2.5.0';
   ```
 
 ### Wanneer bumpen?
 Bij **élke** wijziging aan een `.js` of `.css` bestand. Anders zien gebruikers stale JS en breekt mogelijk de app.
 
 ### Hoe bumpen?
-Vervang ALLE voorkomens van de huidige versie (bv. `?v=2.4.0`) met de nieuwe (bv. `?v=2.4.1`) in:
+Vervang ALLE voorkomens van de huidige versie (bv. `?v=2.5.0`) met de nieuwe (bv. `?v=2.5.1`) in:
 1. Alle HTML-bestanden in de root.
 2. `script.js`.
 3. Alle bestanden in `/js/*.js` en `/js/components/*.js` met imports.
 
-Snelle check: `grep -rn "v=2.4.0" --include="*.js" --include="*.html"`.
+Snelle check: `grep -rn "v=2.5.0" --include="*.js" --include="*.html"`.
 Een vind-vervang over alle bestanden tegelijk werkt prima.
 
 ---

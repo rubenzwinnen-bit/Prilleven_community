@@ -67,6 +67,13 @@ Symptomen-tracker (Eerste Hapjes brok C). Owner-only + ownership-check op `child
 - `PATCH /api/eerste-hapjes/symptoms/<id>` → partial update.
 - `DELETE /api/eerste-hapjes/symptoms/<id>` → permanent.
 
+### `eerste-hapjes/allergens.mjs` + `eerste-hapjes/allergens/[id].mjs`
+Allergenen-tracker (Eerste Hapjes brok D). Owner-only + ownership-check op `child_id` én optioneel `linked_symptom_id`. Validatie via `sanitizeAllergenInput`/`sanitizeAllergenPatch` in `_lib/eersteHapjes-allergens.mjs`. Allergeen-vocabulaire: 13 keys (`gluten, lactose, ei, noten, pinda, soja, vis, schaaldieren, selderij, mosterd, sesam, sulfiet, lupine`) — exact gesynced met `js/utils.js` ALLERGENS-constante; bewust geen DB-constraint zodat de lijst zonder migratie kan groeien.
+- `GET /api/eerste-hapjes/allergens?child_id=<uuid>` → lijst (sortering op allergen_key).
+- `POST /api/eerste-hapjes/allergens` → upsert per `(child_id, allergen_key)`. `{ child_id, allergen_key, status, reaction?, intro_date?, notes?, linked_symptom_id? }`. `status ∈ gepland|geprobeerd|vermijden`. `reaction ∈ geen|mild|matig|heftig|onbekend`.
+- `PATCH /api/eerste-hapjes/allergens/<id>` → partial update.
+- `DELETE /api/eerste-hapjes/allergens/<id>` → permanent.
+
 ### `webhooks/plugpay.mjs` — POST `/api/webhooks/plugpay`
 **KRITISCH endpoint — NOOIT aanpassen zonder expliciete bevestiging.** Foutieve wijziging = users zonder toegang.
 - Authenticatie: HMAC-SHA256 (`PLUGPAY_WEBHOOK_SECRET`) **OF** Bearer token (`PLUGPAY_WEBHOOK_BEARER`). Als beide leeg → trust-mode (dev only, met warning log).
@@ -127,6 +134,7 @@ Admin dashboard. Vereist `requireAdmin`. Sections: `global`, `users`, `queries`,
 | `community.mjs` | Alle community helpers (groot bestand) — zie endpoint-overzicht hierboven. Bevat ook `loadAdminUserIds(userIds)` met fallback via `auth.admin.getUserById` als view onbeschikbaar is. |
 | `children.mjs` | Eerste Hapjes — `loadMyChildren`, `loadChildById`, `createChild`, `updateChild`, `deleteChild`, `sanitizeChildInput`, `sanitizeChildPatch`, `HttpError`. Birthdate-validatie: `YYYY-MM-DD`, max 10 jaar terug, niet in toekomst. Texture: `'puree'|'stukjes'|'combi'|null`. |
 | `eersteHapjes-logs.mjs` | Eerste Hapjes brok C — meal_logs + child_symptoms. Sanitize: `sanitizeMealInput/Patch`, `sanitizeSymptomInput/Patch`. DB: `loadMealsForChild`, `loadMealById`, `createMealLog`, `updateMealLog`, `deleteMealLog`, idem voor symptoms. Interne `assertOwnsChild(userId, childId)` + `assertOwnsMealLog(userId, mealLogId)` zorgen voor cross-table ownership-checks. Tijd-validatie: niet in toekomst (24u marge), max 5 jaar terug. |
+| `eersteHapjes-allergens.mjs` | Eerste Hapjes brok D — child_allergens. Exporteert `ALLERGEN_KEYS` (vocabulaire-set, gesynced met `js/utils.js`). Sanitize: `sanitizeAllergenInput`/`sanitizeAllergenPatch`. DB: `loadAllergensForChild`, `loadAllergenById`, `upsertAllergen` (op `(child_id, allergen_key)`-conflict), `updateAllergen`, `deleteAllergen`. Cross-table ownership op `child_id` én optioneel `linked_symptom_id`. |
 
 ---
 
@@ -233,4 +241,4 @@ Bestaande catch-all/dispatching is een bewuste organisatie-keuze, niet een limie
 - `me.mjs` doet GET (export) + DELETE (forget) in één file (zelfde scope).
 - `memory.mjs` idem (GET + DELETE all + DELETE one).
 - `admin.mjs` dispatched op `?section=...`.
-- `eerste-hapjes/` = subdirectory met per-resource files (`children.mjs`, `meals.mjs`, `symptoms.mjs`, later `allergens.mjs`, …).
+- `eerste-hapjes/` = subdirectory met per-resource files (`children.mjs`, `meals.mjs`, `symptoms.mjs`, `allergens.mjs`, later content, …).
