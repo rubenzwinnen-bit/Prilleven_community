@@ -392,3 +392,87 @@ Nieuwe sectie na bestaande gegevens-sectie:
 - **Geen GitHub MCP nu** — `gh` CLI via bash voldoet voor solo-werk.
 - **Supabase MCP read-only** — schrijven blijft via SQL-in-chat → handmatig in Supabase Editor.
 - **Cache-buster blijft handmatig** — regel in CLAUDE.md voorlopig genoeg, hook pas bij gebleken pijn.
+
+---
+
+# Eerste Hapjes Traject — Implementatieplan
+
+Branch: `eerste-hapjes`
+
+## A. Funderingen — afgerond ✅
+- A.1 — tegel "Eerste Hapjes" op home + placeholder-pagina + SPA-route `#/eerste-hapjes`
+- A.2 — `public.children`-tabel (single source of truth voor kindjes-data)
+- A.3 — `privacy.html` sectie 2.8 toegevoegd
+
+## B. Onboarding — afgerond ✅
+- B.1 — children-API: `/api/eerste-hapjes/children.mjs` (GET/POST) + `/[id].mjs` (PATCH/DELETE) + `_lib/children.mjs` met sanitize + DB-helpers
+- B.2 — `eersteHapjesApi.js` + `childOnboardingModal.js` (3-staps wizard) + Vandaag-skeleton met kindje-switcher in `eersteHapjes.js`
+
+## C. Logging — afgerond ✅
+- C.1 — migratie `meal_logs` + `child_symptoms` (additief, owner-only RLS, soft FK naar `recipes`).
+- C.2 — `_lib/eersteHapjes-logs.mjs` + 4 endpoints (`meals.mjs`, `meals/[id].mjs`, `symptoms.mjs`, `symptoms/[id].mjs`).
+- C.3 — frontend: api-helpers + `mealLogModal.js` (recept-typeahead via bestaande `getRecipes()`) + `symptomLogModal.js` (10-grid, severity-chips, optionele meal-koppeling) + Vandaag-cards met `+`/`×`-acties.
+
+## D. Allergenen + recept-koppeling — later
+- `child_allergens` (intro + reactie), recept-filter (gebruikt bestaande `recipes.allergens`)
+
+## E. Microlearning + content — later
+- Aanpak: Markdown-files in `/content/eerste-hapjes/` (geen DB-tabel in v1)
+
+---
+
+## 2026-05-08 — Brok A afgerond + branchstrategie opgezet
+
+**Context**: opstart van het Eerste Hapjes Traject (zie PDF). Vandaag de funderingen gelegd zonder productie-functionaliteit te raken.
+
+### Vandaag afgerond
+- ✅ **Mockup-HTML** gemaakt in `/mockups/eerste-hapjes.html` (gitignored). 8 schermen side-by-side: tegel, onboarding, vandaag, maaltijd-loggen, allergenen, symptomen, recept-blokker, microlearning.
+- ✅ **`/mockups/`** toegevoegd aan `.gitignore` + root `CLAUDE.md` mappenstructuur.
+- ✅ **Docs-commit** (root + submap `CLAUDE.md`'s + `.mcp.json.example`) cherry-picked op `main` (commit `682398a`) — productie nu up-to-date.
+- ✅ **`chat-interface`-branch verwijderd** (zowel lokaal als origin) — werk zat al via squash-merge in `main`.
+- ✅ **Nieuwe branch `eerste-hapjes`** vanaf `main` aangemaakt.
+- ✅ **Brok A.1** — `js/components/eersteHapjes.js` placeholder + tegel op home (nieuwe `home-tile--sage-deep` accent met salie-gradient + "Nieuw"-badge) + SPA-route geregistreerd in `script.js`. Cache-buster gebumped naar `v2.2.0` overal.
+- ✅ **Brok A.2** — migratie `2026-05-08-children.sql` in productie-DB gedraaid. Tabel `public.children`: `id`, `user_id` (FK auth.users), `name` (1-50), `birthdate` (max 10 jaar terug, niet in toekomst), `texture_preference` (puree/stukjes/combi NULL), `archived_at`, timestamps. Owner-only RLS, index `(user_id, archived_at, birthdate)`, updated_at trigger. **Geverifieerd via Supabase MCP.**
+- ✅ **Brok A.3** — `privacy.html` sectie 2.8 "Eerste Hapjes Traject" toegevoegd (kindje-data, maaltijd-logs, allergenen-historie, symptoom-notities, fase-voortgang). Benadrukt strikt persoonlijk, geen medisch advies, account-verwijdering wist alles.
+- ✅ Drie commits gepusht naar `eerste-hapjes`: `51b9c0b` (tegel), `5066de0` (migratie), `0573034` (privacy).
+
+### Open / nog te doen
+- ⬜ **Brok B** starten — API endpoint + onboarding-modal.
+- ⬜ Eerste-hapjes preview-URL op Vercel checken (na push naar `eerste-hapjes` automatisch).
+
+### Beslissingen
+- **Meerdere kindjes per account** — vanaf dag 1 in datamodel.
+- **Recepten hebben al `allergens`-kolom** — brok D-blocker is weg, vocabulaire later afstemmen.
+- **Toegang voor alle betalende users** — geen aparte gate/upsell.
+- **Content-opslag = Markdown-files in repo** (Optie A) voor v1; eventueel later hybride met DB-tabel voor dagelijks-veranderende content.
+- **Aparte SPA-route `/eerste-hapjes`** i.p.v. integratie in home-tegels — wordt grote sub-app.
+- **Naam in UI = "Eerste Hapjes"**.
+- **HapjesHeld leest later uit nieuwe `children`-tabel** (vervangt `chat_user_profiles.children` jsonb). Migratie van bestaande data en aanpassing van `loadUserProfile()` doen we **bewust pas op het einde** in één gecoördineerde release.
+- **Strategie productie-veiligheid**: alleen additieve migraties tijdens deze branch (nieuwe tabellen, geen wijziging aan bestaande). Bestaand HapjesHeld-gedrag blijft ongewijzigd tot we expliciet switchen.
+- **Branch-aanpak**: `main` = productie, `eerste-hapjes` = werk. Pushen naar feature branch geeft Vercel preview-URL zonder productie te raken.
+
+---
+
+## 2026-05-08 (avond) — Brok B afgerond + Pro-plan gedocumenteerd
+
+**Context**: API + onboarding-flow gebouwd voor Eerste Hapjes. Cache-buster van `v2.2.0` → `v2.3.0`. Drie commits gepusht naar `eerste-hapjes` (Vercel preview = `https://prillevencommunity-git-eerste-hapjes-prilleven-community.vercel.app`).
+
+### Vandaag afgerond
+- ✅ **Brok B.1** — children-API. `_lib/children.mjs` met `sanitizeChildInput`, `sanitizeChildPatch`, `loadMyChildren`, `loadChildById`, `createChild`, `updateChild`, `deleteChild` + `HttpError`. Service-role bypass van RLS afgevangen via expliciete `eq('user_id', userId)` op alle queries. Endpoints: `GET/POST /api/eerste-hapjes/children` + `PATCH/DELETE /api/eerste-hapjes/children/[id]`. Birthdate-validatie max 10 jaar terug + niet in toekomst (matcht DB-constraint).
+- ✅ **Brok B.2** — frontend. `js/eersteHapjesApi.js` (fetch-wrapper analoog aan `communityApi.js`). `childOnboardingModal.js` = 3-staps wizard (naam → geboortedatum → structuurvoorkeur, structuur skippable). `eersteHapjes.js` vervangt placeholder door echte logica: zonder kindje → onboarding-flow; met kindje(s) → switcher-chips (initialen-avatar in salie, actief gemarkeerd) + Vandaag-skeleton met `formatAge()` helper en 3 placeholder-cards ("Maaltijden vandaag" / "Allergenen" / "Volgende stap" met "Binnenkort"-pill). Nieuwe styles in `styles.css` onder sectie `EERSTE HAPJES — onboarding & Vandaag (brok B)`. Cache-buster naar `v2.3.0` overal.
+- ✅ **Architectuur-keuze**: per-resource files in `api/eerste-hapjes/` ipv één catch-all (PLAN-TIMELINE volgde). Hobby function-limiet vervalt op Pro.
+- ✅ **Root `CLAUDE.md`** uitgebreid met "Plan-niveau: Vercel Pro + Supabase Pro — niet zelf optimaliseren voor Hobby-limieten."
+- ✅ **`api/CLAUDE.md`**: nieuwe endpoint-sectie voor `eerste-hapjes/children*`, `_lib/children.mjs` toegevoegd aan helpers-tabel, sectie 9 herschreven (geen Hobby-limiet meer, catch-all is bewuste organisatie-keuze).
+- ✅ **`js/CLAUDE.md`**: `eersteHapjesApi.js` + `eersteHapjes.js` (uitgebreid) + `childOnboardingModal.js` toegevoegd. Cache-buster voorbeelden gebumped naar `v2.3.0`.
+- ✅ Drie commits gepusht naar `eerste-hapjes`: `0f8231d` (B.1 backend), `8ebfd55` (Pro-plan in CLAUDE.md), `72a68cf` (B.2 frontend).
+- ✅ **Verificatie via lokale static-server**: alle nieuwe assets HTTP-bereikbaar (200 OK), ES-module imports zonder errors, alle 11 nieuwe CSS-classes aanwezig in stylesheet, geen console errors.
+
+### Open / nog te doen
+- ⬜ Preview testen op Vercel-URL (login + `#/eerste-hapjes`): onboarding-flow, switcher, kindje toevoegen, archiveren.
+- ⬜ **Brok C** starten — maaltijd-logging + symptomen-tracker. Vereist nieuwe migratie (`meal_logs`, evt. `child_symptoms`) + 2+ API endpoints + UI-integratie in Vandaag-skeleton (vervangt "Maaltijden vandaag" placeholder-card).
+
+### Beslissingen
+- **Per-resource API files** in `api/eerste-hapjes/` (niet catch-all). Reden: leesbaarheid, geen function-limiet relevant op Pro.
+- **`archived` flag via PATCH** ipv aparte DELETE. `{ archived: true }` zet `archived_at = now()`, `{ archived: false }` zet `null`. Hard delete blijft beschikbaar via DELETE.
+- **Onboarding op `#/eerste-hapjes`-route, niet bij eerste login** — bewust opt-in, niet alle users zullen Eerste Hapjes gebruiken.
+- **Module-state voor actief kindje** in `eersteHapjes.js` (niet localStorage). Reset bij elke nieuwe SPA-bezoek; jongste actieve kindje wordt default. Bij meerdere kindjes is dat OK; bij één kindje doet 't er niet toe.

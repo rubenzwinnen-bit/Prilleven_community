@@ -163,6 +163,8 @@ Alle tabellen `auth.role() = 'authenticated'` voor read; mutations enkel eigen r
 ### Eerste Hapjes Traject (in opbouw)
 Owner-only RLS via `auth.uid() = user_id`. Wordt op termijn de single source of truth voor kindjes-data; HapjesHeld leest later hier i.p.v. `chat_user_profiles.children`.
 - **`children`** — `id, user_id (FK auth.users), name (1-50), birthdate (max 10 jaar terug, niet in toekomst), texture_preference ∈ ('puree','stukjes','combi') NULL, archived_at, created_at, updated_at`. Index `(user_id, archived_at, birthdate)`. updated_at trigger.
+- **`meal_logs`** — `id, child_id (FK children cascade), user_id (FK auth.users cascade), eaten_at (default now), meal_type ∈ ('ontbijt','lunch','diner','snack'), amount ∈ ('klein','medium','groot') NULL, reaction ∈ ('positief','neutraal','afwijzing') NULL, food_text (1-200, not null), recipe_id (text, FK recipes.id ON DELETE SET NULL — soft koppeling met legacy receptenboek), notes (≤500) NULL, created_at, updated_at`. Index `(child_id, eaten_at desc)`. updated_at trigger. RLS: 4 owner-only policies.
+- **`child_symptoms`** — `id, child_id (FK children cascade), user_id (FK auth.users cascade), occurred_at (default now), symptom_type ∈ ('huid','buik','diarree','braken','slaap','koorts','jeuk','zwelling','ademhaling','anders'), severity ∈ ('mild','matig','heftig'), meal_log_id (FK meal_logs ON DELETE SET NULL — optionele koppeling), notes (≤500) NULL, created_at, updated_at`. Index `(child_id, occurred_at desc)`. updated_at trigger. RLS: 4 owner-only policies.
 
 ### Views
 - **`community_posts_view`** — post + nickname + avatar_path + likes_count + replies_count + has_poll. `security_invoker = true`.

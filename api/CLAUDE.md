@@ -46,6 +46,27 @@ Interne routes (in `matchRoute()`):
 - Pad-detectie: gebruikt `req.query.path` (Vercel auto-parse), valt terug op `req.url` parsing.
 - Alle endpoints: `requireAuth` upfront, `findBlockedWord()` op alle user-content, image-paden moeten beginnen met `<userId>/`.
 
+### `eerste-hapjes/children.mjs` + `eerste-hapjes/children/[id].mjs`
+Kindjes-CRUD voor het Eerste Hapjes Traject. Owner-only (expliciete `eq('user_id', userId)` op alle queries — service-role omzeilt RLS).
+- `GET /api/eerste-hapjes/children?include_archived=1` → eigen kindjes (default zonder gearchiveerde, sortering: actief eerst, daarna birthdate desc).
+- `POST /api/eerste-hapjes/children` → `{ name, birthdate, texture_preference? }`. Validatie via `sanitizeChildInput()` in `_lib/children.mjs`.
+- `PATCH /api/eerste-hapjes/children/<id>` → partial update (name, birthdate, texture_preference, archived). `{ archived: true|false }` toggelt `archived_at`.
+- `DELETE /api/eerste-hapjes/children/<id>` → permanent. 404 als niet van user.
+
+### `eerste-hapjes/meals.mjs` + `eerste-hapjes/meals/[id].mjs`
+Maaltijd-logging (Eerste Hapjes brok C). Owner-only via expliciete `eq('user_id', userId)` + ownership-check op `child_id` vóór insert. Validatie via `sanitizeMealInput`/`sanitizeMealPatch` in `_lib/eersteHapjes-logs.mjs`.
+- `GET /api/eerste-hapjes/meals?child_id=<uuid>&from=<iso>&to=<iso>` → logs voor één kindje, sortering `eaten_at desc`, max 200.
+- `POST /api/eerste-hapjes/meals` → `{ child_id, meal_type, food_text, eaten_at?, amount?, reaction?, recipe_id?, notes? }`. `meal_type ∈ ontbijt|lunch|diner|snack`. `recipe_id` is een soft FK naar `recipes(id)` (text, ON DELETE SET NULL).
+- `PATCH /api/eerste-hapjes/meals/<id>` → partial update.
+- `DELETE /api/eerste-hapjes/meals/<id>` → permanent. 404 als niet van user.
+
+### `eerste-hapjes/symptoms.mjs` + `eerste-hapjes/symptoms/[id].mjs`
+Symptomen-tracker (Eerste Hapjes brok C). Owner-only + ownership-check op `child_id` én optioneel `meal_log_id`. Validatie via `sanitizeSymptomInput`/`sanitizeSymptomPatch`.
+- `GET /api/eerste-hapjes/symptoms?child_id=<uuid>&from=&to=` → sortering `occurred_at desc`.
+- `POST /api/eerste-hapjes/symptoms` → `{ child_id, symptom_type, severity, occurred_at?, meal_log_id?, notes? }`. `symptom_type ∈ huid|buik|diarree|braken|slaap|koorts|jeuk|zwelling|ademhaling|anders`. `severity ∈ mild|matig|heftig`.
+- `PATCH /api/eerste-hapjes/symptoms/<id>` → partial update.
+- `DELETE /api/eerste-hapjes/symptoms/<id>` → permanent.
+
 ### `webhooks/plugpay.mjs` — POST `/api/webhooks/plugpay`
 **KRITISCH endpoint — NOOIT aanpassen zonder expliciete bevestiging.** Foutieve wijziging = users zonder toegang.
 - Authenticatie: HMAC-SHA256 (`PLUGPAY_WEBHOOK_SECRET`) **OF** Bearer token (`PLUGPAY_WEBHOOK_BEARER`). Als beide leeg → trust-mode (dev only, met warning log).
@@ -104,6 +125,8 @@ Admin dashboard. Vereist `requireAdmin`. Sections: `global`, `users`, `queries`,
 | `profile.mjs` | `loadUserProfile`, `sanitizeProfileInput` (whitelist), `upsertUserProfile`, `ageMonths(birthdate)`, `formatProfileForPrompt(profile)`, `primaryChildAgeMonths(profile)` (jongste kind). |
 | `user-memory.mjs` | `retrieveUserMemory`, `extractAndStoreMemories(userId, q, a, msgId)` — Haiku extraheert max 5 feiten, dedupeert via embedding-sim ≥ 0.92, insert in `chat_user_memory`. |
 | `community.mjs` | Alle community helpers (groot bestand) — zie endpoint-overzicht hierboven. Bevat ook `loadAdminUserIds(userIds)` met fallback via `auth.admin.getUserById` als view onbeschikbaar is. |
+| `children.mjs` | Eerste Hapjes — `loadMyChildren`, `loadChildById`, `createChild`, `updateChild`, `deleteChild`, `sanitizeChildInput`, `sanitizeChildPatch`, `HttpError`. Birthdate-validatie: `YYYY-MM-DD`, max 10 jaar terug, niet in toekomst. Texture: `'puree'|'stukjes'|'combi'|null`. |
+| `eersteHapjes-logs.mjs` | Eerste Hapjes brok C — meal_logs + child_symptoms. Sanitize: `sanitizeMealInput/Patch`, `sanitizeSymptomInput/Patch`. DB: `loadMealsForChild`, `loadMealById`, `createMealLog`, `updateMealLog`, `deleteMealLog`, idem voor symptoms. Interne `assertOwnsChild(userId, childId)` + `assertOwnsMealLog(userId, mealLogId)` zorgen voor cross-table ownership-checks. Tijd-validatie: niet in toekomst (24u marge), max 5 jaar terug. |
 
 ---
 
@@ -201,12 +224,13 @@ Er is **geen lokale dev-server** voor Vercel Functions in dit project (`.claude/
 
 ---
 
-## 9. Vercel Hobby functie-limiet
+## 9. Plan-niveau & function-organisatie
 
-Je zit op de Hobby tier met max 12 functions per deployment. Daarom:
-- `community.mjs` is een catch-all (had anders 15+ files moeten worden).
-- `me.mjs` doet GET (export) + DELETE (forget) in één file.
+Project zit op **Vercel Pro** — geen Hobby function-limiet meer relevant. Voeg gerust nieuwe `.mjs` files toe per resource als dat duidelijker is.
+
+Bestaande catch-all/dispatching is een bewuste organisatie-keuze, niet een limiet-workaround:
+- `community.mjs` blijft catch-all (15+ routes, bij elkaar horend).
+- `me.mjs` doet GET (export) + DELETE (forget) in één file (zelfde scope).
 - `memory.mjs` idem (GET + DELETE all + DELETE one).
 - `admin.mjs` dispatched op `?section=...`.
-
-**Voeg geen nieuwe `.mjs` toe als het bij een bestaand endpoint kan via een query-param of catch-all.**
+- `eerste-hapjes/` = subdirectory met per-resource files (`children.mjs`, `meals.mjs`, `symptoms.mjs`, later `allergens.mjs`, …).
