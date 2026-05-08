@@ -5,7 +5,7 @@
    Geeft altijd { ok, status, data, error } terug.
 ============================================ */
 
-import { sessionRefreshIfNeeded } from './supabase.js?v=2.3.0';
+import { sessionRefreshIfNeeded } from './supabase.js?v=2.4.0';
 
 async function call(path, { method = 'GET', body = null } = {}) {
   const session = await sessionRefreshIfNeeded();
@@ -51,3 +51,37 @@ export const updateChild = (id, updates) =>
 
 export const deleteChild = (id) =>
   call(`/children/${encodeURIComponent(id)}`, { method: 'DELETE' });
+
+/* ----- Meal logs ----- */
+export const getMealsForChild = (childId, { from, to } = {}) => {
+  const params = new URLSearchParams({ child_id: childId });
+  if (from) params.set('from', from);
+  if (to)   params.set('to', to);
+  return call('/meals?' + params.toString());
+};
+
+export const createMealLog = (payload) =>
+  call('/meals', { method: 'POST', body: payload });
+
+export const updateMealLog = (id, updates) =>
+  call(`/meals/${encodeURIComponent(id)}`, { method: 'PATCH', body: updates });
+
+export const deleteMealLog = (id) =>
+  call(`/meals/${encodeURIComponent(id)}`, { method: 'DELETE' });
+
+/* ----- Symptoms ----- */
+export const getSymptomsForChild = (childId, { from, to } = {}) => {
+  const params = new URLSearchParams({ child_id: childId });
+  if (from) params.set('from', from);
+  if (to)   params.set('to', to);
+  return call('/symptoms?' + params.toString());
+};
+
+export const createSymptom = (payload) =>
+  call('/symptoms', { method: 'POST', body: payload });
+
+export const updateSymptom = (id, updates) =>
+  call(`/symptoms/${encodeURIComponent(id)}`, { method: 'PATCH', body: updates });
+
+export const deleteSymptom = (id) =>
+  call(`/symptoms/${encodeURIComponent(id)}`, { method: 'DELETE' });

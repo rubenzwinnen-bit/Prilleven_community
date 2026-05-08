@@ -1,26 +1,61 @@
 /* ============================================
    EERSTE HAPJES TRAJECT
-   SPA-pagina met onboarding + Vandaag-skeleton.
+   SPA-pagina met onboarding + Vandaag.
    Brok B — onboarding & kindje-switcher.
-   Volgende stappen (logging, allergenen, symptomen,
-   recept-filter, content) komen in latere brokken.
+   Brok C — maaltijd- en symptoom-logging.
 ============================================ */
 
-import { escapeHtml, colorFromSeed, initialsFromName, showToast } from '../utils.js?v=2.3.0';
-import { getMyChildren } from '../eersteHapjesApi.js?v=2.3.0';
-import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.3.0';
+import { escapeHtml, colorFromSeed, initialsFromName, showToast } from '../utils.js?v=2.4.0';
+import {
+  getMyChildren,
+  getMealsForChild,
+  getSymptomsForChild,
+  deleteMealLog,
+  deleteSymptom,
+} from '../eersteHapjesApi.js?v=2.4.0';
+import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.4.0';
+import { openMealLogModal } from './mealLogModal.js?v=2.4.0';
+import { openSymptomLogModal } from './symptomLogModal.js?v=2.4.0';
 
-// Module-state — onthoudt actief kindje binnen één SPA-bezoek.
+// Module-state
 let state = {
   loaded: false,
   children: [],
   activeId: null,
+  meals: [],
+  symptoms: [],
+  logsLoadedFor: null, // child_id waarvoor logs geladen zijn
 };
 
 const TEXTURE_LABEL = {
   puree:   'Puree',
   stukjes: 'Stukjes',
   combi:   'Combi',
+};
+
+const MEAL_TYPE_LABEL = {
+  ontbijt: 'Ontbijt',
+  lunch:   'Lunch',
+  diner:   'Diner',
+  snack:   'Snack',
+};
+
+const REACTION_EMOJI = {
+  positief:  '😋',
+  neutraal:  '😐',
+  afwijzing: '😖',
+};
+
+const SYMPTOM_TYPE_LABEL = {
+  huid: 'Huid', buik: 'Buikpijn', diarree: 'Diarree', braken: 'Braken',
+  slaap: 'Slaap', koorts: 'Koorts', jeuk: 'Jeuk', zwelling: 'Zwelling',
+  ademhaling: 'Ademhaling', anders: 'Anders',
+};
+
+const SYMPTOM_TYPE_ICON = {
+  huid: '🌡', buik: '🤰', diarree: '💧', braken: '🤢',
+  slaap: '😴', koorts: '🤒', jeuk: '✋', zwelling: '🫧',
+  ademhaling: '🫁', anders: '❓',
 };
 
 export function render() {
@@ -53,11 +88,27 @@ async function loadChildren() {
   }
   state.loaded = true;
   state.children = data.children || [];
-  // Behoud actieve selectie indien nog aanwezig, anders neem eerste actieve.
   if (!state.activeId || !state.children.find(c => c.id === state.activeId)) {
     const firstActive = state.children.find(c => !c.archived_at);
     state.activeId = firstActive?.id || null;
   }
+}
+
+async function loadLogs(childId) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const fromIsoToday = today.toISOString();
+  // Symptomen: laatste 7 dagen voor patroonherkenning
+  const fromIsoWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  const [mealsRes, sympRes] = await Promise.all([
+    getMealsForChild(childId, { from: fromIsoToday }),
+    getSymptomsForChild(childId, { from: fromIsoWeek }),
+  ]);
+
+  state.meals = mealsRes.ok ? (mealsRes.data?.meals || []) : [];
+  state.symptoms = sympRes.ok ? (sympRes.data?.symptoms || []) : [];
+  state.logsLoadedFor = childId;
 }
 
 async function renderApp(root) {
@@ -74,7 +125,6 @@ async function renderApp(root) {
   }
 
   if (state.children.length === 0) {
-    // Eerste keer — direct onboarding-modal openen
     root.innerHTML = `
       <div class="eh-page-inner">
         <div class="eh-welcome">
@@ -87,14 +137,17 @@ async function renderApp(root) {
     `;
     const btn = document.getElementById('eh-start-onboarding');
     btn.addEventListener('click', () => openOnboarding(root));
-    // Open meteen automatisch
     openOnboarding(root);
     return;
   }
 
-  // Eén of meerdere kindjes → render switcher + Vandaag-skeleton
   const active = state.children.find(c => c.id === state.activeId)
               || state.children[0];
+
+  // Logs laden als nog niet gedaan voor dit kindje
+  if (state.logsLoadedFor !== active.id) {
+    await loadLogs(active.id);
+  }
 
   root.innerHTML = `
     <div class="eh-page-inner">
@@ -104,6 +157,7 @@ async function renderApp(root) {
   `;
 
   bindSwitcher(root);
+  bindLogActions(root, active);
 }
 
 function renderSwitcher(children, active) {
@@ -152,18 +206,13 @@ function renderToday(child) {
       </header>
 
       <div class="eh-today-grid">
-        <div class="eh-today-card eh-today-card-soon">
-          <h3>Maaltijden vandaag</h3>
-          <p>Hier komt straks je dagoverzicht: wat je kindje vandaag al gegeten heeft, en suggesties voor wat nog kan.</p>
-          <span class="eh-today-pill">Binnenkort</span>
-        </div>
-
+        ${renderMealsCard(child)}
+        ${renderSymptomsCard(child)}
         <div class="eh-today-card eh-today-card-soon">
           <h3>Allergenen</h3>
           <p>Houd bij welke allergenen al geprobeerd zijn en hoe ${escapeHtml(child.name)} reageerde.</p>
           <span class="eh-today-pill">Binnenkort</span>
         </div>
-
         <div class="eh-today-card eh-today-card-soon">
           <h3>Volgende stap</h3>
           <p>Korte uitleg per fase, op het moment dat het relevant wordt.</p>
@@ -174,30 +223,160 @@ function renderToday(child) {
   `;
 }
 
+function renderMealsCard() {
+  const meals = state.meals;
+  const body = meals.length === 0
+    ? `<p class="eh-log-empty">Nog geen maaltijden gelogd vandaag.</p>`
+    : `<ul class="eh-log-list">
+         ${meals.map(m => renderMealRow(m)).join('')}
+       </ul>`;
+
+  return `
+    <div class="eh-today-card eh-log-card eh-log-card-meals">
+      <header class="eh-log-card-header">
+        <h3>Maaltijden vandaag</h3>
+        <button class="eh-log-add" data-action="add-meal" aria-label="Maaltijd toevoegen">+</button>
+      </header>
+      ${body}
+    </div>
+  `;
+}
+
+function renderMealRow(m) {
+  const time = new Date(m.eaten_at).toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' });
+  const typeLabel = MEAL_TYPE_LABEL[m.meal_type] || m.meal_type;
+  const reactionEmoji = m.reaction ? REACTION_EMOJI[m.reaction] : '';
+  return `
+    <li class="eh-log-item" data-meal-id="${m.id}">
+      <div class="eh-log-item-main">
+        <div class="eh-log-item-top">
+          <span class="eh-log-time">${escapeHtml(time)}</span>
+          <span class="eh-log-type">${escapeHtml(typeLabel)}</span>
+          ${reactionEmoji ? `<span class="eh-log-emoji">${reactionEmoji}</span>` : ''}
+        </div>
+        <div class="eh-log-item-body">
+          ${escapeHtml(m.food_text)}
+          ${m.amount ? `<span class="eh-log-meta">· ${escapeHtml(m.amount)}</span>` : ''}
+        </div>
+        ${m.notes ? `<div class="eh-log-notes">${escapeHtml(m.notes)}</div>` : ''}
+      </div>
+      <button class="eh-log-delete" data-action="delete-meal" data-id="${m.id}" aria-label="Verwijder maaltijd">×</button>
+    </li>
+  `;
+}
+
+function renderSymptomsCard() {
+  const recent = state.symptoms;
+  const body = recent.length === 0
+    ? `<p class="eh-log-empty">Geen symptomen gelogd in de afgelopen week.</p>`
+    : `<ul class="eh-log-list">
+         ${recent.slice(0, 5).map(s => renderSymptomRow(s)).join('')}
+       </ul>`;
+
+  return `
+    <div class="eh-today-card eh-log-card eh-log-card-symptoms">
+      <header class="eh-log-card-header">
+        <h3>Symptomen <span class="eh-log-card-sub">(7 dagen)</span></h3>
+        <button class="eh-log-add" data-action="add-symptom" aria-label="Symptoom toevoegen">+</button>
+      </header>
+      ${body}
+    </div>
+  `;
+}
+
+function renderSymptomRow(s) {
+  const when = new Date(s.occurred_at).toLocaleString('nl-BE', {
+    weekday: 'short', hour: '2-digit', minute: '2-digit',
+  });
+  const label = SYMPTOM_TYPE_LABEL[s.symptom_type] || s.symptom_type;
+  const icon = SYMPTOM_TYPE_ICON[s.symptom_type] || '';
+  return `
+    <li class="eh-log-item" data-symptom-id="${s.id}">
+      <div class="eh-log-item-main">
+        <div class="eh-log-item-top">
+          <span class="eh-log-time">${escapeHtml(when)}</span>
+          <span class="eh-log-type">${icon} ${escapeHtml(label)}</span>
+          <span class="eh-log-severity eh-log-severity-${s.severity}">${escapeHtml(s.severity)}</span>
+        </div>
+        ${s.notes ? `<div class="eh-log-notes">${escapeHtml(s.notes)}</div>` : ''}
+      </div>
+      <button class="eh-log-delete" data-action="delete-symptom" data-id="${s.id}" aria-label="Verwijder symptoom">×</button>
+    </li>
+  `;
+}
+
 function bindSwitcher(root) {
-  // Kindje wisselen
   root.querySelectorAll('.eh-child-chip[data-child-id]').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       const id = btn.dataset.childId;
       if (id === state.activeId) return;
       state.activeId = id;
-      renderApp(root);
+      await renderApp(root);
     });
   });
-  // Kindje toevoegen
   const addBtn = root.querySelector('[data-action="add-child"]');
   if (addBtn) addBtn.addEventListener('click', () => openOnboarding(root));
 }
 
+function bindLogActions(root, child) {
+  const addMealBtn = root.querySelector('[data-action="add-meal"]');
+  if (addMealBtn) {
+    addMealBtn.addEventListener('click', async () => {
+      const meal = await openMealLogModal({ childId: child.id, childName: child.name });
+      if (meal) {
+        showToast('Maaltijd opgeslagen.', 'success');
+        await loadLogs(child.id);
+        await renderApp(root);
+      }
+    });
+  }
+
+  const addSympBtn = root.querySelector('[data-action="add-symptom"]');
+  if (addSympBtn) {
+    addSympBtn.addEventListener('click', async () => {
+      const sym = await openSymptomLogModal({ childId: child.id, childName: child.name });
+      if (sym) {
+        showToast('Symptoom opgeslagen.', 'success');
+        await loadLogs(child.id);
+        await renderApp(root);
+      }
+    });
+  }
+
+  root.querySelectorAll('[data-action="delete-meal"]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (!window.confirm('Deze maaltijd-log verwijderen?')) return;
+      const id = btn.dataset.id;
+      const { ok, error } = await deleteMealLog(id);
+      if (!ok) return showToast(error || 'Verwijderen mislukt.', 'error');
+      showToast('Verwijderd.', 'success');
+      await loadLogs(child.id);
+      await renderApp(root);
+    });
+  });
+
+  root.querySelectorAll('[data-action="delete-symptom"]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (!window.confirm('Deze symptoom-log verwijderen?')) return;
+      const id = btn.dataset.id;
+      const { ok, error } = await deleteSymptom(id);
+      if (!ok) return showToast(error || 'Verwijderen mislukt.', 'error');
+      showToast('Verwijderd.', 'success');
+      await loadLogs(child.id);
+      await renderApp(root);
+    });
+  });
+}
+
 async function openOnboarding(root) {
   const child = await openChildOnboardingModal();
-  if (!child) {
-    // Geannuleerd — als er nog geen kindjes zijn, blijft het welkomscherm staan.
-    return;
-  }
+  if (!child) return;
   showToast(`${child.name} is toegevoegd.`, 'success');
   state.children = [child, ...state.children];
   state.activeId = child.id;
+  state.logsLoadedFor = null; // forceer logs-load voor het nieuwe kindje
   await renderApp(root);
 }
 
@@ -214,7 +393,6 @@ function formatAge(birthdateIso) {
   if (days < 14)  return `${days} ${days === 1 ? 'dag' : 'dagen'}`;
   if (days < 60)  return `${Math.floor(days / 7)} weken`;
 
-  // Maanden via kalender (preciezer dan delen door 30.4)
   let months = (today.getFullYear() - bd.getFullYear()) * 12
              + (today.getMonth() - bd.getMonth());
   if (today.getDate() < bd.getDate()) months -= 1;

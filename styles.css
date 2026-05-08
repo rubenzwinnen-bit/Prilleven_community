@@ -3943,3 +3943,376 @@ body.is-hub .header-home-btn { display: none; }
 .tl-reply.is-highlighted {
   animation: tl-highlight-pulse 1.4s ease-out;
 }
+
+/* ============================================
+   EERSTE HAPJES — logging (brok C)
+   Maaltijd- en symptoom-cards in Vandaag,
+   plus de bijhorende log-modals.
+============================================ */
+
+/* ----- Log-cards in Vandaag ----- */
+.eh-log-card {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+  padding: 1.1rem 1.1rem 1rem;
+}
+.eh-log-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+}
+.eh-log-card-header h3 {
+  margin: 0;
+}
+.eh-log-card-sub {
+  font-size: .78rem;
+  font-weight: 500;
+  color: var(--color-gray);
+  margin-left: .25rem;
+}
+.eh-log-add {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--color-light);
+  background: var(--color-bg);
+  border-radius: 50%;
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--color-secondary-dark);
+  font-family: inherit;
+  transition: background .15s, border-color .15s, transform .1s;
+}
+.eh-log-add:hover {
+  background: var(--color-secondary);
+  border-color: var(--color-secondary-dark);
+  color: var(--color-white);
+}
+.eh-log-add:active {
+  transform: scale(0.95);
+}
+.eh-log-empty {
+  margin: 0;
+  font-size: .9rem;
+  color: var(--color-gray);
+  font-style: italic;
+}
+.eh-log-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+}
+.eh-log-item {
+  display: flex;
+  align-items: flex-start;
+  gap: .5rem;
+  background: var(--color-bg);
+  border: 1px solid var(--color-light);
+  border-radius: var(--radius-md, 12px);
+  padding: .6rem .75rem;
+}
+.eh-log-item-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+}
+.eh-log-item-top {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+.eh-log-time {
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--color-secondary-dark);
+}
+.eh-log-type {
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--color-dark);
+}
+.eh-log-emoji {
+  font-size: 1rem;
+  line-height: 1;
+}
+.eh-log-item-body {
+  font-size: .92rem;
+  color: var(--color-dark);
+  line-height: 1.4;
+  word-break: break-word;
+}
+.eh-log-meta {
+  color: var(--color-gray);
+  font-size: .85rem;
+  margin-left: .15rem;
+}
+.eh-log-notes {
+  font-size: .82rem;
+  color: var(--color-dark-light);
+  font-style: italic;
+  line-height: 1.4;
+}
+.eh-log-severity {
+  font-size: .7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--color-light);
+  color: var(--color-dark-light);
+}
+.eh-log-severity-mild   { background: var(--color-light);          color: var(--color-secondary-dark); }
+.eh-log-severity-matig  { background: var(--color-warning, #e7a85a); color: var(--color-white); }
+.eh-log-severity-heftig { background: var(--color-danger, #c25d5d);  color: var(--color-white); }
+.eh-log-delete {
+  background: transparent;
+  border: none;
+  color: var(--color-gray);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-family: inherit;
+  transition: color .15s, background .15s;
+}
+.eh-log-delete:hover {
+  background: var(--color-light);
+  color: var(--color-danger, #c25d5d);
+}
+
+/* ----- Meal-modal ----- */
+.eh-meal-modal,
+.eh-symptom-modal {
+  max-width: 520px;
+  width: 100%;
+  padding: 1.5rem;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.eh-meal-header,
+.eh-symptom-header {
+  margin-bottom: 1rem;
+}
+.eh-meal-header h2,
+.eh-symptom-header h2 {
+  margin: 0 0 .25rem;
+  font-size: 1.2rem;
+  color: var(--color-dark);
+}
+.eh-meal-sub,
+.eh-symptom-sub {
+  margin: 0;
+  color: var(--color-gray);
+  font-size: .88rem;
+}
+.eh-symptom-disclaimer {
+  font-style: italic;
+}
+.eh-meal-form,
+.eh-symptom-form {
+  display: flex;
+  flex-direction: column;
+  gap: .9rem;
+}
+.eh-meal-field,
+.eh-symptom-field {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+}
+.eh-meal-field label,
+.eh-symptom-field label {
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--color-dark);
+}
+.eh-meal-optional,
+.eh-symptom-optional {
+  font-weight: 400;
+  color: var(--color-gray);
+  font-size: .8rem;
+}
+.eh-meal-chips,
+.eh-symptom-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+}
+.eh-meal-chip,
+.eh-symptom-chip {
+  padding: .45rem .9rem;
+  background: var(--color-bg);
+  border: 1px solid var(--color-light);
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: .88rem;
+  color: var(--color-dark);
+  transition: background .15s, border-color .15s, color .15s;
+}
+.eh-meal-chip:hover,
+.eh-symptom-chip:hover {
+  background: var(--color-light);
+}
+.eh-meal-chip.selected,
+.eh-symptom-chip.selected {
+  background: var(--color-secondary);
+  border-color: var(--color-secondary-dark);
+  color: var(--color-white);
+}
+.eh-meal-chips-emoji {
+  gap: .55rem;
+}
+.eh-meal-chip-emoji {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .35rem .8rem;
+}
+.eh-meal-emoji {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+/* Voeding-veld met typeahead */
+.eh-meal-food {
+  position: relative;
+}
+.eh-meal-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: var(--color-white);
+  border: 1px solid var(--color-light);
+  border-radius: var(--radius-md, 12px);
+  box-shadow: var(--shadow-md, 0 4px 12px rgba(0,0,0,.1));
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+}
+.eh-meal-suggestion {
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: .55rem .85rem;
+  font-family: inherit;
+  font-size: .9rem;
+  color: var(--color-dark);
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-light);
+}
+.eh-meal-suggestion:last-child {
+  border-bottom: none;
+}
+.eh-meal-suggestion:hover {
+  background: var(--color-bg);
+}
+.eh-meal-recipe-pill {
+  margin-top: .4rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  align-self: flex-start;
+  background: var(--color-light);
+  color: var(--color-secondary-dark);
+  padding: .25rem .6rem .25rem .75rem;
+  border-radius: 999px;
+  font-size: .82rem;
+  font-weight: 600;
+}
+.eh-meal-pill-clear {
+  background: transparent;
+  border: none;
+  color: var(--color-secondary-dark);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  font-family: inherit;
+}
+.eh-meal-textarea,
+.eh-symptom-textarea {
+  resize: vertical;
+  min-height: 50px;
+  font-family: inherit;
+}
+.eh-meal-error,
+.eh-symptom-error {
+  color: var(--color-danger, #c25d5d);
+  background: rgba(194, 93, 93, 0.08);
+  padding: .55rem .8rem;
+  border-radius: var(--radius-md, 12px);
+  font-size: .88rem;
+}
+.eh-meal-actions,
+.eh-symptom-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: .5rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-light);
+}
+
+/* ----- Symptom-modal grid ----- */
+.eh-symptom-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(95px, 1fr));
+  gap: .5rem;
+}
+.eh-symptom-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .3rem;
+  padding: .65rem .4rem;
+  background: var(--color-bg);
+  border: 1px solid var(--color-light);
+  border-radius: var(--radius-md, 12px);
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--color-dark);
+  transition: background .15s, border-color .15s, color .15s;
+}
+.eh-symptom-tile:hover {
+  background: var(--color-light);
+}
+.eh-symptom-tile.selected {
+  background: var(--color-secondary);
+  border-color: var(--color-secondary-dark);
+  color: var(--color-white);
+}
+.eh-symptom-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+.eh-symptom-label {
+  font-size: .78rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+@media (max-width: 480px) {
+  .eh-meal-modal,
+  .eh-symptom-modal {
+    max-height: 95vh;
+    padding: 1.1rem;
+  }
+  .eh-symptom-grid {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  }
+}
