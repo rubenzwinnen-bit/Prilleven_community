@@ -91,7 +91,7 @@ Pril Leven heeft historisch **twee** parallel-lopende auth-systemen. Begrijp het
 ### 4.1 Supabase REST calls (legacy data)
 **Altijd** via `supabaseFetch(path, options)` uit `supabase.js`. Niet zelf `fetch()` op `/rest/v1/...`.
 ```js
-import { supabaseFetch } from './supabase.js?v=2.18.0';
+import { supabaseFetch } from './supabase.js?v=2.19.0';
 const data = await supabaseFetch('/rest/v1/recipes?select=*&id=eq.' + encodeURIComponent(id));
 ```
 Voor grote tabellen: voeg `Range`-header toe om PostgREST 1000-rij default te omzeilen:
@@ -103,7 +103,7 @@ Voor grote tabellen: voeg `Range`-header toe om PostgREST 1000-rij default te om
 Voor community: gebruik `communityApi.js` — die wrapt het al.
 Voor andere endpoints (chat, profile, memory, conversations, me):
 ```js
-import { sessionRefreshIfNeeded } from './supabase.js?v=2.18.0';
+import { sessionRefreshIfNeeded } from './supabase.js?v=2.19.0';
 const session = await sessionRefreshIfNeeded();
 if (!session) { /* redirect naar login */ return; }
 
@@ -161,29 +161,29 @@ Het project heeft **geen build step**, dus de browser cachet JS-files agressief 
 ### Waar staat hij?
 - **Alle HTML-bestanden** (`index.html`, `chat.html`, `admin-chat.html`, `delete-account.html`, `privacy.html`):
   ```html
-  <script type="module" src="script.js?v=2.18.0"></script>
-  <link rel="stylesheet" href="styles.css?v=2.18.0">
+  <script type="module" src="script.js?v=2.19.0"></script>
+  <link rel="stylesheet" href="styles.css?v=2.19.0">
   ```
 - **`script.js`** (entry point) — 14× in import statements:
   ```js
-  import * as Store from './js/store.js?v=2.18.0';
+  import * as Store from './js/store.js?v=2.19.0';
   ```
 - **Elke module in `/js`** die andere modules importeert — `store.js`, `chat.js`, `admin-chat.js`, `headerAvatarStandalone.js`, `communityApi.js`, en **alle** componenten in `js/components/*`. Voorbeeld uit `header.js`:
   ```js
-  import * as Store from '../store.js?v=2.18.0';
-  import { sessionClear, sessionGet } from '../supabase.js?v=2.18.0';
+  import * as Store from '../store.js?v=2.19.0';
+  import { sessionClear, sessionGet } from '../supabase.js?v=2.19.0';
   ```
 
 ### Wanneer bumpen?
 Bij **élke** wijziging aan een `.js` of `.css` bestand. Anders zien gebruikers stale JS en breekt mogelijk de app.
 
 ### Hoe bumpen?
-Vervang ALLE voorkomens van de huidige versie (bv. `?v=2.18.0`) met de nieuwe (bv. `?v=2.7.1`) in:
+Vervang ALLE voorkomens van de huidige versie (bv. `?v=2.19.0`) met de nieuwe (bv. `?v=2.7.1`) in:
 1. Alle HTML-bestanden in de root.
 2. `script.js`.
 3. Alle bestanden in `/js/*.js` en `/js/components/*.js` met imports.
 
-Snelle check: `grep -rn "v=2.18.0" --include="*.js" --include="*.html"`.
+Snelle check: `grep -rn "v=2.19.0" --include="*.js" --include="*.html"`.
 Een vind-vervang over alle bestanden tegelijk werkt prima.
 
 ---

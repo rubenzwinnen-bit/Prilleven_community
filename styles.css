@@ -6560,3 +6560,75 @@ body.is-eerste-hapjes #app-nav { display: none; }
   background: var(--color-light, #f0ebe6);
   color: var(--color-danger, #b13c33);
 }
+
+/* ============================================================
+   Agenda — als Vandaag-card + range-toggle in modal
+============================================================ */
+.eh-log-card-agenda .eh-agenda-summary {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: flex;
+  gap: 12px;
+  justify-content: space-around;
+}
+.eh-log-card-agenda .eh-agenda-summary li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+}
+.eh-agenda-summary-num {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--color-secondary-dark, #6f9b7c);
+  line-height: 1;
+}
+.eh-agenda-summary-lbl {
+  font-size: 11px;
+  color: var(--color-gray, #6b6155);
+  text-align: center;
+}
+.eh-agenda-card-cta {
+  width: 100%;
+  appearance: none;
+  background: transparent;
+  border: 1px dashed var(--color-light, #f0ebe6);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--color-primary, #c98966);
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.eh-agenda-card-cta:hover {
+  border-color: var(--color-secondary, #98c3a4);
+  background: var(--color-bg, #faf8f5);
+}
+
+/* Range-toggle in agenda-modal */
+.eh-agenda-ranges {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.eh-agenda-range {
+  appearance: none;
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--color-light, #f0ebe6);
+  background: var(--color-white, #fff);
+  color: var(--color-dark, #2f2a24);
+  cursor: pointer;
+  transition: background .12s, border-color .12s;
+}
+.eh-agenda-range:hover {
+  border-color: var(--color-secondary, #98c3a4);
+}
+.eh-agenda-range.selected {
+  background: var(--color-secondary, #98c3a4);
+  border-color: var(--color-secondary, #98c3a4);
+  color: #fff;
+}

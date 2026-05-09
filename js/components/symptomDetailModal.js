@@ -6,8 +6,8 @@
      klik = detail (zelfde modal swap).
 ============================================ */
 
-import { escapeHtml } from '../utils.js?v=2.18.0';
-import { SYMPTOMS, getSymptom } from '../content/eersteHapjes-symptoms.js?v=2.18.0';
+import { escapeHtml } from '../utils.js?v=2.19.0';
+import { SYMPTOMS, getSymptom } from '../content/eersteHapjes-symptoms.js?v=2.19.0';
 
 /**
  * @param {object} opts
@@ -33,7 +33,6 @@ export function openSymptomDetailModal({ symptomKey, listMode } = {}) {
 function renderList() {
   const items = SYMPTOMS.map(s => `
     <button class="eh-sym-list-item" data-symptom-key="${escapeHtml(s.key)}">
-      <span class="eh-sym-list-icon">${s.icon}</span>
       <span class="eh-sym-list-main">
         <span class="eh-sym-list-title">${escapeHtml(s.label)}</span>
         <span class="eh-sym-list-intro">${escapeHtml(s.intro)}</span>
@@ -75,7 +74,6 @@ function renderDetail(sym, { backToList } = {}) {
         ? `<button class="eh-sym-back" data-action="back" aria-label="Terug naar lijst">‹ Terug</button>`
         : ''}
       <div class="eh-sym-detail-top">
-        <span class="eh-sym-detail-icon" aria-hidden="true">${sym.icon}</span>
         <div>
           <h2>${escapeHtml(sym.label)}</h2>
           <p class="eh-sym-detail-intro">${escapeHtml(sym.intro)}</p>

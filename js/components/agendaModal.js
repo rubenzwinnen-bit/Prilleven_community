@@ -11,13 +11,13 @@
    de relevante card; voor v1 alleen weergave.
 ============================================ */
 
-import { escapeHtml } from '../utils.js?v=2.18.0';
+import { escapeHtml } from '../utils.js?v=2.19.0';
 import {
   getMealsForChild,
   getSymptomsForChild,
   getAllergenIntros,
-} from '../eersteHapjesApi.js?v=2.18.0';
-import { getSymptomMeta } from '../content/eersteHapjes-symptoms.js?v=2.18.0';
+} from '../eersteHapjesApi.js?v=2.19.0';
+import { getSymptomMeta } from '../content/eersteHapjes-symptoms.js?v=2.19.0';
 
 const DEFAULT_DAYS = 90;
 
@@ -42,13 +42,21 @@ const INTRO_REACTION_LABEL = {
   onbekend: 'Onbekend',
 };
 
+const RANGES = [
+  { key: '7',  label: 'Week',  days: 7  },
+  { key: '30', label: 'Maand', days: 30 },
+  { key: '90', label: '3 maanden', days: 90 },
+];
+
 /**
  * Toon de agenda-modal voor één kindje.
  * @param {object} opts
  * @param {string} opts.childId
  * @param {string} opts.childName
+ * @param {object} [opts.initialData] — pre-fetched 7d data uit eersteHapjes-state
+ *   { meals, symptoms, intros } — zorgt dat week-view instant rendert.
  */
-export function openAgendaModal({ childId, childName }) {
+export function openAgendaModal({ childId, childName, initialData = null }) {
   return new Promise((resolve) => {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay eh-agenda-overlay';
@@ -56,7 +64,12 @@ export function openAgendaModal({ childId, childName }) {
       <div class="modal eh-agenda-modal">
         <header class="eh-agenda-head">
           <h2>Agenda voor ${escapeHtml(childName || 'je kindje')}</h2>
-          <p class="eh-agenda-sub">Alle gelogde maaltijden, symptomen en allergeen-intro's van de afgelopen ${DEFAULT_DAYS} dagen.</p>
+          <div class="eh-agenda-ranges" data-ranges>
+            ${RANGES.map((r, i) => `
+              <button type="button" class="eh-agenda-range ${i === 0 ? 'selected' : ''}"
+                      data-range="${r.key}">${escapeHtml(r.label)}</button>
+            `).join('')}
+          </div>
         </header>
 
         <div class="eh-agenda-filters">
@@ -77,28 +90,46 @@ export function openAgendaModal({ childId, childName }) {
     document.body.appendChild(overlay);
 
     const bodyEl = overlay.querySelector('[data-body]');
-    let allEvents = []; // gevuld na initial load
+    // Cache per range (in dagen) → events-array. Wordt gevuld bij eerste fetch.
+    const cachedByRange = {};
+    let activeDays = 7; // default: week
+    let allEvents = []; // gefilterd op activeDays + gesorteerd
 
-    init();
+    // Als initialData mee gegeven (uit eersteHapjes-state, dekt 7d): zet
+    // direct in cache zodat week-view instant verschijnt.
+    if (initialData) {
+      cachedByRange[7] = buildEventsFromData(initialData, isoDateMinusDays(7));
+    }
 
-    async function init() {
-      const fromIso = isoDateMinusDays(DEFAULT_DAYS);
+    initRange(7);
+
+    async function initRange(days) {
+      activeDays = days;
+      // Markeer actieve range-knop
+      overlay.querySelectorAll('[data-range]').forEach((btn) => {
+        btn.classList.toggle('selected', btn.dataset.range === String(days));
+      });
+
+      if (cachedByRange[days]) {
+        allEvents = cachedByRange[days];
+        render();
+        return;
+      }
+
+      bodyEl.innerHTML = `<div class="eh-agenda-loading">Laden…</div>`;
+      const fromIso = isoDateMinusDays(days);
       const [mealsRes, sympRes, introsRes] = await Promise.all([
         getMealsForChild(childId, { from: fromIso }),
         getSymptomsForChild(childId, { from: fromIso }),
         getAllergenIntros(childId),
       ]);
-
-      const meals = mealsRes.ok ? (mealsRes.data?.meals || []) : [];
-      const symps = sympRes.ok ? (sympRes.data?.symptoms || []) : [];
-      const intros = introsRes.ok ? (introsRes.data?.intros || []) : [];
-
-      allEvents = [
-        ...meals.map(toMealEvent),
-        ...symps.map(toSymptomEvent),
-        ...intros.map(toIntroEvent).filter((e) => e && e.tsMs >= new Date(fromIso).getTime()),
-      ].filter(Boolean).sort((a, b) => b.tsMs - a.tsMs);
-
+      const data = {
+        meals: mealsRes.ok ? (mealsRes.data?.meals || []) : [],
+        symptoms: sympRes.ok ? (sympRes.data?.symptoms || []) : [],
+        intros: introsRes.ok ? (introsRes.data?.intros || []) : [],
+      };
+      cachedByRange[days] = buildEventsFromData(data, fromIso);
+      allEvents = cachedByRange[days];
       render();
     }
 
@@ -142,6 +173,12 @@ export function openAgendaModal({ childId, childName }) {
     overlay.querySelectorAll('[data-filter]').forEach((cb) => {
       cb.addEventListener('change', render);
     });
+    overlay.querySelectorAll('[data-range]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const days = Number(btn.dataset.range);
+        if (days !== activeDays) initRange(days);
+      });
+    });
     overlay.querySelector('[data-action="close"]').addEventListener('click', close);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
     document.addEventListener('keydown', function escHandler(e) {
@@ -161,6 +198,15 @@ export function openAgendaModal({ childId, childName }) {
 /* ============================================
    Event mapping
 ============================================ */
+function buildEventsFromData(data, fromIso) {
+  const fromMs = new Date(fromIso).getTime();
+  return [
+    ...(data.meals || []).map(toMealEvent),
+    ...(data.symptoms || []).map(toSymptomEvent),
+    ...(data.intros || []).map(toIntroEvent).filter((e) => e && e.tsMs >= fromMs),
+  ].filter(Boolean).sort((a, b) => b.tsMs - a.tsMs);
+}
+
 function toMealEvent(m) {
   if (!m.eaten_at) return null;
   const ts = new Date(m.eaten_at);

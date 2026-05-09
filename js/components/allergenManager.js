@@ -10,18 +10,18 @@
    Reactie/datum zijn verschoven naar intro-modal (brok H.3).
 ============================================ */
 
-import { escapeHtml, ALLERGENS, showToast } from '../utils.js?v=2.18.0';
+import { escapeHtml, ALLERGENS, showToast } from '../utils.js?v=2.19.0';
 import {
   getAllergensForChild,
   getAllergenIntros,
   deleteAllergenIntro,
-} from '../eersteHapjesApi.js?v=2.18.0';
+} from '../eersteHapjesApi.js?v=2.19.0';
 import {
   deriveAllergenState,
   statusLabel,
   statusTone,
   openAllergenIntroModal,
-} from './allergenIntroModal.js?v=2.18.0';
+} from './allergenIntroModal.js?v=2.19.0';
 
 /**
  * Open de allergen manager.

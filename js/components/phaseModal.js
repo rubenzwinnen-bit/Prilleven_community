@@ -11,9 +11,9 @@
    eersteHapjes.js zonder modal te openen.
 ============================================ */
 
-import { escapeHtml, showToast } from '../utils.js?v=2.18.0';
-import { PHASES, getPhase } from '../content/eersteHapjes-phases.js?v=2.18.0';
-import { togglePhaseCheck, advancePhase, getPhases } from '../eersteHapjesApi.js?v=2.18.0';
+import { escapeHtml, showToast } from '../utils.js?v=2.19.0';
+import { PHASES, getPhase } from '../content/eersteHapjes-phases.js?v=2.19.0';
+import { togglePhaseCheck, advancePhase, getPhases } from '../eersteHapjesApi.js?v=2.19.0';
 
 // ============================================================
 // Banner — geen modal, gewoon HTML voor inline-render in Vandaag

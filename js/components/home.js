@@ -5,9 +5,9 @@
    (chatbot) en Admin (alleen voor admins).
 ============================================ */
 
-import * as Store from '../store.js?v=2.18.0';
-import * as Router from '../router.js?v=2.18.0';
-import * as Timeline from './timeline.js?v=2.18.0';
+import * as Store from '../store.js?v=2.19.0';
+import * as Router from '../router.js?v=2.19.0';
+import * as Timeline from './timeline.js?v=2.19.0';
 
 export function render() {
   const user = Store.getCurrentUser() || '';

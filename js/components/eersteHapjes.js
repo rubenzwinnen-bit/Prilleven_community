@@ -8,7 +8,7 @@
    Brok F — fasen-systeem (banner + detail + overzicht).
 ============================================ */
 
-import { escapeHtml, colorFromSeed, initialsFromName, showToast } from '../utils.js?v=2.18.0';
+import { escapeHtml, colorFromSeed, initialsFromName, showToast } from '../utils.js?v=2.19.0';
 import {
   getMyChildren,
   getMealsForChild,
@@ -18,40 +18,40 @@ import {
   getPhases,
   deleteMealLog,
   deleteSymptom,
-} from '../eersteHapjesApi.js?v=2.18.0';
+} from '../eersteHapjesApi.js?v=2.19.0';
 import {
   ageMonthsFromBirthdate,
   getNextStepArticle,
   formatAgeRange,
-} from '../eersteHapjesContent.js?v=2.18.0';
-import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.18.0';
-import { openMealLogModal } from './mealLogModal.js?v=2.18.0';
-import { openSymptomLogModal } from './symptomLogModal.js?v=2.18.0';
-import { openSymptomDetailModal } from './symptomDetailModal.js?v=2.18.0';
-import { openAllergenManager } from './allergenManager.js?v=2.18.0';
+} from '../eersteHapjesContent.js?v=2.19.0';
+import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.19.0';
+import { openMealLogModal } from './mealLogModal.js?v=2.19.0';
+import { openSymptomLogModal } from './symptomLogModal.js?v=2.19.0';
+import { openSymptomDetailModal } from './symptomDetailModal.js?v=2.19.0';
+import { openAllergenManager } from './allergenManager.js?v=2.19.0';
 import {
   deriveAllergenState,
   statusLabel,
   statusTone,
   openAllergenTimelineModal,
-} from './allergenIntroModal.js?v=2.18.0';
-import { openArticleModal, openArticleListModal } from './articleModal.js?v=2.18.0';
-import { openRiskFoodsListModal, openRiskFoodDetailModal } from './riskFoodsModal.js?v=2.18.0';
-import { openAgendaModal } from './agendaModal.js?v=2.18.0';
-import { renderEhChatBox, bindEhChatBox } from './ehChatBox.js?v=2.18.0';
+} from './allergenIntroModal.js?v=2.19.0';
+import { openArticleModal, openArticleListModal } from './articleModal.js?v=2.19.0';
+import { openRiskFoodsListModal, openRiskFoodDetailModal } from './riskFoodsModal.js?v=2.19.0';
+import { openAgendaModal } from './agendaModal.js?v=2.19.0';
+import { renderEhChatBox, bindEhChatBox } from './ehChatBox.js?v=2.19.0';
 import {
   getRelevantRiskFoods,
   formatAgeLimit,
-} from '../content/eersteHapjes-risk-foods.js?v=2.18.0';
+} from '../content/eersteHapjes-risk-foods.js?v=2.19.0';
 import {
   renderPhaseBanner,
   openPhaseDetailModal,
   openPhaseOverviewModal,
-} from './phaseModal.js?v=2.18.0';
-import { getSymptomMeta, isRedFlag } from '../content/eersteHapjes-symptoms.js?v=2.18.0';
-import { buildSuggestions } from '../eersteHapjesSuggestions.js?v=2.18.0';
-import { getRecipes } from '../store.js?v=2.18.0';
-import * as Router from '../router.js?v=2.18.0';
+} from './phaseModal.js?v=2.19.0';
+import { getSymptomMeta, isRedFlag } from '../content/eersteHapjes-symptoms.js?v=2.19.0';
+import { buildSuggestions } from '../eersteHapjesSuggestions.js?v=2.19.0';
+import { getRecipes } from '../store.js?v=2.19.0';
+import * as Router from '../router.js?v=2.19.0';
 
 // Module-state
 let state = {
@@ -292,6 +292,7 @@ function renderToday(child) {
         ${renderMealsCard(child)}
         ${renderSymptomsCard(child)}
         ${renderAllergensCard(child)}
+        ${renderAgendaCard(child)}
         ${renderNextStepCard(child)}
       </div>
 
@@ -301,9 +302,6 @@ function renderToday(child) {
         <button class="eh-tips-link" data-action="open-phases" type="button">
           Mijn fasen →
         </button>
-        <button class="eh-tips-link" data-action="open-agenda" type="button">
-          Bekijk agenda →
-        </button>
         <button class="eh-tips-link" data-action="open-symptom-list" type="button">
           Symptomen-uitleg →
         </button>
@@ -312,6 +310,33 @@ function renderToday(child) {
         </button>
       </div>
     </section>
+  `;
+}
+
+function renderAgendaCard(child) {
+  const meals = state.recentMeals || [];
+  const symps = state.symptoms || [];
+  const introsTotal = Object.values(state.allergenIntrosByKey || {})
+    .reduce((acc, arr) => acc + arr.length, 0);
+  const total = meals.length + symps.length + introsTotal;
+
+  const summary = total === 0
+    ? `<p class="eh-log-empty">Nog niets gelogd in de afgelopen week.</p>`
+    : `<ul class="eh-agenda-summary">
+        <li><span class="eh-agenda-summary-num">${meals.length}</span><span class="eh-agenda-summary-lbl">maaltijden</span></li>
+        <li><span class="eh-agenda-summary-num">${symps.length}</span><span class="eh-agenda-summary-lbl">symptomen</span></li>
+        <li><span class="eh-agenda-summary-num">${introsTotal}</span><span class="eh-agenda-summary-lbl">allergeen-intro's</span></li>
+      </ul>`;
+
+  return `
+    <div class="eh-today-card eh-log-card eh-log-card-agenda">
+      <header class="eh-log-card-header">
+        <h3>Agenda <span class="eh-log-card-sub">(week)</span></h3>
+        <button class="eh-log-add" data-action="open-agenda-modal" aria-label="Agenda openen">→</button>
+      </header>
+      ${summary}
+      <button class="eh-agenda-card-cta" data-action="open-agenda-modal" type="button">Bekijk volledige agenda →</button>
+    </div>
   `;
 }
 
@@ -711,13 +736,22 @@ function bindLogActions(root, child) {
     });
   }
 
-  // "Bekijk agenda"-link → agendaModal (batch 4)
-  const agendaBtn = root.querySelector('[data-action="open-agenda"]');
-  if (agendaBtn) {
-    agendaBtn.addEventListener('click', async () => {
-      await openAgendaModal({ childId: child.id, childName: child.name });
+  // Agenda-card → agendaModal met instant week-view via state-cache
+  root.querySelectorAll('[data-action="open-agenda-modal"]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      // Verzamel intros uit state.allergenIntrosByKey naar één lijst
+      const intros = Object.values(state.allergenIntrosByKey || {}).flat();
+      await openAgendaModal({
+        childId: child.id,
+        childName: child.name,
+        initialData: {
+          meals: state.recentMeals || [],
+          symptoms: state.symptoms || [],
+          intros,
+        },
+      });
     });
-  }
+  });
 
   // Reminder-card items (brok H.6) — alleen nog allergeen-reminders
   root.querySelectorAll('[data-reminder-type]').forEach((btn) => {
@@ -810,7 +844,7 @@ function bindLogActions(root, child) {
   const articleBtn = root.querySelector('[data-action="open-article"]');
   if (articleBtn) {
     articleBtn.addEventListener('click', async () => {
-      const { getArticleBySlug } = await import('../eersteHapjesContent.js?v=2.18.0');
+      const { getArticleBySlug } = await import('../eersteHapjesContent.js?v=2.19.0');
       const article = getArticleBySlug(articleBtn.dataset.slug);
       if (article) await openArticleModal(article);
     });

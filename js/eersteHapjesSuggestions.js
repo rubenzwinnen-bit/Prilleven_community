@@ -17,9 +17,9 @@
    Dedupe met H.6-reminders gebeurt in eersteHapjes.js via key-prefix.
 ============================================ */
 
-import { ageMonthsFromBirthdate } from './eersteHapjesContent.js?v=2.18.0';
-import { PHASES } from './content/eersteHapjes-phases.js?v=2.18.0';
-import { getSymptomMeta } from './content/eersteHapjes-symptoms.js?v=2.18.0';
+import { ageMonthsFromBirthdate } from './eersteHapjesContent.js?v=2.19.0';
+import { PHASES } from './content/eersteHapjes-phases.js?v=2.19.0';
+import { getSymptomMeta } from './content/eersteHapjes-symptoms.js?v=2.19.0';
 
 const MIN_DAYS_BETWEEN_INTROS = 2;        // a
 const NO_LOG_DAYS_THRESHOLD = 5;          // e
