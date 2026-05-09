@@ -8,7 +8,7 @@
    omdat dit een lokale voorkeur is.
 ============================================ */
 
-import { supabaseFetch, supabaseStorageDelete } from './supabase.js?v=2.20.0';
+import { supabaseFetch, supabaseStorageDelete } from './supabase.js?v=2.21.0';
 
 /* ============================================
    IN-MEMORY CACHE LAAG
@@ -27,13 +27,23 @@ import { supabaseFetch, supabaseStorageDelete } from './supabase.js?v=2.20.0';
      comments:<recipeId>      - reacties per recept
      schedules:<user>         - opgeslagen weekschema's
 ============================================ */
-const CACHE_TTL = 30_000; // 30 seconden
+// Standaard 30s TTL voor user-specifieke / vluchtige data.
+// Per-key overrides voor data die zelden verandert (recepten, ratings):
+// 5 min — invalidatie gebeurt al bij mutaties (toggleFavorite, rateRecipe,
+// addRecipe, importRecipes, etc.) zodat staleness geen UX-issue is.
+const CACHE_TTL = 30_000; // 30 seconden — default
+const CACHE_TTL_LONG = 5 * 60_000; // 5 minuten — recepten/ratings
+const LONG_TTL_PREFIXES = ['recipes:', 'ratings:'];
 const _cache = new Map();
+
+function _ttlForKey(key) {
+  return LONG_TTL_PREFIXES.some((p) => key.startsWith(p)) ? CACHE_TTL_LONG : CACHE_TTL;
+}
 
 function _cacheGet(key) {
   const entry = _cache.get(key);
   if (!entry) return undefined;
-  if (Date.now() - entry.t > CACHE_TTL) {
+  if (Date.now() - entry.t > _ttlForKey(key)) {
     _cache.delete(key);
     return undefined;
   }
@@ -119,14 +129,30 @@ export function isAdmin() {
  * Roep dit aan na login én op app init — dan is de sync
  * isAdmin() betrouwbaar voor de rest van de sessie.
  */
-export async function refreshAdminStatus() {
+/**
+ * Vul admin-cache uit een eerder opgehaald status-object.
+ * Vermijdt extra fetch bij setupApp() na fetchSubscriptionStatus().
+ */
+export function setAdminFromStatus(email, status) {
+  const user = (email || '').toLowerCase();
+  if (!user) { _adminCache = { email: null, value: false, loaded: true }; return false; }
+  const v = !!status?.is_admin;
+  _adminCache = { email: user, value: v, loaded: true };
+  return v;
+}
+
+export async function refreshAdminStatus(opts = {}) {
   const user = (getCurrentUser() || '').toLowerCase();
   if (!user) {
     _adminCache = { email: null, value: false, loaded: true };
     return false;
   }
+  // Hergebruik bestaand status-object als meegegeven (geen extra fetch).
+  if (opts.fromStatus !== undefined && opts.fromStatus !== null) {
+    return setAdminFromStatus(user, opts.fromStatus);
+  }
   try {
-    const { fetchSubscriptionStatus } = await import('./supabase.js?v=2.20.0');
+    const { fetchSubscriptionStatus } = await import('./supabase.js?v=2.21.0');
     const status = await fetchSubscriptionStatus(user);
     const v = !!status?.is_admin;
     _adminCache = { email: user, value: v, loaded: true };

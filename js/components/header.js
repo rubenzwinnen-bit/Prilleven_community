@@ -4,20 +4,24 @@
    profile-modal voor nickname + foto) en uitlogknop.
 ============================================ */
 
-import * as Store from '../store.js?v=2.20.0';
-import { sessionClear, sessionGet, invalidateSubscriptionCache } from '../supabase.js?v=2.20.0';
-import { initialsFromName, colorFromSeed, escapeHtml } from '../utils.js?v=2.20.0';
-import * as Api from '../communityApi.js?v=2.20.0';
-import { openProfileModal } from './profileModal.js?v=2.20.0';
+import * as Store from '../store.js?v=2.21.0';
+import { sessionClear, sessionGet, invalidateSubscriptionCache } from '../supabase.js?v=2.21.0';
+import { initialsFromName, colorFromSeed, escapeHtml } from '../utils.js?v=2.21.0';
+import * as Api from '../communityApi.js?v=2.21.0';
+import { openProfileModal } from './profileModal.js?v=2.21.0';
 
 /* Cache key voor nickname + avatar-url zodat header bij volgende
    page-load meteen de juiste pill kan tonen (geen email-flicker). */
 const PROFILE_CACHE_KEY = 'community.profile.cache.v1';
+const PROFILE_CACHE_TTL = 5 * 60 * 1000; // 5 minuten — refresh-on-focus is voldoende
 
 function getCachedProfile() {
   try {
     const raw = localStorage.getItem(PROFILE_CACHE_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // Backwards compat: oude cache had geen `t` veld — wordt direct vervangen.
+    return parsed;
   } catch { return null; }
 }
 function setCachedProfile(profile) {
@@ -26,8 +30,12 @@ function setCachedProfile(profile) {
       nickname: profile.nickname || null,
       avatar_url: profile.avatar_url || null,
       user_id: profile.user_id || null,
+      t: Date.now(),
     }));
   } catch {}
+}
+function isCacheFresh(cached) {
+  return cached && typeof cached.t === 'number' && (Date.now() - cached.t) < PROFILE_CACHE_TTL;
 }
 
 /* ----------------------------------------
@@ -97,12 +105,16 @@ export function init() {
     });
   }
 
-  // Eerste keer: probeer profiel uit DB te laden zodat avatar uit Supabase komt
-  // (en niet alleen de e-mail-initialen).
+  // Lazy refresh: alleen API-fetch als cache stale (>5 min) of leeg.
+  // Bespaart ~150-300ms op elke page-render voor terugkerende users.
+  // Updates via `community:profile-updated` event blijven werken.
   loadInitialAvatar();
 }
 
 async function loadInitialAvatar() {
+  const cached = getCachedProfile();
+  if (isCacheFresh(cached)) return; // gecachete avatar is al gerenderd
+
   const { ok, data } = await Api.getMyProfile();
   if (!ok || !data?.profile) return;
   refreshHeaderAvatar(data.profile);

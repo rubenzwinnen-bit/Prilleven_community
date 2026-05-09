@@ -6,11 +6,11 @@
    Returnt Promise<meal|null>.
 ============================================ */
 
-import { escapeHtml } from '../utils.js?v=2.20.0';
-import { createMealLog } from '../eersteHapjesApi.js?v=2.20.0';
-import { getRecipes } from '../store.js?v=2.20.0';
-import { scanRecipeForRisks } from '../content/eersteHapjes-risk-foods.js?v=2.20.0';
-import { ageMonthsFromBirthdate } from '../eersteHapjesContent.js?v=2.20.0';
+import { escapeHtml } from '../utils.js?v=2.21.0';
+import { createMealLog } from '../eersteHapjesApi.js?v=2.21.0';
+import { getRecipes } from '../store.js?v=2.21.0';
+import { scanRecipeForRisks } from '../content/eersteHapjes-risk-foods.js?v=2.21.0';
+import { ageMonthsFromBirthdate } from '../eersteHapjesContent.js?v=2.21.0';
 
 const MEAL_TYPES = [
   { value: 'ontbijt', label: 'Ontbijt' },
