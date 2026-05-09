@@ -5,11 +5,11 @@
    Returnt Promise<profile|null>.
 ============================================ */
 
-import { escapeHtml, processImageForUpload, showToast, initialsFromName, colorFromSeed } from '../utils.js?v=2.15.0';
-import { sessionGet } from '../supabase.js?v=2.15.0';
-import * as Api from '../communityApi.js?v=2.15.0';
-import { getMyChildren, deleteChild } from '../eersteHapjesApi.js?v=2.15.0';
-import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.15.0';
+import { escapeHtml, processImageForUpload, showToast, initialsFromName, colorFromSeed } from '../utils.js?v=2.16.0';
+import { sessionGet } from '../supabase.js?v=2.16.0';
+import * as Api from '../communityApi.js?v=2.16.0';
+import { getMyChildren, deleteChild } from '../eersteHapjesApi.js?v=2.16.0';
+import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.16.0';
 
 function renderChildItem(child) {
   const ageMonths = (() => {

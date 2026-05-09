@@ -13,13 +13,13 @@
      - 0 intros → 'later'
 ============================================ */
 
-import { escapeHtml, showToast } from '../utils.js?v=2.15.0';
-import { ALLERGEN_INTROS_TARGET } from '../content/eersteHapjes-risk-foods.js?v=2.15.0';
+import { escapeHtml, showToast } from '../utils.js?v=2.16.0';
+import { ALLERGEN_INTROS_TARGET } from '../content/eersteHapjes-risk-foods.js?v=2.16.0';
 import {
   getAllergenIntros,
   createAllergenIntro,
   deleteAllergenIntro,
-} from '../eersteHapjesApi.js?v=2.15.0';
+} from '../eersteHapjesApi.js?v=2.16.0';
 
 const REACTIONS = [
   { value: 'geen',     label: 'Geen reactie', tone: 'ok'   },
