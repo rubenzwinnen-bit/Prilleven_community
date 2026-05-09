@@ -5,7 +5,7 @@
    Geeft altijd { ok, status, data, error } terug.
 ============================================ */
 
-import { sessionRefreshIfNeeded } from './supabase.js?v=2.8.0';
+import { sessionRefreshIfNeeded } from './supabase.js?v=2.9.0';
 
 async function call(path, { method = 'GET', body = null } = {}) {
   const session = await sessionRefreshIfNeeded();
@@ -98,6 +98,19 @@ export const updateAllergen = (id, updates) =>
 
 export const deleteAllergen = (id) =>
   call(`/allergens/${encodeURIComponent(id)}`, { method: 'DELETE' });
+
+/* ----- Allergen intro logs ----- */
+export const getAllergenIntros = (childId, { allergenKey } = {}) => {
+  const params = new URLSearchParams({ child_id: childId });
+  if (allergenKey) params.set('allergen_key', allergenKey);
+  return call('/allergen-intros?' + params.toString());
+};
+
+export const createAllergenIntro = (payload) =>
+  call('/allergen-intros', { method: 'POST', body: payload });
+
+export const deleteAllergenIntro = (id) =>
+  call(`/allergen-intros/${encodeURIComponent(id)}`, { method: 'DELETE' });
 
 /* ----- Phases ----- */
 export const getPhases = (childId) =>

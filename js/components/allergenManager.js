@@ -1,47 +1,40 @@
 /* ============================================
-   EERSTE HAPJES — ALLERGEN MANAGER (brok D)
-   Modal met alle allergenen uit de vocabulaire,
-   per allergeen kan je status/reactie/datum/notitie
-   instellen. Upsert per rij via API.
-   Returnt Promise<void> — caller herlaadt zelf.
+   EERSTE HAPJES — ALLERGEN MANAGER (brok D + brok H.3)
+   Modal met alle 13 allergenen uit de vocabulaire.
+   Per rij: afgeleide status-pill + voortgangsbalk N/3
+   (uit allergen_intro_logs). Body bevat:
+     - "Bekijk tijdlijn" + "+ Intro registreren" knoppen
+     - "Markeer als vermijden"-toggle
+     - Notitie
+     - Verwijderen uit lijst
+   Reactie/datum zijn verschoven naar intro-modal (brok H.3).
 ============================================ */
 
-import { escapeHtml, ALLERGENS, showToast } from '../utils.js?v=2.8.0';
+import { escapeHtml, ALLERGENS, showToast } from '../utils.js?v=2.9.0';
 import {
   getAllergensForChild,
   upsertAllergen,
   deleteAllergen,
-} from '../eersteHapjesApi.js?v=2.8.0';
-
-const STATUSES = [
-  { value: 'gepland',    label: 'Gepland'    },
-  { value: 'geprobeerd', label: 'Geprobeerd' },
-  { value: 'vermijden',  label: 'Vermijden'  },
-];
-
-const REACTIONS = [
-  { value: 'geen',     label: 'Geen reactie' },
-  { value: 'mild',     label: 'Mild'         },
-  { value: 'matig',    label: 'Matig'        },
-  { value: 'heftig',   label: 'Heftig'       },
-  { value: 'onbekend', label: 'Onbekend'     },
-];
-
-const STATUS_LABEL_SHORT = {
-  gepland: 'Gepland',
-  geprobeerd: 'Geprobeerd',
-  vermijden: 'Vermijden',
-};
+  getAllergenIntros,
+} from '../eersteHapjesApi.js?v=2.9.0';
+import {
+  deriveAllergenState,
+  statusLabel,
+  statusTone,
+  openAllergenTimelineModal,
+  openAllergenIntroModal,
+} from './allergenIntroModal.js?v=2.9.0';
 
 /**
  * Open de allergen manager.
  * @param {object} opts
  * @param {string} opts.childId
  * @param {string} opts.childName
- * @returns {Promise<void>}
+ * @returns {Promise<{changed: boolean}>}
  */
 export function openAllergenManager({ childId, childName }) {
   return new Promise((resolve) => {
+    let changedAny = false;
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay eh-allergen-overlay';
     overlay.innerHTML = `
@@ -49,8 +42,8 @@ export function openAllergenManager({ childId, childName }) {
         <header class="eh-allergen-header">
           <h2>Allergenen</h2>
           <p class="eh-allergen-sub">
-            Voor ${escapeHtml(childName || '')} —
-            houd hier bij wat geprobeerd is en hoe ${escapeHtml(childName || 'je kindje')} reageerde.
+            Voor ${escapeHtml(childName || '')} — registreer per allergeen elke intro-poging.
+            Drie keer zonder reactie = veilig.
           </p>
         </header>
 
@@ -67,57 +60,82 @@ export function openAllergenManager({ childId, childName }) {
 
     const listEl = overlay.querySelector('[data-list]');
 
-    // Per-allergen state (huidige rij in DB) — keyed by allergen_key
-    const byKey = {};
+    // Per-allergen state — keyed by allergen_key
+    const byKey = {};        // child_allergens-rij (mag null zijn)
+    const introsByKey = {};  // array van intro-logs per allergen_key
 
     init();
 
     async function init() {
-      const { ok, data, error } = await getAllergensForChild(childId);
-      if (!ok) {
-        listEl.innerHTML = `<div class="eh-allergen-error">${escapeHtml(error || 'Kon allergenen niet laden.')}</div>`;
+      const [allergensRes, introsRes] = await Promise.all([
+        getAllergensForChild(childId),
+        getAllergenIntros(childId),
+      ]);
+
+      if (!allergensRes.ok) {
+        listEl.innerHTML = `<div class="eh-allergen-error">${escapeHtml(allergensRes.error || 'Kon allergenen niet laden.')}</div>`;
         return;
       }
-      (data.allergens || []).forEach(a => { byKey[a.allergen_key] = a; });
+      (allergensRes.data?.allergens || []).forEach((a) => { byKey[a.allergen_key] = a; });
+
+      if (introsRes.ok) {
+        (introsRes.data?.intros || []).forEach((i) => {
+          if (!introsByKey[i.allergen_key]) introsByKey[i.allergen_key] = [];
+          introsByKey[i.allergen_key].push(i);
+        });
+      }
+
       renderList();
     }
 
-    function renderList() {
-      listEl.innerHTML = ALLERGENS.map(key => {
-        const cur = byKey[key];
-        return `
-          <div class="eh-allergen-row" data-row="${key}">
-            <button class="eh-allergen-row-head" data-toggle="${key}" type="button">
-              <span class="eh-allergen-name">${escapeHtml(capitalize(key))}</span>
-              <span class="eh-allergen-status-pill ${cur ? 'eh-allergen-status-' + cur.status : 'eh-allergen-status-empty'}">
-                ${cur ? escapeHtml(STATUS_LABEL_SHORT[cur.status]) : '—'}
-                ${cur && cur.reaction && cur.reaction !== 'geen' && cur.reaction !== 'onbekend'
-                    ? ` · ${escapeHtml(cur.reaction)}`
-                    : ''}
-              </span>
-              <span class="eh-allergen-chevron" aria-hidden="true">▾</span>
-            </button>
-            <div class="eh-allergen-row-body hidden" data-body="${key}"></div>
-          </div>
-        `;
-      }).join('');
+    async function reloadIntros(key) {
+      const { ok, data } = await getAllergenIntros(childId, { allergenKey: key });
+      if (ok) introsByKey[key] = data?.intros || [];
+    }
 
-      // Bind toggle
-      listEl.querySelectorAll('.eh-allergen-row-head').forEach(head => {
-        head.addEventListener('click', () => {
-          const key = head.dataset.toggle;
-          toggleRow(key);
-        });
+    function renderList() {
+      listEl.innerHTML = ALLERGENS.map((key) => renderRow(key)).join('');
+
+      listEl.querySelectorAll('.eh-allergen-row-head').forEach((head) => {
+        head.addEventListener('click', () => toggleRow(head.dataset.toggle));
       });
     }
 
+    function renderRow(key) {
+      const cur = byKey[key];
+      const intros = introsByKey[key] || [];
+      const state = deriveAllergenState(cur, intros);
+      const showProgress = state.status === 'probeer-opnieuw' || state.status === 'veilig';
+      const pct = Math.min(100, Math.round((state.successfulCount / state.target) * 100));
+
+      return `
+        <div class="eh-allergen-row" data-row="${escapeHtml(key)}">
+          <button class="eh-allergen-row-head" data-toggle="${escapeHtml(key)}" type="button">
+            <span class="eh-allergen-name">${escapeHtml(capitalize(key))}</span>
+            <span class="eh-allergen-status-pill eh-tone-${escapeHtml(statusTone(state.status))}">
+              ${escapeHtml(statusLabel(state.status))}
+              ${showProgress ? ` · ${state.successfulCount}/${state.target}` : ''}
+            </span>
+            <span class="eh-allergen-chevron" aria-hidden="true">▾</span>
+          </button>
+          ${showProgress ? `
+            <div class="eh-allergen-progress">
+              <div class="eh-allergen-progress-fill eh-tone-${escapeHtml(statusTone(state.status))}" style="width:${pct}%"></div>
+            </div>
+          ` : ''}
+          <div class="eh-allergen-row-body hidden" data-body="${escapeHtml(key)}"></div>
+        </div>
+      `;
+    }
+
     function toggleRow(key) {
-      const body = listEl.querySelector(`[data-body="${key}"]`);
+      const safeKey = cssEscape(key);
+      const body = listEl.querySelector(`[data-body="${safeKey}"]`);
+      if (!body) return;
       const isOpen = !body.classList.contains('hidden');
-      // Sluit alle andere
-      listEl.querySelectorAll('.eh-allergen-row-body').forEach(b => b.classList.add('hidden'));
-      listEl.querySelectorAll('.eh-allergen-row').forEach(r => r.classList.remove('open'));
-      if (isOpen) return; // was open → toggle dicht
+      listEl.querySelectorAll('.eh-allergen-row-body').forEach((b) => b.classList.add('hidden'));
+      listEl.querySelectorAll('.eh-allergen-row').forEach((r) => r.classList.remove('open'));
+      if (isOpen) return;
       body.classList.remove('hidden');
       body.parentElement.classList.add('open');
       renderRowBody(key, body);
@@ -125,80 +143,63 @@ export function openAllergenManager({ childId, childName }) {
 
     function renderRowBody(key, body) {
       const cur = byKey[key];
-      const status = cur?.status || '';
-      const reaction = cur?.reaction || '';
-      const date = cur?.intro_date || '';
+      const intros = introsByKey[key] || [];
+      const isAvoid = cur?.status === 'vermijden';
       const notes = cur?.notes || '';
+      const safeKey = cssEscape(key);
 
       body.innerHTML = `
         <div class="eh-allergen-edit">
-          <div class="eh-allergen-field">
-            <label>Status</label>
-            <div class="eh-allergen-chips" data-group="status">
-              ${STATUSES.map(s => `
-                <button type="button" class="eh-allergen-chip ${s.value === status ? 'selected' : ''}" data-value="${s.value}">
-                  ${escapeHtml(s.label)}
-                </button>
-              `).join('')}
-            </div>
+          <div class="eh-allergen-edit-quick">
+            <button class="btn btn-secondary btn-small" data-action="timeline">
+              Bekijk tijdlijn ${intros.length ? `(${intros.length})` : ''}
+            </button>
+            <button class="btn btn-primary btn-small" data-action="intro">+ Intro registreren</button>
           </div>
 
-          <div class="eh-allergen-field eh-allergen-reaction-field ${status === 'geprobeerd' ? '' : 'hidden'}">
-            <label>Reactie</label>
-            <div class="eh-allergen-chips" data-group="reaction">
-              ${REACTIONS.map(r => `
-                <button type="button" class="eh-allergen-chip ${r.value === reaction ? 'selected' : ''}" data-value="${r.value}">
-                  ${escapeHtml(r.label)}
-                </button>
-              `).join('')}
-            </div>
-          </div>
-
-          <div class="eh-allergen-field eh-allergen-date-field ${status === 'geprobeerd' ? '' : 'hidden'}">
-            <label for="eh-al-date-${key}">Datum eerste introductie</label>
-            <input type="date" id="eh-al-date-${key}" class="auth-input" value="${escapeHtml(date)}" max="${todayStr()}">
-          </div>
+          <label class="eh-allergen-avoid-toggle">
+            <input type="checkbox" data-field="avoid" ${isAvoid ? 'checked' : ''}>
+            <span>Markeer als vermijden (allergie bevestigd of familie-historie)</span>
+          </label>
 
           <div class="eh-allergen-field">
-            <label for="eh-al-notes-${key}">Notitie <span class="eh-allergen-optional">(optioneel)</span></label>
-            <textarea id="eh-al-notes-${key}" class="auth-input eh-allergen-textarea" rows="2" maxlength="500" placeholder="bv. eerste keer klein stukje brood, geen bijzonderheden">${escapeHtml(notes)}</textarea>
+            <label for="eh-al-notes-${safeKey}">Notitie <span class="eh-allergen-optional">(optioneel)</span></label>
+            <textarea id="eh-al-notes-${safeKey}" class="auth-input eh-allergen-textarea" rows="2" maxlength="500" placeholder="bv. enkel kleine porties geven, altijd in combinatie met groente">${escapeHtml(notes)}</textarea>
           </div>
 
           <div class="eh-allergen-row-error hidden" data-row-error></div>
 
           <div class="eh-allergen-row-actions">
-            ${cur ? '<button class="eh-allergen-link-btn" data-action="clear">Verwijderen</button>' : ''}
+            ${cur ? '<button class="eh-allergen-link-btn" data-action="clear">Verwijder uit lijst</button>' : ''}
             <button class="btn btn-primary" data-action="save">Opslaan</button>
           </div>
         </div>
       `;
 
-      // Local edit state
-      const local = { status, reaction, date, notes };
-
-      // Status-chips
-      body.querySelector('[data-group="status"]').addEventListener('click', (e) => {
-        const btn = e.target.closest('.eh-allergen-chip');
-        if (!btn) return;
-        body.querySelectorAll('[data-group="status"] .eh-allergen-chip').forEach(b => b.classList.remove('selected'));
-        btn.classList.add('selected');
-        local.status = btn.dataset.value;
-        // toon/verberg reactie + datum
-        body.querySelector('.eh-allergen-reaction-field').classList.toggle('hidden', local.status !== 'geprobeerd');
-        body.querySelector('.eh-allergen-date-field').classList.toggle('hidden', local.status !== 'geprobeerd');
+      body.querySelector('[data-action="timeline"]').addEventListener('click', async () => {
+        const result = await openAllergenTimelineModal({
+          childId,
+          allergenKey: key,
+          allergenLabel: capitalize(key),
+          allergen: byKey[key] || null,
+        });
+        if (result?.changed) {
+          changedAny = true;
+          await reloadIntros(key);
+          renderList();
+        }
       });
 
-      // Reactie-chips
-      body.querySelector('[data-group="reaction"]').addEventListener('click', (e) => {
-        const btn = e.target.closest('.eh-allergen-chip');
-        if (!btn) return;
-        const wasSel = btn.classList.contains('selected');
-        body.querySelectorAll('[data-group="reaction"] .eh-allergen-chip').forEach(b => b.classList.remove('selected'));
-        if (!wasSel) {
-          btn.classList.add('selected');
-          local.reaction = btn.dataset.value;
-        } else {
-          local.reaction = '';
+      body.querySelector('[data-action="intro"]').addEventListener('click', async () => {
+        const result = await openAllergenIntroModal({
+          childId,
+          allergenKey: key,
+          allergenLabel: capitalize(key),
+        });
+        if (result?.created) {
+          changedAny = true;
+          await reloadIntros(key);
+          renderList();
         }
       });
 
@@ -206,53 +207,50 @@ export function openAllergenManager({ childId, childName }) {
       const showRowError = (msg) => { errorEl.textContent = msg; errorEl.classList.remove('hidden'); };
       const clearRowError = () => errorEl.classList.add('hidden');
 
-      // Save
       body.querySelector('[data-action="save"]').addEventListener('click', async () => {
         clearRowError();
-        if (!local.status) return showRowError('Kies een status.');
-
-        const dateInput = body.querySelector(`#eh-al-date-${key}`);
-        local.date = dateInput.value || '';
-        local.notes = body.querySelector(`#eh-al-notes-${key}`).value.trim();
+        const avoid = body.querySelector('[data-field="avoid"]').checked;
+        const notesVal = body.querySelector(`#eh-al-notes-${safeKey}`).value.trim();
 
         const buttons = body.querySelectorAll('button');
-        buttons.forEach(b => b.disabled = true);
+        buttons.forEach((b) => (b.disabled = true));
 
         const payload = {
           child_id: childId,
           allergen_key: key,
-          status: local.status,
-          reaction: local.status === 'geprobeerd' ? (local.reaction || null) : null,
-          intro_date: local.status === 'geprobeerd' ? (local.date || null) : null,
-          notes: local.notes || null,
+          status: avoid ? 'vermijden' : 'gepland',
+          reaction: null,
+          intro_date: null,
+          notes: notesVal || null,
         };
 
         const { ok, data, error } = await upsertAllergen(payload);
-        buttons.forEach(b => b.disabled = false);
+        buttons.forEach((b) => (b.disabled = false));
 
         if (!ok) return showRowError(error || 'Opslaan mislukt.');
 
         byKey[key] = data.allergen;
+        changedAny = true;
         showToast(`${capitalize(key)} bijgewerkt.`, 'success');
         renderList();
       });
 
-      // Verwijderen
       const clearBtn = body.querySelector('[data-action="clear"]');
       if (clearBtn) {
         clearBtn.addEventListener('click', async () => {
           if (!cur) return;
-          if (!window.confirm(`Allergeen "${capitalize(key)}" verwijderen?`)) return;
+          if (!window.confirm(`"${capitalize(key)}" uit de lijst verwijderen? De tijdlijn met intro-pogingen blijft staan.`)) return;
           clearRowError();
           const buttons = body.querySelectorAll('button');
-          buttons.forEach(b => b.disabled = true);
+          buttons.forEach((b) => (b.disabled = true));
           const { ok, error } = await deleteAllergen(cur.id);
           if (!ok) {
-            buttons.forEach(b => b.disabled = false);
+            buttons.forEach((b) => (b.disabled = false));
             return showRowError(error || 'Verwijderen mislukt.');
           }
           delete byKey[key];
-          showToast(`${capitalize(key)} verwijderd.`, 'success');
+          changedAny = true;
+          showToast(`${capitalize(key)} verwijderd uit lijst.`, 'success');
           renderList();
         });
       }
@@ -269,7 +267,7 @@ export function openAllergenManager({ childId, childName }) {
 
     function close() {
       overlay.remove();
-      resolve();
+      resolve({ changed: changedAny });
     }
   });
 }
@@ -279,8 +277,7 @@ function capitalize(s) {
   return s[0].toUpperCase() + s.slice(1);
 }
 
-function todayStr() {
-  const d = new Date();
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+// ALLERGENS-keys zijn allemaal a-z (snake_case) — safe pass-through.
+function cssEscape(s) {
+  return String(s).replace(/[^a-zA-Z0-9_-]/g, '');
 }
