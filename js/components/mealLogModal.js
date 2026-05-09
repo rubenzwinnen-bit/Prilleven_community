@@ -6,9 +6,11 @@
    Returnt Promise<meal|null>.
 ============================================ */
 
-import { escapeHtml } from '../utils.js?v=2.8.0';
-import { createMealLog } from '../eersteHapjesApi.js?v=2.8.0';
-import { getRecipes } from '../store.js?v=2.8.0';
+import { escapeHtml } from '../utils.js?v=2.9.0';
+import { createMealLog } from '../eersteHapjesApi.js?v=2.9.0';
+import { getRecipes } from '../store.js?v=2.9.0';
+import { scanRecipeForRisks } from '../content/eersteHapjes-risk-foods.js?v=2.9.0';
+import { ageMonthsFromBirthdate } from '../eersteHapjesContent.js?v=2.9.0';
 
 const MEAL_TYPES = [
   { value: 'ontbijt', label: 'Ontbijt' },
@@ -34,10 +36,22 @@ const REACTIONS = [
  * @param {object} opts
  * @param {string} opts.childId  — verplicht
  * @param {string} opts.childName — voor titel
+ * @param {string} [opts.childBirthdate] — voor risk-food scan (leeftijdsdrempels)
  * @param {Array}  [opts.childAllergens] — voor recept-warning
+ * @param {Array}  [opts.todayMeals] — voor max-1-nieuw-guard (brok H.7)
  * @returns {Promise<object|null>} aangemaakte meal-rij of null
  */
-export function openMealLogModal({ childId, childName, childAllergens = [] }) {
+export function openMealLogModal({
+  childId, childName, childBirthdate = null,
+  childAllergens = [], todayMeals = [],
+}) {
+  const ageMonths = childBirthdate ? ageMonthsFromBirthdate(childBirthdate) : null;
+  // Set van allergeen-keys die als 'gepland' staan (kandidaten voor "nieuw")
+  const plannedSet = new Set(
+    (childAllergens || [])
+      .filter((a) => a.status === 'gepland')
+      .map((a) => a.allergen_key.toLowerCase())
+  );
   // Reken één keer uit welke allergens een waarschuwing geven:
   // 'vermijden' of 'geprobeerd' met reactie matig/heftig.
   const warnSet = new Set(
@@ -93,7 +107,9 @@ export function openMealLogModal({ childId, childName, childAllergens = [] }) {
               <span class="eh-meal-pill-label" data-pill-label></span>
               <button type="button" class="eh-meal-pill-clear" data-pill-clear aria-label="Recept loskoppelen">×</button>
             </div>
+            <div class="eh-meal-risk-warning hidden" data-risk-warning></div>
             <div class="eh-meal-allergen-warning hidden" data-allergen-warning></div>
+            <div class="eh-meal-newguard-warning hidden" data-newguard-warning></div>
           </div>
 
           <!-- Hoeveelheid -->
@@ -197,7 +213,29 @@ export function openMealLogModal({ childId, childName, childAllergens = [] }) {
     let suggestionTimer = null;
 
     const warningEl = $('[data-allergen-warning]');
+    const riskEl = $('[data-risk-warning]');
+    const newguardEl = $('[data-newguard-warning]');
     const hideSuggestions = () => suggBox.classList.add('hidden');
+
+    // Bouw de "vandaag al geïntroduceerd"-set lazy: pas wanneer
+    // recipes-cache beschikbaar is (na eerste typeahead/lookup).
+    let todayIntroducedSet = null;
+    function buildTodayIntroducedSet(recipes) {
+      if (todayIntroducedSet) return todayIntroducedSet;
+      const set = new Set();
+      const recipeMap = new Map((recipes || []).map((r) => [r.id, r]));
+      for (const meal of (todayMeals || [])) {
+        if (!meal.recipe_id) continue;
+        const r = recipeMap.get(meal.recipe_id);
+        if (!r) continue;
+        for (const al of (r.allergens || [])) {
+          const k = String(al).toLowerCase();
+          if (plannedSet.has(k)) set.add(k);
+        }
+      }
+      todayIntroducedSet = set;
+      return set;
+    }
     const setRecipe = (recipe) => {
       state.recipe_id = recipe.id;
       foodInput.value = recipe.name;
@@ -216,12 +254,47 @@ export function openMealLogModal({ childId, childName, childAllergens = [] }) {
       } else {
         warningEl.classList.add('hidden');
       }
+      // Risicovoeding-scan op basis van leeftijd
+      if (ageMonths !== null) {
+        const risks = scanRecipeForRisks(recipe, ageMonths);
+        if (risks.length > 0) {
+          const labels = risks.map(r => `${r.icon || ''} ${escapeHtml(r.label)}`).join(', ');
+          riskEl.innerHTML =
+            `<span class="eh-meal-warn-icon" aria-hidden="true">⚠️</span> ` +
+            `Mogelijk te jong voor: <strong>${labels}</strong>. ` +
+            `Bekijk per item of het veilig is voor ${escapeHtml(childName || 'je kindje')}.`;
+          riskEl.classList.remove('hidden');
+        } else {
+          riskEl.classList.add('hidden');
+        }
+      } else {
+        riskEl.classList.add('hidden');
+      }
+      // Max-1-nieuw-guard (brok H.7): waarschuw als recept een gepland-allergeen
+      // bevat dat vandaag nog niet is geïntroduceerd, en er vandaag al een
+      // ander gepland-allergeen is gelogd.
+      const introduced = buildTodayIntroducedSet(recipesCache);
+      const recipeAlsLower = recipeAllergens; // al lowercase
+      const newPlanned = recipeAlsLower.filter((k) => plannedSet.has(k) && !introduced.has(k));
+      if (newPlanned.length > 0 && introduced.size > 0) {
+        const already = [...introduced].map(escapeHtml).join(', ');
+        const incoming = newPlanned.map(escapeHtml).join(', ');
+        newguardEl.innerHTML =
+          `<span class="eh-meal-warn-icon" aria-hidden="true">⏳</span> ` +
+          `Vandaag al geïntroduceerd: <strong>${already}</strong>. ` +
+          `Wacht 2-3 dagen voor je <strong>${incoming}</strong> probeert — zo blijft het traceerbaar bij een reactie.`;
+        newguardEl.classList.remove('hidden');
+      } else {
+        newguardEl.classList.add('hidden');
+      }
     };
     const clearRecipe = () => {
       state.recipe_id = null;
       recipePill.classList.add('hidden');
       pillLabel.textContent = '';
       warningEl.classList.add('hidden');
+      riskEl.classList.add('hidden');
+      newguardEl.classList.add('hidden');
     };
 
     pillClear.addEventListener('click', () => clearRecipe());

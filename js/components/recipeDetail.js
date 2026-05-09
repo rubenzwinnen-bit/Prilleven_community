@@ -12,14 +12,17 @@
    - init() haalt alle data parallel op via Promise.all
 ============================================ */
 
-import * as Store from '../store.js?v=2.8.0';
-import * as Router from '../router.js?v=2.8.0';
+import * as Store from '../store.js?v=2.9.0';
+import * as Router from '../router.js?v=2.9.0';
 import {
   showToast, escapeHtml, formatDate,
   renderStarsDisplay, renderStarsInteractive,
   getMealMomentLabel, getSlotLabel,
   WEEKDAYS, SCHEDULE_SLOTS
-} from '../utils.js?v=2.8.0';
+} from '../utils.js?v=2.9.0';
+import { scanRecipeForRisks } from '../content/eersteHapjes-risk-foods.js?v=2.9.0';
+import { ageMonthsFromBirthdate } from '../eersteHapjesContent.js?v=2.9.0';
+import { loadActiveChild } from './eersteHapjes.js?v=2.9.0';
 
 /* ----------------------------------------
    RENDER
@@ -110,8 +113,39 @@ export async function init(recipeId) {
   /* ---- Bouw de volledige HTML op ---- */
   container.innerHTML = buildDetailHtml(recipe, isFav, avgRating, userRating, comments, activeInfo);
 
+  /* ---- Eerste Hapjes — risicovoeding-banner (brok H.4) ---- */
+  try {
+    const child = await loadActiveChild();
+    if (child && child.birthdate) {
+      const ageMonths = ageMonthsFromBirthdate(child.birthdate);
+      const risks = scanRecipeForRisks(recipe, ageMonths);
+      if (risks.length > 0) {
+        const banner = renderRiskBanner(child, risks);
+        const backBtn = container.querySelector('#btn-back');
+        if (backBtn) backBtn.insertAdjacentHTML('afterend', banner);
+      }
+    }
+  } catch (_e) { /* Eerste Hapjes is optioneel — silent */ }
+
   /* ---- Event listeners koppelen ---- */
   attachListeners(recipeId, userRating, recipe, activeInfo);
+}
+
+function renderRiskBanner(child, risks) {
+  const items = risks
+    .map(r => `${r.icon || ''} ${escapeHtml(r.label)}`)
+    .join(', ');
+  return `
+    <div class="recipe-risk-banner" role="note">
+      <span class="recipe-risk-banner-icon" aria-hidden="true">⚠️</span>
+      <div class="recipe-risk-banner-text">
+        <strong>Mogelijk te jong voor:</strong> ${items}.
+        <div class="recipe-risk-banner-sub">
+          Bekijk per item of het veilig is voor ${escapeHtml(child.name)}.
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 /* ----------------------------------------
