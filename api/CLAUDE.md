@@ -74,6 +74,12 @@ Allergenen-tracker (Eerste Hapjes brok D). Owner-only + ownership-check op `chil
 - `PATCH /api/eerste-hapjes/allergens/<id>` → partial update.
 - `DELETE /api/eerste-hapjes/allergens/<id>` → permanent.
 
+### `eerste-hapjes/allergen-intros.mjs` + `eerste-hapjes/allergen-intros/[id].mjs`
+Allergeen intro-logs (Eerste Hapjes brok H.2). Eén rij per intro-poging — basis voor 1/3-2/3-3/3 progressie + tijdlijn-view. Owner-only + ownership-check op `child_id`, `meal_log_id` (optioneel) en `linked_symptom_id` (optioneel). Validatie via `sanitizeIntroLogInput` in `_lib/eersteHapjes-allergen-intros.mjs`. Allergeen-vocabulaire gespiegeld vanuit `js/utils.js` ALLERGENS (zelfde 13 keys).
+- `GET /api/eerste-hapjes/allergen-intros?child_id=<uuid>&allergen_key=<key>?` → lijst, gesorteerd op `intro_date desc`.
+- `POST /api/eerste-hapjes/allergen-intros` → `{ child_id, allergen_key, intro_date?, reaction?, notes?, meal_log_id?, linked_symptom_id? }`. `reaction ∈ geen|mild|matig|heftig|onbekend` (default `geen`).
+- `DELETE /api/eerste-hapjes/allergen-intros/<id>`.
+
 ### `eerste-hapjes/phases.mjs` + `eerste-hapjes/phases/check.mjs` + `eerste-hapjes/phases/advance.mjs`
 Fasen-systeem (Eerste Hapjes brok F). 6 fases (0..5) met "ten vroegste vanaf"-leeftijd. Frontend = source of truth voor labels/intros (`js/content/eersteHapjes-phases.js`); backend mirrort alleen `{ number, minAgeMonths, checkCount }` voor validatie.
 - `GET /api/eerste-hapjes/phases?child_id=<uuid>` → `{ activePhase, phases:[{number,status,unlockedAt,completedAt}], checks:{[phase]:{[key]:checkedAt}}, ageMonths, minAgeMonths }`. **Auto-init bij eerste keer**: kindje ≥ 14 mnd → fases 0..4 als 'completed' + fase 5 actief; anders → enkel fase 0 actief.
@@ -141,6 +147,7 @@ Admin dashboard. Vereist `requireAdmin`. Sections: `global`, `users`, `queries`,
 | `children.mjs` | Eerste Hapjes — `loadMyChildren`, `loadChildById`, `createChild`, `updateChild`, `deleteChild`, `sanitizeChildInput`, `sanitizeChildPatch`, `HttpError`. Birthdate-validatie: `YYYY-MM-DD`, max 10 jaar terug, niet in toekomst. Texture: `'puree'|'stukjes'|'combi'|null`. |
 | `eersteHapjes-logs.mjs` | Eerste Hapjes brok C — meal_logs + child_symptoms (uitgebreid in brok G met 6 extra symptoom-keys + red-flag-detector). Sanitize: `sanitizeMealInput/Patch`, `sanitizeSymptomInput/Patch`. DB: `loadMealsForChild`, `loadMealById`, `createMealLog`, `updateMealLog`, `deleteMealLog`, idem voor symptoms. Interne `assertOwnsChild` + `assertOwnsMealLog` voor cross-table ownership. **`detectRedFlag(symptom_type, severity)`** spiegelt `redFlagSeverity` uit `js/content/eersteHapjes-symptoms.js` — handmatig in sync houden bij wijzigingen. Tijd-validatie: niet in toekomst (24u marge), max 5 jaar terug. |
 | `eersteHapjes-allergens.mjs` | Eerste Hapjes brok D — child_allergens. Exporteert `ALLERGEN_KEYS` (vocabulaire-set, gesynced met `js/utils.js`). Sanitize: `sanitizeAllergenInput`/`sanitizeAllergenPatch`. DB: `loadAllergensForChild`, `loadAllergenById`, `upsertAllergen` (op `(child_id, allergen_key)`-conflict), `updateAllergen`, `deleteAllergen`. Cross-table ownership op `child_id` én optioneel `linked_symptom_id`. |
+| `eersteHapjes-allergen-intros.mjs` | Eerste Hapjes brok H.2 — allergen_intro_logs. Per-intro logging (datum + reactie + notes + optionele links naar meal-log/symptoom). Sanitize: `sanitizeIntroLogInput`. DB: `loadIntroLogsForChild` (optioneel filter op allergen-key), `loadIntroLogById`, `createIntroLog`, `deleteIntroLog`. Cross-table ownership op `child_id`, `meal_log_id`, `linked_symptom_id`. |
 | `eersteHapjes-phases.mjs` | Eerste Hapjes brok F — child_phases + child_phase_checks. Sanitize: `sanitizeCheckInput`, `sanitizeAdvanceInput`. DB: `loadPhaseState` (auto-init bij eerste keer: ≥14 mnd → fase 5, anders fase 0), `togglePhaseCheck`, `advancePhase`. Server-side mirror van fase-config: `PHASE_DEFS` met `{number, minAgeMonths, checkCount}` — houden in sync met `js/content/eersteHapjes-phases.js`. |
 
 ---

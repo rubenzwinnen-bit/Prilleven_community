@@ -47,11 +47,12 @@ Pril Leven heeft historisch **twee** parallel-lopende auth-systemen. Begrijp het
 | `chat.js` | Logic voor `chat.html` — chat-interface met sidebar (conversations), profile-modal, memory-modal. |
 | `admin-chat.js` | Logic voor `admin-chat.html` — admin dashboard tabs (overview, users, queries, conversations, fallbacks). |
 | `communityApi.js` | Wrapper rond `/api/community/*`. Doet `sessionRefreshIfNeeded()` vóór elke call, returnt `{ ok, status, data, error }`. Exporteert: `getMyProfile`, `setMyNickname`, `updateMyProfile`, `getAvatarUploadUrl`, `getPosts`, `createPost`, `votePoll`, `getUploadUrl`, `uploadToStorage`, replies, likes, edit/delete, `reportTarget`, admin (`togglePin`, `listReports`, `resolveReport`), notifications. |
-| `eersteHapjesApi.js` | Wrapper rond `/api/eerste-hapjes/*`. Zelfde patroon als `communityApi.js`. Exporteert: children (`getMyChildren`, `createChild`, `updateChild`, `deleteChild`), meals (`getMealsForChild`, `createMealLog`, `updateMealLog`, `deleteMealLog`), symptoms (`getSymptomsForChild`, `createSymptom`, `updateSymptom`, `deleteSymptom`), allergens (`getAllergensForChild`, `upsertAllergen`, `updateAllergen`, `deleteAllergen`) en phases (`getPhases`, `togglePhaseCheck`, `advancePhase`). |
+| `eersteHapjesApi.js` | Wrapper rond `/api/eerste-hapjes/*`. Zelfde patroon als `communityApi.js`. Exporteert: children (`getMyChildren`, `createChild`, `updateChild`, `deleteChild`), meals (`getMealsForChild`, `createMealLog`, `updateMealLog`, `deleteMealLog`), symptoms (`getSymptomsForChild`, `createSymptom`, `updateSymptom`, `deleteSymptom`), allergens (`getAllergensForChild`, `upsertAllergen`, `updateAllergen`, `deleteAllergen`), allergen intros (`getAllergenIntros`, `createAllergenIntro`, `deleteAllergenIntro` — brok H), phases (`getPhases`, `togglePhaseCheck`, `advancePhase`). |
 | `content/eersteHapjes-phases.js` | Statische config voor de 6 fases (0..5) van het Eerste Hapjes-traject (brok F). Per fase: `number`, `name`, `label`, `minAgeMonths`, `intro`, `advanceLabel`, `checks: [{key, label}]`. Eindfase 5 heeft geen checks. Exporteert `PHASES`, `getPhase(n)`, `initialPhaseForAge(months)`, `AUTO_FASE5_AGE_MONTHS = 14` (drempel waarboven kindjes meteen in fase 5 starten). Source of truth voor labels/intros — backend mirrort enkel `{number, minAgeMonths, checkCount}` voor validatie. |
 | `eersteHapjesContent.js` | Helpers bovenop de statische `content/eersteHapjes-content.js` array. Exporteert `ageMonthsFromBirthdate(iso)`, `getRelevantArticles(months, {category?})`, `getNextStepArticle(months)` (kiest hoogste `ageMin` binnen range, skipt 'veiligheid'), `getArticlesByCategory()`, `getArticleBySlug(slug)`, `formatAgeRange(min, max)`. |
 | `content/eersteHapjes-content.js` | Statische microlearning-content voor het Eerste Hapjes-traject. 7 skeleton-artikels met titel + summary + leeftijdsrange + categorie + body als HTML-string. **Geen markdown-parser** — body's worden als HTML in de modal getoond. Body's zijn nu placeholders die Anneleen later aanvult. Categorieën: `intro/allergenen/textuur/zelfvoeden/mijlpaal/veiligheid` (met `CATEGORY_LABEL`-export voor UI). |
 | `content/eersteHapjes-symptoms.js` | Eerste Hapjes brok G — statische symptoom-config. 16 symptomen (10 brok C + 6 nieuw: `gewicht/hoesten/verstopping/geen_eetlust/prikkelbaar/lethargie`). Per symptoom: `key, label, icon, intro, body (HTML-skeleton), redFlags[], redFlagSeverity[]`. Body's zijn placeholders. `redFlagSeverity` bepaalt welke ernst-niveaus de adaptieve banner triggeren — server heeft een mirror in `_lib/eersteHapjes-logs.mjs RED_FLAG_SEVERITIES`. Exporteert `SYMPTOMS, SEVERITIES, getSymptom(key), getSymptomMeta(key), isRedFlag(key, severity)`. |
+| `content/eersteHapjes-risk-foods.js` | Eerste Hapjes brok H.1 — statische config met 13 risicovoedingen (honing, koemelk-drank, hele noten, druiven, kerstomaten, rauwe eieren, rauw vlees, rauwe vis, kwik-vis, rauwe melkproducten, toegevoegd zout/suiker, rauwe peulvruchten). Per item: `key, label, icon, maxAgeMonths, tags[], intro, body (HTML-skeleton), ingredientMatchers (regex-lijst)`. Items met lege `ingredientMatchers` worden NIET tegen recepten gescand (bv. zout/suiker — te veel false positives) maar wel in lijst-modal getoond. `ALLERGEN_INTROS_TARGET = 3`. Helpers: `getRiskFood(key)`, `getAllRiskFoods()`, `getRelevantRiskFoods(months)`, `scanRecipeForRisks(recipe, months)` (accepteert string of recipe-object), `recipeToScanText(recipe)`, `formatAgeLimit(months)`, `tagLabel(tag)`. |
 | `headerAvatarStandalone.js` | Klein avatar-component voor losse pagina's (`chat.html`, `admin-chat.html`) zonder de volledige header. |
 | `components/` | Pagina/feature-componenten. |
 
@@ -70,12 +71,14 @@ Pril Leven heeft historisch **twee** parallel-lopende auth-systemen. Begrijp het
 | `timeline.js`, `timelinePost.js` | Community-feed pagina + losse post-detail. |
 | `nicknameModal.js` | Modal om community-nickname in te stellen vóór posten. |
 | `profileModal.js` | Modal voor community-profiel (nickname + avatar). |
-| `eersteHapjes.js` | Eerste Hapjes-pagina (SPA-route `#/eerste-hapjes`). Laadt kindjes + logs (vandaag's meals + 7d symptoms + alle allergenen + fase-state). Vandaag-cards: maaltijden vandaag, symptomen 7d, allergenen (gegroepeerd op status), 'Volgende stap' (live artikel via `getNextStepArticle`), plus fase-banner bovenaan en "Mijn fasen" + "Alle tips"-links onderaan. Geeft `state.allergens` door aan `mealLogModal` voor recipe-warning. Module-state houdt `logsLoadedFor` bij om refetch bij kindjes-switch goed te doen. |
+| `eersteHapjes.js` | Eerste Hapjes-pagina (SPA-route `#/eerste-hapjes`). Laadt kindjes + logs (vandaag's meals + 7d symptoms + allergenen + intro-logs + fase-state). Vandaag-layout: fase-banner → reminders-card (brok H.6, alleen als > 0 reminders) → grid van cards (maaltijden, symptomen, allergenen met afgeleide status + balkje, 'Volgende stap'). Footer-links: Mijn fasen, Symptomen-uitleg, **Risicovoedingen-lijst** (brok H.5), Alle tips. Reminders bouwen uit risk-foods voor leeftijd + gepland-allergenen + her-introductie nodig. Exporteert `getActiveChildSnapshot()` + `loadActiveChild()` (gebruikt door `recipeDetail.js` voor risk-banner). |
 | `childOnboardingModal.js` | 3-staps wizard voor nieuw kindje: naam → geboortedatum → structuurvoorkeur (skippable). Returnt `Promise<child\|null>`. Roept `createChild()` uit `eersteHapjesApi.js`. |
-| `mealLogModal.js` | Eerste Hapjes brok C — eenstaps modal voor maaltijd-log. Velden: type-chips (default = guess op uur), tijdstip (`datetime-local`), voeding met **client-side recept-typeahead** via `getRecipes()` uit `store.js` (geen extra endpoint), hoeveelheid-chips, reactie-emoji-chips, notes. Roept `createMealLog()`. |
+| `mealLogModal.js` | Eerste Hapjes brok C + brok H.4/H.7 — eenstaps modal voor maaltijd-log. Velden: type-chips (default = guess op uur), tijdstip (`datetime-local`), voeding met **client-side recept-typeahead** via `getRecipes()` uit `store.js`, hoeveelheid-chips, reactie-emoji-chips, notes. Bij recept-keuze: 3 warnings — allergeen-conflict, risk-food (leeftijd vs `scanRecipeForRisks`), max-1-nieuw-guard (vandaag al ander gepland-allergeen geïntroduceerd). Verwacht nu ook `childBirthdate` + `todayMeals` als params. Roept `createMealLog()`. |
 | `symptomLogModal.js` | Eerste Hapjes brok C, brok G aangepast — eenstaps modal voor symptoom-log. Type-grid leest nu uit `content/eersteHapjes-symptoms.js SYMPTOMS` (16 keys); elke tegel heeft een info-icoontje (i) dat `openSymptomDetailModal({symptomKey})` opent. Severity-chips, tijdstip, optionele meal-koppeling (48u), notes. Roept `createSymptom()` en **resolves `{symptom, red_flag}`** (red_flag komt uit endpoint-response). |
 | `symptomDetailModal.js` | Eerste Hapjes brok G — modal-shell met 2 weergaven, zelfde patroon als `articleModal.js`. `openSymptomDetailModal({symptomKey})` toont detail (icon + intro + body + rode-vlag-blok + disclaimer); `openSymptomDetailModal({listMode: true})` toont lijst van alle 16 symptomen, klik = swap naar detail. |
-| `allergenManager.js` | Eerste Hapjes brok D — accordion-modal met alle 13 allergenen. Per rij: status-chips (gepland/geprobeerd/vermijden), reactie-chips (geen/mild/matig/heftig/onbekend) + datum als status=geprobeerd, notes. Per rij `upsertAllergen()` of `deleteAllergen()`. Eén tegelijk geopend via `toggleRow()`. |
+| `allergenManager.js` | Eerste Hapjes brok D + brok H.3 — accordion-modal met alle 13 allergenen. Per rij: **afgeleide** status-pill (later / probeer-opnieuw N/3 / veilig / opvolgen) uit `deriveAllergenState(allergen, intros)` + voortgangsbalk. Body: 2 knoppen ("Bekijk tijdlijn", "+ Intro registreren") + "Markeer als vermijden"-toggle + notitie. Reactie/datum verschoven naar intro-modal. Laadt zowel `getAllergensForChild()` als `getAllergenIntros()` parallel. |
+| `allergenIntroModal.js` | Eerste Hapjes brok H.3 — twee modals + status-helper in één bestand. `deriveAllergenState(allergen, intros)` (= central state-logic). `openAllergenTimelineModal(...)` toont voortgangsbalk + chronologische lijst van intros (met delete-knop) + "+ Intro registreren". `openAllergenIntroModal(...)` is form (datum, reactie-chips, notitie). `statusLabel(status)` + `statusTone(status)` voor pill-styling. |
+| `riskFoodsModal.js` | Eerste Hapjes brok H.5 — risicovoedingen lijst-modal. `openRiskFoodsListModal({ageMonths?})` toont alle 13 items gegroepeerd per tag (verstikking/microbieel/botulisme/kwik/nutrient), met klik → detail-view (zelfde shell, swap). Items waarvoor het kindje nog te jong is krijgen een "Geldt nu voor jouw kindje"-badge. `openRiskFoodDetailModal({riskKey, ageMonths?})` is zelfstandige detail-modal voor één item (bv. vanuit reminders-card). |
 | `articleModal.js` | Eerste Hapjes brok E — modal-shell met 2 weergaven: detail (één artikel met body als HTML) en lijst (gegroepeerd per categorie, "Voor jou nu"-pill bij relevante leeftijd). Slug-navigatie tussen views via interne `swap(html)`. Roept `getArticleBySlug` uit `eersteHapjesContent.js`. |
 | `phaseModal.js` | Eerste Hapjes brok F — fasen-systeem in één bestand. Exporteert `renderPhaseBanner(phaseState)` voor inline-render bovenaan Vandaag (klik opent detail) + `openPhaseDetailModal({child, phaseState})` (huidige fase met checklist + advance-knop) + `openPhaseOverviewModal({child, phaseState})` (alle 6 fases als kaartjes). Modal-shell deelt state tussen views via interne `swap()`. Resolves `{changed: bool}` zodat caller kan herladen. |
 
@@ -86,7 +89,7 @@ Pril Leven heeft historisch **twee** parallel-lopende auth-systemen. Begrijp het
 ### 4.1 Supabase REST calls (legacy data)
 **Altijd** via `supabaseFetch(path, options)` uit `supabase.js`. Niet zelf `fetch()` op `/rest/v1/...`.
 ```js
-import { supabaseFetch } from './supabase.js?v=2.8.0';
+import { supabaseFetch } from './supabase.js?v=2.9.0';
 const data = await supabaseFetch('/rest/v1/recipes?select=*&id=eq.' + encodeURIComponent(id));
 ```
 Voor grote tabellen: voeg `Range`-header toe om PostgREST 1000-rij default te omzeilen:
@@ -98,7 +101,7 @@ Voor grote tabellen: voeg `Range`-header toe om PostgREST 1000-rij default te om
 Voor community: gebruik `communityApi.js` — die wrapt het al.
 Voor andere endpoints (chat, profile, memory, conversations, me):
 ```js
-import { sessionRefreshIfNeeded } from './supabase.js?v=2.8.0';
+import { sessionRefreshIfNeeded } from './supabase.js?v=2.9.0';
 const session = await sessionRefreshIfNeeded();
 if (!session) { /* redirect naar login */ return; }
 
@@ -156,29 +159,29 @@ Het project heeft **geen build step**, dus de browser cachet JS-files agressief 
 ### Waar staat hij?
 - **Alle HTML-bestanden** (`index.html`, `chat.html`, `admin-chat.html`, `delete-account.html`, `privacy.html`):
   ```html
-  <script type="module" src="script.js?v=2.8.0"></script>
-  <link rel="stylesheet" href="styles.css?v=2.8.0">
+  <script type="module" src="script.js?v=2.9.0"></script>
+  <link rel="stylesheet" href="styles.css?v=2.9.0">
   ```
 - **`script.js`** (entry point) — 14× in import statements:
   ```js
-  import * as Store from './js/store.js?v=2.8.0';
+  import * as Store from './js/store.js?v=2.9.0';
   ```
 - **Elke module in `/js`** die andere modules importeert — `store.js`, `chat.js`, `admin-chat.js`, `headerAvatarStandalone.js`, `communityApi.js`, en **alle** componenten in `js/components/*`. Voorbeeld uit `header.js`:
   ```js
-  import * as Store from '../store.js?v=2.8.0';
-  import { sessionClear, sessionGet } from '../supabase.js?v=2.8.0';
+  import * as Store from '../store.js?v=2.9.0';
+  import { sessionClear, sessionGet } from '../supabase.js?v=2.9.0';
   ```
 
 ### Wanneer bumpen?
 Bij **élke** wijziging aan een `.js` of `.css` bestand. Anders zien gebruikers stale JS en breekt mogelijk de app.
 
 ### Hoe bumpen?
-Vervang ALLE voorkomens van de huidige versie (bv. `?v=2.8.0`) met de nieuwe (bv. `?v=2.7.1`) in:
+Vervang ALLE voorkomens van de huidige versie (bv. `?v=2.9.0`) met de nieuwe (bv. `?v=2.7.1`) in:
 1. Alle HTML-bestanden in de root.
 2. `script.js`.
 3. Alle bestanden in `/js/*.js` en `/js/components/*.js` met imports.
 
-Snelle check: `grep -rn "v=2.8.0" --include="*.js" --include="*.html"`.
+Snelle check: `grep -rn "v=2.9.0" --include="*.js" --include="*.html"`.
 Een vind-vervang over alle bestanden tegelijk werkt prima.
 
 ---

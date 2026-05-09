@@ -611,3 +611,40 @@ alter table public.child_symptoms
 
 ### Open vragen / blockers
 - Geen blockers. Migratie-SQL hierboven moet manueel in Supabase Dashboard gedraaid worden voor de preview kan testen met de 6 nieuwe symptoom-keys (anders 422 op POST).
+
+---
+
+## 2026-05-09 (avond) — Brok H afgerond — risicovoedingen + allergeen-progressie + reminders
+
+**Context**: substantiële uitbreiding van het Eerste Hapjes-traject na review van mockup. Brok H bevat: (1) defaultset risicovoedingen met leeftijdsdrempels, (2) afgeleide allergeen-progressie (1/3→2/3→3/3) op basis van intro-logs, (3) recept-warnings, (4) reminders-card, (5) max-1-nieuw-guard. Migratie-werk + 8 sub-stappen.
+
+### Vandaag afgerond
+- ✅ **Brok H.1** — `js/content/eersteHapjes-risk-foods.js` met 13 items (honing, koemelk-drank, hele noten, druiven, kerstomaten, rauwe eieren, rauw vlees, rauwe vis, kwik-vis, rauwe melkproducten, toegevoegd zout, toegevoegde suiker, rauwe peulvruchten). Per item: leeftijdsdrempel + tag + intro + body-skeleton + ingredient-matchers (regex). Items 1-10 worden tegen recepten gescand; 11-13 alleen in lijst-modal (zout/suiker zouden te veel false positives geven). `ALLERGEN_INTROS_TARGET = 3`. Helpers: `scanRecipeForRisks(recipe|text, ageMonths)`, `recipeToScanText(recipe)`, `getRelevantRiskFoods(months)`, `formatAgeLimit(months)`.
+- ✅ **Brok H.2** — migratie `2026-05-09-allergen-intro-logs.sql` + lib + 2 endpoints. Nieuwe tabel `allergen_intro_logs` (additief naast bestaande `child_allergens`): één rij per intro-poging met datum + reactie + notes + optionele links naar `meal_log_id`/`linked_symptom_id`. Owner-only RLS, 2 indexen, `touch_updated_at`-trigger (project-conventie, niet `set_updated_at`). Endpoints: `GET/POST /api/eerste-hapjes/allergen-intros` + `DELETE /api/eerste-hapjes/allergen-intros/[id]`. Lib `_lib/eersteHapjes-allergen-intros.mjs` met `sanitizeIntroLogInput`, `loadIntroLogsForChild`, `createIntroLog`, `deleteIntroLog`. **SQL gedraaid in productie-DB en geverifieerd via Supabase MCP** (1 tabel, 4 policies, 3 indexen, 1 trigger, RLS enabled).
+- ✅ **Brok H.3** — allergenenmodule herwerkt. Nieuwe `js/components/allergenIntroModal.js`: `deriveAllergenState(allergen, intros)` (state-derivation: 0 intros → 'later', 1-2 zonder reactie → 'probeer-opnieuw N/3', 3× geen → 'veilig', matig/heftig OF status='vermijden' → 'opvolgen'). `openAllergenTimelineModal(...)` (lijst van intros + voortgangsbalk + delete + "+ Intro registreren"). `openAllergenIntroModal(...)` (datum/reactie-chips/notes form). `js/eersteHapjesApi.js` uitgebreid met 3 helpers. `allergenManager.js` herwerkt: alle 13 allergenen behouden, per rij afgeleide status-pill + voortgangsbalk + 2 knoppen (timeline / + intro) + "Markeer als vermijden"-toggle + notitie. Reactie/datum verschoven naar intro-modal. Vandaag-card in `eersteHapjes.js`: rij per allergeen met klik → tijdlijn-modal. Nieuwe styles-sectie in `styles.css`. Verificatie via preview-eval: 5 derive-scenario's allemaal correct.
+- ✅ **Brok H.4** — risicovoeding-warning op recept-detail + meal-log. `eersteHapjes.js` exporteert nu `getActiveChildSnapshot()` + `loadActiveChild()` voor cross-module access. `recipeDetail.js`: lazy `loadActiveChild()` → `scanRecipeForRisks()` → banner direct onder Terug-knop (alleen als kindje aanwezig + risico's gevonden). `mealLogModal.js`: extra params `childBirthdate` + `todayMeals`. Nieuwe `[data-risk-warning]`-slot bij setRecipe. **Bug gefixed**: regex `noo?ten?` was fout (matchte "te" minimum); nu `noo?t(?:en)?` voor zowel `walnoot` als `walnoten`. Ook `kerstomaat/kerstomaten` regex aangepast voor NL-meervoud. Verificatie: 9/9 testen pass.
+- ✅ **Brok H.5** — `js/components/riskFoodsModal.js`. `openRiskFoodsListModal({ageMonths?})` toont alle 13 items gegroepeerd per tag (verstikking/microbieel/botulisme/kwik/nutrient), met klik → detail-view (zelfde shell, swap). `openRiskFoodDetailModal({riskKey, ageMonths?})` als zelfstandige detail-modal. Items waarvoor kindje te jong is krijgen "Geldt nu voor jouw kindje"-badge. Vandaag-pagina footer: "Risicovoedingen-lijst →"-link.
+- ✅ **Brok H.6** — reminders-card op Vandaag-pagina (alleen als > 0 reminders). Bouwt 2 soorten: (a) actuele risicovoedingen voor leeftijd (klik → detail-modal), (b) allergeen-reminders (`later` = nog te proberen, `probeer-opnieuw` met laatste intro ≥ 2 dagen geleden = tijd voor herhaling). Card staat tussen fase-banner en cards-grid. Klik op item opent relevante modal.
+- ✅ **Brok H.7** — max-1-nieuw-guard in `mealLogModal`. Bij recept-keuze: scan recept-allergenen tegen `gepland`-set + tegen "vandaag al geïntroduceerde" set (uit `state.meals` × recipes-cache). Als recept een NIEUW gepland-allergeen bevat én er vandaag al een ander gepland-allergeen werd gelogd → toon waarschuwing "Vandaag al X geïntroduceerd. Wacht 2-3 dagen voor Y." Niet blokkerend, alleen advies. Eigen styles-slot.
+- ✅ **Brok H.8** — docs + cache-buster bump. `v=2.8.0 → v=2.9.0` in 40 files (HTML + JS imports + CLAUDE.md voorbeelden). Docs-updates in `js/CLAUDE.md` (3 nieuwe componenten + 1 content-module + uitgebreide eersteHapjes/mealLogModal/allergenManager beschrijvingen), `api/CLAUDE.md` (nieuwe endpoint-sectie + helpers-tabel), `supabase-migrations/CLAUDE.md` (nieuwe `allergen_intro_logs`-tabel + addendum bij `child_allergens` over brok H.3 use-pattern).
+
+### Open / nog te doen
+- ⬜ **Live test op Vercel preview**: hele brok H end-to-end. Onboarding kindje → allergenen-manager → intro registreren → progressie zien → recept openen met risk-food → warning → meal-log → max-1-nieuw-guard → reminders-card.
+- ⬜ **Body's invullen** voor risk-foods (13 items skeleton). Anneleen vult later aan.
+- ⬜ **Body's invullen** voor symptomen (16 items skeleton, brok G) en microlearning-artikels (7 items skeleton, brok E). Allemaal door Anneleen.
+- ⬜ **Brokken I/J/K** uit PDF-gap-analyse: vandaag-suggesties + adaptieve nudges (I), recipe-filter + alternatieven (J), microlearning-search (K).
+- ⬜ **Bewuste HapjesHeld-migratie** blijft uitgesteld tot eindronde.
+
+### Beslissingen genomen vandaag
+- **Statische defaultset risicovoedingen** + leeftijdsfilter + tag-categorisering — geen DB-tabel. Anneleen kan items toevoegen door 1 file te editen, geen migratie.
+- **Client-side ingredient-scan** (regex per item) ipv DB-kolom op recipes. Reden: geen seed-werk over honderden recepten, false positives = OK want niet-blokkerend. Ouder beslist.
+- **`allergen_intro_logs` apart van `child_allergens`** ipv migratie van bestaande tabel. Reden: schoon model (1:N), geen risico voor bestaande data.
+- **Status-derivation centraal in 1 helper** (`deriveAllergenState`) — wordt gebruikt in allergenManager, intro-modal én Vandaag-card. Eén plek, één bron van waarheid.
+- **Alle 13 allergenen blijven zichtbaar** in allergenManager — user expliciet: "alle allergenen zijn belangrijk". Mockup was ruwe schets, niet leidend.
+- **Reminders-card alleen tonen als > 0 reminders** — geen lege card.
+- **Max-1-nieuw alleen waarschuwen, niet blokkeren** — pediatrisch advies, ouder beslist.
+- **`touch_updated_at`** als project-conventie ontdekt en gebruikt; `set_updated_at` bestond niet in productie-DB.
+- **Regex-bug NL-meervoud** opgelost: `noo?ten?` → `noo?t(?:en)?` om zowel walnoot (oo+t) als walnoten (o+ten) te matchen.
+
+### Open vragen / blockers
+- Geen blockers. Live testen kan zodra preview-deploy is gebouwd na push naar `eerste-hapjes` branch.
