@@ -6192,3 +6192,192 @@ body.is-eerste-hapjes #app-nav { display: none; }
   padding: 0 2px;
   border-radius: 3px;
 }
+
+/* ============================================================
+   Profielmodal — Mijn kinderen-sectie (batch 3)
+============================================================ */
+.pf-children-section {
+  margin: 14px 0 6px;
+  padding: 12px 0;
+  border-top: 1px solid var(--color-light, #f0ebe6);
+}
+.pf-children-head h3 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+.pf-children-sub {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--color-gray, #6b6155);
+}
+.pf-children-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.pf-children-loading,
+.pf-children-empty {
+  font-size: 13px;
+  color: var(--color-gray, #6b6155);
+  padding: 8px 0;
+}
+.pf-children-error {
+  font-size: 13px;
+  color: var(--color-danger, #b13c33);
+  padding: 8px 0;
+}
+.pf-children-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-light, #f0ebe6);
+  border-radius: 8px;
+  background: var(--color-white, #fff);
+}
+.pf-children-item-main { flex: 1; min-width: 0; }
+.pf-children-item-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--color-dark, #2f2a24);
+}
+.pf-children-item-meta {
+  font-size: 12px;
+  color: var(--color-gray, #6b6155);
+}
+.pf-children-item-del {
+  background: transparent;
+  border: none;
+  color: var(--color-gray, #6b6155);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+.pf-children-item-del:hover {
+  background: var(--color-light, #f0ebe6);
+  color: var(--color-danger, #b13c33);
+}
+
+/* ============================================================
+   Eerste Hapjes — agenda-modal (batch 4)
+============================================================ */
+.eh-agenda-overlay { align-items: flex-start; padding-top: 4vh; }
+.eh-agenda-modal {
+  width: min(720px, 95vw);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 18px 14px;
+}
+.eh-agenda-head h2 { margin: 0 0 4px; font-size: 1.3rem; }
+.eh-agenda-sub { margin: 0 0 12px; color: var(--color-gray, #6b6155); font-size: 13px; }
+.eh-agenda-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  background: var(--color-bg, #faf8f5);
+  border: 1px solid var(--color-light, #f0ebe6);
+  border-radius: 8px;
+  font-size: 13px;
+}
+.eh-agenda-filters label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.eh-agenda-body { flex: 1; overflow-y: auto; padding-right: 4px; }
+.eh-agenda-loading,
+.eh-agenda-empty {
+  text-align: center;
+  color: var(--color-gray, #6b6155);
+  padding: 24px 8px;
+  font-size: 14px;
+}
+.eh-agenda-day { margin-bottom: 14px; }
+.eh-agenda-day-label {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-gray, #6b6155);
+}
+.eh-agenda-events {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.eh-agenda-event {
+  display: grid;
+  grid-template-columns: 56px 100px 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--color-white, #fff);
+  border: 1px solid var(--color-light, #f0ebe6);
+  border-radius: 8px;
+  font-size: 14px;
+}
+.eh-agenda-event.is-severe {
+  border-left: 3px solid var(--color-warning, #e2a468);
+}
+.eh-agenda-time {
+  font-size: 12px;
+  color: var(--color-gray, #6b6155);
+  white-space: nowrap;
+}
+.eh-agenda-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  text-align: center;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.eh-agenda-badge-meal {
+  background: #eef4ee;
+  color: #2f5c41;
+}
+.eh-agenda-badge-symptom {
+  background: #fcefe2;
+  color: #b25c1c;
+}
+.eh-agenda-badge-intro {
+  background: #f1ece4;
+  color: #7a6645;
+}
+.eh-agenda-label {
+  color: var(--color-dark, #2f2a24);
+  word-break: break-word;
+}
+.eh-agenda-sub {
+  grid-column: 3 / -1;
+  font-size: 12px;
+  color: var(--color-gray, #6b6155);
+}
+.eh-agenda-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 10px;
+  margin-top: 8px;
+  border-top: 1px solid var(--color-light, #f0ebe6);
+}
+
+@media (max-width: 600px) {
+  .eh-agenda-event {
+    grid-template-columns: 50px 1fr;
+    grid-template-rows: auto auto;
+  }
+  .eh-agenda-badge { grid-column: 2 / -1; justify-self: start; }
+  .eh-agenda-label { grid-column: 1 / -1; }
+}

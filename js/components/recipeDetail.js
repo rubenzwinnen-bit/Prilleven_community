@@ -12,19 +12,19 @@
    - init() haalt alle data parallel op via Promise.all
 ============================================ */
 
-import * as Store from '../store.js?v=2.14.0';
-import * as Router from '../router.js?v=2.14.0';
+import * as Store from '../store.js?v=2.15.0';
+import * as Router from '../router.js?v=2.15.0';
 import {
   showToast, escapeHtml, formatDate,
   renderStarsDisplay, renderStarsInteractive,
   getMealMomentLabel, getSlotLabel,
   WEEKDAYS, SCHEDULE_SLOTS
-} from '../utils.js?v=2.14.0';
-import { scanRecipeForRisks } from '../content/eersteHapjes-risk-foods.js?v=2.14.0';
-import { ageMonthsFromBirthdate } from '../eersteHapjesContent.js?v=2.14.0';
-import { loadActiveChild } from './eersteHapjes.js?v=2.14.0';
-import { getAllergensForChild } from '../eersteHapjesApi.js?v=2.14.0';
-import { isRecipeSafeForChild, getRecipeAlternatives } from '../eersteHapjesEligibility.js?v=2.14.0';
+} from '../utils.js?v=2.15.0';
+import { scanRecipeForRisks } from '../content/eersteHapjes-risk-foods.js?v=2.15.0';
+import { ageMonthsFromBirthdate } from '../eersteHapjesContent.js?v=2.15.0';
+import { loadActiveChild } from './eersteHapjes.js?v=2.15.0';
+import { getAllergensForChild } from '../eersteHapjesApi.js?v=2.15.0';
+import { isRecipeSafeForChild, getRecipeAlternatives } from '../eersteHapjesEligibility.js?v=2.15.0';
 
 /* ----------------------------------------
    RENDER
