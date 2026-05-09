@@ -523,7 +523,6 @@ function setupApp() {
 
     /* Scroll-positie herstellen als we terugkomen op een eerder bezochte
        route; anders naar bovenaan scrollen (nieuwe pagina). */
-    const currentPath = Router.getCurrentPath();
     const savedKey = `scroll:${currentPath}`;
     const saved = sessionStorage.getItem(savedKey);
     if (saved !== null) {
