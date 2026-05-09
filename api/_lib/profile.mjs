@@ -20,24 +20,43 @@ const ALLOWED_DIET = new Set([
  * noch kindjes zijn.
  */
 export async function loadUserProfile(userId) {
-  const [profileRes, childrenRes] = await Promise.all([
+  const [profileRes, childrenRes, allergensRes] = await Promise.all([
     supabase.from('chat_user_profiles').select('*').eq('user_id', userId).maybeSingle(),
     supabase.from('children').select('id, name, birthdate, archived_at')
       .eq('user_id', userId).is('archived_at', null)
       .order('birthdate', { ascending: false }),
+    // Allergenen per kindje voor RAG-context. We hergebruiken `child_allergens`:
+    //  - status='vermijden' → bevestigde allergie (te vermijden)
+    //  - status='gepland'   → wordt nog geprobeerd (nog niet veilig)
+    supabase.from('child_allergens').select('child_id, allergen_key, status, reaction')
+      .eq('user_id', userId),
   ]);
   if (profileRes.error) throw new Error('Profile load: ' + profileRes.error.message);
   if (childrenRes.error) throw new Error('Children load: ' + childrenRes.error.message);
+  if (allergensRes.error) throw new Error('Child allergens load: ' + allergensRes.error.message);
 
   const profile = profileRes.data;
   const kids = childrenRes.data || [];
+  const allAllergens = allergensRes.data || [];
+
+  const allergensByChild = {};
+  for (const a of allAllergens) {
+    if (!allergensByChild[a.child_id]) {
+      allergensByChild[a.child_id] = { vermijden: [], gepland: [] };
+    }
+    if (a.status === 'vermijden') allergensByChild[a.child_id].vermijden.push(a.allergen_key);
+    else if (a.status === 'gepland') allergensByChild[a.child_id].gepland.push(a.allergen_key);
+  }
+
   const childrenList = kids.map((c) => ({
     id: c.id,
     name: c.name,
     birthdate: c.birthdate,
-    // Allergies/notes per kind staan in `child_allergens` — kunnen later
-    // via dedicated endpoints in dit object gemerged worden indien nodig.
-    allergies: [],
+    // `allergies` (te vermijden) — voor backwards compat met formatProfileForPrompt
+    allergies: allergensByChild[c.id]?.vermijden || [],
+    // `allergens_in_progress` — wordt nog geïntroduceerd, geen "vermijden" maar
+    // wel relevant voor de prompt (bv. "we proberen ei voorzichtig").
+    allergens_in_progress: allergensByChild[c.id]?.gepland || [],
     notes: null,
   }));
 
@@ -151,7 +170,10 @@ export function formatProfileForPrompt(profile) {
         if (c.name) pieces.push(c.name);
         if (age !== null) pieces.push(age < 24 ? `${age} maanden` : `${Math.floor(age / 12)} jaar`);
         if (Array.isArray(c.allergies) && c.allergies.length > 0) {
-          pieces.push(`allergie voor ${c.allergies.join('/')}`);
+          pieces.push(`vermijden: ${c.allergies.join('/')}`);
+        }
+        if (Array.isArray(c.allergens_in_progress) && c.allergens_in_progress.length > 0) {
+          pieces.push(`introductie loopt: ${c.allergens_in_progress.join('/')}`);
         }
         if (c.notes) pieces.push(`"${c.notes}"`);
         return pieces.length ? pieces.join(', ') : null;

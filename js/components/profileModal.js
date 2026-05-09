@@ -5,11 +5,12 @@
    Returnt Promise<profile|null>.
 ============================================ */
 
-import { escapeHtml, processImageForUpload, showToast, initialsFromName, colorFromSeed } from '../utils.js?v=2.16.0';
-import { sessionGet } from '../supabase.js?v=2.16.0';
-import * as Api from '../communityApi.js?v=2.16.0';
-import { getMyChildren, deleteChild } from '../eersteHapjesApi.js?v=2.16.0';
-import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.16.0';
+import { escapeHtml, processImageForUpload, showToast, initialsFromName, colorFromSeed } from '../utils.js?v=2.17.0';
+import { sessionGet } from '../supabase.js?v=2.17.0';
+import * as Api from '../communityApi.js?v=2.17.0';
+import { getMyChildren, deleteChild } from '../eersteHapjesApi.js?v=2.17.0';
+import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.17.0';
+import { openAllergenManager } from './allergenManager.js?v=2.17.0';
 
 function renderChildItem(child) {
   const ageMonths = (() => {
@@ -25,14 +26,21 @@ function renderChildItem(child) {
     else ageLabel = `${Math.floor(ageMonths / 12)} jaar`;
   }
   const safeName = escapeHtml(child.name || 'Kindje');
+  const safeId = escapeHtml(child.id);
   return `
     <div class="pf-children-item">
       <div class="pf-children-item-main">
         <div class="pf-children-item-name">${safeName}</div>
         <div class="pf-children-item-meta">${escapeHtml(child.birthdate || '—')}${ageLabel ? ` · ${ageLabel}` : ''}</div>
       </div>
+      <button class="pf-children-item-allergens"
+              data-allergens-child="${safeId}"
+              data-child-name="${safeName}"
+              type="button">
+        Allergenen
+      </button>
       <button class="pf-children-item-del"
-              data-del-child="${escapeHtml(child.id)}"
+              data-del-child="${safeId}"
               data-child-name="${safeName}"
               type="button"
               aria-label="Verwijder ${safeName}">×</button>
@@ -203,6 +211,16 @@ export function openProfileModal() {
           }
           showToast(`${name} verwijderd.`, 'success');
           refreshChildren();
+        });
+      });
+      childrenListEl.querySelectorAll('[data-allergens-child]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.allergensChild;
+          const name = btn.dataset.childName || 'kindje';
+          await openAllergenManager({ childId: id, childName: name });
+          // Geen refresh nodig — allergenen-state blijft visueel intern in
+          // de allergenManager. Bij hersluiten valt er niets aan deze lijst
+          // te updaten (count tonen we niet inline).
         });
       });
     }
