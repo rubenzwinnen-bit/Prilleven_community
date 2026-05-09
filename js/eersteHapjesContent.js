@@ -4,7 +4,7 @@
    ARTICLES-array. Pure helpers, geen state.
 ============================================ */
 
-import { ARTICLES } from './content/eersteHapjes-content.js?v=2.7.0';
+import { ARTICLES } from './content/eersteHapjes-content.js?v=2.8.0';
 
 /**
  * Bereken leeftijd in maanden uit een ISO-datum (YYYY-MM-DD).

@@ -6,34 +6,17 @@
    Returnt Promise<symptom|null>.
 ============================================ */
 
-import { escapeHtml } from '../utils.js?v=2.7.0';
-import { createSymptom, getMealsForChild } from '../eersteHapjesApi.js?v=2.7.0';
-
-const SYMPTOM_TYPES = [
-  { value: 'huid',       label: 'Huid',       icon: '🌡' },
-  { value: 'buik',       label: 'Buikpijn',   icon: '🤰' },
-  { value: 'diarree',    label: 'Diarree',    icon: '💧' },
-  { value: 'braken',     label: 'Braken',     icon: '🤢' },
-  { value: 'slaap',      label: 'Slaap',      icon: '😴' },
-  { value: 'koorts',     label: 'Koorts',     icon: '🤒' },
-  { value: 'jeuk',       label: 'Jeuk',       icon: '✋' },
-  { value: 'zwelling',   label: 'Zwelling',   icon: '🫧' },
-  { value: 'ademhaling', label: 'Ademhaling', icon: '🫁' },
-  { value: 'anders',     label: 'Anders',     icon: '❓' },
-];
-
-const SEVERITIES = [
-  { value: 'mild',   label: 'Mild' },
-  { value: 'matig',  label: 'Matig' },
-  { value: 'heftig', label: 'Heftig' },
-];
+import { escapeHtml } from '../utils.js?v=2.8.0';
+import { createSymptom, getMealsForChild } from '../eersteHapjesApi.js?v=2.8.0';
+import { SYMPTOMS, SEVERITIES, getSymptom } from '../content/eersteHapjes-symptoms.js?v=2.8.0';
+import { openSymptomDetailModal } from './symptomDetailModal.js?v=2.8.0';
 
 /**
  * Toon de symptoom-log modal.
  * @param {object} opts
  * @param {string} opts.childId
  * @param {string} opts.childName
- * @returns {Promise<object|null>}
+ * @returns {Promise<{symptom: object, red_flag: boolean}|null>}
  */
 export function openSymptomLogModal({ childId, childName }) {
   return new Promise((resolve) => {
@@ -54,10 +37,16 @@ export function openSymptomLogModal({ childId, childName }) {
         <div class="eh-symptom-form">
           <!-- Type -->
           <div class="eh-symptom-field">
-            <label>Soort</label>
+            <label>
+              Soort
+              <button type="button" class="eh-symptom-info-link" data-action="open-symptom-list">
+                Wat betekenen deze? →
+              </button>
+            </label>
             <div class="eh-symptom-grid" data-group="symptom_type">
-              ${SYMPTOM_TYPES.map(t => `
-                <button type="button" class="eh-symptom-tile" data-value="${t.value}">
+              ${SYMPTOMS.map(t => `
+                <button type="button" class="eh-symptom-tile" data-value="${t.key}">
+                  <span class="eh-symptom-info" data-symptom-info="${t.key}" aria-label="Uitleg ${escapeHtml(t.label)}">i</span>
                   <span class="eh-symptom-icon">${t.icon}</span>
                   <span class="eh-symptom-label">${escapeHtml(t.label)}</span>
                 </button>
@@ -125,13 +114,25 @@ export function openSymptomLogModal({ childId, childName }) {
     // Default: tijd = nu
     $('#eh-symptom-when').value = toLocalInput(new Date());
 
-    // Type-grid (single-select)
-    overlay.querySelector('[data-group="symptom_type"]').addEventListener('click', (e) => {
+    // Type-grid (single-select) — info-knop opent detail-modal voor één symptoom.
+    overlay.querySelector('[data-group="symptom_type"]').addEventListener('click', async (e) => {
+      const info = e.target.closest('[data-symptom-info]');
+      if (info) {
+        e.stopPropagation();
+        const sym = getSymptom(info.dataset.symptomInfo);
+        if (sym) await openSymptomDetailModal({ symptomKey: sym.key });
+        return;
+      }
       const tile = e.target.closest('.eh-symptom-tile');
       if (!tile) return;
       overlay.querySelectorAll('.eh-symptom-tile').forEach(b => b.classList.remove('selected'));
       tile.classList.add('selected');
       state.symptom_type = tile.dataset.value;
+    });
+
+    // "Wat betekenen deze?"-link → lijst-weergave.
+    overlay.querySelector('[data-action="open-symptom-list"]').addEventListener('click', async () => {
+      await openSymptomDetailModal({ listMode: true });
     });
 
     // Ernst-chips (single-select)
@@ -191,7 +192,7 @@ export function openSymptomLogModal({ childId, childName }) {
         buttons.forEach(b => b.disabled = false);
         return showError(error || 'Er ging iets mis.');
       }
-      close(data.symptom);
+      close({ symptom: data.symptom, red_flag: !!data.red_flag });
     });
 
     $('[data-action="cancel"]').addEventListener('click', () => close(null));

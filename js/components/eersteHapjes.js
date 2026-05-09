@@ -8,7 +8,7 @@
    Brok F — fasen-systeem (banner + detail + overzicht).
 ============================================ */
 
-import { escapeHtml, colorFromSeed, initialsFromName, showToast } from '../utils.js?v=2.7.0';
+import { escapeHtml, colorFromSeed, initialsFromName, showToast } from '../utils.js?v=2.8.0';
 import {
   getMyChildren,
   getMealsForChild,
@@ -17,22 +17,24 @@ import {
   getPhases,
   deleteMealLog,
   deleteSymptom,
-} from '../eersteHapjesApi.js?v=2.7.0';
+} from '../eersteHapjesApi.js?v=2.8.0';
 import {
   ageMonthsFromBirthdate,
   getNextStepArticle,
   formatAgeRange,
-} from '../eersteHapjesContent.js?v=2.7.0';
-import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.7.0';
-import { openMealLogModal } from './mealLogModal.js?v=2.7.0';
-import { openSymptomLogModal } from './symptomLogModal.js?v=2.7.0';
-import { openAllergenManager } from './allergenManager.js?v=2.7.0';
-import { openArticleModal, openArticleListModal } from './articleModal.js?v=2.7.0';
+} from '../eersteHapjesContent.js?v=2.8.0';
+import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.8.0';
+import { openMealLogModal } from './mealLogModal.js?v=2.8.0';
+import { openSymptomLogModal } from './symptomLogModal.js?v=2.8.0';
+import { openSymptomDetailModal } from './symptomDetailModal.js?v=2.8.0';
+import { openAllergenManager } from './allergenManager.js?v=2.8.0';
+import { openArticleModal, openArticleListModal } from './articleModal.js?v=2.8.0';
 import {
   renderPhaseBanner,
   openPhaseDetailModal,
   openPhaseOverviewModal,
-} from './phaseModal.js?v=2.7.0';
+} from './phaseModal.js?v=2.8.0';
+import { getSymptomMeta, isRedFlag } from '../content/eersteHapjes-symptoms.js?v=2.8.0';
 
 // Module-state
 let state = {
@@ -65,17 +67,8 @@ const REACTION_EMOJI = {
   afwijzing: '😖',
 };
 
-const SYMPTOM_TYPE_LABEL = {
-  huid: 'Huid', buik: 'Buikpijn', diarree: 'Diarree', braken: 'Braken',
-  slaap: 'Slaap', koorts: 'Koorts', jeuk: 'Jeuk', zwelling: 'Zwelling',
-  ademhaling: 'Ademhaling', anders: 'Anders',
-};
-
-const SYMPTOM_TYPE_ICON = {
-  huid: '🌡', buik: '🤰', diarree: '💧', braken: '🤢',
-  slaap: '😴', koorts: '🤒', jeuk: '✋', zwelling: '🫧',
-  ademhaling: '🫁', anders: '❓',
-};
+// Symptoom-meta (label + icon) komen uit js/content/eersteHapjes-symptoms.js
+// — zie getSymptomMeta() / SYMPTOMS daar.
 
 export function render() {
   return `
@@ -241,6 +234,9 @@ function renderToday(child) {
         <button class="eh-tips-link" data-action="open-phases" type="button">
           Mijn fasen →
         </button>
+        <button class="eh-tips-link" data-action="open-symptom-list" type="button">
+          Symptomen-uitleg →
+        </button>
         <button class="eh-tips-link" data-action="open-tips" type="button">
           Bekijk alle tips & artikels →
         </button>
@@ -405,15 +401,18 @@ function renderSymptomRow(s) {
   const when = new Date(s.occurred_at).toLocaleString('nl-BE', {
     weekday: 'short', hour: '2-digit', minute: '2-digit',
   });
-  const label = SYMPTOM_TYPE_LABEL[s.symptom_type] || s.symptom_type;
-  const icon = SYMPTOM_TYPE_ICON[s.symptom_type] || '';
+  const meta = getSymptomMeta(s.symptom_type);
+  const label = meta?.label || s.symptom_type;
+  const icon  = meta?.icon  || '';
+  const flagged = isRedFlag(s.symptom_type, s.severity);
   return `
-    <li class="eh-log-item" data-symptom-id="${s.id}">
+    <li class="eh-log-item ${flagged ? 'has-redflag' : ''}" data-symptom-id="${s.id}">
       <div class="eh-log-item-main">
         <div class="eh-log-item-top">
           <span class="eh-log-time">${escapeHtml(when)}</span>
           <span class="eh-log-type">${icon} ${escapeHtml(label)}</span>
           <span class="eh-log-severity eh-log-severity-${s.severity}">${escapeHtml(s.severity)}</span>
+          ${flagged ? `<button class="eh-log-redflag-pill" data-action="open-symptom-info" data-key="${escapeHtml(s.symptom_type)}" type="button" aria-label="Meer info">⚠ Aandachtssignaal</button>` : ''}
         </div>
         ${s.notes ? `<div class="eh-log-notes">${escapeHtml(s.notes)}</div>` : ''}
       </div>
@@ -455,14 +454,33 @@ function bindLogActions(root, child) {
   const addSympBtn = root.querySelector('[data-action="add-symptom"]');
   if (addSympBtn) {
     addSympBtn.addEventListener('click', async () => {
-      const sym = await openSymptomLogModal({ childId: child.id, childName: child.name });
-      if (sym) {
+      const result = await openSymptomLogModal({ childId: child.id, childName: child.name });
+      if (result?.symptom) {
         showToast('Symptoom opgeslagen.', 'success');
         await loadLogs(child.id);
         await renderApp(root);
+        if (result.red_flag) {
+          showRedFlagBanner(result.symptom.symptom_type);
+        }
       }
     });
   }
+
+  // "Symptomen-uitleg"-link → lijst-modal
+  const symListBtn = root.querySelector('[data-action="open-symptom-list"]');
+  if (symListBtn) {
+    symListBtn.addEventListener('click', async () => {
+      await openSymptomDetailModal({ listMode: true });
+    });
+  }
+
+  // ⚠-pill in elke symptoom-rij → opent detail-modal voor dat symptoom
+  root.querySelectorAll('[data-action="open-symptom-info"]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await openSymptomDetailModal({ symptomKey: btn.dataset.key });
+    });
+  });
 
   // Allergenen-manager
   const manageAlBtn = root.querySelector('[data-action="manage-allergens"]');
@@ -479,7 +497,7 @@ function bindLogActions(root, child) {
   const articleBtn = root.querySelector('[data-action="open-article"]');
   if (articleBtn) {
     articleBtn.addEventListener('click', async () => {
-      const { getArticleBySlug } = await import('../eersteHapjesContent.js?v=2.7.0');
+      const { getArticleBySlug } = await import('../eersteHapjesContent.js?v=2.8.0');
       const article = getArticleBySlug(articleBtn.dataset.slug);
       if (article) await openArticleModal(article);
     });
@@ -559,6 +577,43 @@ async function openOnboarding(root) {
   state.activeId = child.id;
   state.logsLoadedFor = null; // forceer logs-load voor het nieuwe kindje
   await renderApp(root);
+}
+
+/**
+ * Adaptieve red-flag-banner — verschijnt na het loggen van een symptoom
+ * dat door de server als red_flag gemarkeerd werd. Bewaart geen state:
+ * verschijnt enkel direct na het loggen, sluit-knop ruimt op.
+ */
+function showRedFlagBanner(symptomKey) {
+  // Vermijd stapelen: één banner tegelijk.
+  document.querySelectorAll('.eh-redflag-banner').forEach(b => b.remove());
+
+  const meta = getSymptomMeta(symptomKey);
+  const label = meta?.label || symptomKey;
+
+  const banner = document.createElement('div');
+  banner.className = 'eh-redflag-banner';
+  banner.setAttribute('role', 'alert');
+  banner.innerHTML = `
+    <div class="eh-redflag-banner-inner">
+      <span class="eh-redflag-banner-icon" aria-hidden="true">⚠</span>
+      <div class="eh-redflag-banner-text">
+        <strong>Aandachtssignaal — ${escapeHtml(label)}</strong>
+        Dit symptoom kan om medische aandacht vragen. Pril Leven geeft geen medisch
+        advies — bij twijfel: contacteer je arts of Kind &amp; Gezin.
+      </div>
+      <button type="button" class="eh-redflag-banner-link" data-action="more">Lees meer</button>
+      <button type="button" class="eh-redflag-banner-close" aria-label="Sluiten">×</button>
+    </div>
+  `;
+  document.body.appendChild(banner);
+
+  banner.querySelector('[data-action="more"]').addEventListener('click', async () => {
+    await openSymptomDetailModal({ symptomKey });
+  });
+  banner.querySelector('.eh-redflag-banner-close').addEventListener('click', () => {
+    banner.remove();
+  });
 }
 
 /**
