@@ -12,17 +12,19 @@
    - init() haalt alle data parallel op via Promise.all
 ============================================ */
 
-import * as Store from '../store.js?v=2.10.0';
-import * as Router from '../router.js?v=2.10.0';
+import * as Store from '../store.js?v=2.11.0';
+import * as Router from '../router.js?v=2.11.0';
 import {
   showToast, escapeHtml, formatDate,
   renderStarsDisplay, renderStarsInteractive,
   getMealMomentLabel, getSlotLabel,
   WEEKDAYS, SCHEDULE_SLOTS
-} from '../utils.js?v=2.10.0';
-import { scanRecipeForRisks } from '../content/eersteHapjes-risk-foods.js?v=2.10.0';
-import { ageMonthsFromBirthdate } from '../eersteHapjesContent.js?v=2.10.0';
-import { loadActiveChild } from './eersteHapjes.js?v=2.10.0';
+} from '../utils.js?v=2.11.0';
+import { scanRecipeForRisks } from '../content/eersteHapjes-risk-foods.js?v=2.11.0';
+import { ageMonthsFromBirthdate } from '../eersteHapjesContent.js?v=2.11.0';
+import { loadActiveChild } from './eersteHapjes.js?v=2.11.0';
+import { getAllergensForChild } from '../eersteHapjesApi.js?v=2.11.0';
+import { isRecipeSafeForChild, getRecipeAlternatives } from '../eersteHapjesEligibility.js?v=2.11.0';
 
 /* ----------------------------------------
    RENDER
@@ -113,22 +115,73 @@ export async function init(recipeId) {
   /* ---- Bouw de volledige HTML op ---- */
   container.innerHTML = buildDetailHtml(recipe, isFav, avgRating, userRating, comments, activeInfo);
 
-  /* ---- Eerste Hapjes — risicovoeding-banner (brok H.4) ---- */
+  /* ---- Eerste Hapjes — risk-banner + alternatieven (brok H.4 + J.2) ---- */
   try {
     const child = await loadActiveChild();
     if (child && child.birthdate) {
       const ageMonths = ageMonthsFromBirthdate(child.birthdate);
       const risks = scanRecipeForRisks(recipe, ageMonths);
+
+      // Risk-banner direct onder Terug-knop (brok H.4)
       if (risks.length > 0) {
         const banner = renderRiskBanner(child, risks);
         const backBtn = container.querySelector('#btn-back');
         if (backBtn) backBtn.insertAdjacentHTML('afterend', banner);
+      }
+
+      // Alternatieven-sectie (brok J.2): alleen als recept NIET veilig
+      const ar = await getAllergensForChild(child.id).catch(() => null);
+      const allergens = ar?.ok ? (ar.data?.allergens || []) : [];
+      const vermijdenSet = new Set(
+        allergens.filter((a) => a.status === 'vermijden')
+                 .map((a) => a.allergen_key.toLowerCase())
+      );
+      const ehCtx = { ageMonths, vermijdenSet };
+      const safe = isRecipeSafeForChild(recipe, ehCtx);
+      if (!safe) {
+        const allRecipes = await Store.getRecipes().catch(() => []);
+        const alts = getRecipeAlternatives(recipe, allRecipes, ehCtx, 3);
+        if (alts.length > 0) {
+          const altSection = renderAlternativesSection(child, alts);
+          // Plaats alternatieven onderaan, vóór de Reacties-sectie als die er is
+          const sections = container.querySelectorAll('.recipe-section');
+          const last = sections[sections.length - 1];
+          if (last) last.insertAdjacentHTML('beforebegin', altSection);
+        }
       }
     }
   } catch (_e) { /* Eerste Hapjes is optioneel — silent */ }
 
   /* ---- Event listeners koppelen ---- */
   attachListeners(recipeId, userRating, recipe, activeInfo);
+}
+
+function renderAlternativesSection(child, alternatives) {
+  const items = alternatives.map((r) => `
+    <a class="recipe-alt-item" href="#/recipe/${escapeHtml(r.id)}">
+      ${r.image
+        ? `<img class="recipe-alt-image" src="${escapeHtml(r.image)}" alt="${escapeHtml(r.name)}" onerror="this.outerHTML='<div class=\\'recipe-alt-image-placeholder\\'>&#127860;</div>'">`
+        : `<div class="recipe-alt-image-placeholder">&#127860;</div>`
+      }
+      <div class="recipe-alt-info">
+        <div class="recipe-alt-name">${escapeHtml(r.name)}</div>
+        ${typeof r.cookingTime === 'number'
+          ? `<div class="recipe-alt-meta">&#9201; ${r.cookingTime} min</div>`
+          : ''}
+      </div>
+    </a>
+  `).join('');
+  return `
+    <div class="recipe-section recipe-alternatives">
+      <h3>Alternatieven voor ${escapeHtml(child.name || 'je kindje')}</h3>
+      <p class="text-muted" style="font-size:0.85rem;margin-bottom:0.75rem">
+        Dit recept past nu niet — deze alternatieven wel.
+      </p>
+      <div class="recipe-alt-grid">
+        ${items}
+      </div>
+    </div>
+  `;
 }
 
 function renderRiskBanner(child, risks) {
