@@ -8,7 +8,7 @@
    Brok F — fasen-systeem (banner + detail + overzicht).
 ============================================ */
 
-import { escapeHtml, colorFromSeed, initialsFromName, showToast } from '../utils.js?v=2.9.0';
+import { escapeHtml, colorFromSeed, initialsFromName, showToast } from '../utils.js?v=2.10.0';
 import {
   getMyChildren,
   getMealsForChild,
@@ -18,35 +18,38 @@ import {
   getPhases,
   deleteMealLog,
   deleteSymptom,
-} from '../eersteHapjesApi.js?v=2.9.0';
+} from '../eersteHapjesApi.js?v=2.10.0';
 import {
   ageMonthsFromBirthdate,
   getNextStepArticle,
   formatAgeRange,
-} from '../eersteHapjesContent.js?v=2.9.0';
-import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.9.0';
-import { openMealLogModal } from './mealLogModal.js?v=2.9.0';
-import { openSymptomLogModal } from './symptomLogModal.js?v=2.9.0';
-import { openSymptomDetailModal } from './symptomDetailModal.js?v=2.9.0';
-import { openAllergenManager } from './allergenManager.js?v=2.9.0';
+} from '../eersteHapjesContent.js?v=2.10.0';
+import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.10.0';
+import { openMealLogModal } from './mealLogModal.js?v=2.10.0';
+import { openSymptomLogModal } from './symptomLogModal.js?v=2.10.0';
+import { openSymptomDetailModal } from './symptomDetailModal.js?v=2.10.0';
+import { openAllergenManager } from './allergenManager.js?v=2.10.0';
 import {
   deriveAllergenState,
   statusLabel,
   statusTone,
   openAllergenTimelineModal,
-} from './allergenIntroModal.js?v=2.9.0';
-import { openArticleModal, openArticleListModal } from './articleModal.js?v=2.9.0';
-import { openRiskFoodsListModal, openRiskFoodDetailModal } from './riskFoodsModal.js?v=2.9.0';
+} from './allergenIntroModal.js?v=2.10.0';
+import { openArticleModal, openArticleListModal } from './articleModal.js?v=2.10.0';
+import { openRiskFoodsListModal, openRiskFoodDetailModal } from './riskFoodsModal.js?v=2.10.0';
 import {
   getRelevantRiskFoods,
   formatAgeLimit,
-} from '../content/eersteHapjes-risk-foods.js?v=2.9.0';
+} from '../content/eersteHapjes-risk-foods.js?v=2.10.0';
 import {
   renderPhaseBanner,
   openPhaseDetailModal,
   openPhaseOverviewModal,
-} from './phaseModal.js?v=2.9.0';
-import { getSymptomMeta, isRedFlag } from '../content/eersteHapjes-symptoms.js?v=2.9.0';
+} from './phaseModal.js?v=2.10.0';
+import { getSymptomMeta, isRedFlag } from '../content/eersteHapjes-symptoms.js?v=2.10.0';
+import { buildSuggestions } from '../eersteHapjesSuggestions.js?v=2.10.0';
+import { getRecipes } from '../store.js?v=2.10.0';
+import * as Router from '../router.js?v=2.10.0';
 
 // Module-state
 let state = {
@@ -57,6 +60,8 @@ let state = {
   symptoms: [],
   allergens: [],
   allergenIntrosByKey: {},
+  recentMeals: [],
+  recipesCache: [],
   phaseState: null,
   logsLoadedFor: null, // child_id waarvoor logs geladen zijn
 };
@@ -153,15 +158,19 @@ async function loadLogs(childId) {
   // Symptomen: laatste 7 dagen voor patroonherkenning
   const fromIsoWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [mealsRes, sympRes, allergRes, introsRes, phasesRes] = await Promise.all([
+  const [mealsRes, recentMealsRes, sympRes, allergRes, introsRes, phasesRes, recipesPromise] = await Promise.all([
     getMealsForChild(childId, { from: fromIsoToday }),
+    getMealsForChild(childId, { from: fromIsoWeek }),
     getSymptomsForChild(childId, { from: fromIsoWeek }),
     getAllergensForChild(childId),
     getAllergenIntros(childId),
     getPhases(childId),
+    getRecipes().catch(() => []),
   ]);
 
   state.meals = mealsRes.ok ? (mealsRes.data?.meals || []) : [];
+  state.recentMeals = recentMealsRes.ok ? (recentMealsRes.data?.meals || []) : [];
+  state.recipesCache = Array.isArray(recipesPromise) ? recipesPromise : [];
   state.symptoms = sympRes.ok ? (sympRes.data?.symptoms || []) : [];
   state.allergens = allergRes.ok ? (allergRes.data?.allergens || []) : [];
   state.allergenIntrosByKey = {};
@@ -440,6 +449,7 @@ function buildReminders(child) {
   if (ageMonths !== null) {
     for (const r of getRelevantRiskFoods(ageMonths)) {
       reminders.push({
+        kind: 'reminder',
         type: 'risk',
         key: r.key,
         icon: r.icon || '⚠️',
@@ -458,6 +468,7 @@ function buildReminders(child) {
     const st = deriveAllergenState(a, intros);
     if (st.status === 'later') {
       reminders.push({
+        kind: 'reminder',
         type: 'allergen',
         key: a.allergen_key,
         icon: '⏰',
@@ -472,6 +483,7 @@ function buildReminders(child) {
       const days = lastIntro ? daysSinceIso(lastIntro.intro_date) : 0;
       if (days >= 2) {
         reminders.push({
+          kind: 'reminder',
           type: 'allergen',
           key: a.allergen_key,
           icon: '🔄',
@@ -485,6 +497,55 @@ function buildReminders(child) {
   return reminders;
 }
 
+// Combineer reminders + suggestions met dedupe (brok I.2).
+// Reminder wint over suggestion bij zelfde "onderwerp" (bv. allergeen-key).
+function buildAdvice(child) {
+  const reminders = buildReminders(child);
+  const suggestions = buildSuggestions({
+    child,
+    allergens: state.allergens,
+    allergenIntrosByKey: state.allergenIntrosByKey,
+    todayMeals: state.meals,
+    recentMeals: state.recentMeals,
+    symptoms: state.symptoms,
+    phaseState: state.phaseState,
+    recipes: state.recipesCache,
+  });
+
+  // Dedupe: bouw set van "onderwerp-keys" uit reminders zodat suggesties
+  // over hetzelfde onderwerp niet duplicaten.
+  const reminderAllergenKeys = new Set(
+    reminders.filter((r) => r.type === 'allergen').map((r) => r.key)
+  );
+  const filteredSuggestions = suggestions.filter((s) => {
+    if (s.action?.kind === 'open-intro' && reminderAllergenKeys.has(s.action.allergenKey)) {
+      return false;
+    }
+    return true;
+  }).map((s) => ({ ...s, kind: 'suggestion' }));
+
+  return [...reminders, ...filteredSuggestions];
+}
+
+function showSuggestionInfo(infoKey, data) {
+  // Per info-key een korte toelichting via toast.
+  // Geen aparte modal voor v1 — als de uitleg te lang is, kunnen we later
+  // upgraden naar een eigen modal-shell.
+  if (infoKey === 'rejection') {
+    const recipe = data.recipeName || 'dit recept';
+    const n = data.count || 3;
+    showToast(`${n}× afwijzing voor ${recipe}. Probeer een andere textuur (puree → stukjes), kleinere portie, of een ander tijdstip.`, 'info');
+  } else if (infoKey === 'duplicate') {
+    showToast(`Vandaag al ${data.count || 2} maaltijden van dit type — check je lijst hierboven of het klopt.`, 'info');
+  } else if (infoKey === 'symptom-pattern') {
+    const meta = getSymptomMeta(data.symptomType);
+    const label = meta?.label || data.symptomType || 'symptoom';
+    showToast(`${label} kwam ${data.count || 3}× voor deze week. Bekijk wat ${state.children.find(c=>c.id===state.activeId)?.name || 'je kindje'} de uren ervoor at — soms is er een patroon.`, 'info');
+  } else {
+    showToast('Geen info beschikbaar.', 'info');
+  }
+}
+
 function daysSinceIso(iso) {
   if (!iso) return 0;
   const d = new Date(iso + 'T00:00:00Z').getTime();
@@ -494,33 +555,62 @@ function daysSinceIso(iso) {
 }
 
 function renderRemindersCard(child) {
-  const reminders = buildReminders(child);
-  if (reminders.length === 0) return '';
+  const items = buildAdvice(child);
+  if (items.length === 0) return '';
 
   return `
     <div class="eh-today-card eh-reminders-card">
       <header class="eh-log-card-header">
-        <h3>🔔 Reminders</h3>
-        <span class="eh-reminders-count">${reminders.length}</span>
+        <h3>🔔 Tips & herinneringen</h3>
+        <span class="eh-reminders-count">${items.length}</span>
       </header>
       <ul class="eh-reminders-list">
-        ${reminders.map((r) => `
-          <li class="eh-reminder-item">
-            <button class="eh-reminder-btn"
-                    data-reminder-type="${escapeHtml(r.type)}"
-                    data-reminder-key="${escapeHtml(r.key)}"
-                    type="button">
-              <span class="eh-reminder-icon" aria-hidden="true">${r.icon}</span>
-              <span class="eh-reminder-main">
-                <span class="eh-reminder-label">${escapeHtml(r.label)}</span>
-                <span class="eh-reminder-sub">${escapeHtml(r.sub)}</span>
-              </span>
-              <span class="eh-reminder-arrow" aria-hidden="true">›</span>
-            </button>
-          </li>
-        `).join('')}
+        ${items.map((item) => renderAdviceItem(item)).join('')}
       </ul>
     </div>
+  `;
+}
+
+function renderAdviceItem(item) {
+  if (item.kind === 'suggestion') {
+    const a = item.action || {};
+    const dataAttrs = [
+      `data-suggestion-key="${escapeHtml(item.key)}"`,
+      `data-action-kind="${escapeHtml(a.kind || '')}"`,
+      a.allergenKey  ? `data-allergen-key="${escapeHtml(a.allergenKey)}"`   : '',
+      a.recipeId     ? `data-recipe-id="${escapeHtml(a.recipeId)}"`         : '',
+      a.infoKey      ? `data-info-key="${escapeHtml(a.infoKey)}"`           : '',
+      a.symptomType  ? `data-symptom-type="${escapeHtml(a.symptomType)}"`   : '',
+      a.mealType     ? `data-meal-type="${escapeHtml(a.mealType)}"`         : '',
+    ].filter(Boolean).join(' ');
+    return `
+      <li class="eh-reminder-item eh-reminder-item-suggestion">
+        <button class="eh-reminder-btn" ${dataAttrs} type="button">
+          <span class="eh-reminder-icon" aria-hidden="true">${item.icon}</span>
+          <span class="eh-reminder-main">
+            <span class="eh-reminder-label">${escapeHtml(item.label)}</span>
+            <span class="eh-reminder-sub">${escapeHtml(item.sub)}</span>
+          </span>
+          <span class="eh-reminder-arrow" aria-hidden="true">›</span>
+        </button>
+      </li>
+    `;
+  }
+  // reminder (brok H.6)
+  return `
+    <li class="eh-reminder-item">
+      <button class="eh-reminder-btn"
+              data-reminder-type="${escapeHtml(item.type)}"
+              data-reminder-key="${escapeHtml(item.key)}"
+              type="button">
+        <span class="eh-reminder-icon" aria-hidden="true">${item.icon}</span>
+        <span class="eh-reminder-main">
+          <span class="eh-reminder-label">${escapeHtml(item.label)}</span>
+          <span class="eh-reminder-sub">${escapeHtml(item.sub)}</span>
+        </span>
+        <span class="eh-reminder-arrow" aria-hidden="true">›</span>
+      </button>
+    </li>
   `;
 }
 
@@ -655,6 +745,35 @@ function bindLogActions(root, child) {
     });
   });
 
+  // Suggestion-card items (brok I.2)
+  root.querySelectorAll('[data-suggestion-key]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const kind = btn.dataset.actionKind;
+      if (kind === 'open-intro') {
+        const allergenKey = btn.dataset.allergenKey;
+        const result = await openAllergenIntroModal({
+          childId: child.id,
+          allergenKey,
+          allergenLabel: capitalize(allergenKey),
+        });
+        if (result?.created) {
+          await loadLogs(child.id);
+          await renderApp(root);
+        }
+      } else if (kind === 'open-recipe') {
+        const recipeId = btn.dataset.recipeId;
+        if (recipeId) Router.navigate(`recipe/${recipeId}`);
+      } else if (kind === 'open-meal-log') {
+        document.querySelector('[data-action="add-meal"]')?.click();
+      } else if (kind === 'open-phase-detail') {
+        document.querySelector('[data-action="open-phases"]')?.click();
+      } else if (kind === 'show-info') {
+        const infoKey = btn.dataset.infoKey;
+        showSuggestionInfo(infoKey, btn.dataset);
+      }
+    });
+  });
+
   // ⚠-pill in elke symptoom-rij → opent detail-modal voor dat symptoom
   root.querySelectorAll('[data-action="open-symptom-info"]').forEach(btn => {
     btn.addEventListener('click', async (e) => {
@@ -696,7 +815,7 @@ function bindLogActions(root, child) {
   const articleBtn = root.querySelector('[data-action="open-article"]');
   if (articleBtn) {
     articleBtn.addEventListener('click', async () => {
-      const { getArticleBySlug } = await import('../eersteHapjesContent.js?v=2.9.0');
+      const { getArticleBySlug } = await import('../eersteHapjesContent.js?v=2.10.0');
       const article = getArticleBySlug(articleBtn.dataset.slug);
       if (article) await openArticleModal(article);
     });
