@@ -8,7 +8,7 @@
    Brok F — fasen-systeem (banner + detail + overzicht).
 ============================================ */
 
-import { escapeHtml, colorFromSeed, initialsFromName, showToast } from '../utils.js?v=2.19.0';
+import { escapeHtml, colorFromSeed, initialsFromName, showToast } from '../utils.js?v=2.20.0';
 import {
   getMyChildren,
   getMealsForChild,
@@ -18,40 +18,40 @@ import {
   getPhases,
   deleteMealLog,
   deleteSymptom,
-} from '../eersteHapjesApi.js?v=2.19.0';
+} from '../eersteHapjesApi.js?v=2.20.0';
 import {
   ageMonthsFromBirthdate,
   getNextStepArticle,
   formatAgeRange,
-} from '../eersteHapjesContent.js?v=2.19.0';
-import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.19.0';
-import { openMealLogModal } from './mealLogModal.js?v=2.19.0';
-import { openSymptomLogModal } from './symptomLogModal.js?v=2.19.0';
-import { openSymptomDetailModal } from './symptomDetailModal.js?v=2.19.0';
-import { openAllergenManager } from './allergenManager.js?v=2.19.0';
+} from '../eersteHapjesContent.js?v=2.20.0';
+import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.20.0';
+import { openMealLogModal } from './mealLogModal.js?v=2.20.0';
+import { openSymptomLogModal } from './symptomLogModal.js?v=2.20.0';
+import { openSymptomDetailModal } from './symptomDetailModal.js?v=2.20.0';
+import { openAllergenManager } from './allergenManager.js?v=2.20.0';
 import {
   deriveAllergenState,
   statusLabel,
   statusTone,
   openAllergenTimelineModal,
-} from './allergenIntroModal.js?v=2.19.0';
-import { openArticleModal, openArticleListModal } from './articleModal.js?v=2.19.0';
-import { openRiskFoodsListModal, openRiskFoodDetailModal } from './riskFoodsModal.js?v=2.19.0';
-import { openAgendaModal } from './agendaModal.js?v=2.19.0';
-import { renderEhChatBox, bindEhChatBox } from './ehChatBox.js?v=2.19.0';
+} from './allergenIntroModal.js?v=2.20.0';
+import { openArticleModal, openArticleListModal } from './articleModal.js?v=2.20.0';
+import { openRiskFoodsListModal, openRiskFoodDetailModal } from './riskFoodsModal.js?v=2.20.0';
+import { openAgendaModal } from './agendaModal.js?v=2.20.0';
+import { renderEhChatBox, bindEhChatBox } from './ehChatBox.js?v=2.20.0';
 import {
   getRelevantRiskFoods,
   formatAgeLimit,
-} from '../content/eersteHapjes-risk-foods.js?v=2.19.0';
+} from '../content/eersteHapjes-risk-foods.js?v=2.20.0';
 import {
   renderPhaseBanner,
   openPhaseDetailModal,
   openPhaseOverviewModal,
-} from './phaseModal.js?v=2.19.0';
-import { getSymptomMeta, isRedFlag } from '../content/eersteHapjes-symptoms.js?v=2.19.0';
-import { buildSuggestions } from '../eersteHapjesSuggestions.js?v=2.19.0';
-import { getRecipes } from '../store.js?v=2.19.0';
-import * as Router from '../router.js?v=2.19.0';
+} from './phaseModal.js?v=2.20.0';
+import { getSymptomMeta, isRedFlag } from '../content/eersteHapjes-symptoms.js?v=2.20.0';
+import { buildSuggestions } from '../eersteHapjesSuggestions.js?v=2.20.0';
+import { getRecipes } from '../store.js?v=2.20.0';
+import * as Router from '../router.js?v=2.20.0';
 
 // Module-state
 let state = {
@@ -293,7 +293,6 @@ function renderToday(child) {
         ${renderSymptomsCard(child)}
         ${renderAllergensCard(child)}
         ${renderAgendaCard(child)}
-        ${renderNextStepCard(child)}
       </div>
 
       ${renderEhChatBox(child)}
@@ -844,7 +843,7 @@ function bindLogActions(root, child) {
   const articleBtn = root.querySelector('[data-action="open-article"]');
   if (articleBtn) {
     articleBtn.addEventListener('click', async () => {
-      const { getArticleBySlug } = await import('../eersteHapjesContent.js?v=2.19.0');
+      const { getArticleBySlug } = await import('../eersteHapjesContent.js?v=2.20.0');
       const article = getArticleBySlug(articleBtn.dataset.slug);
       if (article) await openArticleModal(article);
     });
