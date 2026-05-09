@@ -6,10 +6,10 @@
    Returnt Promise<symptom|null>.
 ============================================ */
 
-import { escapeHtml } from '../utils.js?v=2.12.0';
-import { createSymptom, getMealsForChild } from '../eersteHapjesApi.js?v=2.12.0';
-import { SYMPTOMS, SEVERITIES, getSymptom } from '../content/eersteHapjes-symptoms.js?v=2.12.0';
-import { openSymptomDetailModal } from './symptomDetailModal.js?v=2.12.0';
+import { escapeHtml } from '../utils.js?v=2.13.0';
+import { createSymptom, getMealsForChild } from '../eersteHapjesApi.js?v=2.13.0';
+import { SYMPTOMS, SEVERITIES, getSymptom } from '../content/eersteHapjes-symptoms.js?v=2.13.0';
+import { openSymptomDetailModal } from './symptomDetailModal.js?v=2.13.0';
 
 /**
  * Toon de symptoom-log modal.

@@ -2143,9 +2143,9 @@ select.form-control {
    verdere brokken (onboarding, vandaag, logging).
 ============================================ */
 .eh-page {
-  max-width: 720px;
+  max-width: 1180px;
   margin: 1.5rem auto;
-  padding: 0 1rem;
+  padding: 0 1.25rem;
 }
 .eh-hero {
   background: linear-gradient(135deg, var(--color-secondary) 0%, var(--color-secondary-dark) 100%);
@@ -2362,11 +2362,16 @@ select.form-control {
 .eh-today-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: .85rem;
+  gap: 1rem;
 }
 @media (min-width: 720px) {
   .eh-today-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (min-width: 1024px) {
+  .eh-today-grid {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 .eh-today-card {
@@ -2530,6 +2535,9 @@ body.is-hub #app-nav { display: none; }
 
 /* Op de hub-landingspagina is de "naar het hub"-knop overbodig */
 body.is-hub .header-home-btn { display: none; }
+
+/* Eerste Hapjes-pagina: geen sub-nav, eigen layout */
+body.is-eerste-hapjes #app-nav { display: none; }
 
 /* Logo op het inlog-scherm */
 .auth-logo {
@@ -5577,14 +5585,40 @@ body.is-hub .header-home-btn { display: none; }
   color: var(--tone-fg);
 }
 .eh-allergen-edit-quick {
-  display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--color-light, #f0ebe6);
+}
+.eh-allergen-edit-quick .btn {
+  flex: 1 1 auto;
+  min-width: 140px;
 }
 .eh-allergen-avoid-toggle {
-  display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
-  font-size: 14px; color: var(--color-dark, #2f2a24);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  background: var(--color-bg, #faf8f5);
+  border: 1px solid var(--color-light, #f0ebe6);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--color-dark, #2f2a24);
+  cursor: pointer;
+  line-height: 1.4;
+}
+.eh-allergen-avoid-toggle input {
+  margin: 2px 0 0;
+  flex-shrink: 0;
+  transform: scale(1.1);
   cursor: pointer;
 }
-.eh-allergen-avoid-toggle input { transform: scale(1.1); }
+.eh-allergen-avoid-toggle span {
+  flex: 1;
+}
 
 /* small button-variant */
 .btn.btn-small {

@@ -8,7 +8,7 @@
    5. Start de router
 ============================================ */
 
-import * as Store from './js/store.js?v=2.12.0';
+import * as Store from './js/store.js?v=2.13.0';
 import {
   checkAllowedUser,
   checkCanSignUp,
@@ -22,20 +22,20 @@ import {
   fetchSubscriptionStatus,
   subscriptionAccessMessage,
   invalidateSubscriptionCache,
-} from './js/supabase.js?v=2.12.0';
-import * as Router from './js/router.js?v=2.12.0';
-import * as Header from './js/components/header.js?v=2.12.0';
-import * as Nav from './js/components/nav.js?v=2.12.0';
-import * as Home from './js/components/home.js?v=2.12.0';
-import * as RecipeList from './js/components/recipeList.js?v=2.12.0';
-import * as RecipeDetail from './js/components/recipeDetail.js?v=2.12.0';
-import * as ImportRecipes from './js/components/importRecipes.js?v=2.12.0';
-import * as WeekSchedule from './js/components/weekSchedule.js?v=2.12.0';
-import * as Favorites from './js/components/favorites.js?v=2.12.0';
-import * as ShoppingList from './js/components/shoppingList.js?v=2.12.0';
-import * as RecipeForm from './js/components/recipeForm.js?v=2.12.0';
-import * as IngredientIcons from './js/components/ingredientIcons.js?v=2.12.0';
-import * as EersteHapjes from './js/components/eersteHapjes.js?v=2.12.0';
+} from './js/supabase.js?v=2.13.0';
+import * as Router from './js/router.js?v=2.13.0';
+import * as Header from './js/components/header.js?v=2.13.0';
+import * as Nav from './js/components/nav.js?v=2.13.0';
+import * as Home from './js/components/home.js?v=2.13.0';
+import * as RecipeList from './js/components/recipeList.js?v=2.13.0';
+import * as RecipeDetail from './js/components/recipeDetail.js?v=2.13.0';
+import * as ImportRecipes from './js/components/importRecipes.js?v=2.13.0';
+import * as WeekSchedule from './js/components/weekSchedule.js?v=2.13.0';
+import * as Favorites from './js/components/favorites.js?v=2.13.0';
+import * as ShoppingList from './js/components/shoppingList.js?v=2.13.0';
+import * as RecipeForm from './js/components/recipeForm.js?v=2.13.0';
+import * as IngredientIcons from './js/components/ingredientIcons.js?v=2.13.0';
+import * as EersteHapjes from './js/components/eersteHapjes.js?v=2.13.0';
 
 /* ============================================
    RECOVERY TOKEN DETECTIE
@@ -513,8 +513,12 @@ function setupApp() {
     content.innerHTML = html;
     Nav.updateActive();
     // Verberg nav op de landingspagina (hub heeft eigen tegels)
-    const isHub = Router.getCurrentPath() === '';
+    // en op de Eerste Hapjes-pagina (eigen layout, geen sub-nav).
+    const currentPath = Router.getCurrentPath();
+    const isHub = currentPath === '';
+    const isEersteHapjes = currentPath === 'eerste-hapjes';
     document.body.classList.toggle('is-hub', isHub);
+    document.body.classList.toggle('is-eerste-hapjes', isEersteHapjes);
     if (initFn) await initFn();
 
     /* Scroll-positie herstellen als we terugkomen op een eerder bezochte

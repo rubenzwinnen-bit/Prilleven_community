@@ -17,9 +17,9 @@
    Dedupe met H.6-reminders gebeurt in eersteHapjes.js via key-prefix.
 ============================================ */
 
-import { ageMonthsFromBirthdate } from './eersteHapjesContent.js?v=2.12.0';
-import { PHASES } from './content/eersteHapjes-phases.js?v=2.12.0';
-import { getSymptomMeta } from './content/eersteHapjes-symptoms.js?v=2.12.0';
+import { ageMonthsFromBirthdate } from './eersteHapjesContent.js?v=2.13.0';
+import { PHASES } from './content/eersteHapjes-phases.js?v=2.13.0';
+import { getSymptomMeta } from './content/eersteHapjes-symptoms.js?v=2.13.0';
 
 const MIN_DAYS_BETWEEN_INTROS = 2;        // a
 const NO_LOG_DAYS_THRESHOLD = 5;          // e
@@ -79,7 +79,7 @@ function ruleAllergenIntroDay(ctx, ageMonths) {
 
     out.push({
       key: `suggest-allergen-${a.allergen_key}`,
-      icon: '💡',
+
       label: `Goede dag voor ${capitalize(a.allergen_key)}`,
       sub: intros.length === 0
         ? 'Nog niet geprobeerd — eerste introductie kan vandaag.'
@@ -100,7 +100,7 @@ function rulePhaseAdvance(ctx, ageMonths) {
   if (ageMonths < next.minAgeMonths) return [];
   return [{
     key: `suggest-phase-${ps.activePhase}`,
-    icon: '💡',
+
     label: `Klaar voor fase ${next.number}?`,
     sub: `${ctx.child?.name || 'Je kindje'} is ${ageMonths} mnd — ${next.label} kan starten.`,
     action: { kind: 'open-phase-detail' },
@@ -128,7 +128,7 @@ function ruleRecipeDiscovery(ctx, _ageMonths) {
   const pick = candidates[idx];
   return [{
     key: `suggest-recipe-${pick.id}`,
-    icon: '💡',
+
     label: `Probeer: ${pick.name}`,
     sub: 'Een receptje dat je deze week nog niet gegeven hebt.',
     action: { kind: 'open-recipe', recipeId: pick.id },
@@ -152,7 +152,7 @@ function ruleRejectionPattern(ctx) {
     const label = firstMatch?.recipe_name || firstMatch?.food_text || 'dit recept';
     out.push({
       key: `suggest-rejection-${String(key).slice(0, 40)}`,
-      icon: '💡',
+
       label: `${n}× afwijzing voor ${label}`,
       sub: 'Overweeg een andere textuur of bereiding.',
       action: { kind: 'show-info', infoKey: 'rejection', recipe: label, count: n },
@@ -167,7 +167,7 @@ function ruleNoRecentLog(ctx) {
   if (meals.length === 0) {
     return [{
       key: 'suggest-no-log',
-      icon: '💡',
+
       label: 'Nog niets gelogd deze week',
       sub: 'Tijd voor een nieuwe maaltijd-log?',
       action: { kind: 'open-meal-log' },
@@ -184,7 +184,7 @@ function ruleNoRecentLog(ctx) {
   if (days < NO_LOG_DAYS_THRESHOLD) return [];
   return [{
     key: 'suggest-no-log',
-    icon: '💡',
+
     label: `${days} dagen niets gelogd`,
     sub: 'Alles ok? Tijd voor een nieuwe maaltijd-log?',
     action: { kind: 'open-meal-log' },
@@ -205,7 +205,7 @@ function ruleDuplicateMealType(ctx) {
     if (n < 2) continue;
     out.push({
       key: `suggest-dup-${type}`,
-      icon: '💡',
+
       label: `Vandaag al ${n} × ${capitalize(type)}`,
       sub: 'Dubbele entry? Check je maaltijd-lijst hierboven.',
       action: { kind: 'show-info', infoKey: 'duplicate', mealType: type, count: n },
@@ -230,7 +230,7 @@ function ruleSymptomPattern(ctx) {
     const label = meta?.label || type;
     out.push({
       key: `suggest-symptom-${type}`,
-      icon: '💡',
+
       label: `${label} ${n}× deze week`,
       sub: 'Mogelijk patroon — bekijk welke maaltijden eraan voorafgingen.',
       action: { kind: 'show-info', infoKey: 'symptom-pattern', symptomType: type, count: n },
