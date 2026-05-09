@@ -8,7 +8,7 @@
    Brok F — fasen-systeem (banner + detail + overzicht).
 ============================================ */
 
-import { escapeHtml, colorFromSeed, initialsFromName, showToast } from '../utils.js?v=2.14.0';
+import { escapeHtml, colorFromSeed, initialsFromName, showToast } from '../utils.js?v=2.15.0';
 import {
   getMyChildren,
   getMealsForChild,
@@ -18,38 +18,39 @@ import {
   getPhases,
   deleteMealLog,
   deleteSymptom,
-} from '../eersteHapjesApi.js?v=2.14.0';
+} from '../eersteHapjesApi.js?v=2.15.0';
 import {
   ageMonthsFromBirthdate,
   getNextStepArticle,
   formatAgeRange,
-} from '../eersteHapjesContent.js?v=2.14.0';
-import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.14.0';
-import { openMealLogModal } from './mealLogModal.js?v=2.14.0';
-import { openSymptomLogModal } from './symptomLogModal.js?v=2.14.0';
-import { openSymptomDetailModal } from './symptomDetailModal.js?v=2.14.0';
-import { openAllergenManager } from './allergenManager.js?v=2.14.0';
+} from '../eersteHapjesContent.js?v=2.15.0';
+import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.15.0';
+import { openMealLogModal } from './mealLogModal.js?v=2.15.0';
+import { openSymptomLogModal } from './symptomLogModal.js?v=2.15.0';
+import { openSymptomDetailModal } from './symptomDetailModal.js?v=2.15.0';
+import { openAllergenManager } from './allergenManager.js?v=2.15.0';
 import {
   deriveAllergenState,
   statusLabel,
   statusTone,
   openAllergenTimelineModal,
-} from './allergenIntroModal.js?v=2.14.0';
-import { openArticleModal, openArticleListModal } from './articleModal.js?v=2.14.0';
-import { openRiskFoodsListModal, openRiskFoodDetailModal } from './riskFoodsModal.js?v=2.14.0';
+} from './allergenIntroModal.js?v=2.15.0';
+import { openArticleModal, openArticleListModal } from './articleModal.js?v=2.15.0';
+import { openRiskFoodsListModal, openRiskFoodDetailModal } from './riskFoodsModal.js?v=2.15.0';
+import { openAgendaModal } from './agendaModal.js?v=2.15.0';
 import {
   getRelevantRiskFoods,
   formatAgeLimit,
-} from '../content/eersteHapjes-risk-foods.js?v=2.14.0';
+} from '../content/eersteHapjes-risk-foods.js?v=2.15.0';
 import {
   renderPhaseBanner,
   openPhaseDetailModal,
   openPhaseOverviewModal,
-} from './phaseModal.js?v=2.14.0';
-import { getSymptomMeta, isRedFlag } from '../content/eersteHapjes-symptoms.js?v=2.14.0';
-import { buildSuggestions } from '../eersteHapjesSuggestions.js?v=2.14.0';
-import { getRecipes } from '../store.js?v=2.14.0';
-import * as Router from '../router.js?v=2.14.0';
+} from './phaseModal.js?v=2.15.0';
+import { getSymptomMeta, isRedFlag } from '../content/eersteHapjes-symptoms.js?v=2.15.0';
+import { buildSuggestions } from '../eersteHapjesSuggestions.js?v=2.15.0';
+import { getRecipes } from '../store.js?v=2.15.0';
+import * as Router from '../router.js?v=2.15.0';
 
 // Module-state
 let state = {
@@ -201,16 +202,20 @@ async function renderApp(root) {
     root.innerHTML = `
       <div class="eh-page-inner">
         <div class="eh-welcome">
-          <div class="eh-welcome-icon">🥄</div>
           <h2 class="eh-welcome-title">Welkom bij Eerste Hapjes</h2>
-          <p class="eh-welcome-sub">Voeg je eerste kindje toe om te starten.</p>
-          <button class="btn btn-primary" id="eh-start-onboarding">Toevoegen</button>
+          <p class="eh-welcome-sub">
+            Kindjes beheer je via je profiel. Klik op je avatar rechtsboven →
+            <strong>Mijn profiel</strong> en voeg daar je eerste kindje toe.
+          </p>
+          <button class="btn btn-primary" id="eh-open-profile">Open Mijn profiel</button>
         </div>
       </div>
     `;
-    const btn = document.getElementById('eh-start-onboarding');
-    btn.addEventListener('click', () => openOnboarding(root));
-    openOnboarding(root);
+    const btn = document.getElementById('eh-open-profile');
+    btn?.addEventListener('click', () => {
+      // Klik simuleren op de header-avatar — opent profielmodal.
+      document.getElementById('header-avatar-btn')?.click();
+    });
     return;
   }
 
@@ -292,6 +297,9 @@ function renderToday(child) {
       <div class="eh-today-foot">
         <button class="eh-tips-link" data-action="open-phases" type="button">
           Mijn fasen →
+        </button>
+        <button class="eh-tips-link" data-action="open-agenda" type="button">
+          Bekijk agenda →
         </button>
         <button class="eh-tips-link" data-action="open-symptom-list" type="button">
           Symptomen-uitleg →
@@ -701,6 +709,14 @@ function bindLogActions(root, child) {
     });
   }
 
+  // "Bekijk agenda"-link → agendaModal (batch 4)
+  const agendaBtn = root.querySelector('[data-action="open-agenda"]');
+  if (agendaBtn) {
+    agendaBtn.addEventListener('click', async () => {
+      await openAgendaModal({ childId: child.id, childName: child.name });
+    });
+  }
+
   // Reminder-card items (brok H.6) — alleen nog allergeen-reminders
   root.querySelectorAll('[data-reminder-type]').forEach((btn) => {
     btn.addEventListener('click', async () => {
@@ -792,7 +808,7 @@ function bindLogActions(root, child) {
   const articleBtn = root.querySelector('[data-action="open-article"]');
   if (articleBtn) {
     articleBtn.addEventListener('click', async () => {
-      const { getArticleBySlug } = await import('../eersteHapjesContent.js?v=2.14.0');
+      const { getArticleBySlug } = await import('../eersteHapjesContent.js?v=2.15.0');
       const article = getArticleBySlug(articleBtn.dataset.slug);
       if (article) await openArticleModal(article);
     });

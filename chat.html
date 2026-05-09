@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=2.14.0" />
+  <link rel="stylesheet" href="/styles.css?v=2.15.0" />
 
   <style>
     html, body { height: 100%; }
@@ -825,9 +825,10 @@
       <input type="text" id="pf-name" maxlength="80" placeholder="bv. Sarah" />
 
       <label class="field">Kind(eren)</label>
-      <p class="lead" style="margin-top:-.2rem;margin-bottom:.75rem;font-size:.8rem;">Per kind kan je allergieën en notities invullen.</p>
-      <div id="pf-children"></div>
-      <button class="btn-add-child" type="button" id="pf-add-child">＋ Kind toevoegen</button>
+      <p class="lead" style="margin-top:-.2rem;margin-bottom:.75rem;font-size:.8rem;">
+        Kindjes beheer je via het avatar-icoon rechtsboven → <strong>Mijn profiel</strong>.
+        HapjesHeld leest ze daar automatisch.
+      </p>
 
       <label class="field">Dieet in het gezin</label>
       <div class="checkbox-group" id="pf-diet">
@@ -892,9 +893,9 @@
     </div>
   </div>
 
-  <script src="/js/chat.js?v=2.14.0" type="module"></script>
+  <script src="/js/chat.js?v=2.15.0" type="module"></script>
   <script type="module">
-    import { mountHeaderAvatar, attachLogoutHandler } from '/js/headerAvatarStandalone.js?v=2.14.0';
+    import { mountHeaderAvatar, attachLogoutHandler } from '/js/headerAvatarStandalone.js?v=2.15.0';
     document.addEventListener('DOMContentLoaded', () => {
       // Verberg de oude email-span — vervangen door avatar-pill
       document.getElementById('header-user-email')?.remove();

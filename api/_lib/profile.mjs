@@ -7,15 +7,51 @@ const ALLOWED_DIET = new Set([
   'halal', 'kosher', 'pescotarisch', 'geen-varken', 'geen-rund',
 ]);
 
-/** Laad het profiel van een user of null als niet aanwezig. */
+/**
+ * Laad het profiel van een user.
+ *
+ * Kindjes komen sinds batch 3 uit `public.children` (single source of truth,
+ * beheerd via profielmodal en Eerste Hapjes-flow). De legacy
+ * `chat_user_profiles.children` JSONB-kolom wordt genegeerd voor uitlees-
+ * doeleinden — bestaande writes laten we ongewijzigd voor backwards compat
+ * tot de eerste-hapjes-merge naar main.
+ *
+ * Returnt een geconsolideerd profile-object of null als er noch een profiel
+ * noch kindjes zijn.
+ */
 export async function loadUserProfile(userId) {
-  const { data, error } = await supabase
-    .from('chat_user_profiles')
-    .select('*')
-    .eq('user_id', userId)
-    .maybeSingle();
-  if (error) throw new Error('Profile load: ' + error.message);
-  return data;
+  const [profileRes, childrenRes] = await Promise.all([
+    supabase.from('chat_user_profiles').select('*').eq('user_id', userId).maybeSingle(),
+    supabase.from('children').select('id, name, birthdate, archived_at')
+      .eq('user_id', userId).is('archived_at', null)
+      .order('birthdate', { ascending: false }),
+  ]);
+  if (profileRes.error) throw new Error('Profile load: ' + profileRes.error.message);
+  if (childrenRes.error) throw new Error('Children load: ' + childrenRes.error.message);
+
+  const profile = profileRes.data;
+  const kids = childrenRes.data || [];
+  const childrenList = kids.map((c) => ({
+    id: c.id,
+    name: c.name,
+    birthdate: c.birthdate,
+    // Allergies/notes per kind staan in `child_allergens` — kunnen later
+    // via dedicated endpoints in dit object gemerged worden indien nodig.
+    allergies: [],
+    notes: null,
+  }));
+
+  if (!profile && childrenList.length === 0) return null;
+
+  const base = profile || {
+    user_id: userId,
+    display_name: null,
+    diet: [],
+    allergies: [],
+    notes: null,
+    memory_enabled: true,
+  };
+  return { ...base, children: childrenList };
 }
 
 /** Valideer & sanitize input voor PUT /api/profile. */

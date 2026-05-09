@@ -1,7 +1,7 @@
 // Chat frontend met sidebar-gebaseerde conversatie-management.
 // Vereist een geldige Supabase sessie (gezet door de hoofdsite-login).
 
-import { sessionGet, sessionRefreshIfNeeded, sessionClear } from './supabase.js?v=2.14.0';
+import { sessionGet, sessionRefreshIfNeeded, sessionClear } from './supabase.js?v=2.15.0';
 
 // ---------- DOM refs ----------
 const form = document.getElementById('form');
@@ -27,8 +27,6 @@ const memClose = document.getElementById('mem-close');
 // Profiel-modal refs
 const profileModal = document.getElementById('profile-modal');
 const pfName = document.getElementById('pf-name');
-const pfChildren = document.getElementById('pf-children');
-const pfAddChild = document.getElementById('pf-add-child');
 const pfDiet = document.getElementById('pf-diet');
 const pfNotes = document.getElementById('pf-notes');
 const pfMemory = document.getElementById('pf-memory');
@@ -293,31 +291,14 @@ async function selectConversation(id) {
 }
 
 // ---------- Profile modal ----------
+// Kindjes worden niet meer hier beheerd. Gebruiker beheert ze via het
+// avatar-icoon → "Mijn profiel" in de header (community-profielmodal).
+// De RAG-bot leest sinds batch 3 kindjes uit de `public.children`-tabel.
 let currentProfile = null;
-
-function renderChildRow(child = {}, index = 0) {
-  const row = document.createElement('div');
-  row.className = 'child-row';
-  const allergiesStr = Array.isArray(child.allergies) ? child.allergies.join(', ') : '';
-  row.innerHTML = `
-    <div class="row-top">
-      <input type="text" class="pf-child-name" placeholder="Naam (bv. Lou)" maxlength="50" value="${(child.name || '').replace(/"/g, '&quot;')}" />
-      <input type="date" class="pf-child-birth" value="${child.birthdate || ''}" />
-    </div>
-    <input type="text" class="pf-child-allergies" maxlength="300" placeholder="Allergieën (komma-gescheiden, bv. pinda, melk)" value="${allergiesStr.replace(/"/g, '&quot;')}" style="margin-top:.5rem;" />
-    <textarea class="pf-child-notes" maxlength="200" placeholder="Notities over dit kind (bv. eczeem, weigert groene groenten)">${(child.notes || '')}</textarea>
-    <button class="btn-remove" type="button">× verwijderen</button>
-  `;
-  row.querySelector('.btn-remove').addEventListener('click', () => row.remove());
-  return row;
-}
 
 function openProfileModal() {
   // Reset fields
   pfName.value = currentProfile?.display_name || '';
-  pfChildren.innerHTML = '';
-  const children = currentProfile?.children?.length ? currentProfile.children : [{}];
-  for (const c of children) pfChildren.appendChild(renderChildRow(c));
   // Dieet checkboxes
   const dietSet = new Set(currentProfile?.diet || []);
   pfDiet.querySelectorAll('label').forEach(l => {
@@ -336,21 +317,12 @@ function closeProfileModal() {
 }
 
 function collectProfileFromModal() {
-  const children = Array.from(pfChildren.querySelectorAll('.child-row')).map(row => ({
-    name: row.querySelector('.pf-child-name').value.trim(),
-    birthdate: row.querySelector('.pf-child-birth').value || null,
-    notes: row.querySelector('.pf-child-notes').value.trim(),
-    allergies: row.querySelector('.pf-child-allergies').value
-      .split(',')
-      .map(s => s.trim().toLowerCase())
-      .filter(Boolean),
-  })).filter(c => c.name || c.birthdate);
-
+  // Kindjes worden niet meer in dit formulier beheerd — zie comment bij
+  // openProfileModal(). We sturen ze niet mee, dan kan de backend ze
+  // ongewijzigd laten in de jsonb-kolom (legacy fallback).
   const diet = Array.from(pfDiet.querySelectorAll('input:checked')).map(i => i.value);
-
   return {
     display_name: pfName.value.trim(),
-    children,
     diet,
     notes: pfNotes.value.trim(),
     memory_enabled: pfMemory.checked,
@@ -441,9 +413,6 @@ function updateQuotaBar(usage) {
 }
 
 // Event handlers profile modal
-pfAddChild.addEventListener('click', () => {
-  pfChildren.appendChild(renderChildRow());
-});
 pfCancel.addEventListener('click', closeProfileModal);
 pfSave.addEventListener('click', saveProfile);
 pfDiet.addEventListener('change', (e) => {

@@ -5,9 +5,40 @@
    Returnt Promise<profile|null>.
 ============================================ */
 
-import { escapeHtml, processImageForUpload, showToast, initialsFromName, colorFromSeed } from '../utils.js?v=2.14.0';
-import { sessionGet } from '../supabase.js?v=2.14.0';
-import * as Api from '../communityApi.js?v=2.14.0';
+import { escapeHtml, processImageForUpload, showToast, initialsFromName, colorFromSeed } from '../utils.js?v=2.15.0';
+import { sessionGet } from '../supabase.js?v=2.15.0';
+import * as Api from '../communityApi.js?v=2.15.0';
+import { getMyChildren, deleteChild } from '../eersteHapjesApi.js?v=2.15.0';
+import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.15.0';
+
+function renderChildItem(child) {
+  const ageMonths = (() => {
+    if (!child.birthdate) return null;
+    const d = new Date(child.birthdate + 'T00:00:00Z');
+    if (Number.isNaN(d.getTime())) return null;
+    const now = Date.now();
+    return Math.floor((now - d.getTime()) / (1000 * 60 * 60 * 24 * 30.4375));
+  })();
+  let ageLabel = '';
+  if (typeof ageMonths === 'number') {
+    if (ageMonths < 24) ageLabel = `${ageMonths} mnd`;
+    else ageLabel = `${Math.floor(ageMonths / 12)} jaar`;
+  }
+  const safeName = escapeHtml(child.name || 'Kindje');
+  return `
+    <div class="pf-children-item">
+      <div class="pf-children-item-main">
+        <div class="pf-children-item-name">${safeName}</div>
+        <div class="pf-children-item-meta">${escapeHtml(child.birthdate || '—')}${ageLabel ? ` · ${ageLabel}` : ''}</div>
+      </div>
+      <button class="pf-children-item-del"
+              data-del-child="${escapeHtml(child.id)}"
+              data-child-name="${safeName}"
+              type="button"
+              aria-label="Verwijder ${safeName}">×</button>
+    </div>
+  `;
+}
 
 export function openProfileModal() {
   return new Promise(async (resolve) => {
@@ -55,6 +86,17 @@ export function openProfileModal() {
         >
         <div class="nickname-rules">
           2–30 tekens · letters, cijfers, spaties, _ en -
+        </div>
+
+        <div class="pf-children-section">
+          <div class="pf-children-head">
+            <h3>Mijn kinderen</h3>
+            <p class="pf-children-sub">Eén plek voor je kindjes — wordt gebruikt door HapjesHeld én Eerste Hapjes.</p>
+          </div>
+          <div class="pf-children-list" data-children-list>
+            <div class="pf-children-loading">Laden…</div>
+          </div>
+          <button type="button" class="btn btn-outline btn-sm" id="pf-children-add">+ Kindje toevoegen</button>
         </div>
 
         <div id="pf-error" class="auth-error hidden"></div>
@@ -129,6 +171,51 @@ export function openProfileModal() {
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') close(null);
     });
+
+    // ---------- Kinderen-sectie ----------
+    const childrenListEl = overlay.querySelector('[data-children-list]');
+    const addChildBtn    = overlay.querySelector('#pf-children-add');
+
+    async function refreshChildren() {
+      childrenListEl.innerHTML = `<div class="pf-children-loading">Laden…</div>`;
+      const { ok, data, error } = await getMyChildren();
+      if (!ok) {
+        childrenListEl.innerHTML = `<div class="pf-children-error">${escapeHtml(error || 'Kon kindjes niet laden.')}</div>`;
+        return;
+      }
+      const children = data?.children || [];
+      if (children.length === 0) {
+        childrenListEl.innerHTML = `<div class="pf-children-empty">Nog geen kindje toegevoegd.</div>`;
+        return;
+      }
+      childrenListEl.innerHTML = children.map((c) => renderChildItem(c)).join('');
+      childrenListEl.querySelectorAll('[data-del-child]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.delChild;
+          const name = btn.dataset.childName || 'dit kindje';
+          if (!window.confirm(`"${name}" verwijderen? Alle gekoppelde data (maaltijden, allergenen, fases) blijft maar wordt onbereikbaar.`)) return;
+          btn.disabled = true;
+          const { ok: dOk, error: dErr } = await deleteChild(id);
+          if (!dOk) {
+            btn.disabled = false;
+            showToast(dErr || 'Verwijderen mislukt.', 'error');
+            return;
+          }
+          showToast(`${name} verwijderd.`, 'success');
+          refreshChildren();
+        });
+      });
+    }
+
+    addChildBtn.addEventListener('click', async () => {
+      const child = await openChildOnboardingModal();
+      if (child) {
+        showToast(`${child.name || 'Kindje'} toegevoegd.`, 'success');
+        refreshChildren();
+      }
+    });
+
+    refreshChildren();
 
     saveBtn.addEventListener('click', async () => {
       const newNick = input.value.trim();
