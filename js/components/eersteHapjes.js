@@ -8,7 +8,7 @@
    Brok F — fasen-systeem (banner + detail + overzicht).
 ============================================ */
 
-import { escapeHtml, colorFromSeed, initialsFromName, showToast } from '../utils.js?v=2.23.0';
+import { escapeHtml, colorFromSeed, initialsFromName, showToast } from '../utils.js?v=2.24.0';
 import {
   getMyChildren,
   getMealsForChild,
@@ -18,40 +18,40 @@ import {
   getPhases,
   deleteMealLog,
   deleteSymptom,
-} from '../eersteHapjesApi.js?v=2.23.0';
+} from '../eersteHapjesApi.js?v=2.24.0';
 import {
   ageMonthsFromBirthdate,
   getNextStepArticle,
   formatAgeRange,
-} from '../eersteHapjesContent.js?v=2.23.0';
-import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.23.0';
-import { openMealLogModal } from './mealLogModal.js?v=2.23.0';
-import { openSymptomLogModal } from './symptomLogModal.js?v=2.23.0';
-import { openSymptomDetailModal } from './symptomDetailModal.js?v=2.23.0';
-import { openAllergenManager } from './allergenManager.js?v=2.23.0';
+} from '../eersteHapjesContent.js?v=2.24.0';
+import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.24.0';
+import { openMealLogModal } from './mealLogModal.js?v=2.24.0';
+import { openSymptomLogModal } from './symptomLogModal.js?v=2.24.0';
+import { openSymptomDetailModal } from './symptomDetailModal.js?v=2.24.0';
+import { openAllergenManager } from './allergenManager.js?v=2.24.0';
 import {
   deriveAllergenState,
   statusLabel,
   statusTone,
   openAllergenTimelineModal,
-} from './allergenIntroModal.js?v=2.23.0';
-import { openArticleModal, openArticleListModal } from './articleModal.js?v=2.23.0';
-import { openRiskFoodsListModal, openRiskFoodDetailModal } from './riskFoodsModal.js?v=2.23.0';
-import { openAgendaModal } from './agendaModal.js?v=2.23.0';
-import { renderEhChatBox, bindEhChatBox } from './ehChatBox.js?v=2.23.0';
+} from './allergenIntroModal.js?v=2.24.0';
+import { openArticleModal, openArticleListModal } from './articleModal.js?v=2.24.0';
+import { openRiskFoodsListModal, openRiskFoodDetailModal } from './riskFoodsModal.js?v=2.24.0';
+import { openAgendaModal } from './agendaModal.js?v=2.24.0';
+import { renderEhChatBox, bindEhChatBox } from './ehChatBox.js?v=2.24.0';
 import {
   getRelevantRiskFoods,
   formatAgeLimit,
-} from '../content/eersteHapjes-risk-foods.js?v=2.23.0';
+} from '../content/eersteHapjes-risk-foods.js?v=2.24.0';
 import {
   renderPhaseBanner,
   openPhaseDetailModal,
   openPhaseOverviewModal,
-} from './phaseModal.js?v=2.23.0';
-import { getSymptomMeta, isRedFlag } from '../content/eersteHapjes-symptoms.js?v=2.23.0';
-import { buildSuggestions } from '../eersteHapjesSuggestions.js?v=2.23.0';
-import { getRecipes } from '../store.js?v=2.23.0';
-import * as Router from '../router.js?v=2.23.0';
+} from './phaseModal.js?v=2.24.0';
+import { getSymptomMeta, isRedFlag } from '../content/eersteHapjes-symptoms.js?v=2.24.0';
+import { buildSuggestions } from '../eersteHapjesSuggestions.js?v=2.24.0';
+import { getRecipes } from '../store.js?v=2.24.0';
+import * as Router from '../router.js?v=2.24.0';
 
 // Module-state
 let state = {
@@ -293,22 +293,25 @@ function renderToday(child) {
         ${renderSymptomsCard(child)}
         ${renderAllergensCard(child)}
         ${renderAgendaCard(child)}
+        ${renderInfoCard('open-phases', 'Mijn fasen', 'Bekijk je voortgang door de fasen.')}
+        ${renderInfoCard('open-symptom-list', 'Symptomen-uitleg', 'Wat betekenen mogelijke symptomen?')}
+        ${renderInfoCard('open-risk-foods', 'Risicovoedingen-lijst', 'Voedingsmiddelen met verhoogd risico.')}
       </div>
 
       ${renderEhChatBox(child)}
-
-      <div class="eh-today-foot">
-        <button class="eh-tips-link" data-action="open-phases" type="button">
-          Mijn fasen →
-        </button>
-        <button class="eh-tips-link" data-action="open-symptom-list" type="button">
-          Symptomen-uitleg →
-        </button>
-        <button class="eh-tips-link" data-action="open-risk-foods" type="button">
-          Risicovoedingen-lijst →
-        </button>
-      </div>
     </section>
+  `;
+}
+
+function renderInfoCard(action, title, desc) {
+  return `
+    <div class="eh-today-card eh-log-card eh-log-card-info" data-action="${escapeHtml(action)}" role="button" tabindex="0">
+      <header class="eh-log-card-header">
+        <h3>${escapeHtml(title)}</h3>
+        <span class="eh-log-card-arrow" aria-hidden="true">→</span>
+      </header>
+      <p class="eh-info-card-desc">${escapeHtml(desc)}</p>
+    </div>
   `;
 }
 
@@ -843,7 +846,7 @@ function bindLogActions(root, child) {
   const articleBtn = root.querySelector('[data-action="open-article"]');
   if (articleBtn) {
     articleBtn.addEventListener('click', async () => {
-      const { getArticleBySlug } = await import('../eersteHapjesContent.js?v=2.23.0');
+      const { getArticleBySlug } = await import('../eersteHapjesContent.js?v=2.24.0');
       const article = getArticleBySlug(articleBtn.dataset.slug);
       if (article) await openArticleModal(article);
     });

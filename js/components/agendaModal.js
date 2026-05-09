@@ -1,25 +1,30 @@
 /* ============================================
-   EERSTE HAPJES — AGENDA / HISTORIEK (batch 4)
-   Chronologisch overzicht van alle events voor één kindje:
+   EERSTE HAPJES — AGENDA / KALENDER
+   Kalender-overzicht van alle events voor één kindje:
    - meal_logs (eaten_at)
    - child_symptoms (occurred_at)
    - allergen_intro_logs (intro_date)
-   Items worden gegroepeerd per dag (desc).
 
-   Read-only lijst — bewerken gebeurt op de Vandaag-pagina of via
-   de allergenen-tijdlijn. Detail-klik scrollt later eventueel naar
-   de relevante card; voor v1 alleen weergave.
+   Twee views:
+   - Week: 7 kolommen ma-zo, events stapelend onder elke dag
+   - Maand: 7×N grid, kleine cellen met gekleurde dots per type
+     (max 3 zichtbaar, dan +N indicator). Klik op cel → week-view
+     rond die dag.
+
+   Navigatie: ◀ Vorige | <range-label> | Volgende ▶ + "Vandaag"-knop.
+   Cursor wordt bewaard als anker; week/maand-view berekent zijn span
+   t.o.v. die cursor.
 ============================================ */
 
-import { escapeHtml } from '../utils.js?v=2.23.0';
+import { escapeHtml } from '../utils.js?v=2.24.0';
 import {
   getMealsForChild,
   getSymptomsForChild,
   getAllergenIntros,
-} from '../eersteHapjesApi.js?v=2.23.0';
-import { getSymptomMeta } from '../content/eersteHapjes-symptoms.js?v=2.23.0';
+} from '../eersteHapjesApi.js?v=2.24.0';
+import { getSymptomMeta } from '../content/eersteHapjes-symptoms.js?v=2.24.0';
 
-const DEFAULT_DAYS = 90;
+const FETCH_DAYS_BACK = 90;
 
 const MEAL_TYPE_LABEL = {
   ontbijt: 'Ontbijt',
@@ -28,7 +33,7 @@ const MEAL_TYPE_LABEL = {
   snack:   'Snack',
 };
 
-const REACTION_EMOJI_FALLBACK = {
+const REACTION_FALLBACK = {
   positief:  '+',
   neutraal:  '~',
   afwijzing: '-',
@@ -42,19 +47,15 @@ const INTRO_REACTION_LABEL = {
   onbekend: 'Onbekend',
 };
 
-const RANGES = [
-  { key: '7',  label: 'Week',  days: 7  },
-  { key: '30', label: 'Maand', days: 30 },
-  { key: '90', label: '3 maanden', days: 90 },
-];
+const WEEKDAY_SHORT = ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo'];
+const WEEKDAY_LONG = ['maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag', 'zondag'];
+const MONTH_LONG = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
 
 /**
- * Toon de agenda-modal voor één kindje.
  * @param {object} opts
  * @param {string} opts.childId
  * @param {string} opts.childName
  * @param {object} [opts.initialData] — pre-fetched 7d data uit eersteHapjes-state
- *   { meals, symptoms, intros } — zorgt dat week-view instant rendert.
  */
 export function openAgendaModal({ childId, childName, initialData = null }) {
   return new Promise((resolve) => {
@@ -64,13 +65,18 @@ export function openAgendaModal({ childId, childName, initialData = null }) {
       <div class="modal eh-agenda-modal">
         <header class="eh-agenda-head">
           <h2>Agenda voor ${escapeHtml(childName || 'je kindje')}</h2>
-          <div class="eh-agenda-ranges" data-ranges>
-            ${RANGES.map((r, i) => `
-              <button type="button" class="eh-agenda-range ${i === 0 ? 'selected' : ''}"
-                      data-range="${r.key}">${escapeHtml(r.label)}</button>
-            `).join('')}
+          <div class="eh-agenda-views" data-views>
+            <button type="button" class="eh-agenda-view selected" data-view="week">Week</button>
+            <button type="button" class="eh-agenda-view" data-view="month">Maand</button>
           </div>
         </header>
+
+        <div class="eh-agenda-nav">
+          <button class="eh-agenda-nav-btn" data-nav="prev" aria-label="Vorige">◀</button>
+          <span class="eh-agenda-nav-label" data-nav-label>—</span>
+          <button class="eh-agenda-nav-btn" data-nav="next" aria-label="Volgende">▶</button>
+          <button class="eh-agenda-today-btn" data-nav="today" type="button">Vandaag</button>
+        </div>
 
         <div class="eh-agenda-filters">
           <label><input type="checkbox" data-filter="meal" checked> Maaltijden</label>
@@ -90,34 +96,25 @@ export function openAgendaModal({ childId, childName, initialData = null }) {
     document.body.appendChild(overlay);
 
     const bodyEl = overlay.querySelector('[data-body]');
-    // Cache per range (in dagen) → events-array. Wordt gevuld bij eerste fetch.
-    const cachedByRange = {};
-    let activeDays = 7; // default: week
-    let allEvents = []; // gefilterd op activeDays + gesorteerd
+    const navLabelEl = overlay.querySelector('[data-nav-label]');
 
-    // Als initialData mee gegeven (uit eersteHapjes-state, dekt 7d): zet
-    // direct in cache zodat week-view instant verschijnt.
-    if (initialData) {
-      cachedByRange[7] = buildEventsFromData(initialData, isoDateMinusDays(7));
-    }
+    let view = 'week';            // 'week' | 'month'
+    let cursor = startOfDay(new Date()); // anker — zit altijd binnen huidige range
+    let allEvents = [];           // gefetcht 1× bij open (laatste 90d)
+    let dataReady = false;
 
-    initRange(7);
+    // Initial fetch — 1 keer voor heel het modal-leven
+    initialFetch();
 
-    async function initRange(days) {
-      activeDays = days;
-      // Markeer actieve range-knop
-      overlay.querySelectorAll('[data-range]').forEach((btn) => {
-        btn.classList.toggle('selected', btn.dataset.range === String(days));
-      });
-
-      if (cachedByRange[days]) {
-        allEvents = cachedByRange[days];
+    async function initialFetch() {
+      // initialData is meestal "afgelopen 7d" — niet genoeg voor maand-view,
+      // dus altijd full fetch doen. Initial-data alleen tonen als snel-startweergave
+      // tot de rest binnen is.
+      if (initialData) {
+        allEvents = buildEventsFromData(initialData);
         render();
-        return;
       }
-
-      bodyEl.innerHTML = `<div class="eh-agenda-loading">Laden…</div>`;
-      const fromIso = isoDateMinusDays(days);
+      const fromIso = isoDateMinusDays(FETCH_DAYS_BACK);
       const [mealsRes, sympRes, introsRes] = await Promise.all([
         getMealsForChild(childId, { from: fromIso }),
         getSymptomsForChild(childId, { from: fromIso }),
@@ -128,57 +125,79 @@ export function openAgendaModal({ childId, childName, initialData = null }) {
         symptoms: sympRes.ok ? (sympRes.data?.symptoms || []) : [],
         intros: introsRes.ok ? (introsRes.data?.intros || []) : [],
       };
-      cachedByRange[days] = buildEventsFromData(data, fromIso);
-      allEvents = cachedByRange[days];
+      allEvents = buildEventsFromData(data);
+      dataReady = true;
       render();
     }
 
     function render() {
+      // Update nav-label en views-toggle
+      navLabelEl.textContent = formatRangeLabel(view, cursor);
+      overlay.querySelectorAll('[data-view]').forEach((btn) => {
+        btn.classList.toggle('selected', btn.dataset.view === view);
+      });
+
       const activeTypes = new Set(
         Array.from(overlay.querySelectorAll('[data-filter]:checked')).map((cb) => cb.dataset.filter)
       );
-      const filtered = allEvents.filter((e) => activeTypes.has(e.type));
-      if (filtered.length === 0) {
-        bodyEl.innerHTML = `<div class="eh-agenda-empty">Nog niets gelogd voor de gekozen filter.</div>`;
-        return;
+      const filteredEvents = allEvents.filter((e) => activeTypes.has(e.type));
+
+      if (view === 'week') {
+        bodyEl.innerHTML = renderWeek(cursor, filteredEvents);
+        bindWeekHandlers();
+      } else {
+        bodyEl.innerHTML = renderMonth(cursor, filteredEvents);
+        bindMonthHandlers();
       }
-
-      // Groepeer per dag (YYYY-MM-DD)
-      const groups = new Map();
-      for (const e of filtered) {
-        if (!groups.has(e.day)) groups.set(e.day, []);
-        groups.get(e.day).push(e);
-      }
-
-      const today = isoDateMinusDays(0);
-      const yesterday = isoDateMinusDays(1);
-
-      bodyEl.innerHTML = Array.from(groups.entries()).map(([day, events]) => {
-        let dayLabel;
-        if (day === today) dayLabel = 'Vandaag';
-        else if (day === yesterday) dayLabel = 'Gisteren';
-        else dayLabel = formatDayLabel(day);
-
-        return `
-          <section class="eh-agenda-day">
-            <h3 class="eh-agenda-day-label">${escapeHtml(dayLabel)}</h3>
-            <ul class="eh-agenda-events">
-              ${events.map((e) => renderEvent(e)).join('')}
-            </ul>
-          </section>
-        `;
-      }).join('');
     }
 
+    function bindWeekHandlers() {
+      // Klik op een event — voor v2 alleen toon/no-op
+      // (uitbreidbaar naar dag-detail of edit)
+    }
+
+    function bindMonthHandlers() {
+      bodyEl.querySelectorAll('[data-day]').forEach((cell) => {
+        cell.addEventListener('click', () => {
+          const day = cell.dataset.day; // YYYY-MM-DD
+          if (!day) return;
+          cursor = startOfDay(new Date(day + 'T12:00:00Z'));
+          view = 'week';
+          render();
+        });
+      });
+    }
+
+    // Filters
     overlay.querySelectorAll('[data-filter]').forEach((cb) => {
       cb.addEventListener('change', render);
     });
-    overlay.querySelectorAll('[data-range]').forEach((btn) => {
+
+    // View-toggle
+    overlay.querySelectorAll('[data-view]').forEach((btn) => {
       btn.addEventListener('click', () => {
-        const days = Number(btn.dataset.range);
-        if (days !== activeDays) initRange(days);
+        const v = btn.dataset.view;
+        if (v && v !== view) {
+          view = v;
+          render();
+        }
       });
     });
+
+    // Navigatie
+    overlay.querySelector('[data-nav="prev"]').addEventListener('click', () => {
+      cursor = view === 'week' ? addDays(cursor, -7) : addMonths(cursor, -1);
+      render();
+    });
+    overlay.querySelector('[data-nav="next"]').addEventListener('click', () => {
+      cursor = view === 'week' ? addDays(cursor, 7) : addMonths(cursor, 1);
+      render();
+    });
+    overlay.querySelector('[data-nav="today"]').addEventListener('click', () => {
+      cursor = startOfDay(new Date());
+      render();
+    });
+
     overlay.querySelector('[data-action="close"]').addEventListener('click', close);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
     document.addEventListener('keydown', function escHandler(e) {
@@ -196,15 +215,145 @@ export function openAgendaModal({ childId, childName, initialData = null }) {
 }
 
 /* ============================================
+   Render helpers — week
+============================================ */
+function renderWeek(cursor, events) {
+  const weekStart = startOfWeek(cursor); // maandag
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = addDays(weekStart, i);
+    days.push(d);
+  }
+  const today = toDayIso(new Date());
+
+  // Events groeperen per dag-iso
+  const byDay = new Map();
+  for (const e of events) {
+    if (!byDay.has(e.day)) byDay.set(e.day, []);
+    byDay.get(e.day).push(e);
+  }
+
+  return `
+    <div class="eh-cal eh-cal-week">
+      ${days.map((d) => {
+        const iso = toDayIso(d);
+        const isToday = iso === today;
+        const dayEvents = byDay.get(iso) || [];
+        return `
+          <div class="eh-cal-day ${isToday ? 'is-today' : ''}">
+            <div class="eh-cal-day-head">
+              <span class="eh-cal-day-name">${WEEKDAY_SHORT[i7(d)]}</span>
+              <span class="eh-cal-day-num">${d.getDate()}</span>
+            </div>
+            <div class="eh-cal-day-events">
+              ${dayEvents.length === 0
+                ? `<span class="eh-cal-day-empty">·</span>`
+                : dayEvents.map(renderWeekEvent).join('')
+              }
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+function renderWeekEvent(e) {
+  const sub = e.sub ? ` · ${e.sub}` : '';
+  const time = e.time ? `<span class="eh-cal-event-time">${escapeHtml(e.time)}</span>` : '';
+  const title = `${e.label}${sub}`;
+  return `
+    <div class="eh-cal-event eh-cal-event-${escapeHtml(e.type)} ${e.severe ? 'is-severe' : ''}" title="${escapeHtml(title)}">
+      ${time}
+      <span class="eh-cal-event-label">${escapeHtml(e.label)}</span>
+    </div>
+  `;
+}
+
+/* ============================================
+   Render helpers — month
+============================================ */
+function renderMonth(cursor, events) {
+  const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+  const last = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
+  // Grid start: maandag van de week waar dag-1 in valt
+  const gridStart = startOfWeek(first);
+  // Grid end: zondag van de week waar laatste dag in valt
+  const gridEnd = endOfWeek(last);
+  const today = toDayIso(new Date());
+
+  // Events groeperen per dag-iso, dan per type
+  const byDay = new Map();
+  for (const e of events) {
+    if (!byDay.has(e.day)) byDay.set(e.day, { meal: 0, symptom: 0, intro: 0, severe: false });
+    const bucket = byDay.get(e.day);
+    if (bucket[e.type] !== undefined) bucket[e.type] += 1;
+    if (e.severe) bucket.severe = true;
+  }
+
+  const cells = [];
+  let d = gridStart;
+  while (d <= gridEnd) {
+    const iso = toDayIso(d);
+    const inMonth = d.getMonth() === cursor.getMonth();
+    const isToday = iso === today;
+    const counts = byDay.get(iso);
+    cells.push({ date: d, iso, inMonth, isToday, counts });
+    d = addDays(d, 1);
+  }
+
+  return `
+    <div class="eh-cal eh-cal-month">
+      <div class="eh-cal-month-head">
+        ${WEEKDAY_SHORT.map((w) => `<span class="eh-cal-month-day">${w}</span>`).join('')}
+      </div>
+      <div class="eh-cal-month-grid">
+        ${cells.map((c) => renderMonthCell(c)).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderMonthCell({ date, iso, inMonth, isToday, counts }) {
+  const dotsHtml = counts ? renderDots(counts) : '';
+  return `
+    <button type="button"
+            class="eh-cal-cell ${inMonth ? '' : 'is-out'} ${isToday ? 'is-today' : ''} ${counts?.severe ? 'is-severe' : ''}"
+            data-day="${iso}">
+      <span class="eh-cal-cell-num">${date.getDate()}</span>
+      ${dotsHtml}
+    </button>
+  `;
+}
+
+function renderDots(counts) {
+  // Max 3 dots zichtbaar; meer = +N badge
+  const dotItems = [];
+  if (counts.meal > 0) dotItems.push({ type: 'meal', n: counts.meal });
+  if (counts.symptom > 0) dotItems.push({ type: 'symptom', n: counts.symptom });
+  if (counts.intro > 0) dotItems.push({ type: 'intro', n: counts.intro });
+
+  // Toon één dot per actieve type (max 3, want er zijn maar 3 types).
+  // Zou er ooit een 4e type komen, dan +N badge.
+  const visible = dotItems.slice(0, 3);
+  const overflow = dotItems.length - visible.length;
+  return `
+    <span class="eh-cal-cell-dots">
+      ${visible.map((d) => `<span class="eh-cal-dot eh-cal-dot-${d.type}" title="${d.n} ${d.type}"></span>`).join('')}
+      ${overflow > 0 ? `<span class="eh-cal-cell-more">+${overflow}</span>` : ''}
+    </span>
+  `;
+}
+
+/* ============================================
    Event mapping
 ============================================ */
-function buildEventsFromData(data, fromIso) {
-  const fromMs = new Date(fromIso).getTime();
+function buildEventsFromData(data) {
   return [
     ...(data.meals || []).map(toMealEvent),
     ...(data.symptoms || []).map(toSymptomEvent),
-    ...(data.intros || []).map(toIntroEvent).filter((e) => e && e.tsMs >= fromMs),
-  ].filter(Boolean).sort((a, b) => b.tsMs - a.tsMs);
+    ...(data.intros || []).map(toIntroEvent),
+  ].filter(Boolean).sort((a, b) => a.tsMs - b.tsMs);
 }
 
 function toMealEvent(m) {
@@ -213,15 +362,14 @@ function toMealEvent(m) {
   if (Number.isNaN(ts.getTime())) return null;
   const typeLbl = MEAL_TYPE_LABEL[m.meal_type] || m.meal_type || 'Maaltijd';
   const food = m.food_text || m.recipe_name || (m.recipe_id ? 'Recept' : '—');
-  const reactionPart = m.reaction ? ` (${REACTION_EMOJI_FALLBACK[m.reaction] || m.reaction})` : '';
+  const reactionPart = m.reaction ? ` (${REACTION_FALLBACK[m.reaction] || m.reaction})` : '';
   return {
     type: 'meal',
     tsMs: ts.getTime(),
     day: toDayIso(ts),
     time: formatTime(ts),
-    badge: 'Maaltijd',
     label: `${typeLbl}: ${food}${reactionPart}`,
-    sub: m.notes || (m.amount ? `Hoeveelheid: ${m.amount}` : ''),
+    sub: m.notes || (m.amount ? m.amount : ''),
   };
 }
 
@@ -231,14 +379,12 @@ function toSymptomEvent(s) {
   if (Number.isNaN(ts.getTime())) return null;
   const meta = getSymptomMeta(s.symptom_type);
   const label = meta?.label || s.symptom_type || 'Symptoom';
-  const severity = s.severity ? ` · ${s.severity}` : '';
   return {
     type: 'symptom',
     tsMs: ts.getTime(),
     day: toDayIso(ts),
     time: formatTime(ts),
-    badge: 'Symptoom',
-    label: `${label}${severity}`,
+    label: `${label}${s.severity ? ' · ' + s.severity : ''}`,
     sub: s.notes || '',
     severe: s.severity === 'matig' || s.severity === 'heftig',
   };
@@ -246,7 +392,6 @@ function toSymptomEvent(s) {
 
 function toIntroEvent(i) {
   if (!i.intro_date) return null;
-  // intro_date is een DATE (geen tijd) — gebruik 12:00 UTC als sortering
   const ts = new Date(i.intro_date + 'T12:00:00Z');
   if (Number.isNaN(ts.getTime())) return null;
   const reactionLbl = INTRO_REACTION_LABEL[i.reaction] || i.reaction || 'Geen reactie';
@@ -255,37 +400,54 @@ function toIntroEvent(i) {
     tsMs: ts.getTime(),
     day: i.intro_date,
     time: '',
-    badge: 'Allergeen',
     label: `${capitalize(i.allergen_key)}: ${reactionLbl}`,
     sub: i.notes || '',
     severe: i.reaction === 'matig' || i.reaction === 'heftig',
   };
 }
 
-function renderEvent(e) {
-  return `
-    <li class="eh-agenda-event ${e.type === 'symptom' || e.type === 'intro' ? 'has-badge-' + e.type : ''} ${e.severe ? 'is-severe' : ''}">
-      <span class="eh-agenda-time">${escapeHtml(e.time || '—')}</span>
-      <span class="eh-agenda-badge eh-agenda-badge-${escapeHtml(e.type)}">${escapeHtml(e.badge)}</span>
-      <span class="eh-agenda-label">${escapeHtml(e.label)}</span>
-      ${e.sub ? `<span class="eh-agenda-sub">${escapeHtml(e.sub)}</span>` : ''}
-    </li>
-  `;
-}
-
 /* ============================================
    Date helpers
 ============================================ */
+function startOfDay(d) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+function startOfWeek(d) {
+  // Maandag = start
+  const x = startOfDay(d);
+  const dow = (x.getDay() + 6) % 7; // 0=ma, 6=zo
+  x.setDate(x.getDate() - dow);
+  return x;
+}
+function endOfWeek(d) {
+  const s = startOfWeek(d);
+  return addDays(s, 6);
+}
+function addDays(d, n) {
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
+  return x;
+}
+function addMonths(d, n) {
+  const x = new Date(d);
+  x.setMonth(x.getMonth() + n);
+  return x;
+}
+function i7(d) {
+  // 0=ma, 6=zo
+  return (d.getDay() + 6) % 7;
+}
 function toDayIso(d) {
-  return d.toISOString().slice(0, 10);
+  // Lokale tijdzone — vermijd UTC-shift bug bij midnight
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 function formatTime(d) {
   return d.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' });
-}
-function formatDayLabel(iso) {
-  const d = new Date(iso + 'T00:00:00Z');
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString('nl-BE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 }
 function isoDateMinusDays(n) {
   const d = new Date();
@@ -296,4 +458,16 @@ function isoDateMinusDays(n) {
 function capitalize(s) {
   if (!s) return '';
   return s[0].toUpperCase() + s.slice(1);
+}
+
+function formatRangeLabel(view, cursor) {
+  if (view === 'week') {
+    const start = startOfWeek(cursor);
+    const end = addDays(start, 6);
+    if (start.getMonth() === end.getMonth()) {
+      return `${start.getDate()} – ${end.getDate()} ${MONTH_LONG[end.getMonth()]} ${end.getFullYear()}`;
+    }
+    return `${start.getDate()} ${MONTH_LONG[start.getMonth()].slice(0, 3)} – ${end.getDate()} ${MONTH_LONG[end.getMonth()].slice(0, 3)} ${end.getFullYear()}`;
+  }
+  return `${capitalize(MONTH_LONG[cursor.getMonth()])} ${cursor.getFullYear()}`;
 }
