@@ -626,7 +626,7 @@ alter table public.child_symptoms
 - ✅ **Brok H.5** — `js/components/riskFoodsModal.js`. `openRiskFoodsListModal({ageMonths?})` toont alle 13 items gegroepeerd per tag (verstikking/microbieel/botulisme/kwik/nutrient), met klik → detail-view (zelfde shell, swap). `openRiskFoodDetailModal({riskKey, ageMonths?})` als zelfstandige detail-modal. Items waarvoor kindje te jong is krijgen "Geldt nu voor jouw kindje"-badge. Vandaag-pagina footer: "Risicovoedingen-lijst →"-link.
 - ✅ **Brok H.6** — reminders-card op Vandaag-pagina (alleen als > 0 reminders). Bouwt 2 soorten: (a) actuele risicovoedingen voor leeftijd (klik → detail-modal), (b) allergeen-reminders (`later` = nog te proberen, `probeer-opnieuw` met laatste intro ≥ 2 dagen geleden = tijd voor herhaling). Card staat tussen fase-banner en cards-grid. Klik op item opent relevante modal.
 - ✅ **Brok H.7** — max-1-nieuw-guard in `mealLogModal`. Bij recept-keuze: scan recept-allergenen tegen `gepland`-set + tegen "vandaag al geïntroduceerde" set (uit `state.meals` × recipes-cache). Als recept een NIEUW gepland-allergeen bevat én er vandaag al een ander gepland-allergeen werd gelogd → toon waarschuwing "Vandaag al X geïntroduceerd. Wacht 2-3 dagen voor Y." Niet blokkerend, alleen advies. Eigen styles-slot.
-- ✅ **Brok H.8** — docs + cache-buster bump. `v=2.8.0 → v=2.10.0` in 40 files (HTML + JS imports + CLAUDE.md voorbeelden). Docs-updates in `js/CLAUDE.md` (3 nieuwe componenten + 1 content-module + uitgebreide eersteHapjes/mealLogModal/allergenManager beschrijvingen), `api/CLAUDE.md` (nieuwe endpoint-sectie + helpers-tabel), `supabase-migrations/CLAUDE.md` (nieuwe `allergen_intro_logs`-tabel + addendum bij `child_allergens` over brok H.3 use-pattern).
+- ✅ **Brok H.8** — docs + cache-buster bump. `v=2.8.0 → v=2.11.0` in 40 files (HTML + JS imports + CLAUDE.md voorbeelden). Docs-updates in `js/CLAUDE.md` (3 nieuwe componenten + 1 content-module + uitgebreide eersteHapjes/mealLogModal/allergenManager beschrijvingen), `api/CLAUDE.md` (nieuwe endpoint-sectie + helpers-tabel), `supabase-migrations/CLAUDE.md` (nieuwe `allergen_intro_logs`-tabel + addendum bij `child_allergens` over brok H.3 use-pattern).
 
 ### Open / nog te doen
 - ⬜ **Live test op Vercel preview**: hele brok H end-to-end. Onboarding kindje → allergenen-manager → intro registreren → progressie zien → recept openen met risk-food → warning → meal-log → max-1-nieuw-guard → reminders-card.
@@ -658,7 +658,7 @@ alter table public.child_symptoms
 ### Vandaag afgerond
 - ✅ **Brok I.1** — `js/eersteHapjesSuggestions.js`. Pure rule-engine met 7 rules: (a) goede dag voor allergeen-intro (gepland + leeftijd ≥ 6 mnd + ≥ 2 dagen sinds laatste), (b) klaar voor volgende fase? (leeftijd ≥ minAge volgende fase), (c) recept-discovery (random uit cache, niet in laatste 7 dagen gelogd, deterministisch per dag via stable hash), (d) afwijzing-patroon (3+ × afwijzing op zelfde recept in 7 dagen), (e) 5+ dagen geen log, (f) dubbele meal-type vandaag (2+ × zelfde type), (g) symptoom-patroon (3+ × zelfde symptoom in 7 dagen). Exporteert `buildSuggestions(ctx)`. Verificatie via preview-eval: 3 scenario's getest, allemaal correct.
 - ✅ **Brok I.2** — integratie in `eersteHapjes.js`. `loadLogs()` laadt nu ook 7d meal-history + recipes-cache. Nieuwe `buildAdvice(child)` combineert H.6-reminders + I-suggestions met dedupe (suggestion over allergeen wordt overgeslagen als reminder al bestaat voor zelfde key). Card-titel "Tips & herinneringen". Klik-handlers voor 5 action-kinds: `open-intro` (allergenIntroModal), `open-recipe` (Router.navigate), `open-meal-log` (triggert bestaande add-meal knop), `open-phase-detail` (triggert open-phases knop), `show-info` (toast met info per type).
-- ✅ **Brok I.3** — styles + cache-buster + docs. Subtle differentiation in styles.css (`.eh-reminder-item-suggestion` met andere achtergrond). Cache-buster `v=2.9.0 → v=2.10.0` in alle files. Docs gesynced in `js/CLAUDE.md` (eersteHapjesSuggestions toegevoegd, eersteHapjes-beschrijving uitgebreid).
+- ✅ **Brok I.3** — styles + cache-buster + docs. Subtle differentiation in styles.css (`.eh-reminder-item-suggestion` met andere achtergrond). Cache-buster `v=2.9.0 → v=2.11.0` in alle files. Docs gesynced in `js/CLAUDE.md` (eersteHapjesSuggestions toegevoegd, eersteHapjes-beschrijving uitgebreid).
 
 ### Open / nog te doen
 - ⬜ **Live test op preview**: ouder met meal-data zien hoe de "Tips & herinneringen"-card eruitziet met 0/1/multiple suggestions.
@@ -672,3 +672,27 @@ alter table public.child_symptoms
 - **Geen acknowledged-state in v1**: suggesties verdwijnen vanzelf als voorwaarde wegvalt.
 - **`show-info` action via toast** ipv aparte modal voor v1.
 - **`recentMeals` als nieuw state-veld** (7 dagen) náást bestaande `meals` (vandaag) — geen breaking change op bestaande Vandaag-card.
+
+---
+
+## 2026-05-09 (laat) — Brok J afgerond — recept-filter + alternatieven
+
+**Context**: na de Vandaag-pagina is het tijd voor receptenboek-integratie. Filter-toggle in receptenlijst + alternatieven-sectie op recept-detail wanneer een recept niet geschikt is.
+
+### Vandaag afgerond
+- ✅ **Brok J.1** — Filter-toggle in `recipeList.js`. Toggle "Geschikt voor [kindje]" verschijnt in toolbar, alleen als actief Eerste Hapjes-kindje aanwezig. Standaard uit (geen breaking change). Bij toggle aan: filter recepten weg waarvan (a) `scanRecipeForRisks(recipe, ageMonths)` een risk-food vindt, of (b) `recipe.allergens` overlapt met `child_allergens.status='vermijden'`. Lazy-load van actief kindje + allergens via `loadActiveChild()` + `getAllergensForChild()`.
+- ✅ **Brok J.2** — Alternatieven-sectie in `recipeDetail.js`. Wanneer recept niet veilig is voor het actieve kindje, render onderaan (vóór Reacties) een "Alternatieven voor [kindje]"-sectie met tot 3 recepten die wel veilig zijn én meal-moment-overlap hebben. Klikbaar → directe navigatie naar alternatief recept-detail. Stable shuffle per recipe-id zodat de keuze niet bij elke render verandert.
+- ✅ **Brok J — gedeelde helper** `js/eersteHapjesEligibility.js` met `isRecipeSafeForChild(recipe, ctx)` en `getRecipeAlternatives(current, all, ctx, limit)`. Gebruikt door beide componenten — single source of truth.
+- ✅ **Brok J.3** — Styles in `styles.css` (filter-toggle pill + recipe-alt grid). Cache-buster `v=2.10.0 → v=2.11.0` in alle files. Docs gesynced in `js/CLAUDE.md`.
+
+### Open / nog te doen
+- ⬜ **Live test**: receptenlijst zonder en met toggle aan, recept-detail met honing-recept op jong kindje moet alternatieven tonen.
+- ⬜ **Brok K** — microlearning-search (laatste van de PDF-gap-analyse).
+- ⬜ **Layout-bijsturingsronde** (gepland).
+
+### Beslissingen genomen vandaag
+- **Filter standaard uit** — geen breaking change voor users zonder Eerste Hapjes-kindje.
+- **Hard filter** (verbergen) ipv badge-on-card — eenvoudiger UX, gewoon filter-paradigma.
+- **Gedeelde helper-file** ipv duplicate per component — `eersteHapjesEligibility.js`.
+- **Alternatieven-sectie alleen bij niet-veilig recept** + alleen als kindje aanwezig — anders pure noise.
+- **Stable shuffle per recipe-id**: alternatieven blijven consistent binnen dezelfde sessie maar variëren per recept.

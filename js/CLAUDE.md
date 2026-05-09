@@ -54,6 +54,7 @@ Pril Leven heeft historisch **twee** parallel-lopende auth-systemen. Begrijp het
 | `content/eersteHapjes-symptoms.js` | Eerste Hapjes brok G — statische symptoom-config. 16 symptomen (10 brok C + 6 nieuw: `gewicht/hoesten/verstopping/geen_eetlust/prikkelbaar/lethargie`). Per symptoom: `key, label, icon, intro, body (HTML-skeleton), redFlags[], redFlagSeverity[]`. Body's zijn placeholders. `redFlagSeverity` bepaalt welke ernst-niveaus de adaptieve banner triggeren — server heeft een mirror in `_lib/eersteHapjes-logs.mjs RED_FLAG_SEVERITIES`. Exporteert `SYMPTOMS, SEVERITIES, getSymptom(key), getSymptomMeta(key), isRedFlag(key, severity)`. |
 | `content/eersteHapjes-risk-foods.js` | Eerste Hapjes brok H.1 — statische config met 13 risicovoedingen (honing, koemelk-drank, hele noten, druiven, kerstomaten, rauwe eieren, rauw vlees, rauwe vis, kwik-vis, rauwe melkproducten, toegevoegd zout/suiker, rauwe peulvruchten). Per item: `key, label, icon, maxAgeMonths, tags[], intro, body (HTML-skeleton), ingredientMatchers (regex-lijst)`. Items met lege `ingredientMatchers` worden NIET tegen recepten gescand (bv. zout/suiker — te veel false positives) maar wel in lijst-modal getoond. `ALLERGEN_INTROS_TARGET = 3`. Helpers: `getRiskFood(key)`, `getAllRiskFoods()`, `getRelevantRiskFoods(months)`, `scanRecipeForRisks(recipe, months)` (accepteert string of recipe-object), `recipeToScanText(recipe)`, `formatAgeLimit(months)`, `tagLabel(tag)`. |
 | `eersteHapjesSuggestions.js` | Eerste Hapjes brok I — suggestion-engine. Pure rule-functies (a-g): (a) goede dag voor allergeen-intro, (b) klaar voor volgende fase?, (c) recept-discovery (random uit cache, 7d-skip), (d) afwijzing-patroon, (e) 5+ dagen geen log, (f) dubbele meal-type vandaag, (g) symptoom-patroon. Exporteert `buildSuggestions(ctx)` waar `ctx = { child, allergens, allergenIntrosByKey, todayMeals, recentMeals, symptoms, phaseState, recipes }`. Per suggestion: `{key, icon, label, sub, action: {kind, ...}}` met action-kinds `open-intro / open-recipe / open-meal-log / open-phase-detail / show-info`. Dedupe met H.6-reminders gebeurt in `eersteHapjes.js` via `buildAdvice()`. |
+| `eersteHapjesEligibility.js` | Eerste Hapjes brok J — gedeelde helpers voor recept-eligibility. `isRecipeSafeForChild(recipe, {ageMonths, vermijdenSet})` returnt boolean (false bij risk-food voor leeftijd of allergeen-overlap met `status='vermijden'`). `getRecipeAlternatives(currentRecipe, allRecipes, ctx, limit=3)` zoekt safe alternatieven met meal-moment-overlap, met deterministische "shuffle" per recipe-id. Gebruikt door `recipeList.js` (filter-toggle) + `recipeDetail.js` (alternatieven-sectie). |
 | `headerAvatarStandalone.js` | Klein avatar-component voor losse pagina's (`chat.html`, `admin-chat.html`) zonder de volledige header. |
 | `components/` | Pagina/feature-componenten. |
 
@@ -63,7 +64,7 @@ Pril Leven heeft historisch **twee** parallel-lopende auth-systemen. Begrijp het
 | `header.js` | Header met logo + avatar-pill + uitlogknop. Cachet community-profiel in `localStorage['community.profile.cache.v1']` om email-flicker bij navigatie te vermijden. |
 | `nav.js` | Hoofdnavigatie. |
 | `home.js` | Landingspagina (hub). |
-| `recipeCard.js`, `recipeList.js`, `recipeDetail.js`, `recipeForm.js` | Recepten. |
+| `recipeCard.js`, `recipeList.js`, `recipeDetail.js`, `recipeForm.js` | Recepten. `recipeList.js` heeft een Eerste Hapjes filter-toggle "Geschikt voor [kindje]" (brok J.1, standaard uit, alleen zichtbaar als actief kindje aanwezig). `recipeDetail.js` toont een risk-banner (brok H.4) en/of een "Alternatieven voor [kindje]"-sectie (brok J.2) wanneer het recept niet veilig is voor het kindje (risk-food voor leeftijd of vermijden-allergeen). |
 | `weekSchedule.js` | Weekschema (5 slots × 7 dagen). |
 | `shoppingList.js` | Boodschappenlijst gegenereerd uit actief schema. |
 | `favorites.js` | Favoriete recepten. |
@@ -90,7 +91,7 @@ Pril Leven heeft historisch **twee** parallel-lopende auth-systemen. Begrijp het
 ### 4.1 Supabase REST calls (legacy data)
 **Altijd** via `supabaseFetch(path, options)` uit `supabase.js`. Niet zelf `fetch()` op `/rest/v1/...`.
 ```js
-import { supabaseFetch } from './supabase.js?v=2.10.0';
+import { supabaseFetch } from './supabase.js?v=2.11.0';
 const data = await supabaseFetch('/rest/v1/recipes?select=*&id=eq.' + encodeURIComponent(id));
 ```
 Voor grote tabellen: voeg `Range`-header toe om PostgREST 1000-rij default te omzeilen:
@@ -102,7 +103,7 @@ Voor grote tabellen: voeg `Range`-header toe om PostgREST 1000-rij default te om
 Voor community: gebruik `communityApi.js` — die wrapt het al.
 Voor andere endpoints (chat, profile, memory, conversations, me):
 ```js
-import { sessionRefreshIfNeeded } from './supabase.js?v=2.10.0';
+import { sessionRefreshIfNeeded } from './supabase.js?v=2.11.0';
 const session = await sessionRefreshIfNeeded();
 if (!session) { /* redirect naar login */ return; }
 
@@ -160,29 +161,29 @@ Het project heeft **geen build step**, dus de browser cachet JS-files agressief 
 ### Waar staat hij?
 - **Alle HTML-bestanden** (`index.html`, `chat.html`, `admin-chat.html`, `delete-account.html`, `privacy.html`):
   ```html
-  <script type="module" src="script.js?v=2.10.0"></script>
-  <link rel="stylesheet" href="styles.css?v=2.10.0">
+  <script type="module" src="script.js?v=2.11.0"></script>
+  <link rel="stylesheet" href="styles.css?v=2.11.0">
   ```
 - **`script.js`** (entry point) — 14× in import statements:
   ```js
-  import * as Store from './js/store.js?v=2.10.0';
+  import * as Store from './js/store.js?v=2.11.0';
   ```
 - **Elke module in `/js`** die andere modules importeert — `store.js`, `chat.js`, `admin-chat.js`, `headerAvatarStandalone.js`, `communityApi.js`, en **alle** componenten in `js/components/*`. Voorbeeld uit `header.js`:
   ```js
-  import * as Store from '../store.js?v=2.10.0';
-  import { sessionClear, sessionGet } from '../supabase.js?v=2.10.0';
+  import * as Store from '../store.js?v=2.11.0';
+  import { sessionClear, sessionGet } from '../supabase.js?v=2.11.0';
   ```
 
 ### Wanneer bumpen?
 Bij **élke** wijziging aan een `.js` of `.css` bestand. Anders zien gebruikers stale JS en breekt mogelijk de app.
 
 ### Hoe bumpen?
-Vervang ALLE voorkomens van de huidige versie (bv. `?v=2.10.0`) met de nieuwe (bv. `?v=2.7.1`) in:
+Vervang ALLE voorkomens van de huidige versie (bv. `?v=2.11.0`) met de nieuwe (bv. `?v=2.7.1`) in:
 1. Alle HTML-bestanden in de root.
 2. `script.js`.
 3. Alle bestanden in `/js/*.js` en `/js/components/*.js` met imports.
 
-Snelle check: `grep -rn "v=2.10.0" --include="*.js" --include="*.html"`.
+Snelle check: `grep -rn "v=2.11.0" --include="*.js" --include="*.html"`.
 Een vind-vervang over alle bestanden tegelijk werkt prima.
 
 ---
