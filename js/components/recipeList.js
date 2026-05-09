@@ -8,15 +8,24 @@
    - init() haalt de data op en vult de DOM
 ============================================ */
 
-import * as Store from '../store.js?v=2.10.0';
-import * as Router from '../router.js?v=2.10.0';
-import * as RecipeCard from './recipeCard.js?v=2.10.0';
-import { showToast, confirm, MEAL_MOMENTS, ALLERGENS } from '../utils.js?v=2.10.0';
+import * as Store from '../store.js?v=2.11.0';
+import * as Router from '../router.js?v=2.11.0';
+import * as RecipeCard from './recipeCard.js?v=2.11.0';
+import { showToast, confirm, MEAL_MOMENTS, ALLERGENS, escapeHtml } from '../utils.js?v=2.11.0';
+import { ageMonthsFromBirthdate } from '../eersteHapjesContent.js?v=2.11.0';
+import { loadActiveChild } from './eersteHapjes.js?v=2.11.0';
+import { getAllergensForChild } from '../eersteHapjesApi.js?v=2.11.0';
+import { isRecipeSafeForChild } from '../eersteHapjesEligibility.js?v=2.11.0';
 
 /* Cache van pre-fetched data zodat het filteren snel blijft */
 let cachedRecipes = [];
 let cachedFavIds = [];
 let cachedRatings = {};
+
+/* Eerste Hapjes context (brok J.1) — alleen gevuld als actief kindje aanwezig */
+let cachedEhChild = null;
+let cachedEhAgeMonths = null;
+let cachedEhVermijdenSet = new Set();
 
 /* AbortController om vorige listeners op te ruimen wanneer de pagina
    opnieuw wordt geïnitialiseerd. Voorkomt dat dezelfde click-handler
@@ -47,6 +56,11 @@ export function render() {
           <option value="">Alle allergenen</option>
           ${ALLERGENS.map(a => `<option value="${a}">${a}</option>`).join('')}
         </select>
+
+        <label class="filter-eh-safe hidden" id="filter-eh-safe-wrap">
+          <input type="checkbox" id="filter-eh-safe">
+          <span>Geschikt voor <span data-eh-child-name></span></span>
+        </label>
       </div>
 
       <div class="toolbar-right" id="toolbar-admin">
@@ -112,6 +126,25 @@ export async function init() {
       `;
     }
   }
+
+  /* ---- Eerste Hapjes context (brok J.1) ---- */
+  try {
+    const child = await loadActiveChild();
+    if (child && child.id) {
+      cachedEhChild = child;
+      cachedEhAgeMonths = child.birthdate ? ageMonthsFromBirthdate(child.birthdate) : null;
+      const ar = await getAllergensForChild(child.id);
+      const allergens = ar.ok ? (ar.data?.allergens || []) : [];
+      cachedEhVermijdenSet = new Set(
+        allergens.filter(a => a.status === 'vermijden')
+                 .map(a => a.allergen_key.toLowerCase())
+      );
+      const wrap = document.getElementById('filter-eh-safe-wrap');
+      const nameEl = document.querySelector('[data-eh-child-name]');
+      if (wrap) wrap.classList.remove('hidden');
+      if (nameEl) nameEl.textContent = child.name || 'kindje';
+    }
+  } catch (_e) { /* Eerste Hapjes is optioneel — silent */ }
 
   /* ---- Recepten renderen ---- */
   renderGrid(cachedRecipes, admin);
@@ -206,6 +239,7 @@ export async function init() {
   document.getElementById('recipe-search')?.addEventListener('input', filterRecipes, { signal: listAbort.signal });
   document.getElementById('filter-moment')?.addEventListener('change', filterRecipes, { signal: listAbort.signal });
   document.getElementById('filter-allergen')?.addEventListener('change', filterRecipes, { signal: listAbort.signal });
+  document.getElementById('filter-eh-safe')?.addEventListener('change', filterRecipes, { signal: listAbort.signal });
 }
 
 /* ----------------------------------------
@@ -241,6 +275,7 @@ function filterRecipes() {
   const searchVal = (document.getElementById('recipe-search')?.value || '').toLowerCase();
   const momentVal = document.getElementById('filter-moment')?.value || '';
   const allergenVal = document.getElementById('filter-allergen')?.value || '';
+  const ehSafeOnly = document.getElementById('filter-eh-safe')?.checked || false;
 
   const filtered = cachedRecipes.filter(recipe => {
     const matchesSearch = !searchVal ||
@@ -253,7 +288,13 @@ function filterRecipes() {
     const matchesAllergen = !allergenVal ||
       (recipe.allergens || []).includes(allergenVal);
 
-    return matchesSearch && matchesMoment && matchesAllergen;
+    const matchesEhSafe = !ehSafeOnly || !cachedEhChild ||
+      isRecipeSafeForChild(recipe, {
+        ageMonths: cachedEhAgeMonths,
+        vermijdenSet: cachedEhVermijdenSet,
+      });
+
+    return matchesSearch && matchesMoment && matchesAllergen && matchesEhSafe;
   });
 
   const grid = document.getElementById('recipe-grid');
@@ -273,3 +314,4 @@ function filterRecipes() {
     `;
   }
 }
+
