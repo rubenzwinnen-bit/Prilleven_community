@@ -6001,3 +6001,19 @@ body.is-hub .header-home-btn { display: none; }
   font-size: 18px;
   line-height: 1;
 }
+
+/* ============================================================
+   EERSTE HAPJES — suggesties (brok I)
+============================================================ */
+.eh-reminder-item-suggestion .eh-reminder-btn {
+  background: var(--color-bg, #faf8f5);
+}
+.eh-reminder-item-suggestion .eh-reminder-btn:hover {
+  background: #f4ede0;
+}
+.eh-reminder-item-suggestion .eh-reminder-icon {
+  filter: saturate(1.1);
+}
+.eh-reminder-item-suggestion .eh-reminder-label {
+  color: var(--color-primary-dark, #a06f4d);
+}

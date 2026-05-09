@@ -53,6 +53,7 @@ Pril Leven heeft historisch **twee** parallel-lopende auth-systemen. Begrijp het
 | `content/eersteHapjes-content.js` | Statische microlearning-content voor het Eerste Hapjes-traject. 7 skeleton-artikels met titel + summary + leeftijdsrange + categorie + body als HTML-string. **Geen markdown-parser** — body's worden als HTML in de modal getoond. Body's zijn nu placeholders die Anneleen later aanvult. Categorieën: `intro/allergenen/textuur/zelfvoeden/mijlpaal/veiligheid` (met `CATEGORY_LABEL`-export voor UI). |
 | `content/eersteHapjes-symptoms.js` | Eerste Hapjes brok G — statische symptoom-config. 16 symptomen (10 brok C + 6 nieuw: `gewicht/hoesten/verstopping/geen_eetlust/prikkelbaar/lethargie`). Per symptoom: `key, label, icon, intro, body (HTML-skeleton), redFlags[], redFlagSeverity[]`. Body's zijn placeholders. `redFlagSeverity` bepaalt welke ernst-niveaus de adaptieve banner triggeren — server heeft een mirror in `_lib/eersteHapjes-logs.mjs RED_FLAG_SEVERITIES`. Exporteert `SYMPTOMS, SEVERITIES, getSymptom(key), getSymptomMeta(key), isRedFlag(key, severity)`. |
 | `content/eersteHapjes-risk-foods.js` | Eerste Hapjes brok H.1 — statische config met 13 risicovoedingen (honing, koemelk-drank, hele noten, druiven, kerstomaten, rauwe eieren, rauw vlees, rauwe vis, kwik-vis, rauwe melkproducten, toegevoegd zout/suiker, rauwe peulvruchten). Per item: `key, label, icon, maxAgeMonths, tags[], intro, body (HTML-skeleton), ingredientMatchers (regex-lijst)`. Items met lege `ingredientMatchers` worden NIET tegen recepten gescand (bv. zout/suiker — te veel false positives) maar wel in lijst-modal getoond. `ALLERGEN_INTROS_TARGET = 3`. Helpers: `getRiskFood(key)`, `getAllRiskFoods()`, `getRelevantRiskFoods(months)`, `scanRecipeForRisks(recipe, months)` (accepteert string of recipe-object), `recipeToScanText(recipe)`, `formatAgeLimit(months)`, `tagLabel(tag)`. |
+| `eersteHapjesSuggestions.js` | Eerste Hapjes brok I — suggestion-engine. Pure rule-functies (a-g): (a) goede dag voor allergeen-intro, (b) klaar voor volgende fase?, (c) recept-discovery (random uit cache, 7d-skip), (d) afwijzing-patroon, (e) 5+ dagen geen log, (f) dubbele meal-type vandaag, (g) symptoom-patroon. Exporteert `buildSuggestions(ctx)` waar `ctx = { child, allergens, allergenIntrosByKey, todayMeals, recentMeals, symptoms, phaseState, recipes }`. Per suggestion: `{key, icon, label, sub, action: {kind, ...}}` met action-kinds `open-intro / open-recipe / open-meal-log / open-phase-detail / show-info`. Dedupe met H.6-reminders gebeurt in `eersteHapjes.js` via `buildAdvice()`. |
 | `headerAvatarStandalone.js` | Klein avatar-component voor losse pagina's (`chat.html`, `admin-chat.html`) zonder de volledige header. |
 | `components/` | Pagina/feature-componenten. |
 
@@ -71,7 +72,7 @@ Pril Leven heeft historisch **twee** parallel-lopende auth-systemen. Begrijp het
 | `timeline.js`, `timelinePost.js` | Community-feed pagina + losse post-detail. |
 | `nicknameModal.js` | Modal om community-nickname in te stellen vóór posten. |
 | `profileModal.js` | Modal voor community-profiel (nickname + avatar). |
-| `eersteHapjes.js` | Eerste Hapjes-pagina (SPA-route `#/eerste-hapjes`). Laadt kindjes + logs (vandaag's meals + 7d symptoms + allergenen + intro-logs + fase-state). Vandaag-layout: fase-banner → reminders-card (brok H.6, alleen als > 0 reminders) → grid van cards (maaltijden, symptomen, allergenen met afgeleide status + balkje, 'Volgende stap'). Footer-links: Mijn fasen, Symptomen-uitleg, **Risicovoedingen-lijst** (brok H.5), Alle tips. Reminders bouwen uit risk-foods voor leeftijd + gepland-allergenen + her-introductie nodig. Exporteert `getActiveChildSnapshot()` + `loadActiveChild()` (gebruikt door `recipeDetail.js` voor risk-banner). |
+| `eersteHapjes.js` | Eerste Hapjes-pagina (SPA-route `#/eerste-hapjes`). Laadt kindjes + logs (vandaag's meals + 7d meals + 7d symptoms + allergenen + intro-logs + fase-state + recipes-cache). Vandaag-layout: fase-banner → "Tips & herinneringen"-card (brok H.6 reminders + brok I suggesties via `buildAdvice()` met dedupe op allergeen-key) → grid van cards (maaltijden, symptomen, allergenen met afgeleide status + balkje, 'Volgende stap'). Footer-links: Mijn fasen, Symptomen-uitleg, Risicovoedingen-lijst, Alle tips. Suggestion-handlers: `open-intro`, `open-recipe` (Router.navigate), `open-meal-log`, `open-phase-detail`, `show-info` (toast). Exporteert `getActiveChildSnapshot()` + `loadActiveChild()` (gebruikt door `recipeDetail.js` voor risk-banner). |
 | `childOnboardingModal.js` | 3-staps wizard voor nieuw kindje: naam → geboortedatum → structuurvoorkeur (skippable). Returnt `Promise<child\|null>`. Roept `createChild()` uit `eersteHapjesApi.js`. |
 | `mealLogModal.js` | Eerste Hapjes brok C + brok H.4/H.7 — eenstaps modal voor maaltijd-log. Velden: type-chips (default = guess op uur), tijdstip (`datetime-local`), voeding met **client-side recept-typeahead** via `getRecipes()` uit `store.js`, hoeveelheid-chips, reactie-emoji-chips, notes. Bij recept-keuze: 3 warnings — allergeen-conflict, risk-food (leeftijd vs `scanRecipeForRisks`), max-1-nieuw-guard (vandaag al ander gepland-allergeen geïntroduceerd). Verwacht nu ook `childBirthdate` + `todayMeals` als params. Roept `createMealLog()`. |
 | `symptomLogModal.js` | Eerste Hapjes brok C, brok G aangepast — eenstaps modal voor symptoom-log. Type-grid leest nu uit `content/eersteHapjes-symptoms.js SYMPTOMS` (16 keys); elke tegel heeft een info-icoontje (i) dat `openSymptomDetailModal({symptomKey})` opent. Severity-chips, tijdstip, optionele meal-koppeling (48u), notes. Roept `createSymptom()` en **resolves `{symptom, red_flag}`** (red_flag komt uit endpoint-response). |
@@ -89,7 +90,7 @@ Pril Leven heeft historisch **twee** parallel-lopende auth-systemen. Begrijp het
 ### 4.1 Supabase REST calls (legacy data)
 **Altijd** via `supabaseFetch(path, options)` uit `supabase.js`. Niet zelf `fetch()` op `/rest/v1/...`.
 ```js
-import { supabaseFetch } from './supabase.js?v=2.9.0';
+import { supabaseFetch } from './supabase.js?v=2.10.0';
 const data = await supabaseFetch('/rest/v1/recipes?select=*&id=eq.' + encodeURIComponent(id));
 ```
 Voor grote tabellen: voeg `Range`-header toe om PostgREST 1000-rij default te omzeilen:
@@ -101,7 +102,7 @@ Voor grote tabellen: voeg `Range`-header toe om PostgREST 1000-rij default te om
 Voor community: gebruik `communityApi.js` — die wrapt het al.
 Voor andere endpoints (chat, profile, memory, conversations, me):
 ```js
-import { sessionRefreshIfNeeded } from './supabase.js?v=2.9.0';
+import { sessionRefreshIfNeeded } from './supabase.js?v=2.10.0';
 const session = await sessionRefreshIfNeeded();
 if (!session) { /* redirect naar login */ return; }
 
@@ -159,29 +160,29 @@ Het project heeft **geen build step**, dus de browser cachet JS-files agressief 
 ### Waar staat hij?
 - **Alle HTML-bestanden** (`index.html`, `chat.html`, `admin-chat.html`, `delete-account.html`, `privacy.html`):
   ```html
-  <script type="module" src="script.js?v=2.9.0"></script>
-  <link rel="stylesheet" href="styles.css?v=2.9.0">
+  <script type="module" src="script.js?v=2.10.0"></script>
+  <link rel="stylesheet" href="styles.css?v=2.10.0">
   ```
 - **`script.js`** (entry point) — 14× in import statements:
   ```js
-  import * as Store from './js/store.js?v=2.9.0';
+  import * as Store from './js/store.js?v=2.10.0';
   ```
 - **Elke module in `/js`** die andere modules importeert — `store.js`, `chat.js`, `admin-chat.js`, `headerAvatarStandalone.js`, `communityApi.js`, en **alle** componenten in `js/components/*`. Voorbeeld uit `header.js`:
   ```js
-  import * as Store from '../store.js?v=2.9.0';
-  import { sessionClear, sessionGet } from '../supabase.js?v=2.9.0';
+  import * as Store from '../store.js?v=2.10.0';
+  import { sessionClear, sessionGet } from '../supabase.js?v=2.10.0';
   ```
 
 ### Wanneer bumpen?
 Bij **élke** wijziging aan een `.js` of `.css` bestand. Anders zien gebruikers stale JS en breekt mogelijk de app.
 
 ### Hoe bumpen?
-Vervang ALLE voorkomens van de huidige versie (bv. `?v=2.9.0`) met de nieuwe (bv. `?v=2.7.1`) in:
+Vervang ALLE voorkomens van de huidige versie (bv. `?v=2.10.0`) met de nieuwe (bv. `?v=2.7.1`) in:
 1. Alle HTML-bestanden in de root.
 2. `script.js`.
 3. Alle bestanden in `/js/*.js` en `/js/components/*.js` met imports.
 
-Snelle check: `grep -rn "v=2.9.0" --include="*.js" --include="*.html"`.
+Snelle check: `grep -rn "v=2.10.0" --include="*.js" --include="*.html"`.
 Een vind-vervang over alle bestanden tegelijk werkt prima.
 
 ---
