@@ -4,7 +4,7 @@
    en recipeDetail (alternatieven-sectie).
 ============================================ */
 
-import { scanRecipeForRisks } from './content/eersteHapjes-risk-foods.js?v=2.16.0';
+import { scanRecipeForRisks } from './content/eersteHapjes-risk-foods.js?v=2.17.0';
 
 /**
  * Is dit recept geschikt voor het kindje (geen risk-foods voor leeftijd

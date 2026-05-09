@@ -10,14 +10,14 @@
    relevante items (kindje nog te jong) gemarkeerd.
 ============================================ */
 
-import { escapeHtml } from '../utils.js?v=2.16.0';
+import { escapeHtml } from '../utils.js?v=2.17.0';
 import {
   RISK_FOODS,
   RISK_TAGS,
   getRiskFood,
   formatAgeLimit,
   tagLabel,
-} from '../content/eersteHapjes-risk-foods.js?v=2.16.0';
+} from '../content/eersteHapjes-risk-foods.js?v=2.17.0';
 
 /* ============================================
    LIJST-MODAL

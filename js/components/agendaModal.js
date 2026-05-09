@@ -11,13 +11,13 @@
    de relevante card; voor v1 alleen weergave.
 ============================================ */
 
-import { escapeHtml } from '../utils.js?v=2.16.0';
+import { escapeHtml } from '../utils.js?v=2.17.0';
 import {
   getMealsForChild,
   getSymptomsForChild,
   getAllergenIntros,
-} from '../eersteHapjesApi.js?v=2.16.0';
-import { getSymptomMeta } from '../content/eersteHapjes-symptoms.js?v=2.16.0';
+} from '../eersteHapjesApi.js?v=2.17.0';
+import { getSymptomMeta } from '../content/eersteHapjes-symptoms.js?v=2.17.0';
 
 const DEFAULT_DAYS = 90;
 

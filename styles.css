@@ -6381,3 +6381,117 @@ body.is-eerste-hapjes #app-nav { display: none; }
   .eh-agenda-badge { grid-column: 2 / -1; justify-self: start; }
   .eh-agenda-label { grid-column: 1 / -1; }
 }
+
+/* Profielmodal: allergenen-knop per kindje (item A) */
+.pf-children-item-allergens {
+  appearance: none;
+  background: var(--color-bg, #faf8f5);
+  border: 1px solid var(--color-light, #f0ebe6);
+  border-radius: 999px;
+  color: var(--color-dark, #2f2a24);
+  font-size: 12px;
+  padding: 4px 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color .15s, background .15s;
+}
+.pf-children-item-allergens:hover {
+  border-color: var(--color-secondary, #98c3a4);
+  background: #ecf4ee;
+}
+
+/* ============================================================
+   Eerste Hapjes — embedded HapjesHeld chat (item C)
+============================================================ */
+.eh-chat-card {
+  margin-top: 16px;
+  background: var(--color-white, #fff);
+  border: 1px solid var(--color-light, #f0ebe6);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.eh-chat-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.eh-chat-head h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+.eh-chat-fulllink {
+  font-size: 13px;
+  color: var(--color-primary, #c98966);
+  text-decoration: none;
+}
+.eh-chat-fulllink:hover { text-decoration: underline; }
+.eh-chat-thread {
+  min-height: 80px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 8px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.eh-chat-empty {
+  color: var(--color-gray, #6b6155);
+  font-size: 13px;
+  text-align: center;
+  padding: 18px 8px;
+}
+.eh-chat-bubble {
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.45;
+  max-width: 90%;
+  word-wrap: break-word;
+}
+.eh-chat-bubble-user {
+  align-self: flex-end;
+  background: var(--color-secondary, #98c3a4);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.eh-chat-bubble-bot {
+  align-self: flex-start;
+  background: var(--color-bg, #faf8f5);
+  border: 1px solid var(--color-light, #f0ebe6);
+  color: var(--color-dark, #2f2a24);
+  border-bottom-left-radius: 4px;
+}
+.eh-chat-thinking {
+  align-self: flex-start;
+  font-size: 13px;
+  color: var(--color-gray, #6b6155);
+  font-style: italic;
+}
+.eh-chat-form {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-light, #f0ebe6);
+}
+.eh-chat-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--color-light, #f0ebe6);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+  min-height: 42px;
+  outline: none;
+  background: var(--color-white, #fff);
+}
+.eh-chat-input:focus {
+  border-color: var(--color-secondary, #98c3a4);
+  box-shadow: 0 0 0 3px rgba(152, 195, 164, 0.18);
+}
+.eh-chat-send {
+  flex-shrink: 0;
+}
