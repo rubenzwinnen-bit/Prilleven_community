@@ -424,6 +424,12 @@ Branch: `eerste-hapjes`
 - E.3 — `articleModal.js` (één component met detail + lijst-weergave, slug-navigatie tussen views).
 - E.4 — `eersteHapjes.js`: "Volgende stap"-card vervangt placeholder met live artikel op basis van leeftijd, plus "Alle tips"-link onderaan Vandaag-pagina.
 
+## G. Symptoom-detail-content + rode-vlag — afgerond ✅
+- G.1 — content-config `js/content/eersteHapjes-symptoms.js` met 16 symptomen (10 brok C + 6 nieuw: gewicht, hoesten, verstopping, geen_eetlust, prikkelbaar, lethargie). Per symptoom: `key, label, icon, intro, body (HTML-skeleton placeholder), redFlags, redFlagSeverity`. Body's nog door Anneleen aan te vullen.
+- G.2 — migratie `2026-05-09-symptoms-extend.sql`: DB-CHECK `child_symptoms.symptom_type` uitgebreid van 10 → 16 keys (additief, drop+add). Server-side `SYMPTOM_TYPES` Set in `_lib/eersteHapjes-logs.mjs` mee uitgebreid.
+- G.3 — `detectRedFlag(type, severity)` helper in `_lib/eersteHapjes-logs.mjs` (mirror van frontend `redFlagSeverity`). `POST /api/eerste-hapjes/symptoms` returnt nu `{ symptom, red_flag }`.
+- G.4 — frontend: nieuwe `symptomDetailModal.js` (lijst + detail) analoog aan `articleModal.js`. `symptomLogModal.js` aangepast: tegel-grid leest uit content-config + info-(i)-knop per tegel + "Wat betekenen deze?"-link. `eersteHapjes.js`: SYMPTOM_TYPE_LABEL/ICON vervangen door `getSymptomMeta()`, red-flag-pill in symptoom-rij + adaptieve top-banner na log met `red_flag: true`, "Symptomen-uitleg"-link onderaan Vandaag. Cache-buster `v2.7.0` → `v2.8.0` in 37 files.
+
 ## F. Fasen-systeem — afgerond ✅
 - F.1 — statische config `js/content/eersteHapjes-phases.js`: 6 fases (0..5) met "ten vroegste vanaf"-leeftijd, intro-tekst, advance-label en checklist (5 mijlpalen per fase, fase 5 = eindstation zonder checks). Texten letterlijk uit het PDF-productoverzicht. `AUTO_FASE5_AGE_MONTHS = 14` (drempel waarboven kindjes meteen op fase 5 starten).
 - F.2 — migratie `2026-05-08-child-phases.sql`: `child_phases` (PK `(child_id, phase_number)`) + `child_phase_checks` (PK `(child_id, phase_number, check_key)`). State-only — fase-definities blijven frontend. Owner-only RLS, updated_at trigger.
@@ -550,3 +556,58 @@ Branch: `eerste-hapjes`
 
 ### Open vragen / blockers
 - Geen blockers. SQL moet nog manueel gedraaid worden voor de preview kan testen.
+
+### Update einde sessie
+- ✅ **SQL gedraaid** in productie-DB. Geverifieerd via Supabase MCP: `child_phases` (PK `(child_id, phase_number)`, 4 RLS-policies, updated_at trigger, FK cascade naar children + auth.users) + `child_phase_checks` (PK `(child_id, phase_number, check_key)`, 3 RLS-policies, FK cascade) staan beide leeg en correct opgezet. Geen nieuwe security-advisors voor deze tabellen.
+- ✅ **Frontend-modules getest via static preview** (`preview_eval`): alle 4 nieuwe modules laden zonder errors, exports kloppen, `renderPhaseBanner` produceert correcte HTML met fase-pill + voortgangsbalk, alle 14 fasen-CSS-classes aanwezig in stylesheet.
+- ⬜ **Live test op Vercel preview** is de enige resterende stap voor brok F vóór merge naar main.
+
+---
+
+## 2026-05-09 — Brok G afgerond — symptoom-detail + rode-vlag
+
+**Context**: PDF-gap-analyse zei dat de symptoom-tracker in brok C alleen het loggen-deel had. Brok G voegt detail-content + adaptieve red-flag-banner toe en breidt de symptoom-lijst uit van 10 → 16. Skeleton-content (body's) wordt later door Anneleen aangevuld, zoals bij brok E.
+
+### Vandaag afgerond
+- ✅ **Brok G.1** — `js/content/eersteHapjes-symptoms.js` met 16 symptomen. Per item: `key, label, icon, intro, body (HTML-string skeleton), redFlags[], redFlagSeverity[]`. Helpers: `SYMPTOMS, SEVERITIES, getSymptom, getSymptomMeta, isRedFlag`. Severity-mapping per type: `ademhaling/lethargie` op alles → red_flag; `koorts/braken/zwelling/gewicht/hoesten` op matig+heftig; rest alleen op heftig; `mild` triggert nooit (behalve ademhaling/lethargie als safety net).
+- ✅ **Brok G.2** — migratie `2026-05-09-symptoms-extend.sql`: drop+add CHECK constraint `child_symptoms_symptom_type_check` met 6 nieuwe keys (`gewicht, hoesten, verstopping, geen_eetlust, prikkelbaar, lethargie`). Bestaande logs blijven geldig. Server-side `SYMPTOM_TYPES` Set in `_lib/eersteHapjes-logs.mjs` mee uitgebreid.
+- ✅ **Brok G.3** — `detectRedFlag(symptomType, severity)` helper in `_lib/eersteHapjes-logs.mjs` als server-side mirror van frontend `redFlagSeverity`. Endpoint `POST /api/eerste-hapjes/symptoms` returnt nu `{ symptom, red_flag }`.
+- ✅ **Brok G.4** — frontend.
+  - Nieuw `js/components/symptomDetailModal.js`: zelfde patroon als `articleModal.js` (lijst + detail in één modal-shell met `swap()`). Detail-view toont icon, intro, HTML-body, rode-vlag-blok (gele linker-rand), disclaimer-footer.
+  - `symptomLogModal.js`: tegel-grid leest uit `SYMPTOMS` (geen hardcoded array meer); elke tegel heeft een info-(i)-knop rechtsboven die `openSymptomDetailModal({symptomKey})` opent (event-bubbling onderbroken zodat tegel niet selecteert). "Wat betekenen deze?"-link bovenaan veld → lijst-view. Modal resolved nu `{symptom, red_flag}` i.p.v. enkel `symptom`.
+  - `eersteHapjes.js`: oude `SYMPTOM_TYPE_LABEL/ICON` constanten verwijderd → vervangen door `getSymptomMeta()`. Symptoom-rijen tonen een ⚠ "Aandachtssignaal"-pill (klikbaar → detail-modal) bij red-flag-combinaties; rij krijgt linker-rand in `--color-warning`. `showRedFlagBanner(symptomKey)`-helper toont fixed top-banner na log met `red_flag: true` (met sluit-knop, geen state-bewaring). "Symptomen-uitleg"-link onderaan Vandaag opent lijst-modal.
+  - `styles.css`: nieuwe sectie `EERSTE HAPJES — symptom detail (brok G)` met info-icoontje, red-flag-pill, top-banner (incl. pop-animatie), detail-modal-shell, red-flag-blok, lijst-items, mobiele variant.
+- ✅ **Brok G.5** — cache-buster `v2.7.0` → `v2.8.0` in 37 files (HTML + JS imports + JS CLAUDE.md voorbeelden).
+- ✅ **Brok G.6** — docs gesyncd in `api/CLAUDE.md` (endpoint-uitbreiding + helpers-tabel met `detectRedFlag`), `js/CLAUDE.md` (nieuwe content-module + `symptomDetailModal` + aangepaste `symptomLogModal`-beschrijving), `supabase-migrations/CLAUDE.md` (uitgebreide CHECK-constraint).
+- ✅ **Sanity-check via `node --check`**: alle 6 gewijzigde files (.js + .mjs) parsen zonder syntax-errors.
+
+### Open / nog te doen
+- ⬜ **SQL handmatig draaien** in Supabase Dashboard: `supabase-migrations/2026-05-09-symptoms-extend.sql` (additieve uitbreiding van CHECK — risico-laag).
+
+```sql
+alter table public.child_symptoms
+  drop constraint if exists child_symptoms_symptom_type_check;
+
+alter table public.child_symptoms
+  add constraint child_symptoms_symptom_type_check
+  check (symptom_type in (
+    'huid','buik','diarree','braken','slaap',
+    'koorts','jeuk','zwelling','ademhaling','anders',
+    'gewicht','hoesten','verstopping','geen_eetlust','prikkelbaar','lethargie'
+  ));
+```
+
+- ⬜ **Live test op Vercel preview** voor brok F + G samen vóór merge.
+- ⬜ **Body's invullen** voor de 16 symptomen (skeleton staat) + 7 microlearning-artikels (nog open van brok E). Beide door Anneleen.
+- ⬜ **Brokken H/I/J/K** (PDF-gap-analyse): allergeen-reminders + risicovoedingen + max-1-nieuw-guard, vandaag-suggesties + adaptieve nudges, recipe-filter + alternatieven, microlearning-search.
+
+### Beslissingen genomen vandaag
+- **Skeleton-content**: body's als HTML-string placeholder, geen markdown-parser (consistent met brok E). Anneleen vult body's later aan zonder code-wijziging.
+- **6 nieuwe symptoom-keys**: gekozen op basis van wat ouders in de eerste-hapjes-fase reëel kunnen waarnemen en wat een arts-signaal kan zijn (gewicht, hoesten, verstopping, geen eetlust, prikkelbaar, lethargie).
+- **Red-flag-trigger-strategie**: severity-niveau per type bepaalt of banner triggert. `mild` triggert alleen voor `ademhaling` en `lethargie` als safety net. Bewust client + server constants apart — frontend voor UI-rendering (rij-pill), server voor de adaptieve banner-trigger op POST-response.
+- **Statische config voor symptomen** zonder DB-tabel — zelfde patroon als `eersteHapjes-phases.js` en `eersteHapjes-content.js`. Texten aanpassen vereist geen migratie. Backend houdt enkel `RED_FLAG_SEVERITIES` voor de detector — kleine duplicatie maar bewust gekozen.
+- **Eén modal voor lijst + detail**: zelfde patroon als `articleModal.js` en `phaseModal.js` — minder bestanden, makkelijker te navigeren.
+- **Banner sluit zichzelf niet automatisch**: gebruiker moet expliciet sluiten of "Lees meer" klikken — dit is een aandachtssignaal, niet een toast.
+
+### Open vragen / blockers
+- Geen blockers. Migratie-SQL hierboven moet manueel in Supabase Dashboard gedraaid worden voor de preview kan testen met de 6 nieuwe symptoom-keys (anders 422 op POST).

@@ -51,6 +51,7 @@ Pril Leven heeft historisch **twee** parallel-lopende auth-systemen. Begrijp het
 | `content/eersteHapjes-phases.js` | Statische config voor de 6 fases (0..5) van het Eerste Hapjes-traject (brok F). Per fase: `number`, `name`, `label`, `minAgeMonths`, `intro`, `advanceLabel`, `checks: [{key, label}]`. Eindfase 5 heeft geen checks. Exporteert `PHASES`, `getPhase(n)`, `initialPhaseForAge(months)`, `AUTO_FASE5_AGE_MONTHS = 14` (drempel waarboven kindjes meteen in fase 5 starten). Source of truth voor labels/intros — backend mirrort enkel `{number, minAgeMonths, checkCount}` voor validatie. |
 | `eersteHapjesContent.js` | Helpers bovenop de statische `content/eersteHapjes-content.js` array. Exporteert `ageMonthsFromBirthdate(iso)`, `getRelevantArticles(months, {category?})`, `getNextStepArticle(months)` (kiest hoogste `ageMin` binnen range, skipt 'veiligheid'), `getArticlesByCategory()`, `getArticleBySlug(slug)`, `formatAgeRange(min, max)`. |
 | `content/eersteHapjes-content.js` | Statische microlearning-content voor het Eerste Hapjes-traject. 7 skeleton-artikels met titel + summary + leeftijdsrange + categorie + body als HTML-string. **Geen markdown-parser** — body's worden als HTML in de modal getoond. Body's zijn nu placeholders die Anneleen later aanvult. Categorieën: `intro/allergenen/textuur/zelfvoeden/mijlpaal/veiligheid` (met `CATEGORY_LABEL`-export voor UI). |
+| `content/eersteHapjes-symptoms.js` | Eerste Hapjes brok G — statische symptoom-config. 16 symptomen (10 brok C + 6 nieuw: `gewicht/hoesten/verstopping/geen_eetlust/prikkelbaar/lethargie`). Per symptoom: `key, label, icon, intro, body (HTML-skeleton), redFlags[], redFlagSeverity[]`. Body's zijn placeholders. `redFlagSeverity` bepaalt welke ernst-niveaus de adaptieve banner triggeren — server heeft een mirror in `_lib/eersteHapjes-logs.mjs RED_FLAG_SEVERITIES`. Exporteert `SYMPTOMS, SEVERITIES, getSymptom(key), getSymptomMeta(key), isRedFlag(key, severity)`. |
 | `headerAvatarStandalone.js` | Klein avatar-component voor losse pagina's (`chat.html`, `admin-chat.html`) zonder de volledige header. |
 | `components/` | Pagina/feature-componenten. |
 
@@ -72,7 +73,8 @@ Pril Leven heeft historisch **twee** parallel-lopende auth-systemen. Begrijp het
 | `eersteHapjes.js` | Eerste Hapjes-pagina (SPA-route `#/eerste-hapjes`). Laadt kindjes + logs (vandaag's meals + 7d symptoms + alle allergenen + fase-state). Vandaag-cards: maaltijden vandaag, symptomen 7d, allergenen (gegroepeerd op status), 'Volgende stap' (live artikel via `getNextStepArticle`), plus fase-banner bovenaan en "Mijn fasen" + "Alle tips"-links onderaan. Geeft `state.allergens` door aan `mealLogModal` voor recipe-warning. Module-state houdt `logsLoadedFor` bij om refetch bij kindjes-switch goed te doen. |
 | `childOnboardingModal.js` | 3-staps wizard voor nieuw kindje: naam → geboortedatum → structuurvoorkeur (skippable). Returnt `Promise<child\|null>`. Roept `createChild()` uit `eersteHapjesApi.js`. |
 | `mealLogModal.js` | Eerste Hapjes brok C — eenstaps modal voor maaltijd-log. Velden: type-chips (default = guess op uur), tijdstip (`datetime-local`), voeding met **client-side recept-typeahead** via `getRecipes()` uit `store.js` (geen extra endpoint), hoeveelheid-chips, reactie-emoji-chips, notes. Roept `createMealLog()`. |
-| `symptomLogModal.js` | Eerste Hapjes brok C — eenstaps modal voor symptoom-log. 10-tegel-grid voor type, 3 chips voor severity, tijdstip, optionele koppeling aan een recente maaltijd (laatste 48u via `getMealsForChild`), notes. Roept `createSymptom()`. |
+| `symptomLogModal.js` | Eerste Hapjes brok C, brok G aangepast — eenstaps modal voor symptoom-log. Type-grid leest nu uit `content/eersteHapjes-symptoms.js SYMPTOMS` (16 keys); elke tegel heeft een info-icoontje (i) dat `openSymptomDetailModal({symptomKey})` opent. Severity-chips, tijdstip, optionele meal-koppeling (48u), notes. Roept `createSymptom()` en **resolves `{symptom, red_flag}`** (red_flag komt uit endpoint-response). |
+| `symptomDetailModal.js` | Eerste Hapjes brok G — modal-shell met 2 weergaven, zelfde patroon als `articleModal.js`. `openSymptomDetailModal({symptomKey})` toont detail (icon + intro + body + rode-vlag-blok + disclaimer); `openSymptomDetailModal({listMode: true})` toont lijst van alle 16 symptomen, klik = swap naar detail. |
 | `allergenManager.js` | Eerste Hapjes brok D — accordion-modal met alle 13 allergenen. Per rij: status-chips (gepland/geprobeerd/vermijden), reactie-chips (geen/mild/matig/heftig/onbekend) + datum als status=geprobeerd, notes. Per rij `upsertAllergen()` of `deleteAllergen()`. Eén tegelijk geopend via `toggleRow()`. |
 | `articleModal.js` | Eerste Hapjes brok E — modal-shell met 2 weergaven: detail (één artikel met body als HTML) en lijst (gegroepeerd per categorie, "Voor jou nu"-pill bij relevante leeftijd). Slug-navigatie tussen views via interne `swap(html)`. Roept `getArticleBySlug` uit `eersteHapjesContent.js`. |
 | `phaseModal.js` | Eerste Hapjes brok F — fasen-systeem in één bestand. Exporteert `renderPhaseBanner(phaseState)` voor inline-render bovenaan Vandaag (klik opent detail) + `openPhaseDetailModal({child, phaseState})` (huidige fase met checklist + advance-knop) + `openPhaseOverviewModal({child, phaseState})` (alle 6 fases als kaartjes). Modal-shell deelt state tussen views via interne `swap()`. Resolves `{changed: bool}` zodat caller kan herladen. |
@@ -84,7 +86,7 @@ Pril Leven heeft historisch **twee** parallel-lopende auth-systemen. Begrijp het
 ### 4.1 Supabase REST calls (legacy data)
 **Altijd** via `supabaseFetch(path, options)` uit `supabase.js`. Niet zelf `fetch()` op `/rest/v1/...`.
 ```js
-import { supabaseFetch } from './supabase.js?v=2.7.0';
+import { supabaseFetch } from './supabase.js?v=2.8.0';
 const data = await supabaseFetch('/rest/v1/recipes?select=*&id=eq.' + encodeURIComponent(id));
 ```
 Voor grote tabellen: voeg `Range`-header toe om PostgREST 1000-rij default te omzeilen:
@@ -96,7 +98,7 @@ Voor grote tabellen: voeg `Range`-header toe om PostgREST 1000-rij default te om
 Voor community: gebruik `communityApi.js` — die wrapt het al.
 Voor andere endpoints (chat, profile, memory, conversations, me):
 ```js
-import { sessionRefreshIfNeeded } from './supabase.js?v=2.7.0';
+import { sessionRefreshIfNeeded } from './supabase.js?v=2.8.0';
 const session = await sessionRefreshIfNeeded();
 if (!session) { /* redirect naar login */ return; }
 
@@ -154,29 +156,29 @@ Het project heeft **geen build step**, dus de browser cachet JS-files agressief 
 ### Waar staat hij?
 - **Alle HTML-bestanden** (`index.html`, `chat.html`, `admin-chat.html`, `delete-account.html`, `privacy.html`):
   ```html
-  <script type="module" src="script.js?v=2.7.0"></script>
-  <link rel="stylesheet" href="styles.css?v=2.7.0">
+  <script type="module" src="script.js?v=2.8.0"></script>
+  <link rel="stylesheet" href="styles.css?v=2.8.0">
   ```
 - **`script.js`** (entry point) — 14× in import statements:
   ```js
-  import * as Store from './js/store.js?v=2.7.0';
+  import * as Store from './js/store.js?v=2.8.0';
   ```
 - **Elke module in `/js`** die andere modules importeert — `store.js`, `chat.js`, `admin-chat.js`, `headerAvatarStandalone.js`, `communityApi.js`, en **alle** componenten in `js/components/*`. Voorbeeld uit `header.js`:
   ```js
-  import * as Store from '../store.js?v=2.7.0';
-  import { sessionClear, sessionGet } from '../supabase.js?v=2.7.0';
+  import * as Store from '../store.js?v=2.8.0';
+  import { sessionClear, sessionGet } from '../supabase.js?v=2.8.0';
   ```
 
 ### Wanneer bumpen?
 Bij **élke** wijziging aan een `.js` of `.css` bestand. Anders zien gebruikers stale JS en breekt mogelijk de app.
 
 ### Hoe bumpen?
-Vervang ALLE voorkomens van de huidige versie (bv. `?v=2.7.0`) met de nieuwe (bv. `?v=2.7.1`) in:
+Vervang ALLE voorkomens van de huidige versie (bv. `?v=2.8.0`) met de nieuwe (bv. `?v=2.7.1`) in:
 1. Alle HTML-bestanden in de root.
 2. `script.js`.
 3. Alle bestanden in `/js/*.js` en `/js/components/*.js` met imports.
 
-Snelle check: `grep -rn "v=2.7.0" --include="*.js" --include="*.html"`.
+Snelle check: `grep -rn "v=2.8.0" --include="*.js" --include="*.html"`.
 Een vind-vervang over alle bestanden tegelijk werkt prima.
 
 ---
