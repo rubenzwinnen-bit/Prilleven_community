@@ -50,6 +50,7 @@ export function render() {
       href: '#/eerste-hapjes',
       accent: 'sage-deep',
       badge: 'Nieuw',
+      hoverImg: '/fotos/landing-eerste-hapjes.png',
     },
   ];
 
