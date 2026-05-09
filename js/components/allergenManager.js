@@ -10,20 +10,18 @@
    Reactie/datum zijn verschoven naar intro-modal (brok H.3).
 ============================================ */
 
-import { escapeHtml, ALLERGENS, showToast } from '../utils.js?v=2.17.0';
+import { escapeHtml, ALLERGENS, showToast } from '../utils.js?v=2.18.0';
 import {
   getAllergensForChild,
-  upsertAllergen,
-  deleteAllergen,
   getAllergenIntros,
-} from '../eersteHapjesApi.js?v=2.17.0';
+  deleteAllergenIntro,
+} from '../eersteHapjesApi.js?v=2.18.0';
 import {
   deriveAllergenState,
   statusLabel,
   statusTone,
-  openAllergenTimelineModal,
   openAllergenIntroModal,
-} from './allergenIntroModal.js?v=2.17.0';
+} from './allergenIntroModal.js?v=2.18.0';
 
 /**
  * Open de allergen manager.
@@ -142,52 +140,53 @@ export function openAllergenManager({ childId, childName }) {
     }
 
     function renderRowBody(key, body) {
-      const cur = byKey[key];
+      // Inline tijdlijn van intros + één "+ Intro registreren"-knop.
+      // Geen vermijden-toggle, geen notes, geen "verwijder uit lijst"-knop —
+      // bewust schoon gehouden (gebruiker-feedback).
+      renderInlineTimeline(key, body);
+    }
+
+    function renderInlineTimeline(key, body) {
       const intros = introsByKey[key] || [];
-      const isAvoid = cur?.status === 'vermijden';
-      const notes = cur?.notes || '';
       const safeKey = cssEscape(key);
+      const list = intros.length === 0
+        ? `<div class="eh-allergen-inline-empty">Nog geen intro-pogingen voor ${escapeHtml(capitalize(key))}.</div>`
+        : `<ul class="eh-allergen-inline-list">
+            ${intros.map((i) => renderInlineIntroItem(i)).join('')}
+          </ul>`;
 
       body.innerHTML = `
         <div class="eh-allergen-edit">
-          <div class="eh-allergen-edit-quick">
-            <button class="btn btn-secondary btn-small" data-action="timeline">
-              Bekijk tijdlijn ${intros.length ? `(${intros.length})` : ''}
-            </button>
-            <button class="btn btn-primary btn-small" data-action="intro">+ Intro registreren</button>
-          </div>
-
-          <label class="eh-allergen-avoid-toggle">
-            <input type="checkbox" data-field="avoid" ${isAvoid ? 'checked' : ''}>
-            <span>Markeer als vermijden (allergie bevestigd of familie-historie)</span>
-          </label>
-
-          <div class="eh-allergen-field">
-            <label for="eh-al-notes-${safeKey}">Notitie <span class="eh-allergen-optional">(optioneel)</span></label>
-            <textarea id="eh-al-notes-${safeKey}" class="auth-input eh-allergen-textarea" rows="2" maxlength="500" placeholder="bv. enkel kleine porties geven, altijd in combinatie met groente">${escapeHtml(notes)}</textarea>
-          </div>
-
-          <div class="eh-allergen-row-error hidden" data-row-error></div>
-
+          ${list}
           <div class="eh-allergen-row-actions">
-            ${cur ? '<button class="eh-allergen-link-btn" data-action="clear">Verwijder uit lijst</button>' : ''}
-            <button class="btn btn-primary" data-action="save">Opslaan</button>
+            <button class="btn btn-primary btn-small" data-action="intro">+ Intro registreren</button>
           </div>
         </div>
       `;
 
-      body.querySelector('[data-action="timeline"]').addEventListener('click', async () => {
-        const result = await openAllergenTimelineModal({
-          childId,
-          allergenKey: key,
-          allergenLabel: capitalize(key),
-          allergen: byKey[key] || null,
-        });
-        if (result?.changed) {
-          changedAny = true;
+      // Delete-knoppen per intro
+      body.querySelectorAll('[data-del-intro]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.delIntro;
+          if (!window.confirm('Deze intro-poging verwijderen?')) return;
+          btn.disabled = true;
+          const { ok, error } = await deleteAllergenIntro(id);
+          if (!ok) {
+            btn.disabled = false;
+            showToast(error || 'Verwijderen mislukt.', 'error');
+            return;
+          }
           await reloadIntros(key);
+          changedAny = true;
           renderList();
-        }
+          // Re-open dezelfde rij na herrender
+          const reopenBody = listEl.querySelector(`[data-body="${safeKey}"]`);
+          if (reopenBody) {
+            reopenBody.classList.remove('hidden');
+            reopenBody.parentElement?.classList.add('open');
+            renderRowBody(key, reopenBody);
+          }
+        });
       });
 
       body.querySelector('[data-action="intro"]').addEventListener('click', async () => {
@@ -200,60 +199,50 @@ export function openAllergenManager({ childId, childName }) {
           changedAny = true;
           await reloadIntros(key);
           renderList();
+          const reopenBody = listEl.querySelector(`[data-body="${safeKey}"]`);
+          if (reopenBody) {
+            reopenBody.classList.remove('hidden');
+            reopenBody.parentElement?.classList.add('open');
+            renderRowBody(key, reopenBody);
+          }
         }
       });
+    }
 
-      const errorEl = body.querySelector('[data-row-error]');
-      const showRowError = (msg) => { errorEl.textContent = msg; errorEl.classList.remove('hidden'); };
-      const clearRowError = () => errorEl.classList.add('hidden');
+    function renderInlineIntroItem(i) {
+      const reactionMap = {
+        geen: 'Geen reactie',
+        mild: 'Mild',
+        matig: 'Matig',
+        heftig: 'Heftig',
+        onbekend: 'Onbekend',
+      };
+      const reactionLabel = reactionMap[i.reaction] || i.reaction || 'Geen reactie';
+      const tone = (i.reaction === 'matig' || i.reaction === 'heftig') ? 'warn'
+                 : i.reaction === 'mild' ? 'soft'
+                 : 'ok';
+      return `
+        <li class="eh-allergen-inline-item">
+          <div class="eh-allergen-inline-main">
+            <div class="eh-allergen-inline-date">${formatIntroDate(i.intro_date)}</div>
+            <div class="eh-allergen-inline-reaction eh-tone-${tone}">${escapeHtml(reactionLabel)}</div>
+            ${i.notes ? `<div class="eh-allergen-inline-notes">${escapeHtml(i.notes)}</div>` : ''}
+          </div>
+          <button class="eh-allergen-inline-del" data-del-intro="${escapeHtml(i.id)}" type="button" aria-label="Verwijderen">×</button>
+        </li>
+      `;
+    }
 
-      body.querySelector('[data-action="save"]').addEventListener('click', async () => {
-        clearRowError();
-        const avoid = body.querySelector('[data-field="avoid"]').checked;
-        const notesVal = body.querySelector(`#eh-al-notes-${safeKey}`).value.trim();
-
-        const buttons = body.querySelectorAll('button');
-        buttons.forEach((b) => (b.disabled = true));
-
-        const payload = {
-          child_id: childId,
-          allergen_key: key,
-          status: avoid ? 'vermijden' : 'gepland',
-          reaction: null,
-          intro_date: null,
-          notes: notesVal || null,
-        };
-
-        const { ok, data, error } = await upsertAllergen(payload);
-        buttons.forEach((b) => (b.disabled = false));
-
-        if (!ok) return showRowError(error || 'Opslaan mislukt.');
-
-        byKey[key] = data.allergen;
-        changedAny = true;
-        showToast(`${capitalize(key)} bijgewerkt.`, 'success');
-        renderList();
-      });
-
-      const clearBtn = body.querySelector('[data-action="clear"]');
-      if (clearBtn) {
-        clearBtn.addEventListener('click', async () => {
-          if (!cur) return;
-          if (!window.confirm(`"${capitalize(key)}" uit de lijst verwijderen? De tijdlijn met intro-pogingen blijft staan.`)) return;
-          clearRowError();
-          const buttons = body.querySelectorAll('button');
-          buttons.forEach((b) => (b.disabled = true));
-          const { ok, error } = await deleteAllergen(cur.id);
-          if (!ok) {
-            buttons.forEach((b) => (b.disabled = false));
-            return showRowError(error || 'Verwijderen mislukt.');
-          }
-          delete byKey[key];
-          changedAny = true;
-          showToast(`${capitalize(key)} verwijderd uit lijst.`, 'success');
-          renderList();
-        });
-      }
+    function formatIntroDate(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso + 'T00:00:00Z');
+      if (Number.isNaN(d.getTime())) return iso;
+      const today = new Date(); today.setUTCHours(0, 0, 0, 0);
+      const days = Math.round((today.getTime() - d.getTime()) / (24 * 60 * 60 * 1000));
+      if (days === 0) return 'Vandaag';
+      if (days === 1) return 'Gisteren';
+      if (days < 7) return `${days} dagen geleden`;
+      return d.toLocaleDateString('nl-BE', { day: 'numeric', month: 'short', year: 'numeric' });
     }
 
     overlay.querySelector('[data-action="close"]').addEventListener('click', close);

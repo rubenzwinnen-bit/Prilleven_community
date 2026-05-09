@@ -7,13 +7,13 @@
    Brok K: search-input + categorie-chips bovenaan lijst.
 ============================================ */
 
-import { escapeHtml } from '../utils.js?v=2.17.0';
+import { escapeHtml } from '../utils.js?v=2.18.0';
 import {
   getArticlesByCategory,
   getArticleBySlug,
   formatAgeRange,
-} from '../eersteHapjesContent.js?v=2.17.0';
-import { CATEGORY_LABEL } from '../content/eersteHapjes-content.js?v=2.17.0';
+} from '../eersteHapjesContent.js?v=2.18.0';
+import { CATEGORY_LABEL } from '../content/eersteHapjes-content.js?v=2.18.0';
 
 /**
  * Toon één artikel in een modal.

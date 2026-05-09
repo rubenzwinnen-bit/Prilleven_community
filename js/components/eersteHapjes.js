@@ -8,7 +8,7 @@
    Brok F — fasen-systeem (banner + detail + overzicht).
 ============================================ */
 
-import { escapeHtml, colorFromSeed, initialsFromName, showToast } from '../utils.js?v=2.17.0';
+import { escapeHtml, colorFromSeed, initialsFromName, showToast } from '../utils.js?v=2.18.0';
 import {
   getMyChildren,
   getMealsForChild,
@@ -18,40 +18,40 @@ import {
   getPhases,
   deleteMealLog,
   deleteSymptom,
-} from '../eersteHapjesApi.js?v=2.17.0';
+} from '../eersteHapjesApi.js?v=2.18.0';
 import {
   ageMonthsFromBirthdate,
   getNextStepArticle,
   formatAgeRange,
-} from '../eersteHapjesContent.js?v=2.17.0';
-import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.17.0';
-import { openMealLogModal } from './mealLogModal.js?v=2.17.0';
-import { openSymptomLogModal } from './symptomLogModal.js?v=2.17.0';
-import { openSymptomDetailModal } from './symptomDetailModal.js?v=2.17.0';
-import { openAllergenManager } from './allergenManager.js?v=2.17.0';
+} from '../eersteHapjesContent.js?v=2.18.0';
+import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.18.0';
+import { openMealLogModal } from './mealLogModal.js?v=2.18.0';
+import { openSymptomLogModal } from './symptomLogModal.js?v=2.18.0';
+import { openSymptomDetailModal } from './symptomDetailModal.js?v=2.18.0';
+import { openAllergenManager } from './allergenManager.js?v=2.18.0';
 import {
   deriveAllergenState,
   statusLabel,
   statusTone,
   openAllergenTimelineModal,
-} from './allergenIntroModal.js?v=2.17.0';
-import { openArticleModal, openArticleListModal } from './articleModal.js?v=2.17.0';
-import { openRiskFoodsListModal, openRiskFoodDetailModal } from './riskFoodsModal.js?v=2.17.0';
-import { openAgendaModal } from './agendaModal.js?v=2.17.0';
-import { renderEhChatBox, bindEhChatBox } from './ehChatBox.js?v=2.17.0';
+} from './allergenIntroModal.js?v=2.18.0';
+import { openArticleModal, openArticleListModal } from './articleModal.js?v=2.18.0';
+import { openRiskFoodsListModal, openRiskFoodDetailModal } from './riskFoodsModal.js?v=2.18.0';
+import { openAgendaModal } from './agendaModal.js?v=2.18.0';
+import { renderEhChatBox, bindEhChatBox } from './ehChatBox.js?v=2.18.0';
 import {
   getRelevantRiskFoods,
   formatAgeLimit,
-} from '../content/eersteHapjes-risk-foods.js?v=2.17.0';
+} from '../content/eersteHapjes-risk-foods.js?v=2.18.0';
 import {
   renderPhaseBanner,
   openPhaseDetailModal,
   openPhaseOverviewModal,
-} from './phaseModal.js?v=2.17.0';
-import { getSymptomMeta, isRedFlag } from '../content/eersteHapjes-symptoms.js?v=2.17.0';
-import { buildSuggestions } from '../eersteHapjesSuggestions.js?v=2.17.0';
-import { getRecipes } from '../store.js?v=2.17.0';
-import * as Router from '../router.js?v=2.17.0';
+} from './phaseModal.js?v=2.18.0';
+import { getSymptomMeta, isRedFlag } from '../content/eersteHapjes-symptoms.js?v=2.18.0';
+import { buildSuggestions } from '../eersteHapjesSuggestions.js?v=2.18.0';
+import { getRecipes } from '../store.js?v=2.18.0';
+import * as Router from '../router.js?v=2.18.0';
 
 // Module-state
 let state = {
@@ -630,14 +630,13 @@ function renderSymptomRow(s) {
   });
   const meta = getSymptomMeta(s.symptom_type);
   const label = meta?.label || s.symptom_type;
-  const icon  = meta?.icon  || '';
   const flagged = isRedFlag(s.symptom_type, s.severity);
   return `
     <li class="eh-log-item ${flagged ? 'has-redflag' : ''}" data-symptom-id="${s.id}">
       <div class="eh-log-item-main">
         <div class="eh-log-item-top">
           <span class="eh-log-time">${escapeHtml(when)}</span>
-          <span class="eh-log-type">${icon} ${escapeHtml(label)}</span>
+          <span class="eh-log-type">${escapeHtml(label)}</span>
           <span class="eh-log-severity eh-log-severity-${s.severity}">${escapeHtml(s.severity)}</span>
           ${flagged ? `<button class="eh-log-redflag-pill" data-action="open-symptom-info" data-key="${escapeHtml(s.symptom_type)}" type="button" aria-label="Meer info">⚠ Aandachtssignaal</button>` : ''}
         </div>
@@ -811,7 +810,7 @@ function bindLogActions(root, child) {
   const articleBtn = root.querySelector('[data-action="open-article"]');
   if (articleBtn) {
     articleBtn.addEventListener('click', async () => {
-      const { getArticleBySlug } = await import('../eersteHapjesContent.js?v=2.17.0');
+      const { getArticleBySlug } = await import('../eersteHapjesContent.js?v=2.18.0');
       const article = getArticleBySlug(articleBtn.dataset.slug);
       if (article) await openArticleModal(article);
     });

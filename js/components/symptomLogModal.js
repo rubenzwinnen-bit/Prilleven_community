@@ -6,10 +6,10 @@
    Returnt Promise<symptom|null>.
 ============================================ */
 
-import { escapeHtml } from '../utils.js?v=2.17.0';
-import { createSymptom, getMealsForChild } from '../eersteHapjesApi.js?v=2.17.0';
-import { SYMPTOMS, SEVERITIES, getSymptom } from '../content/eersteHapjes-symptoms.js?v=2.17.0';
-import { openSymptomDetailModal } from './symptomDetailModal.js?v=2.17.0';
+import { escapeHtml } from '../utils.js?v=2.18.0';
+import { createSymptom, getMealsForChild } from '../eersteHapjesApi.js?v=2.18.0';
+import { SYMPTOMS, SEVERITIES, getSymptom } from '../content/eersteHapjes-symptoms.js?v=2.18.0';
+import { openSymptomDetailModal } from './symptomDetailModal.js?v=2.18.0';
 
 /**
  * Toon de symptoom-log modal.
@@ -47,7 +47,6 @@ export function openSymptomLogModal({ childId, childName }) {
               ${SYMPTOMS.map(t => `
                 <button type="button" class="eh-symptom-tile" data-value="${t.key}">
                   <span class="eh-symptom-info" data-symptom-info="${t.key}" aria-label="Uitleg ${escapeHtml(t.label)}">i</span>
-                  <span class="eh-symptom-icon">${t.icon}</span>
                   <span class="eh-symptom-label">${escapeHtml(t.label)}</span>
                 </button>
               `).join('')}

@@ -6495,3 +6495,68 @@ body.is-eerste-hapjes #app-nav { display: none; }
 .eh-chat-send {
   flex-shrink: 0;
 }
+
+/* ============================================================
+   Allergeen-manager — inline timeline (bijsturing)
+============================================================ */
+.eh-allergen-inline-empty {
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-gray, #6b6155);
+  padding: 12px 8px;
+}
+.eh-allergen-inline-list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.eh-allergen-inline-item {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 8px 10px;
+  border: 1px solid var(--color-light, #f0ebe6);
+  border-radius: 8px;
+  background: var(--color-white, #fff);
+}
+.eh-allergen-inline-main {
+  flex: 1;
+  min-width: 0;
+}
+.eh-allergen-inline-date {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-dark, #2f2a24);
+  margin-bottom: 2px;
+}
+.eh-allergen-inline-reaction {
+  display: inline-block;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--tone-bg, #f0ebe6);
+  color: var(--tone-fg, #2f2a24);
+}
+.eh-allergen-inline-notes {
+  font-size: 12px;
+  color: var(--color-gray, #6b6155);
+  margin-top: 4px;
+}
+.eh-allergen-inline-del {
+  background: transparent;
+  border: none;
+  color: var(--color-gray, #6b6155);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+.eh-allergen-inline-del:hover {
+  background: var(--color-light, #f0ebe6);
+  color: var(--color-danger, #b13c33);
+}
