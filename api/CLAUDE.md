@@ -133,7 +133,7 @@ Admin dashboard. Vereist `requireAdmin`. Sections: `global`, `users`, `queries`,
 | Bestand | Inhoud |
 |---|---|
 | `auth.mjs` | `requireAuth(req)`, `requireAdmin(req)`, `AuthError`. Cachet JWT-validaties 5 min. |
-| `clients.mjs` | Singleton `supabase` (service-role, `persistSession: false`), `anthropic`, `VOYAGE_API_KEY`. Crasht als env var ontbreekt — bewust. |
+| `clients.mjs` | Singleton `supabase` (service-role, `persistSession: false`), `anthropic`, `VOYAGE_API_KEY`, `ANTHROPIC_VIA_GATEWAY`-flag. Anthropic-client routeert via Vercel AI Gateway als `AI_GATEWAY_API_KEY` env-var aanwezig is (baseURL override) — geeft automatische caching + failover + observability zonder code-wijziging in routes. Voyage blijft direct (geen native Gateway-support). Crasht als verplichte env-vars ontbreken — bewust. |
 | `subscription.mjs` | `getAccessStatus(email)` via `get_user_access` RPC, 1 min in-memory cache. `accessDeniedMessage(status)`. `invalidateSubscriptionCache(email)`. |
 | `rate-limit.mjs` | `checkRateLimit`, `checkCostCap` (dag), `checkMonthlyCostCap`, `checkImageRateLimit`, `getMonthlyUsage`, `getDailyImageUsage`, `logUsage`, `hashIp`, `extractIp`. Limieten in caps bovenaan het bestand. |
 | `retrieve.mjs` | `embedQuery(text)` (Voyage `voyage-3-large`, 1024-dim), `retrieveCombined(question, {userId, filterAge, ...})` met age-filter fallback (drempel `RELEVANCE_THRESHOLD = 0.55`, `AGE_FALLBACK_THRESHOLD = 0.40`). |
@@ -214,7 +214,8 @@ Vercel parseert JSON soms automatisch, soms niet — die ternary werkt in beide 
 SUPABASE_URL
 SUPABASE_SERVICE_ROLE_KEY      # in alle /api functions (clients.mjs)
 SUPABASE_ANON_KEY              # optioneel — auth.mjs valt anders terug op service-role
-ANTHROPIC_API_KEY              # clients.mjs
+ANTHROPIC_API_KEY              # clients.mjs (fallback als Gateway uit staat)
+AI_GATEWAY_API_KEY             # clients.mjs (optioneel — Vercel AI Gateway voor Anthropic)
 VOYAGE_API_KEY                 # clients.mjs / retrieve.mjs
 PLUGPAY_WEBHOOK_BEARER         # webhook (optie 1)
 PLUGPAY_WEBHOOK_SECRET         # webhook (optie 2, HMAC)

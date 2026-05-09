@@ -166,10 +166,11 @@ Node ≥ 20.
 ## 7. Belangrijke env-vars (in `.env.local`, nooit committen)
 
 ```
-ANTHROPIC_API_KEY
+ANTHROPIC_API_KEY            # blijft fallback als AI Gateway uit staat
 VOYAGE_API_KEY
 SUPABASE_URL
 SUPABASE_SERVICE_ROLE_KEY
+AI_GATEWAY_API_KEY           # optioneel — als gezet routeren Anthropic-calls via Vercel AI Gateway (caching + observability)
 ```
 
 Op Vercel zelf staan deze al ingesteld via project settings.
