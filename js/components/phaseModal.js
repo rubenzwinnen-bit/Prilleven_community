@@ -11,9 +11,9 @@
    eersteHapjes.js zonder modal te openen.
 ============================================ */
 
-import { escapeHtml, showToast } from '../utils.js?v=2.13.0';
-import { PHASES, getPhase } from '../content/eersteHapjes-phases.js?v=2.13.0';
-import { togglePhaseCheck, advancePhase, getPhases } from '../eersteHapjesApi.js?v=2.13.0';
+import { escapeHtml, showToast } from '../utils.js?v=2.14.0';
+import { PHASES, getPhase } from '../content/eersteHapjes-phases.js?v=2.14.0';
+import { togglePhaseCheck, advancePhase, getPhases } from '../eersteHapjesApi.js?v=2.14.0';
 
 // ============================================================
 // Banner — geen modal, gewoon HTML voor inline-render in Vandaag
@@ -141,28 +141,56 @@ function openModal(initial) {
         });
       });
 
-      // Checklist toggle
+      // Checklist toggle — optimistic update (geen wait op API).
       host.querySelectorAll('[data-check-key]').forEach((cb) => {
-        cb.addEventListener('change', async () => {
+        cb.addEventListener('change', () => {
           const key = cb.dataset.checkKey;
           const phaseNumber = Number(cb.dataset.phaseNumber);
           const checked = cb.checked;
-          cb.disabled = true;
-          const { ok, error } = await togglePhaseCheck({
+
+          // 1. Lokale state direct muteren zodat advance-knop e.d.
+          //    onmiddellijk reageren op de nieuwe stand.
+          if (!state.phaseState) state.phaseState = { checks: {} };
+          if (!state.phaseState.checks) state.phaseState.checks = {};
+          if (!state.phaseState.checks[phaseNumber]) state.phaseState.checks[phaseNumber] = {};
+          const phaseChecks = state.phaseState.checks[phaseNumber];
+          if (checked) {
+            phaseChecks[key] = new Date().toISOString();
+          } else {
+            delete phaseChecks[key];
+          }
+          state.changed = true;
+
+          // 2. Direct re-renderen — geen network-wait.
+          rerender();
+
+          // 3. API call in achtergrond. Bij fail: revert + toast + re-render.
+          togglePhaseCheck({
             child_id: state.child.id,
             phase_number: phaseNumber,
             check_key: key,
             checked,
-          });
-          if (!ok) {
+          }).then(({ ok, error }) => {
+            if (ok) return;
+            // Rollback
+            if (checked) {
+              delete phaseChecks[key];
+            } else {
+              phaseChecks[key] = new Date().toISOString();
+            }
             showToast(error || 'Aanvinken mislukt.', 'error');
-            cb.checked = !checked;
-            cb.disabled = false;
-            return;
-          }
-          state.changed = true;
-          await reloadState();
-          rerender();
+            rerender();
+          }).catch((err) => {
+            console.error('[phase-check]', err);
+            // Idem rollback
+            if (checked) {
+              delete phaseChecks[key];
+            } else {
+              phaseChecks[key] = new Date().toISOString();
+            }
+            showToast('Netwerkfout — probeer opnieuw.', 'error');
+            rerender();
+          });
         });
       });
 
