@@ -1,7 +1,7 @@
 // Chat frontend met sidebar-gebaseerde conversatie-management.
 // Vereist een geldige Supabase sessie (gezet door de hoofdsite-login).
 
-import { sessionGet, sessionRefreshIfNeeded, sessionClear } from './supabase.js?v=2.16.0';
+import { sessionGet, sessionRefreshIfNeeded, sessionClear } from './supabase.js?v=2.17.0';
 
 // ---------- DOM refs ----------
 const form = document.getElementById('form');
@@ -17,6 +17,12 @@ const sidebar = document.getElementById('sidebar');
 const sidebarBackdrop = document.getElementById('sidebar-backdrop');
 const btnProfile = document.getElementById('btn-profile');
 const btnMemory = document.getElementById('btn-memory');
+const btnContext = document.getElementById('btn-context');
+
+// Context-modal refs
+const contextModal = document.getElementById('context-modal');
+const ctxBody = document.getElementById('ctx-body');
+const ctxClose = document.getElementById('ctx-close');
 
 // Memory-modal refs
 const memoryModal = document.getElementById('memory-modal');
@@ -421,6 +427,74 @@ pfDiet.addEventListener('change', (e) => {
   }
 });
 btnProfile.addEventListener('click', openProfileModal);
+
+// "Wat weet HapjesHeld?" context-modal
+btnContext?.addEventListener('click', openContextModal);
+ctxClose?.addEventListener('click', () => contextModal.classList.remove('visible'));
+contextModal?.addEventListener('click', (e) => {
+  if (e.target === contextModal) contextModal.classList.remove('visible');
+});
+
+async function openContextModal() {
+  contextModal.classList.add('visible');
+  ctxBody.innerHTML = `<div style="text-align:center;color:var(--color-gray);padding:1rem 0;">Laden…</div>`;
+  await loadProfile();
+  ctxBody.innerHTML = renderContextBody(currentProfile);
+}
+
+function renderContextBody(profile) {
+  if (!profile) {
+    return `<p style="color:var(--color-gray);">HapjesHeld kent nog geen achtergrond over jou. Vul je profiel in via "Mijn profiel" om persoonlijke antwoorden te krijgen.</p>`;
+  }
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (m) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[m]));
+  const sections = [];
+
+  // Naam
+  if (profile.display_name) {
+    sections.push(`<p><strong>Je naam:</strong> ${esc(profile.display_name)}</p>`);
+  }
+
+  // Kindjes
+  if (Array.isArray(profile.children) && profile.children.length > 0) {
+    const items = profile.children.map((c) => {
+      const age = c.birthdate ? ageMonthsFromDate(c.birthdate) : null;
+      const ageLbl = age == null ? '' : (age < 24 ? `${age} mnd` : `${Math.floor(age / 12)} jaar`);
+      const parts = [];
+      if (Array.isArray(c.allergies) && c.allergies.length) {
+        parts.push(`<span style="color:var(--color-danger);">vermijden: ${c.allergies.map(esc).join(', ')}</span>`);
+      }
+      if (Array.isArray(c.allergens_in_progress) && c.allergens_in_progress.length) {
+        parts.push(`<span style="color:var(--color-warning);">introductie loopt: ${c.allergens_in_progress.map(esc).join(', ')}</span>`);
+      }
+      const meta = parts.length ? `<div style="font-size:.85rem;margin-top:.2rem;">${parts.join(' · ')}</div>` : '';
+      return `<li style="margin-bottom:.5rem;"><strong>${esc(c.name || 'Kindje')}</strong>${ageLbl ? ` — ${esc(ageLbl)}` : ''}${meta}</li>`;
+    }).join('');
+    sections.push(`<div><strong>Kind(eren):</strong><ul style="margin:.4rem 0 0 1.2rem;padding:0;">${items}</ul></div>`);
+  } else {
+    sections.push(`<p style="color:var(--color-gray);"><em>Geen kindjes ingegeven — voeg toe via je profiel-icoon rechtsboven.</em></p>`);
+  }
+
+  // Dieet
+  if (Array.isArray(profile.diet) && profile.diet.length > 0) {
+    sections.push(`<p><strong>Dieet:</strong> ${profile.diet.map(esc).join(', ')}</p>`);
+  }
+
+  // Notes / extra info
+  if (profile.notes) {
+    sections.push(`<div><strong>Extra info voor HapjesHeld:</strong><div style="white-space:pre-wrap;background:var(--color-bg);padding:.6rem .8rem;border-radius:.5rem;margin-top:.3rem;font-size:.9rem;">${esc(profile.notes)}</div></div>`);
+  } else {
+    sections.push(`<p style="color:var(--color-gray);"><em>Nog geen extra info ingegeven. Voeg toe via "Mijn profiel" → Opmerkingen.</em></p>`);
+  }
+
+  return sections.join('<div style="height:.8rem;"></div>');
+}
+
+function ageMonthsFromDate(iso) {
+  const d = new Date(iso + 'T00:00:00Z');
+  if (Number.isNaN(d.getTime())) return null;
+  const diffDays = (Date.now() - d.getTime()) / (1000 * 60 * 60 * 24);
+  return Math.floor(diffDays / 30.4375);
+}
 profileModal.addEventListener('click', (e) => {
   if (e.target === profileModal) closeProfileModal();
 });

@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=2.16.0" />
+  <link rel="stylesheet" href="/styles.css?v=2.17.0" />
 
   <style>
     html, body { height: 100%; }
@@ -758,6 +758,9 @@
         <div class="conv-empty">Nog geen gesprekken.</div>
       </div>
       <div class="sidebar-bottom">
+        <button class="btn-profile" id="btn-context" type="button" style="margin-bottom:.4rem;">
+          <span>ℹ</span> <span>Wat weet HapjesHeld?</span>
+        </button>
         <button class="btn-profile" id="btn-memory" type="button" style="margin-bottom:.4rem;">
           <span>🧠</span> <span>Mijn geheugen</span>
         </button>
@@ -878,6 +881,22 @@
     </div>
   </div>
 
+  <!-- Context-modal: "Wat weet HapjesHeld?" -->
+  <div class="modal-backdrop" id="context-modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ctx-title">
+      <h2 id="ctx-title">ℹ Wat weet HapjesHeld over jou?</h2>
+      <p class="lead">Dit gebruikt HapjesHeld als context bij elk antwoord. Wijzigen kan via "Mijn profiel" of in het avatar-icoontje rechtsboven.</p>
+
+      <div id="ctx-body" style="margin-top:1rem;">
+        <div style="text-align:center;color:var(--color-gray);padding:1rem 0;">Laden…</div>
+      </div>
+
+      <div class="modal-actions" style="justify-content:flex-end;">
+        <button class="btn-save" type="button" id="ctx-close">Sluiten</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Geheugen-modal -->
   <div class="modal-backdrop" id="memory-modal">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mem-title">
@@ -893,9 +912,9 @@
     </div>
   </div>
 
-  <script src="/js/chat.js?v=2.16.0" type="module"></script>
+  <script src="/js/chat.js?v=2.17.0" type="module"></script>
   <script type="module">
-    import { mountHeaderAvatar, attachLogoutHandler } from '/js/headerAvatarStandalone.js?v=2.16.0';
+    import { mountHeaderAvatar, attachLogoutHandler } from '/js/headerAvatarStandalone.js?v=2.17.0';
     document.addEventListener('DOMContentLoaded', () => {
       // Verberg de oude email-span — vervangen door avatar-pill
       document.getElementById('header-user-email')?.remove();
