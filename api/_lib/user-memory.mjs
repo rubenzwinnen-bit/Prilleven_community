@@ -7,7 +7,7 @@
 //      → Haiku analyseert de uitwisseling, extraheert max 5 duurzame feiten,
 //        deduplicate via embedding-sim, insert nieuwe records.
 
-import { supabase, anthropic } from './clients.mjs';
+import { supabase, anthropic, anthropicModel } from './clients.mjs';
 import { embedQuery } from './retrieve.mjs';
 
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
@@ -84,7 +84,7 @@ export async function retrieveUserMemory(userId, queryEmbedding, { topK = 4, min
  */
 async function extractFactsFromTurn(userQuestion, assistantAnswer) {
   const response = await anthropic.messages.create({
-    model: HAIKU_MODEL,
+    model: anthropicModel(HAIKU_MODEL),
     max_tokens: 500,
     system: EXTRACT_SYSTEM,
     messages: [{

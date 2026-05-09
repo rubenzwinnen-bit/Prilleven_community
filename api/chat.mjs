@@ -15,7 +15,7 @@
 //   9. Claude call met history + context
 //  10. Store user + assistant messages; genereer titel als eerste message
 
-import { anthropic } from './_lib/clients.mjs';
+import { anthropic, anthropicModel } from './_lib/clients.mjs';
 import { retrieveCombined } from './_lib/retrieve.mjs';
 import { extractAndStoreMemories } from './_lib/user-memory.mjs';
 import {
@@ -100,7 +100,7 @@ function formatContext(chunks) {
 async function extractIngredientsForRAG(imageBlock) {
   try {
     const r = await anthropic.messages.create({
-      model: 'claude-haiku-4-5',
+      model: anthropicModel('claude-haiku-4-5'),
       max_tokens: 120,
       system: 'Je bent een visuele ingrediënten-detector. Je antwoordt UITSLUITEND met een kommagescheiden lijst van zichtbare voedingsmiddelen in het Nederlands (bv. "banaan, appel, wortel, broccoli"). Geen zinnen, geen uitleg, geen hoeveelheden. Maximum 15 items. Als de foto geen voedsel toont: antwoord met het woord "geen".',
       messages: [{
@@ -416,7 +416,7 @@ ${ingredientsBlock}Vraag van de gebruiker: ${questionForPrompt}`;
     ];
 
     const response = await anthropic.messages.create({
-      model: model.id,
+      model: anthropicModel(model.id),
       max_tokens: MAX_OUTPUT_TOKENS,
       system: SYSTEM_PROMPT,
       messages: messagesForLLM,

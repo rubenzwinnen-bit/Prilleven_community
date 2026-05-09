@@ -2,7 +2,7 @@
 // Alle queries gebruiken de SERVICE ROLE supabase client; user-isolatie gebeurt
 // in de code (expliciete user_id-checks). RLS is ook nog steeds aan als backstop.
 
-import { supabase, anthropic } from './clients.mjs';
+import { supabase, anthropic, anthropicModel } from './clients.mjs';
 
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 
@@ -97,7 +97,7 @@ export async function storeMessage(conversationId, {
 export async function generateConversationTitle(firstQuestion) {
   try {
     const response = await anthropic.messages.create({
-      model: HAIKU_MODEL,
+      model: anthropicModel(HAIKU_MODEL),
       max_tokens: 30,
       system: 'Geef een zeer korte Nederlandstalige titel (maximum 40 tekens) voor dit chat-gesprek op basis van de eerste vraag. Geen aanhalingstekens, geen punt aan het einde. Antwoord alleen met de titel.',
       messages: [{ role: 'user', content: firstQuestion }],

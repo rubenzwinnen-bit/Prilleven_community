@@ -31,7 +31,7 @@ export const supabase = createClient(
 const gatewayKey = process.env.AI_GATEWAY_API_KEY;
 export const anthropic = gatewayKey
   ? new Anthropic({
-      baseURL: 'https://ai-gateway.vercel.sh/v1/anthropic',
+      baseURL: 'https://ai-gateway.vercel.sh',
       apiKey: gatewayKey,
     })
   : new Anthropic({
@@ -40,5 +40,11 @@ export const anthropic = gatewayKey
 
 // Bron-flag voor logging/observability (handig in chat.mjs).
 export const ANTHROPIC_VIA_GATEWAY = !!gatewayKey;
+
+// Helper: voeg 'anthropic/' prefix toe aan modelnaam wanneer Gateway actief is.
+// AI Gateway routeert via provider/model-syntax; directe Anthropic API niet.
+export function anthropicModel(id) {
+  return ANTHROPIC_VIA_GATEWAY ? `anthropic/${id}` : id;
+}
 
 export const VOYAGE_API_KEY = must('VOYAGE_API_KEY');
