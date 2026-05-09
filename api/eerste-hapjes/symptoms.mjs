@@ -8,6 +8,7 @@ import {
   loadSymptomsForChild,
   sanitizeSymptomInput,
   createSymptom,
+  detectRedFlag,
   HttpError,
 } from '../_lib/eersteHapjes-logs.mjs';
 
@@ -74,7 +75,8 @@ export default async function handler(req, res) {
       }
       try {
         const symptom = await createSymptom(auth.userId, clean);
-        return json(res, 201, { symptom });
+        const red_flag = detectRedFlag(symptom.symptom_type, symptom.severity);
+        return json(res, 201, { symptom, red_flag });
       } catch (err) {
         if (err instanceof HttpError) return json(res, err.status, { error: err.message });
         throw err;

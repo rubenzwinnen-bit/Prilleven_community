@@ -13,8 +13,40 @@ const REACTIONS    = new Set(['positief', 'neutraal', 'afwijzing']);
 const SYMPTOM_TYPES = new Set([
   'huid','buik','diarree','braken','slaap',
   'koorts','jeuk','zwelling','ademhaling','anders',
+  // Brok G — uitgebreide lijst (DB-CHECK: 2026-05-09-symptoms-extend.sql)
+  'gewicht','hoesten','verstopping','geen_eetlust','prikkelbaar','lethargie',
 ]);
 const SEVERITIES   = new Set(['mild', 'matig', 'heftig']);
+
+// ============================================================
+// Red-flag-detector (brok G.3)
+// Mirror van js/content/eersteHapjes-symptoms.js — alleen
+// (key → severities die red_flag triggeren). Backend en frontend
+// constants moeten in sync blijven (handmatig — let op bij wijzigingen).
+// ============================================================
+const RED_FLAG_SEVERITIES = {
+  huid:         new Set(['heftig']),
+  buik:         new Set(['heftig']),
+  diarree:      new Set(['heftig']),
+  braken:       new Set(['matig', 'heftig']),
+  slaap:        new Set(['heftig']),
+  koorts:       new Set(['matig', 'heftig']),
+  jeuk:         new Set(['heftig']),
+  zwelling:     new Set(['matig', 'heftig']),
+  ademhaling:   new Set(['mild', 'matig', 'heftig']),
+  anders:       new Set(['heftig']),
+  gewicht:      new Set(['matig', 'heftig']),
+  hoesten:      new Set(['matig', 'heftig']),
+  verstopping:  new Set(['heftig']),
+  geen_eetlust: new Set(['heftig']),
+  prikkelbaar:  new Set(['heftig']),
+  lethargie:    new Set(['mild', 'matig', 'heftig']),
+};
+
+export function detectRedFlag(symptomType, severity) {
+  const set = RED_FLAG_SEVERITIES[symptomType];
+  return !!(set && set.has(severity));
+}
 
 const FOOD_MIN  = 1;
 const FOOD_MAX  = 200;
