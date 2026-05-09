@@ -6098,3 +6098,63 @@ body.is-hub .header-home-btn { display: none; }
   font-size: 12px;
   color: var(--color-gray, #6b6155);
 }
+
+/* ============================================================
+   EERSTE HAPJES — articleModal search + chips (brok K)
+============================================================ */
+.eh-article-search {
+  margin-top: 10px;
+  margin-bottom: 8px;
+}
+.eh-article-search-input {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 14px;
+  border: 1px solid var(--color-light, #f0ebe6);
+  border-radius: 8px;
+  background: var(--color-white, #fff);
+  color: var(--color-dark, #2f2a24);
+  outline: none;
+  transition: border-color .12s, box-shadow .12s;
+}
+.eh-article-search-input:focus {
+  border-color: var(--color-secondary, #98c3a4);
+  box-shadow: 0 0 0 3px rgba(152, 195, 164, 0.18);
+}
+.eh-article-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.eh-article-chip {
+  appearance: none;
+  font-size: 13px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--color-light, #f0ebe6);
+  background: var(--color-white, #fff);
+  color: var(--color-dark, #2f2a24);
+  cursor: pointer;
+  transition: background .12s, border-color .12s;
+}
+.eh-article-chip:hover {
+  border-color: var(--color-secondary, #98c3a4);
+}
+.eh-article-chip.selected {
+  background: var(--color-secondary, #98c3a4);
+  color: #fff;
+  border-color: var(--color-secondary, #98c3a4);
+}
+.eh-article-empty {
+  padding: 24px 8px;
+  text-align: center;
+  color: var(--color-gray, #6b6155);
+  font-size: 14px;
+}
+.eh-article-list mark {
+  background: #fff3c4;
+  color: inherit;
+  padding: 0 2px;
+  border-radius: 3px;
+}
