@@ -1,24 +1,36 @@
 /* ============================================
    HOME COMPONENT
-   Landingspagina na login. Toont een hub met 3
-   grote tegels: Receptenboek/Weekschema, HapjesHeld
-   (chatbot) en Admin (alleen voor admins).
+   Landingspagina na login. Twee-pane layout:
+   - Desktop: tegels (smal links) + timeline (groot rechts) tegelijk zichtbaar
+   - Mobile: één pane tegelijk, sticky bottom-tabs onderaan om te switchen
 ============================================ */
 
-import * as Store from '../store.js?v=2.22.0';
-import * as Router from '../router.js?v=2.22.0';
-import * as Timeline from './timeline.js?v=2.22.0';
+import * as Store from '../store.js?v=2.23.0';
+import * as Router from '../router.js?v=2.23.0';
+import * as Timeline from './timeline.js?v=2.23.0';
+
+const ACTIVE_PANE_KEY = 'home:active-pane';
+
+function getInitialPane() {
+  // Default = timeline (community-first). Op mobile onthouden we de laatste
+  // keuze in localStorage zodat een terugkeer-bezoek bij de "Functies"-tab
+  // landt als dat de laatste was.
+  try {
+    const stored = localStorage.getItem(ACTIVE_PANE_KEY);
+    return stored === 'functies' ? 'functies' : 'timeline';
+  } catch {
+    return 'timeline';
+  }
+}
 
 export function render() {
-  const user = Store.getCurrentUser() || '';
-  const firstName = user.split('@')[0];
   const admin = Store.isAdmin();
 
   const tiles = [
     {
       id: 'recipes',
       title: 'Receptenboek & Weekschema',
-      desc: 'Bekijk recepten, bouw je weekschema op en beheer je favorieten en boodschappenlijst.',
+      desc: 'Recepten, weekschema, favorieten & boodschappenlijst.',
       href: '#/recipes',
       accent: 'terracotta',
       hoverImg: '/fotos/receptenboek-weekschema.jpeg',
@@ -26,7 +38,7 @@ export function render() {
     {
       id: 'chat',
       title: 'HapjesHeld 2.0',
-      desc: 'Je persoonlijke AI-assistent voor al je vragen over kindervoeding. Onthoudt je gezin en leert je beter kennen.',
+      desc: 'AI-assistent voor al je vragen over kindervoeding.',
       href: '/chat.html',
       accent: 'sage',
       hoverImg: '/fotos/HapjesHeld_2.png',
@@ -34,7 +46,7 @@ export function render() {
     {
       id: 'eerste-hapjes',
       title: 'Eerste Hapjes',
-      desc: 'Stap voor stap met je kindje door de wereld van vaste voeding — op zijn eigen tempo.',
+      desc: 'Stap voor stap door de wereld van vaste voeding.',
       href: '#/eerste-hapjes',
       accent: 'sage-deep',
       badge: 'Nieuw',
@@ -45,7 +57,7 @@ export function render() {
     tiles.push({
       id: 'admin',
       title: 'Admin dashboard',
-      desc: 'Overzicht van gebruikers, chat-activiteit, kosten en abonnement-events. Alleen voor administrators.',
+      desc: 'Gebruikers, kosten, abonnement-events.',
       href: '/admin-chat.html',
       accent: 'dark',
       hoverImg: '/fotos/matrix.jpg',
@@ -66,24 +78,54 @@ export function render() {
     </a>
   `).join('');
 
+  const initialPane = getInitialPane();
+
   return `
-    <div class="home-hub">
-      <div class="home-welcome">
-        <h1 class="home-welcome-title">Welkom terug</h1>
-      </div>
-      <div class="home-tiles">
-        ${tileCards}
-      </div>
-      ${Timeline.render()}
+    <div class="home-hub home-hub--split" data-active-pane="${initialPane}">
+      <section class="home-pane home-pane--functies" data-pane="functies" aria-label="Functies">
+        <div class="home-pane-header">
+          <h2 class="home-pane-title">Functies</h2>
+        </div>
+        <div class="home-tiles">
+          ${tileCards}
+        </div>
+      </section>
+      <section class="home-pane home-pane--timeline" data-pane="timeline" aria-label="Timeline">
+        ${Timeline.render()}
+      </section>
     </div>
+    <nav class="home-bottom-nav" role="tablist" aria-label="Landingspagina-secties">
+      <button class="home-bottom-nav-tab" data-pane="timeline" role="tab" aria-selected="${initialPane === 'timeline'}">
+        <span class="home-bottom-nav-icon" aria-hidden="true">💬</span>
+        <span class="home-bottom-nav-label">Timeline</span>
+      </button>
+      <button class="home-bottom-nav-tab" data-pane="functies" role="tab" aria-selected="${initialPane === 'functies'}">
+        <span class="home-bottom-nav-icon" aria-hidden="true">⊞</span>
+        <span class="home-bottom-nav-label">Functies</span>
+      </button>
+    </nav>
   `;
 }
 
-export function init() {
-  // Interne (Router) links onderscheppen zodat ze met Router.navigate werken
-  // i.p.v. volledige page-reload via href="#/..."
+function setActivePane(pane) {
   const hub = document.querySelector('.home-hub');
   if (!hub) return;
+  hub.dataset.activePane = pane;
+  // Tab-states syncen
+  document.querySelectorAll('.home-bottom-nav-tab').forEach(btn => {
+    const isActive = btn.dataset.pane === pane;
+    btn.setAttribute('aria-selected', String(isActive));
+    btn.classList.toggle('is-active', isActive);
+  });
+  // Onthouden voor volgende bezoek (mobile-only relevant)
+  try { localStorage.setItem(ACTIVE_PANE_KEY, pane); } catch {}
+}
+
+export function init() {
+  const hub = document.querySelector('.home-hub');
+  if (!hub) return;
+
+  // Tegels: tegelclick → router (hashed) of normale navigatie (page)
   hub.addEventListener('click', (e) => {
     const link = e.target.closest('a.home-tile');
     if (!link) return;
@@ -92,9 +134,24 @@ export function init() {
       e.preventDefault();
       Router.navigate(href.slice(2));
     }
-    // Externe paden (/chat.html, /admin-chat.html) volgen normale browser-navigatie
   });
 
-  // Timeline initialiseren (eigen interne event-handlers + feed laden).
+  // Bottom-nav tabs: pane-switch (mobile primair, maar werkt overal als de
+  // user de window verkleint).
+  document.querySelectorAll('.home-bottom-nav-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const pane = btn.dataset.pane;
+      if (pane) setActivePane(pane);
+    });
+  });
+
+  // Initiële tab-staat reflecteren op buttons (active class voor styling).
+  const initial = hub.dataset.activePane || 'timeline';
+  document.querySelectorAll('.home-bottom-nav-tab').forEach(btn => {
+    btn.classList.toggle('is-active', btn.dataset.pane === initial);
+  });
+
+  // Timeline init (events + feed laden) — alleen relevant als timeline-pane
+  // gerenderd is, wat altijd zo is in deze split-layout.
   Timeline.init();
 }
