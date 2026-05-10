@@ -6,8 +6,8 @@
    "Volledig gesprek"-link gaat naar chat.html.
 ============================================ */
 
-import { escapeHtml, showToast } from '../utils.js?v=2.28.0';
-import { sessionRefreshIfNeeded } from '../supabase.js?v=2.28.0';
+import { escapeHtml, showToast } from '../utils.js?v=2.29.0';
+import { sessionRefreshIfNeeded } from '../supabase.js?v=2.29.0';
 
 const LS_KEY = 'eh.chat.convByChild.v1';
 

@@ -12,10 +12,10 @@
    recipeList / recipeDetail gebruiken die voor cross-cutting context.
 ============================================ */
 
-import { escapeHtml, colorFromSeed, initialsFromName, showToast } from '../utils.js?v=2.28.0';
-import { getMyChildren } from '../eersteHapjesApi.js?v=2.28.0';
-import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.28.0';
-import { openEersteHapjesHub } from './eersteHapjesHub.js?v=2.28.0';
+import { escapeHtml, colorFromSeed, initialsFromName, showToast } from '../utils.js?v=2.29.0';
+import { getMyChildren } from '../eersteHapjesApi.js?v=2.29.0';
+import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.29.0';
+import { openEersteHapjesHub } from './eersteHapjesHub.js?v=2.29.0';
 
 let state = {
   loaded: false,

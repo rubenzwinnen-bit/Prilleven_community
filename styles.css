@@ -8273,3 +8273,147 @@ body.is-eerste-hapjes #app-nav { display: none; }
 @media (max-width: 480px) {
   .eh-week-row { grid-template-columns: 80px 1fr auto; font-size: 11.5px; }
 }
+
+
+/* ============================================
+   VANDAAG-card (1 ge\u00fcnificeerde tegel)
+   ============================================ */
+.eh-today-card {
+  background: var(--color-white, #fff);
+  border: 1px solid var(--color-light, #f0ebe6);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 14px;
+  box-shadow: 0 2px 8px rgba(44, 40, 37, 0.04);
+}
+.eh-today-card-title {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: var(--color-dark, #2f2a24);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.eh-today-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.eh-today-slot {
+  display: grid;
+  grid-template-columns: 110px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--color-bg, #faf8f5);
+  border-radius: 10px;
+}
+.eh-today-slot-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.eh-today-slot-icon { font-size: 18px; line-height: 1; }
+.eh-today-slot-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--color-gray, #8a8480);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.eh-today-slot-body { min-width: 0; }
+.eh-today-slot-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-dark, #2f2a24);
+  word-break: break-word;
+}
+.eh-today-slot-sub {
+  font-size: 11px;
+  color: var(--color-gray, #8a8480);
+  margin-top: 2px;
+}
+.eh-today-slot-log {
+  background: var(--color-secondary, #98c3a4);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.eh-today-slot-log:hover { background: var(--color-secondary-dark, #6a9d7a); }
+.eh-slot-loading,
+.eh-slot-empty {
+  font-style: italic;
+  color: var(--color-gray, #8a8480);
+  font-size: 12px;
+}
+@media (max-width: 480px) {
+  .eh-today-slot { grid-template-columns: 90px 1fr auto; gap: 6px; padding: 8px 10px; }
+  .eh-today-slot-log { padding: 6px 10px; font-size: 11.5px; }
+}
+
+/* Allergen-callout binnen Vandaag-card (footer) */
+.eh-today-card-footer {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-light, #f0ebe6);
+}
+.eh-allergen-callout.in-card {
+  background: rgba(224, 169, 109, 0.10);
+  border: 1px solid rgba(224, 169, 109, 0.4);
+  color: var(--color-dark, #2f2a24);
+}
+.eh-allergen-callout.in-card .eh-ac-head {
+  color: #8d6230;
+  opacity: 1;
+}
+.eh-allergen-callout.in-card .eh-ac-pill {
+  background: var(--color-white, #fff);
+  border-color: var(--color-light, #f0ebe6);
+  color: var(--color-dark, #2f2a24);
+}
+.eh-allergen-callout.in-card .eh-ac-pill:hover {
+  background: var(--color-light-2, #f5f1ec);
+}
+.eh-allergen-callout.in-card .eh-ac-pill.danger {
+  background: rgba(201, 102, 90, 0.10);
+  border-color: rgba(201, 102, 90, 0.4);
+  color: var(--color-danger, #c9665a);
+}
+
+/* Edit-knop in weekschema (handmatig kiezen) */
+.eh-day-edit {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--color-white, #fff);
+  border: 1px solid var(--color-light, #f0ebe6);
+  color: var(--color-gray, #8a8480);
+  font-size: 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 4px;
+}
+.eh-day-edit:hover {
+  background: var(--color-light-2, #f5f1ec);
+  color: var(--color-primary-dark, #b27656);
+}
+
+/* Bouw-modal: vervang-knop onderaan suggestie */
+.eh-bouw-replace-btn {
+  width: 100%;
+  margin-top: 10px;
+  background: var(--color-primary, #c98966);
+  color: #fff;
+  font-size: 13px;
+  padding: 12px 18px;
+}
+.eh-bouw-replace-btn:hover {
+  background: var(--color-primary-dark, #b27656);
+}

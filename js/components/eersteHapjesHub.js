@@ -13,38 +13,38 @@
      openEersteHapjesHub({ child })
 ============================================ */
 
-import { escapeHtml, showToast } from '../utils.js?v=2.28.0';
+import { escapeHtml, showToast } from '../utils.js?v=2.29.0';
 import {
   loadEhState,
   patchEhState,
   loadEhDoses,
   createEhDose,
   buildAllergenContext,
-} from '../eersteHapjesStateApi.js?v=2.28.0';
+} from '../eersteHapjesStateApi.js?v=2.29.0';
 import {
   generateWeekPlan,
   generateFruitWeek,
-} from '../eersteHapjesMealGenerator.js?v=2.28.0';
-import { getRecipes } from '../store.js?v=2.28.0';
-import * as Router from '../router.js?v=2.28.0';
-import { ALLERGEN_FLOW } from '../content/eersteHapjes-allergen-flow.js?v=2.28.0';
+} from '../eersteHapjesMealGenerator.js?v=2.29.0';
+import { getRecipes } from '../store.js?v=2.29.0';
+import * as Router from '../router.js?v=2.29.0';
+import { ALLERGEN_FLOW } from '../content/eersteHapjes-allergen-flow.js?v=2.29.0';
 import {
   getMealsForChild,
   getSymptomsForChild,
   deleteMealLog,
   deleteSymptom,
-} from '../eersteHapjesApi.js?v=2.28.0';
-import { openMealLogModal } from './mealLogModal.js?v=2.28.0';
-import { openSymptomLogModal } from './symptomLogModal.js?v=2.28.0';
-import { getSymptomMeta, isRedFlag } from '../content/eersteHapjes-symptoms.js?v=2.28.0';
-import { renderEhChatBox, bindEhChatBox } from './ehChatBox.js?v=2.28.0';
+} from '../eersteHapjesApi.js?v=2.29.0';
+import { openMealLogModal } from './mealLogModal.js?v=2.29.0';
+import { openSymptomLogModal } from './symptomLogModal.js?v=2.29.0';
+import { getSymptomMeta, isRedFlag } from '../content/eersteHapjes-symptoms.js?v=2.29.0';
+import { renderEhChatBox, bindEhChatBox } from './ehChatBox.js?v=2.29.0';
 import {
   CATEGORIES,
   INGREDIENTS,
   CATEGORY_ORDER,
   DIETARY_STYLES,
-} from '../content/eersteHapjes-meal-ingredients.js?v=2.28.0';
-import { ALLERGEN_COOLDOWN_DAYS } from '../content/eersteHapjes-allergen-flow.js?v=2.28.0';
+} from '../content/eersteHapjes-meal-ingredients.js?v=2.29.0';
+import { ALLERGEN_COOLDOWN_DAYS } from '../content/eersteHapjes-allergen-flow.js?v=2.29.0';
 
 const READINESS_SIGNALS = [
   { key: 'zitten',     label: 'Mijn kindje kan stabiel rechtop zitten (met lichte ondersteuning)' },
@@ -58,7 +58,6 @@ const SUB_TABS = [
   { key: 'roadmap',    label: '🗺️ Vandaag' },
   { key: 'week',       label: '📅 Weekschema' },
   { key: 'allergenen', label: '🥜 Allergenen' },
-  { key: 'bouw',       label: '📋 Bouw nu' },
   { key: 'logboek',    label: '🍽️ Logboek' },
   { key: 'symptomen',  label: '📊 Symptomen' },
 ];
@@ -269,7 +268,6 @@ function renderSubTab(ctx) {
   switch (ctx.activeTab) {
     case 'roadmap':    return renderRoadmap(ctx);
     case 'week':       return renderWeek(ctx);
-    case 'bouw':       return renderBouw(ctx);
     case 'logboek':    return renderLogboek(ctx);
     case 'symptomen':  return renderSymptomen(ctx);
     case 'allergenen': return renderAllergenen(ctx);
@@ -327,7 +325,6 @@ function bindPhase1or2(overlay, ctx) {
   switch (ctx.activeTab) {
     case 'roadmap':    bindRoadmap(overlay, ctx); break;
     case 'week':       bindWeek(overlay, ctx); break;
-    case 'bouw':       bindBouw(overlay, ctx); break;
     case 'logboek':    bindLogboek(overlay, ctx); break;
     case 'symptomen':  bindSymptomen(overlay, ctx); break;
     case 'allergenen': bindAllergenen(overlay, ctx); break;
@@ -344,7 +341,7 @@ function renderRoadmap(ctx) {
   buildWeekPlanIfNeeded(ctx);
   const days = ctx.weekPlan.days;
   const today = days[0];
-  const todayMeals = today.meals; // 1 of 2 warme maaltijden afhankelijk van fase
+  const todayMeals = today.meals;
   const todayIntro = today.allergenIntro;
 
   const ageMonths = computeAgeMonths(ctx.child.birthdate);
@@ -358,11 +355,108 @@ function renderRoadmap(ctx) {
     ${renderPhase2Prompt(ctx)}
     ${renderPhase3Prompt(ctx)}
     ${renderPhase4Prompt(ctx)}
-    ${ctx.state.current_phase >= 4 ? renderTodayBreakfast(ctx) : ''}
-    ${todayMeals.map((m, i) => renderTodayHero(ctx, m, i === 0 ? todayIntro : null, i, todayMeals.length)).join('')}
-    ${ctx.state.current_phase >= 3 ? renderTodayFruit(ctx) : ''}
+    ${renderTodayCard(ctx, todayMeals, todayIntro)}
     ${renderTipsCard(ctx, summary)}
     ${renderHapjesHeldEmbed(ctx)}
+  `;
+}
+
+/* === Vandaag-card: 1 tegel met alle slots + allergen-intro onderaan === */
+function renderTodayCard(ctx, todayMeals, todayIntro) {
+  const phase = ctx.state.current_phase;
+  const slots = [];
+
+  // Slot: ontbijt (fase 4)
+  if (phase >= 4) {
+    if (ctx.breakfastWeek === null) {
+      slots.push({ icon: '🥣', label: 'Ontbijt', titleHtml: '<em class="eh-slot-loading">Laden…</em>' });
+    } else if (ctx.breakfastWeek.length === 0) {
+      slots.push({ icon: '🥣', label: 'Ontbijt', titleHtml: '<em class="eh-slot-empty">Geen ochtend-recepten — voeg toe via receptenboek</em>' });
+    } else {
+      const r = ctx.breakfastWeek[0];
+      slots.push({
+        icon: '🥣',
+        label: 'Ontbijt',
+        titleHtml: escapeHtml(r.name || 'Naamloos recept'),
+        sub: r.cookingTime ? `${r.cookingTime} min bereiding` : '',
+        kind: 'breakfast',
+        recipeId: r.id,
+      });
+    }
+  }
+
+  // Slot(s): warme maaltijd
+  todayMeals.forEach((m, i) => {
+    const slotLabel = todayMeals.length === 2 ? (i === 0 ? 'Lunch' : 'Avondmaal') : 'Warme maaltijd';
+    const slotIcon  = todayMeals.length === 2 ? (i === 0 ? '🌞' : '🌙') : '🍲';
+    slots.push({
+      icon: slotIcon,
+      label: slotLabel,
+      titleHtml: renderIngredientTitle(m.ingredients),
+      sub: m.ratioLabel || '',
+      kind: 'warm',
+    });
+  });
+
+  // Slot: fruit (fase 3+)
+  if (phase >= 3 && ctx.fruitWeek?.[0]) {
+    const m = ctx.fruitWeek[0];
+    slots.push({
+      icon: '🍓',
+      label: 'Fruit',
+      titleHtml: renderFruitTitle(m.ingredients),
+      sub: m.ratioLabel || '',
+      kind: 'fruit',
+    });
+  }
+
+  return `
+    <div class="eh-today-card">
+      <h3 class="eh-today-card-title">📅 Vandaag · ${formatDayLabel(0)}</h3>
+      <div class="eh-today-slots">
+        ${slots.map((s) => renderTodaySlot(s)).join('')}
+      </div>
+      ${todayIntro ? renderTodayIntroFooter(todayIntro) : ''}
+    </div>
+  `;
+}
+
+function renderTodaySlot(s) {
+  const logBtn = s.kind
+    ? `<button class="eh-today-slot-log" data-action="log-slot" data-slot-kind="${s.kind}"${s.recipeId ? ` data-recipe-id="${escapeHtml(s.recipeId)}"` : ''} type="button">✓ Log</button>`
+    : '';
+  return `
+    <div class="eh-today-slot">
+      <div class="eh-today-slot-meta">
+        <span class="eh-today-slot-icon">${s.icon}</span>
+        <span class="eh-today-slot-label">${escapeHtml(s.label)}</span>
+      </div>
+      <div class="eh-today-slot-body">
+        <div class="eh-today-slot-title">${s.titleHtml}</div>
+        ${s.sub ? `<div class="eh-today-slot-sub">${escapeHtml(s.sub)}</div>` : ''}
+      </div>
+      ${logBtn}
+    </div>
+  `;
+}
+
+function renderTodayIntroFooter(intro) {
+  return `
+    <div class="eh-today-card-footer">
+      <div class="eh-allergen-callout in-card">
+        <span class="eh-ac-ic">${intro.icon}</span>
+        <div class="eh-ac-body">
+          <div class="eh-ac-head">Vandaag ook introduceren</div>
+          <div class="eh-ac-ttl">${escapeHtml(intro.label)} · dose ${intro.dose}/${intro.doseTarget}${intro.dose === intro.doseTarget ? ' (laatste!)' : ''}</div>
+          <div class="eh-ac-desc">${escapeHtml(intro.suggestedFood || '')}${intro.note ? ` <em>${escapeHtml(intro.note)}</em>` : ''}</div>
+          <div class="eh-ac-reactions">
+            <span class="eh-ac-pill" data-reaction="geen"    data-key="${escapeHtml(intro.key)}" data-dose="${intro.dose}">✓ Geen reactie</span>
+            <span class="eh-ac-pill" data-reaction="mild"    data-key="${escapeHtml(intro.key)}" data-dose="${intro.dose}">⚠ Milde reactie</span>
+            <span class="eh-ac-pill danger" data-reaction="ernstig" data-key="${escapeHtml(intro.key)}" data-dose="${intro.dose}">🚨 Ernstige reactie</span>
+          </div>
+        </div>
+      </div>
+    </div>
   `;
 }
 
@@ -828,6 +922,20 @@ function bindRoadmap(overlay, ctx) {
   overlay.querySelector('[data-action="log-meal-today"]')?.addEventListener('click', async () => {
     await openMealLogFromHub(ctx);
     await reloadAndRender(overlay, ctx);
+  });
+
+  // Per-slot log-knop op de Vandaag-card. Opent mealLogModal voor alle kinds.
+  // Voor breakfast: navigeer naar receptdetail om recipe-info te zien.
+  overlay.querySelectorAll('[data-action="log-slot"]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const kind = btn.dataset.slotKind;
+      if (kind === 'breakfast' && btn.dataset.recipeId) {
+        Router.navigate(`recipe/${btn.dataset.recipeId}`);
+        return;
+      }
+      await openMealLogFromHub(ctx);
+      await reloadAndRender(overlay, ctx);
+    });
   });
 
   // Nieuwe week genereren — nieuwe seed
@@ -1310,16 +1418,132 @@ function renderWeekDay(ctx, d, idx, phase) {
 }
 
 function renderWeekRow(icon, slotLabel, title, type, dayIdx, mealIdx) {
-  const swapBtn = type === 'warm' || type === 'fruit'
-    ? `<button class="eh-day-swap" data-action="swap-${type === 'fruit' ? 'fruit-day' : 'day'}" data-day-idx="${dayIdx}"${mealIdx !== undefined ? ` data-meal-idx="${mealIdx}"` : ''} aria-label="Wissel" type="button">↻</button>`
-    : '';
+  let actions = '';
+  if (type === 'warm') {
+    actions = `
+      <button class="eh-day-swap" data-action="swap-day" data-day-idx="${dayIdx}" data-meal-idx="${mealIdx ?? 0}" aria-label="Wissel automatisch" title="Wissel automatisch" type="button">↻</button>
+      <button class="eh-day-edit" data-action="edit-warm-day" data-day-idx="${dayIdx}" data-meal-idx="${mealIdx ?? 0}" aria-label="Handmatig kiezen" title="Handmatig kiezen" type="button">✎</button>
+    `;
+  } else if (type === 'fruit') {
+    actions = `<button class="eh-day-swap" data-action="swap-fruit-day" data-day-idx="${dayIdx}" aria-label="Wissel" type="button">↻</button>`;
+  }
   return `
     <div class="eh-week-row">
       <div class="eh-week-row-slot">${icon} <span>${escapeHtml(slotLabel)}</span></div>
       <div class="eh-week-row-title">${title}</div>
-      <div class="eh-week-row-actions">${swapBtn}</div>
+      <div class="eh-week-row-actions">${actions}</div>
     </div>
   `;
+}
+
+/* ============================================
+   "Wijzig handmatig"-modal: pantry-builder + suggestie + vervang.
+   Vervangt de oude "Bouw nu"-tab. Wordt opgeroepen vanuit Weekschema-tab
+   per warm-meal slot.
+============================================ */
+function openBouwOverlay({ ctx, dayIdx, mealIdx, parentHost }) {
+  const dietary = ctx.state.dietary || 'omnivoor';
+  const knownAllergies = new Set(ctx.state.allergen_state?.known_allergies || []);
+  const localPantry = makeEmptyPantry();
+  let suggestion = null;
+
+  const ov = document.createElement('div');
+  ov.className = 'eh-hub-overlay';
+  ov.innerHTML = `<div class="eh-hub-overlay-inner" data-overlay-inner></div>`;
+  ov.addEventListener('click', (e) => { if (e.target === ov) close(); });
+  document.body.appendChild(ov);
+  document.body.classList.add('modal-open');
+
+  function close() {
+    document.body.classList.remove('modal-open');
+    ov.remove();
+  }
+
+  function rerender() {
+    const slotLabel = ctx.weekPlan.days[dayIdx].meals.length === 2
+      ? (mealIdx === 0 ? 'Lunch' : 'Avondmaal')
+      : 'Warme maaltijd';
+    const dayLabel = formatDayLabel(dayIdx);
+    const inner = ov.querySelector('[data-overlay-inner]');
+    inner.innerHTML = `
+      <div class="eh-hub-modal">
+        <div class="eh-hub-head">
+          <div class="eh-hub-head-main">
+            <h2>${escapeHtml(slotLabel)} · ${escapeHtml(dayLabel)}</h2>
+            <div class="eh-hub-sub">Kies wat je in huis hebt — wij stellen een maaltijd voor.</div>
+          </div>
+          <button class="eh-close" data-action="close" aria-label="Sluiten">×</button>
+        </div>
+        <div class="eh-hub-body">
+          <div class="eh-bouw">
+            ${CATEGORY_ORDER.map((c) => renderPantrySection(c, localPantry[c], dietary, knownAllergies)).join('')}
+            <div class="eh-bouw-actions">
+              <button class="eh-hero-btn primary" data-action="bouw-suggest" type="button">🍲 Stel maaltijd voor</button>
+              <button class="eh-hero-btn ghost"   data-action="bouw-clear" type="button">Wissen</button>
+            </div>
+            ${suggestion ? renderBouwSuggestion(suggestion) : ''}
+            ${suggestion && !(suggestion.missing || []).length ? `
+              <button class="eh-hero-btn primary eh-bouw-replace-btn" data-action="bouw-replace" type="button">
+                ✓ Vervang ${escapeHtml(slotLabel)} ${escapeHtml(dayLabel)}
+              </button>
+            ` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+    bindLocal();
+  }
+
+  function bindLocal() {
+    const inner = ov.querySelector('[data-overlay-inner]');
+    inner.querySelectorAll('[data-action="close"]').forEach((b) => b.addEventListener('click', close));
+
+    inner.querySelectorAll('[data-pantry-key]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const cat = btn.dataset.pantryCat;
+        const key = btn.dataset.pantryKey;
+        if (localPantry[cat].has(key)) localPantry[cat].delete(key);
+        else localPantry[cat].add(key);
+        btn.classList.toggle('selected');
+      });
+    });
+
+    inner.querySelector('[data-action="bouw-suggest"]')?.addEventListener('click', () => {
+      const excludeKeys = [];
+      for (const c of CATEGORY_ORDER) {
+        for (const it of (INGREDIENTS[c] || [])) {
+          if (!localPantry[c].has(it.key)) excludeKeys.push(it.key);
+        }
+      }
+      const result = generateWeekPlan({
+        dietary,
+        avoidAllergens: ctx.state.allergen_state?.known_allergies || [],
+        daysCount: 1,
+        mealsPerDay: 1,
+        excludeKeys,
+        seed: `${ctx.child.id}:bouw:${Date.now()}`,
+      });
+      suggestion = result.days[0]?.meals[0] || null;
+      rerender();
+    });
+
+    inner.querySelector('[data-action="bouw-clear"]')?.addEventListener('click', () => {
+      for (const c of CATEGORY_ORDER) localPantry[c].clear();
+      suggestion = null;
+      rerender();
+    });
+
+    inner.querySelector('[data-action="bouw-replace"]')?.addEventListener('click', () => {
+      if (!suggestion) return;
+      ctx.weekPlan.days[dayIdx].meals[mealIdx] = suggestion;
+      showToast('Maaltijd vervangen.', 'success');
+      close();
+      // Re-render parent (weekschema)
+      render(parentHost, ctx);
+    });
+  }
+
+  rerender();
 }
 
 function bindWeek(overlay, ctx) {
@@ -1338,11 +1562,20 @@ function bindWeek(overlay, ctx) {
     }
   });
 
-  // Per warm-meal swap
+  // Per warm-meal automatisch wisselen
   overlay.querySelectorAll('[data-action="swap-day"]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const idx = parseInt(btn.dataset.dayIdx, 10);
       swapDayMeal(overlay, ctx, idx);
+    });
+  });
+
+  // Per warm-meal handmatig kiezen (opent bouw-overlay)
+  overlay.querySelectorAll('[data-action="edit-warm-day"]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const dayIdx = parseInt(btn.dataset.dayIdx, 10);
+      const mealIdx = parseInt(btn.dataset.mealIdx, 10) || 0;
+      openBouwOverlay({ ctx, dayIdx, mealIdx, parentHost: overlay });
     });
   });
 
@@ -1379,7 +1612,7 @@ function swapFruitDay(overlay, ctx, dayIdx) {
     .flatMap((m) => [m.ingredients.fruit?.key, m.ingredients.groen?.key])
     .filter(Boolean);
   // Lazy import om circulair te vermijden
-  import('../eersteHapjesMealGenerator.js?v=2.28.0').then((mod) => {
+  import('../eersteHapjesMealGenerator.js?v=2.29.0').then((mod) => {
     const newMeal = mod.generateFruitMeal({
       avoidAllergens: ctx.state.allergen_state?.known_allergies || [],
       excludeKeys: used,
