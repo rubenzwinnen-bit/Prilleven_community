@@ -9,7 +9,7 @@ import {
   colorFromSeed,
   initialsFromName,
   nl2br,
-} from '../utils.js?v=2.25.0';
+} from '../utils.js?v=2.26.0';
 
 /* Categorie-labels (zelfde lijst als in api/_lib/community.mjs ALLOWED_CATEGORIES). */
 export const CATEGORIES = [

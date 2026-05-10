@@ -8,7 +8,7 @@
    5. Start de router
 ============================================ */
 
-import * as Store from './js/store.js?v=2.25.0';
+import * as Store from './js/store.js?v=2.26.0';
 import {
   checkAllowedUser,
   checkCanSignUp,
@@ -22,11 +22,11 @@ import {
   fetchSubscriptionStatus,
   subscriptionAccessMessage,
   invalidateSubscriptionCache,
-} from './js/supabase.js?v=2.25.0';
-import * as Router from './js/router.js?v=2.25.0';
-import * as Header from './js/components/header.js?v=2.25.0';
-import * as Nav from './js/components/nav.js?v=2.25.0';
-import * as Home from './js/components/home.js?v=2.25.0';
+} from './js/supabase.js?v=2.26.0';
+import * as Router from './js/router.js?v=2.26.0';
+import * as Header from './js/components/header.js?v=2.26.0';
+import * as Nav from './js/components/nav.js?v=2.26.0';
+import * as Home from './js/components/home.js?v=2.26.0';
 // Route-specifieke modules worden lazy geladen via dynamic import in de
 // Router.on(...)-handlers hieronder. Dat scheelt 30-50% TTI op de hub-pagina
 // — zeker voor admin-only modules (importRecipes, ingredientIcons) en
@@ -537,13 +537,13 @@ function setupApp() {
 
   /* --- Recepten overzicht --- */
   Router.on('recipes', async () => {
-    const RecipeList = await import('./js/components/recipeList.js?v=2.25.0');
+    const RecipeList = await import('./js/components/recipeList.js?v=2.26.0');
     await renderPage(RecipeList.render(), RecipeList.init);
   });
 
   /* --- Recept bewerken --- */
   Router.on('edit/:id', async (params) => {
-    const RecipeForm = await import('./js/components/recipeForm.js?v=2.25.0');
+    const RecipeForm = await import('./js/components/recipeForm.js?v=2.26.0');
     await renderPage(
       RecipeForm.render(params.id),
       () => RecipeForm.init(params.id)
@@ -552,7 +552,7 @@ function setupApp() {
 
   /* --- Recept detail --- */
   Router.on('recipe/:id', async (params) => {
-    const RecipeDetail = await import('./js/components/recipeDetail.js?v=2.25.0');
+    const RecipeDetail = await import('./js/components/recipeDetail.js?v=2.26.0');
     await renderPage(
       RecipeDetail.render(params.id),
       () => RecipeDetail.init(params.id)
@@ -561,31 +561,31 @@ function setupApp() {
 
   /* --- Recepten importeren --- */
   Router.on('import', async () => {
-    const ImportRecipes = await import('./js/components/importRecipes.js?v=2.25.0');
+    const ImportRecipes = await import('./js/components/importRecipes.js?v=2.26.0');
     await renderPage(ImportRecipes.render(), ImportRecipes.init);
   });
 
   /* --- Ingrediënt iconen beheer --- */
   Router.on('ingredient-icons', async () => {
-    const IngredientIcons = await import('./js/components/ingredientIcons.js?v=2.25.0');
+    const IngredientIcons = await import('./js/components/ingredientIcons.js?v=2.26.0');
     await renderPage(IngredientIcons.render(), IngredientIcons.init);
   });
 
   /* --- Weekschema generator --- */
   Router.on('schedule', async () => {
-    const WeekSchedule = await import('./js/components/weekSchedule.js?v=2.25.0');
+    const WeekSchedule = await import('./js/components/weekSchedule.js?v=2.26.0');
     await renderPage(WeekSchedule.render(), WeekSchedule.init);
   });
 
   /* --- Favorieten --- */
   Router.on('favorites', async () => {
-    const Favorites = await import('./js/components/favorites.js?v=2.25.0');
+    const Favorites = await import('./js/components/favorites.js?v=2.26.0');
     await renderPage(Favorites.render(), Favorites.init);
   });
 
   /* --- Boodschappenlijst voor een weekschema --- */
   Router.on('shopping/:id', async (params) => {
-    const ShoppingList = await import('./js/components/shoppingList.js?v=2.25.0');
+    const ShoppingList = await import('./js/components/shoppingList.js?v=2.26.0');
     await renderPage(
       ShoppingList.render(params.id),
       () => ShoppingList.init(params.id)
@@ -594,7 +594,7 @@ function setupApp() {
 
   /* --- Eerste Hapjes Traject --- */
   Router.on('eerste-hapjes', async () => {
-    const EersteHapjes = await import('./js/components/eersteHapjes.js?v=2.25.0');
+    const EersteHapjes = await import('./js/components/eersteHapjes.js?v=2.26.0');
     await renderPage(EersteHapjes.render(), EersteHapjes.init);
   });
 

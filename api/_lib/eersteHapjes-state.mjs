@@ -95,7 +95,7 @@ export async function loadState(userId, childId) {
  * Patch fields op eerste_hapjes_state. Velden die niet meegegeven zijn blijven onaangeroerd.
  * Toegelaten fields:
  *   - readiness_check (object)
- *   - current_phase (0/1/2)
+ *   - current_phase (0/1/2/3)
  *   - phase_started_at (iso)
  *   - dietary
  *   - allergen_state (object — wordt deep-merged met bestaand)
@@ -113,7 +113,7 @@ export function sanitizeStatePatch(input) {
   }
   if (input.current_phase !== undefined) {
     const n = Number(input.current_phase);
-    if (!Number.isInteger(n) || n < 0 || n > 2) throw new HttpError(422, 'current_phase 0-2.');
+    if (!Number.isInteger(n) || n < 0 || n > 3) throw new HttpError(422, 'current_phase 0-3.');
     out.current_phase = n;
   }
   if (input.meals_per_day !== undefined) {

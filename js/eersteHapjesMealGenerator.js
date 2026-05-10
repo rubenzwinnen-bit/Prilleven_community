@@ -23,6 +23,8 @@ import {
   CATEGORIES,
   INGREDIENTS,
   CATEGORY_ORDER,
+  FRUIT_CATEGORIES,
+  FRUIT_INGREDIENTS,
 } from './content/eersteHapjes-meal-ingredients.js';
 import {
   ALLERGEN_FLOW,
@@ -353,4 +355,131 @@ export function regenerateMeal(planMeta, dayIndex, mealIndex) {
     seed: subSeed,
   });
   return single.days[0]?.meals[0] || null;
+}
+
+/* ============================================
+   FRUIT-MAALTIJD GENERATOR (Fase 3)
+   3 categorieën: fruit (~150g) + groente (50g+) + vetstof.
+   Geen vlees/eiwit nodig — pure fruit-maaltijd.
+============================================ */
+
+function buildFruitPool(category, opts) {
+  const list = FRUIT_INGREDIENTS[category] || [];
+  return list.filter((item) => {
+    if (opts.excludeKeys.includes(item.key)) return false;
+    if (!Array.isArray(item.allergens)) return true;
+    return !item.allergens.some((a) => opts.avoidAllergens.includes(a));
+  });
+}
+
+/**
+ * Genereer 1 fruit-maaltijd. Single-meal output, vergelijkbaar met
+ * de warme-maaltijd-output structuur.
+ *
+ * @param {object} opts
+ * @param {string[]} [opts.avoidAllergens=[]]
+ * @param {string[]} [opts.excludeKeys=[]]
+ * @param {number|string} [opts.seed]
+ * @returns {{
+ *   type: 'fruit',
+ *   ingredients: { fruit, groen, vet },
+ *   ratioLabel: string,
+ *   warnings: Array,
+ *   missing: string[]
+ * }}
+ */
+export function generateFruitMeal(opts = {}) {
+  const avoidAllergens = Array.isArray(opts.avoidAllergens) ? opts.avoidAllergens : [];
+  const excludeKeys = Array.isArray(opts.excludeKeys) ? opts.excludeKeys : [];
+  const seedNum = typeof opts.seed === 'number'
+    ? opts.seed
+    : typeof opts.seed === 'string'
+      ? hashString(opts.seed)
+      : Date.now() >>> 0;
+  const rng = makeRng(seedNum);
+
+  const filterOpts = { avoidAllergens, excludeKeys };
+  const pools = {
+    fruit:       buildFruitPool('fruit', filterOpts),
+    fruit_groen: buildFruitPool('fruit_groen', filterOpts),
+    fruit_vet:   buildFruitPool('fruit_vet', filterOpts),
+  };
+
+  // Random pick (geen variatie-budget — single-meal)
+  function pick(pool) {
+    if (!pool.length) return null;
+    return pool[Math.floor(rng() * pool.length)];
+  }
+
+  const fruit = pick(pools.fruit);
+  const groen = pick(pools.fruit_groen);
+  const vet   = pick(pools.fruit_vet);
+
+  const ingredients = { fruit, groen, vet };
+  const missing = [];
+  if (!fruit) missing.push('fruit');
+  if (!groen) missing.push('groen');
+  if (!vet)   missing.push('vet');
+
+  const ratioLabel = buildFruitRatioLabel(ingredients);
+  const warnings = collectFruitWarnings(ingredients);
+
+  return {
+    type: 'fruit',
+    ingredients,
+    ratioLabel,
+    warnings,
+    missing,
+  };
+}
+
+function buildFruitRatioLabel(ingredients) {
+  const parts = [];
+  if (ingredients.fruit) parts.push(`1 stuk ${ingredients.fruit.name.toLowerCase()}`);
+  if (ingredients.groen) parts.push(`⅓ portie ${ingredients.groen.name.toLowerCase()}`);
+  if (ingredients.vet)   parts.push(`1 lepel ${ingredients.vet.name.toLowerCase()}`);
+  return parts.join(' · ');
+}
+
+function collectFruitWarnings(ingredients) {
+  const out = [];
+  for (const slot of ['fruit', 'groen', 'vet']) {
+    const it = ingredients[slot];
+    if (!it) continue;
+    if (it.riskFoodKey) out.push({ ingredient: it.name, riskFoodKey: it.riskFoodKey });
+    if (it.note) out.push({ ingredient: it.name, note: it.note });
+  }
+  return out;
+}
+
+/**
+ * Genereer fruit-maaltijden voor 7 opeenvolgende dagen, met variatie
+ * (max 1 herhaling per ingrediënt). Returns array van fruit-meals.
+ */
+export function generateFruitWeek(opts = {}) {
+  const seedBase = typeof opts.seed === 'string'
+    ? hashString(opts.seed)
+    : (typeof opts.seed === 'number' ? opts.seed : Date.now() >>> 0);
+
+  const meals = [];
+  const usedFruit = new Set();
+  const usedGroen = new Set();
+
+  for (let d = 0; d < 7; d++) {
+    const dailySeed = (seedBase >>> 0) ^ ((d * 113) >>> 0) ^ 0xC0FFEE;
+    const meal = generateFruitMeal({
+      ...opts,
+      // Sluit ingrediënten uit die deze week al gebruikt zijn
+      excludeKeys: [
+        ...(opts.excludeKeys || []),
+        ...usedFruit,
+        ...usedGroen,
+      ],
+      seed: dailySeed,
+    });
+    if (meal.ingredients.fruit) usedFruit.add(meal.ingredients.fruit.key);
+    if (meal.ingredients.groen) usedGroen.add(meal.ingredients.groen.key);
+    meals.push(meal);
+  }
+  return meals;
 }

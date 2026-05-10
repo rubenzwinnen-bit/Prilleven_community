@@ -8086,3 +8086,59 @@ body.is-eerste-hapjes #app-nav { display: none; }
 .eh-bouw-suggestion .eh-hero-btn {
   margin-top: 10px;
 }
+
+
+/* ============================================
+   EERSTE HAPJES HUB — FASE 3 (fruit) + inline-mount
+   ============================================ */
+
+/* Inline-mount: hub als pagina-inhoud (niet modal-overlay) */
+.eh-hub-inline {
+  background: var(--color-white, #fff);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(44, 40, 37, 0.06);
+  border: 1px solid var(--color-light, #f0ebe6);
+  margin-top: 12px;
+}
+.eh-hub-inline .eh-hub-modal {
+  border-radius: 0;
+  box-shadow: none;
+  border: none;
+}
+.eh-hub-inline .eh-hub-body {
+  max-height: none;
+  overflow-y: visible;
+}
+
+/* Fruit-hero card (onder warme-maaltijd hero) */
+.eh-fruit-hero {
+  background: linear-gradient(135deg, #d99dba 0%, #c47ba1 100%);
+  color: #fff;
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+.eh-fruit-hero .eh-hero-btn.primary {
+  color: #c47ba1;
+}
+.eh-fruit-warnings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.eh-fruit-warn {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 11px;
+}
+
+/* Fase 3-prompt — andere kleur dan fase 2 (roze ipv groen) */
+.eh-phase3-prompt {
+  background: linear-gradient(135deg, #d99dba 0%, #c47ba1 100%) !important;
+}
+.eh-phase3-prompt .eh-phase2-btn {
+  color: #c47ba1 !important;
+}

@@ -4,18 +4,18 @@
    Fasen / Risk-foods) zijn opgegaan in de geünificeerde Hub-modal:
      js/components/eersteHapjesHub.js
 
-   Deze pagina toont nu enkel:
+   Deze pagina toont:
    - Kindje-switcher
-   - 1 grote "Open Eerste Hapjes"-knop die de hub opent voor het actieve kind
+   - De Eerste Hapjes Hub inline gemount (voor het actieve kindje)
 
    `loadActiveChild()` + `getActiveChildSnapshot()` blijven geëxporteerd —
    recipeList / recipeDetail gebruiken die voor cross-cutting context.
 ============================================ */
 
-import { escapeHtml, colorFromSeed, initialsFromName, showToast } from '../utils.js?v=2.25.0';
-import { getMyChildren } from '../eersteHapjesApi.js?v=2.25.0';
-import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.25.0';
-import { openEersteHapjesHub } from './eersteHapjesHub.js?v=2.25.0';
+import { escapeHtml, colorFromSeed, initialsFromName, showToast } from '../utils.js?v=2.26.0';
+import { getMyChildren } from '../eersteHapjesApi.js?v=2.26.0';
+import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.26.0';
+import { openEersteHapjesHub } from './eersteHapjesHub.js?v=2.26.0';
 
 let state = {
   loaded: false,
@@ -116,11 +116,13 @@ function renderApp(root) {
   root.innerHTML = `
     <div class="eh-page-inner">
       ${renderSwitcher(state.children, active)}
-      ${renderHubLauncher(active)}
+      <div data-eh-hub-mount></div>
     </div>
   `;
   bindSwitcher(root);
-  bindLauncher(root, active);
+  // Mount de hub inline (geen overlay, geen close-knop)
+  const mount = root.querySelector('[data-eh-hub-mount]');
+  if (mount) openEersteHapjesHub({ child: active, target: mount });
 }
 
 function renderSwitcher(children, active) {
@@ -149,21 +151,6 @@ function renderSwitcher(children, active) {
   `;
 }
 
-function renderHubLauncher(child) {
-  const ageLabel = formatAge(child.birthdate);
-  return `
-    <section class="eh-launcher">
-      <header class="eh-launcher-head">
-        <h1>Eerste Hapjes met ${escapeHtml(child.name)}</h1>
-        <p class="eh-launcher-meta">${escapeHtml(ageLabel)}</p>
-      </header>
-      <button class="btn btn-primary eh-launcher-btn" data-action="open-hub" type="button">
-        🥄 Open ${escapeHtml(child.name)}'s reis
-      </button>
-    </section>
-  `;
-}
-
 function bindSwitcher(root) {
   root.querySelectorAll('.eh-child-chip[data-child-id]').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -176,12 +163,6 @@ function bindSwitcher(root) {
   root.querySelector('[data-action="add-child"]')?.addEventListener('click', () => openOnboarding(root));
 }
 
-function bindLauncher(root, child) {
-  root.querySelector('[data-action="open-hub"]')?.addEventListener('click', async () => {
-    await openEersteHapjesHub({ child });
-  });
-}
-
 async function openOnboarding(root) {
   const child = await openChildOnboardingModal();
   if (!child) return;
@@ -191,20 +172,3 @@ async function openOnboarding(root) {
   renderApp(root);
 }
 
-function formatAge(birthdateIso) {
-  if (!birthdateIso) return '';
-  const today = new Date();
-  const bd = new Date(birthdateIso + 'T00:00:00');
-  const days = Math.floor((today - bd) / 86400000);
-
-  if (days < 14) return `${days} ${days === 1 ? 'dag' : 'dagen'}`;
-  if (days < 60) return `${Math.floor(days / 7)} weken`;
-
-  let months = (today.getFullYear() - bd.getFullYear()) * 12 + (today.getMonth() - bd.getMonth());
-  if (today.getDate() < bd.getDate()) months -= 1;
-  if (months < 12) return `${months} ${months === 1 ? 'maand' : 'maanden'}`;
-
-  const years = Math.floor(months / 12);
-  const rest = months % 12;
-  return rest === 0 ? `${years} jaar` : `${years} jaar ${rest} mnd`;
-}

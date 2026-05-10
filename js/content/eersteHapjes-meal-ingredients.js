@@ -194,3 +194,110 @@ export const DIETARY_STYLES = {
  * Helper: alle categorie-keys in vaste volgorde.
  */
 export const CATEGORY_ORDER = ['groen', 'kleurrijk', 'knol', 'vlees_vis', 'vegetarisch', 'vet'];
+
+
+/* ============================================
+   FRUIT-MAALTIJD (Fase 3, vanaf ~8-9 maanden)
+   3 categorieën uit de gids:
+   - 1 stuk fruit (~150g)         → ratio 1.0
+   - 50g+ groenten                → ratio 0.4 (kleinere portie)
+   - 5g vetstof                   → snufje
+   Verhoudingen — geen grammen tonen.
+============================================ */
+
+export const FRUIT_CATEGORIES = {
+  fruit: {
+    key: 'fruit',
+    label: 'Fruit',
+    icon: '🍓',
+    ratio: 1.0,
+    portionLabel: '1 stuk',
+  },
+  fruit_groen: {
+    key: 'fruit_groen',
+    label: 'Groente',
+    icon: '🥬',
+    ratio: 0.4,
+    portionLabel: '⅓ portie',
+  },
+  fruit_vet: {
+    key: 'fruit_vet',
+    label: 'Vetstof',
+    icon: '🫒',
+    ratio: 0.05,
+    portionLabel: '1 lepel',
+  },
+};
+
+/**
+ * Per ingrediënt:
+ * - key, name (zoals warme maaltijd)
+ * - allergens (optioneel) — citrus-vruchten, noten via notenmeel
+ * - riskFoodKey (optioneel) — druif/blauwe bes voor verstikkingsgevaar
+ */
+export const FRUIT_INGREDIENTS = {
+  fruit: [
+    { key: 'aardbei',      name: 'Aardbei' },
+    { key: 'abrikoos',     name: 'Abrikoos' },
+    { key: 'appel',        name: 'Appel' },
+    { key: 'ananas',       name: 'Ananas' },
+    { key: 'banaan',       name: 'Banaan' },
+    { key: 'blauwe-bes',   name: 'Blauwe bes',  riskFoodKey: 'kleine-bessen' },
+    { key: 'bosbes',       name: 'Bosbes',      riskFoodKey: 'kleine-bessen' },
+    { key: 'braam',        name: 'Braam' },
+    { key: 'cactusvijg',   name: 'Cactusvijg' },
+    { key: 'citroen',      name: 'Citroen',     allergens: ['citrus'] },
+    { key: 'clementine',   name: 'Clementine',  allergens: ['citrus'] },
+    { key: 'dadel',        name: 'Dadel' },
+    { key: 'druif',        name: 'Druif',       riskFoodKey: 'druiven' },
+    { key: 'framboos',     name: 'Framboos' },
+    { key: 'granaatappel', name: 'Granaatappel' },
+    { key: 'grapefruit',   name: 'Grapefruit',  allergens: ['citrus'] },
+    { key: 'guave',        name: 'Guave' },
+    { key: 'kaki',         name: 'Kaki' },
+    { key: 'kers',         name: 'Kers',        riskFoodKey: 'kleine-bessen' },
+    { key: 'kiwi',         name: 'Kiwi' },
+    { key: 'kiwibes',      name: 'Kiwibes' },
+    { key: 'limoen',       name: 'Limoen',      allergens: ['citrus'] },
+    { key: 'lychee',       name: 'Lychee' },
+    { key: 'mandarijn',    name: 'Mandarijn',   allergens: ['citrus'] },
+    { key: 'mango',        name: 'Mango' },
+    { key: 'meloen',       name: 'Meloen' },
+    { key: 'nectarine',    name: 'Nectarine' },
+    { key: 'papaja',       name: 'Papaja' },
+    { key: 'passievrucht', name: 'Passievrucht' },
+    { key: 'peer',         name: 'Peer' },
+    { key: 'perzik',       name: 'Perzik' },
+    { key: 'pomelo',       name: 'Pomelo',      allergens: ['citrus'] },
+    { key: 'pompelmoes',   name: 'Pompelmoes',  allergens: ['citrus'] },
+    { key: 'pruim',        name: 'Pruim' },
+    { key: 'sinaasappel',  name: 'Sinaasappel', allergens: ['citrus'] },
+    { key: 'vijg',         name: 'Vijg' },
+    { key: 'watermeloen',  name: 'Watermeloen' },
+    { key: 'zwarte-bes',   name: 'Zwarte bes',  riskFoodKey: 'kleine-bessen' },
+  ],
+
+  fruit_groen: [
+    { key: 'bloemkool',       name: 'Bloemkool' },
+    { key: 'rode-biet',       name: 'Rode biet' },
+    { key: 'wortel',          name: 'Wortel' },
+    { key: 'rabarber',        name: 'Rabarber' },
+    { key: 'broccoli',        name: 'Broccoli' },
+    { key: 'spinazie',        name: 'Spinazie' },
+    { key: 'courgette',       name: 'Courgette' },
+    { key: 'zoete-aardappel', name: 'Zoete aardappel' },
+    { key: 'pompoen',         name: 'Pompoen' },
+    { key: 'erwtjes',         name: 'Erwtjes' },
+    { key: 'avocado',         name: 'Avocado' },
+  ],
+
+  fruit_vet: [
+    { key: 'kokosolie',    name: 'Kokosolie' },
+    { key: 'avocado-olie', name: 'Avocado-olie' },
+    { key: 'walnootolie',  name: 'Walnootolie',  allergens: ['noten'], note: 'Koud toevoegen.' },
+    { key: 'lijnzaadolie', name: 'Lijnzaadolie', note: 'Koud toevoegen.' },
+    { key: 'notenmeel',    name: 'Notenmeel',    allergens: ['noten'], note: 'Eetlepel.' },
+  ],
+};
+
+export const FRUIT_CATEGORY_ORDER = ['fruit', 'fruit_groen', 'fruit_vet'];
