@@ -20,32 +20,53 @@ const ALLOWED_DIET = new Set([
  * noch kindjes zijn.
  */
 export async function loadUserProfile(userId) {
-  const [profileRes, childrenRes, allergensRes] = await Promise.all([
+  const [profileRes, childrenRes, statesRes, dosesRes] = await Promise.all([
     supabase.from('chat_user_profiles').select('*').eq('user_id', userId).maybeSingle(),
     supabase.from('children').select('id, name, birthdate, archived_at')
       .eq('user_id', userId).is('archived_at', null)
       .order('birthdate', { ascending: false }),
-    // Allergenen per kindje voor RAG-context. We hergebruiken `child_allergens`:
-    //  - status='vermijden' → bevestigde allergie (te vermijden)
-    //  - status='gepland'   → wordt nog geprobeerd (nog niet veilig)
-    supabase.from('child_allergens').select('child_id, allergen_key, status, reaction')
+    // Per-kind state — bevat allergen_state.known_allergies (bevestigde allergieën).
+    supabase.from('eerste_hapjes_state').select('child_id, allergen_state')
+      .eq('user_id', userId),
+    // Per-allergeen doses — voor afleiding van "in progress" (1-2 succesvolle doses).
+    supabase.from('eerste_hapjes_allergen_doses').select('child_id, allergen_key, reaction')
       .eq('user_id', userId),
   ]);
   if (profileRes.error) throw new Error('Profile load: ' + profileRes.error.message);
   if (childrenRes.error) throw new Error('Children load: ' + childrenRes.error.message);
-  if (allergensRes.error) throw new Error('Child allergens load: ' + allergensRes.error.message);
+  if (statesRes.error) throw new Error('Eerste hapjes state load: ' + statesRes.error.message);
+  if (dosesRes.error) throw new Error('Allergen doses load: ' + dosesRes.error.message);
 
   const profile = profileRes.data;
   const kids = childrenRes.data || [];
-  const allAllergens = allergensRes.data || [];
 
+  // Bouw allergensByChild op nieuwe structuur:
+  //  - vermijden: bevestigde allergieën (uit allergen_state.known_allergies)
+  //  - gepland:   in progress — 1 of 2 succesvolle doses, nog niet "veilig" (3/3)
   const allergensByChild = {};
-  for (const a of allAllergens) {
-    if (!allergensByChild[a.child_id]) {
-      allergensByChild[a.child_id] = { vermijden: [], gepland: [] };
+  for (const s of (statesRes.data || [])) {
+    allergensByChild[s.child_id] = {
+      vermijden: Array.isArray(s.allergen_state?.known_allergies)
+        ? s.allergen_state.known_allergies
+        : [],
+      gepland: [],
+    };
+  }
+  const successCount = {}; // `${childId}::${key}` -> aantal succesvolle doses
+  for (const d of (dosesRes.data || [])) {
+    if (d.reaction !== 'geen') continue;
+    const k = `${d.child_id}::${d.allergen_key}`;
+    successCount[k] = (successCount[k] || 0) + 1;
+  }
+  for (const [k, count] of Object.entries(successCount)) {
+    if (count <= 0 || count >= 3) continue;
+    const [childId, allergenKey] = k.split('::');
+    if (!allergensByChild[childId]) {
+      allergensByChild[childId] = { vermijden: [], gepland: [] };
     }
-    if (a.status === 'vermijden') allergensByChild[a.child_id].vermijden.push(a.allergen_key);
-    else if (a.status === 'gepland') allergensByChild[a.child_id].gepland.push(a.allergen_key);
+    if (!allergensByChild[childId].gepland.includes(allergenKey)) {
+      allergensByChild[childId].gepland.push(allergenKey);
+    }
   }
 
   const childrenList = kids.map((c) => ({
