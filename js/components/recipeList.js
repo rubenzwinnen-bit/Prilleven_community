@@ -8,14 +8,14 @@
    - init() haalt de data op en vult de DOM
 ============================================ */
 
-import * as Store from '../store.js?v=2.26.0';
-import * as Router from '../router.js?v=2.26.0';
-import * as RecipeCard from './recipeCard.js?v=2.26.0';
-import { showToast, confirm, MEAL_MOMENTS, ALLERGENS, escapeHtml } from '../utils.js?v=2.26.0';
-import { ageMonthsFromBirthdate } from '../eersteHapjesContent.js?v=2.26.0';
-import { loadActiveChild } from './eersteHapjes.js?v=2.26.0';
-import { loadEhState } from '../eersteHapjesStateApi.js?v=2.26.0';
-import { isRecipeSafeForChild } from '../eersteHapjesEligibility.js?v=2.26.0';
+import * as Store from '../store.js?v=2.27.0';
+import * as Router from '../router.js?v=2.27.0';
+import * as RecipeCard from './recipeCard.js?v=2.27.0';
+import { showToast, confirm, MEAL_MOMENTS, ALLERGENS, escapeHtml } from '../utils.js?v=2.27.0';
+import { ageMonthsFromBirthdate } from '../eersteHapjesContent.js?v=2.27.0';
+import { loadActiveChild } from './eersteHapjes.js?v=2.27.0';
+import { loadEhState } from '../eersteHapjesStateApi.js?v=2.27.0';
+import { isRecipeSafeForChild } from '../eersteHapjesEligibility.js?v=2.27.0';
 
 /* Cache van pre-fetched data zodat het filteren snel blijft */
 let cachedRecipes = [];
