@@ -8,14 +8,14 @@
    - init() haalt de data op en vult de DOM
 ============================================ */
 
-import * as Store from '../store.js?v=2.24.0';
-import * as Router from '../router.js?v=2.24.0';
-import * as RecipeCard from './recipeCard.js?v=2.24.0';
-import { showToast, confirm, MEAL_MOMENTS, ALLERGENS, escapeHtml } from '../utils.js?v=2.24.0';
-import { ageMonthsFromBirthdate } from '../eersteHapjesContent.js?v=2.24.0';
-import { loadActiveChild } from './eersteHapjes.js?v=2.24.0';
-import { getAllergensForChild } from '../eersteHapjesApi.js?v=2.24.0';
-import { isRecipeSafeForChild } from '../eersteHapjesEligibility.js?v=2.24.0';
+import * as Store from '../store.js?v=2.25.0';
+import * as Router from '../router.js?v=2.25.0';
+import * as RecipeCard from './recipeCard.js?v=2.25.0';
+import { showToast, confirm, MEAL_MOMENTS, ALLERGENS, escapeHtml } from '../utils.js?v=2.25.0';
+import { ageMonthsFromBirthdate } from '../eersteHapjesContent.js?v=2.25.0';
+import { loadActiveChild } from './eersteHapjes.js?v=2.25.0';
+import { loadEhState } from '../eersteHapjesStateApi.js?v=2.25.0';
+import { isRecipeSafeForChild } from '../eersteHapjesEligibility.js?v=2.25.0';
 
 /* Cache van pre-fetched data zodat het filteren snel blijft */
 let cachedRecipes = [];
@@ -133,12 +133,9 @@ export async function init() {
     if (child && child.id) {
       cachedEhChild = child;
       cachedEhAgeMonths = child.birthdate ? ageMonthsFromBirthdate(child.birthdate) : null;
-      const ar = await getAllergensForChild(child.id);
-      const allergens = ar.ok ? (ar.data?.allergens || []) : [];
-      cachedEhVermijdenSet = new Set(
-        allergens.filter(a => a.status === 'vermijden')
-                 .map(a => a.allergen_key.toLowerCase())
-      );
+      const ehState = await loadEhState(child.id).catch(() => null);
+      const knownAllergies = ehState?.allergen_state?.known_allergies || [];
+      cachedEhVermijdenSet = new Set(knownAllergies.map((k) => k.toLowerCase()));
       const wrap = document.getElementById('filter-eh-safe-wrap');
       const nameEl = document.querySelector('[data-eh-child-name]');
       if (wrap) wrap.classList.remove('hidden');

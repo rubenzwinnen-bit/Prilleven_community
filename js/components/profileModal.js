@@ -5,12 +5,12 @@
    Returnt Promise<profile|null>.
 ============================================ */
 
-import { escapeHtml, processImageForUpload, showToast, initialsFromName, colorFromSeed } from '../utils.js?v=2.24.0';
-import { sessionGet } from '../supabase.js?v=2.24.0';
-import * as Api from '../communityApi.js?v=2.24.0';
-import { getMyChildren, deleteChild } from '../eersteHapjesApi.js?v=2.24.0';
-import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.24.0';
-import { openAllergenManager } from './allergenManager.js?v=2.24.0';
+import { escapeHtml, processImageForUpload, showToast, initialsFromName, colorFromSeed } from '../utils.js?v=2.25.0';
+import { sessionGet } from '../supabase.js?v=2.25.0';
+import * as Api from '../communityApi.js?v=2.25.0';
+import { getMyChildren, deleteChild } from '../eersteHapjesApi.js?v=2.25.0';
+import { openChildOnboardingModal } from './childOnboardingModal.js?v=2.25.0';
+import { openEersteHapjesHub } from './eersteHapjesHub.js?v=2.25.0';
 
 function renderChildItem(child) {
   const ageMonths = (() => {
@@ -217,10 +217,8 @@ export function openProfileModal() {
         btn.addEventListener('click', async () => {
           const id = btn.dataset.allergensChild;
           const name = btn.dataset.childName || 'kindje';
-          await openAllergenManager({ childId: id, childName: name });
-          // Geen refresh nodig — allergenen-state blijft visueel intern in
-          // de allergenManager. Bij hersluiten valt er niets aan deze lijst
-          // te updaten (count tonen we niet inline).
+          // Nieuwe geünificeerde flow: allergeen-state zit nu in de Eerste Hapjes Hub.
+          await openEersteHapjesHub({ child: { id, name } });
         });
       });
     }

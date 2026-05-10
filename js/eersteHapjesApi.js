@@ -3,9 +3,11 @@
    Wrapt /api/eerste-hapjes/* calls met automatische
    sessie-refresh + Authorization header.
    Geeft altijd { ok, status, data, error } terug.
+
+   Voor de geünificeerde state + doses-API: zie js/eersteHapjesStateApi.js
 ============================================ */
 
-import { sessionRefreshIfNeeded } from './supabase.js?v=2.24.0';
+import { sessionRefreshIfNeeded } from './supabase.js?v=2.25.0';
 
 async function call(path, { method = 'GET', body = null } = {}) {
   const session = await sessionRefreshIfNeeded();
@@ -85,45 +87,3 @@ export const updateSymptom = (id, updates) =>
 
 export const deleteSymptom = (id) =>
   call(`/symptoms/${encodeURIComponent(id)}`, { method: 'DELETE' });
-
-/* ----- Allergens ----- */
-export const getAllergensForChild = (childId) =>
-  call('/allergens?' + new URLSearchParams({ child_id: childId }).toString());
-
-export const upsertAllergen = (payload) =>
-  call('/allergens', { method: 'POST', body: payload });
-
-export const updateAllergen = (id, updates) =>
-  call(`/allergens/${encodeURIComponent(id)}`, { method: 'PATCH', body: updates });
-
-export const deleteAllergen = (id) =>
-  call(`/allergens/${encodeURIComponent(id)}`, { method: 'DELETE' });
-
-/* ----- Allergen intro logs ----- */
-export const getAllergenIntros = (childId, { allergenKey } = {}) => {
-  const params = new URLSearchParams({ child_id: childId });
-  if (allergenKey) params.set('allergen_key', allergenKey);
-  return call('/allergen-intros?' + params.toString());
-};
-
-export const createAllergenIntro = (payload) =>
-  call('/allergen-intros', { method: 'POST', body: payload });
-
-export const deleteAllergenIntro = (id) =>
-  call(`/allergen-intros/${encodeURIComponent(id)}`, { method: 'DELETE' });
-
-/* ----- Phases ----- */
-export const getPhases = (childId) =>
-  call('/phases?' + new URLSearchParams({ child_id: childId }).toString());
-
-export const togglePhaseCheck = ({ child_id, phase_number, check_key, checked }) =>
-  call('/phases/check', {
-    method: 'POST',
-    body: { child_id, phase_number, check_key, checked },
-  });
-
-export const advancePhase = ({ child_id, from_phase }) =>
-  call('/phases/advance', {
-    method: 'POST',
-    body: { child_id, from_phase },
-  });

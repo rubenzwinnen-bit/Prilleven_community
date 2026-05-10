@@ -12,19 +12,19 @@
    - init() haalt alle data parallel op via Promise.all
 ============================================ */
 
-import * as Store from '../store.js?v=2.24.0';
-import * as Router from '../router.js?v=2.24.0';
+import * as Store from '../store.js?v=2.25.0';
+import * as Router from '../router.js?v=2.25.0';
 import {
   showToast, escapeHtml, formatDate,
   renderStarsDisplay, renderStarsInteractive,
   getMealMomentLabel, getSlotLabel,
   WEEKDAYS, SCHEDULE_SLOTS
-} from '../utils.js?v=2.24.0';
-import { scanRecipeForRisks } from '../content/eersteHapjes-risk-foods.js?v=2.24.0';
-import { ageMonthsFromBirthdate } from '../eersteHapjesContent.js?v=2.24.0';
-import { loadActiveChild } from './eersteHapjes.js?v=2.24.0';
-import { getAllergensForChild } from '../eersteHapjesApi.js?v=2.24.0';
-import { isRecipeSafeForChild, getRecipeAlternatives } from '../eersteHapjesEligibility.js?v=2.24.0';
+} from '../utils.js?v=2.25.0';
+import { scanRecipeForRisks } from '../content/eersteHapjes-risk-foods.js?v=2.25.0';
+import { ageMonthsFromBirthdate } from '../eersteHapjesContent.js?v=2.25.0';
+import { loadActiveChild } from './eersteHapjes.js?v=2.25.0';
+import { loadEhState } from '../eersteHapjesStateApi.js?v=2.25.0';
+import { isRecipeSafeForChild, getRecipeAlternatives } from '../eersteHapjesEligibility.js?v=2.25.0';
 
 /* ----------------------------------------
    RENDER
@@ -130,12 +130,9 @@ export async function init(recipeId) {
       }
 
       // Alternatieven-sectie (brok J.2): alleen als recept NIET veilig
-      const ar = await getAllergensForChild(child.id).catch(() => null);
-      const allergens = ar?.ok ? (ar.data?.allergens || []) : [];
-      const vermijdenSet = new Set(
-        allergens.filter((a) => a.status === 'vermijden')
-                 .map((a) => a.allergen_key.toLowerCase())
-      );
+      const ehState = await loadEhState(child.id).catch(() => null);
+      const knownAllergies = ehState?.allergen_state?.known_allergies || [];
+      const vermijdenSet = new Set(knownAllergies.map((k) => k.toLowerCase()));
       const ehCtx = { ageMonths, vermijdenSet };
       const safe = isRecipeSafeForChild(recipe, ehCtx);
       if (!safe) {

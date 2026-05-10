@@ -6902,3 +6902,1187 @@ body.is-eerste-hapjes #app-nav { display: none; }
   border-color: var(--color-secondary, #98c3a4);
   color: #fff;
 }
+
+
+/* ============================================
+   EERSTE HAPJES — HUB (geünificeerde modal)
+   ============================================ */
+
+/* Launcher op /eerste-hapjes pagina (kale shell — opent hub) */
+.eh-launcher {
+  background: var(--color-white, #fff);
+  border: 1px solid var(--color-light, #f0ebe6);
+  border-radius: 14px;
+  padding: 24px;
+  text-align: center;
+  margin-top: 16px;
+  box-shadow: 0 2px 8px rgba(44, 40, 37, 0.06);
+}
+.eh-launcher-head h1 {
+  margin: 0 0 4px;
+  font-size: 20px;
+  color: var(--color-dark, #2f2a24);
+}
+.eh-launcher-meta {
+  margin: 0 0 16px;
+  color: var(--color-gray, #8a8480);
+  font-size: 13px;
+}
+.eh-launcher-btn {
+  font-size: 15px;
+  padding: 12px 24px;
+  border-radius: 999px;
+}
+
+/* Overlay + modal-shell */
+.eh-hub-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(44, 40, 37, 0.45);
+  z-index: 9000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px 12px;
+  overflow-y: auto;
+}
+.eh-hub-overlay-inner {
+  width: 100%;
+  max-width: 720px;
+}
+.eh-hub-modal {
+  background: var(--color-white, #fff);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(44, 40, 37, 0.15);
+}
+.eh-hub-head {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--color-light, #f0ebe6);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--color-light-2, #f5f1ec);
+}
+.eh-hub-head h2 {
+  margin: 0;
+  font-size: 17px;
+  color: var(--color-dark, #2f2a24);
+}
+.eh-hub-sub {
+  font-size: 12px;
+  color: var(--color-gray, #8a8480);
+  margin-top: 2px;
+}
+.eh-close {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--color-white, #fff);
+  border: 1px solid var(--color-light, #f0ebe6);
+  color: var(--color-gray, #8a8480);
+  font-size: 18px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.eh-hub-body {
+  padding: 16px 18px 22px;
+  background: var(--color-bg, #faf8f5);
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+}
+
+/* Sub-nav */
+.eh-sub-nav {
+  display: flex;
+  gap: 4px;
+  background: var(--color-light, #f0ebe6);
+  padding: 4px;
+  border-radius: 999px;
+  margin-bottom: 14px;
+  overflow-x: auto;
+}
+.eh-sub-tab {
+  flex: 0 0 auto;
+  padding: 8px 14px;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  font-size: 12.5px;
+  color: var(--color-gray, #8a8480);
+  cursor: pointer;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.eh-sub-tab.active {
+  background: var(--color-white, #fff);
+  color: var(--color-dark, #2f2a24);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(44, 40, 37, 0.08);
+}
+
+/* Fase 0 — checklist */
+.eh-info-callout {
+  background: rgba(122, 168, 184, 0.08);
+  border-left: 3px solid var(--color-info, #7ba8b8);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  color: var(--color-dark, #2f2a24);
+  margin-bottom: 12px;
+}
+.eh-check-card {
+  background: var(--color-white, #fff);
+  border: 1px solid var(--color-light, #f0ebe6);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+.eh-check-card h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  color: var(--color-dark, #2f2a24);
+}
+.eh-check-card .eh-desc {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--color-gray, #8a8480);
+}
+.eh-check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--color-light, #f0ebe6);
+  cursor: pointer;
+  user-select: none;
+}
+.eh-check-row:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+.eh-check-row .eh-box {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border: 2px solid var(--color-gray-2, #c9c4be);
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-white, #fff);
+  font-size: 13px;
+  font-weight: 700;
+  background: transparent;
+}
+.eh-check-row.checked .eh-box {
+  background: var(--color-secondary, #98c3a4);
+  border-color: var(--color-secondary-dark, #6a9d7a);
+}
+.eh-check-label {
+  font-size: 13px;
+  color: var(--color-dark, #2f2a24);
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+/* Gate-CTA (locked / unlocked) */
+.eh-gate-cta {
+  background: linear-gradient(135deg, var(--color-primary, #c98966) 0%, var(--color-primary-dark, #b27656) 100%);
+  color: var(--color-white, #fff);
+  border-radius: 14px;
+  padding: 16px;
+  text-align: center;
+}
+.eh-gate-cta.locked {
+  background: var(--color-light-2, #f5f1ec);
+  color: var(--color-gray, #8a8480);
+}
+.eh-lock-ic {
+  font-size: 28px;
+  display: block;
+  margin-bottom: 6px;
+}
+.eh-gate-cta h4 {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.eh-gate-cta p {
+  margin: 0 0 12px;
+  font-size: 12px;
+  opacity: 0.92;
+}
+.eh-start-btn {
+  background: var(--color-white, #fff);
+  color: var(--color-primary-dark, #b27656);
+  border: none;
+  border-radius: 999px;
+  padding: 10px 22px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.eh-gate-cta.locked .eh-start-btn {
+  background: var(--color-gray-2, #c9c4be);
+  color: var(--color-white, #fff);
+  cursor: not-allowed;
+}
+
+/* Placeholders binnen sub-tabs (tijdelijk tot brokken ingevuld zijn) */
+.eh-placeholder {
+  background: var(--color-white, #fff);
+  border: 1px dashed var(--color-gray-2, #c9c4be);
+  border-radius: 14px;
+  padding: 14px;
+  font-size: 13px;
+  color: var(--color-dark, #2f2a24);
+}
+.eh-placeholder-tag {
+  display: inline-block;
+  background: var(--color-light, #f0ebe6);
+  color: var(--color-gray, #8a8480);
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+.eh-placeholder h4 {
+  margin: 0 0 8px;
+  font-size: 13.5px;
+  color: var(--color-dark, #2f2a24);
+}
+.eh-day-preview {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-dark, #2f2a24);
+}
+.eh-day-preview li {
+  padding: 4px 0;
+  border-top: 1px solid var(--color-light, #f0ebe6);
+}
+.eh-day-preview li:first-child {
+  border-top: none;
+}
+.eh-intro-tag {
+  display: inline-block;
+  background: rgba(224, 169, 109, 0.22);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #8d6230;
+  margin-left: 4px;
+}
+.eh-meta {
+  font-size: 11.5px;
+  color: var(--color-gray, #8a8480);
+  margin: 4px 0 0;
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+  .eh-hub-overlay {
+    padding: 0;
+  }
+  .eh-hub-overlay-inner {
+    max-width: 100%;
+  }
+  .eh-hub-modal {
+    border-radius: 0;
+    min-height: 100vh;
+  }
+}
+
+
+/* ============================================
+   EERSTE HAPJES HUB — sub-tabs (roadmap/allergenen/logboek/symptomen)
+   ============================================ */
+
+/* Pauze-banner (na milde/ernstige reactie) */
+.eh-pause-banner {
+  background: rgba(201, 102, 90, 0.08);
+  border: 1px solid rgba(201, 102, 90, 0.4);
+  border-left-width: 3px;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 14px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.eh-pause-banner.escalate {
+  background: rgba(201, 102, 90, 0.14);
+  border-color: var(--color-danger, #c9665a);
+}
+.eh-pause-ic { font-size: 20px; flex-shrink: 0; }
+.eh-pause-body { flex: 1; }
+.eh-pause-body h5 {
+  margin: 0 0 4px;
+  font-size: 13px;
+  color: var(--color-danger, #c9665a);
+  font-weight: 600;
+}
+.eh-pause-body p {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--color-dark, #2f2a24);
+  line-height: 1.4;
+}
+.eh-pause-care {
+  margin-top: 4px !important;
+  color: var(--color-danger, #c9665a) !important;
+  font-weight: 500;
+}
+.eh-pause-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.eh-pause-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 7px 13px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.eh-pause-btn.primary {
+  background: var(--color-danger, #c9665a);
+  color: #fff;
+}
+.eh-pause-btn.ghost {
+  background: var(--color-white, #fff);
+  color: var(--color-dark, #2f2a24);
+  border: 1px solid var(--color-light, #f0ebe6);
+}
+
+/* Vandaag-hero */
+.eh-next-hero {
+  background: linear-gradient(135deg, var(--color-primary, #c98966) 0%, var(--color-primary-dark, #b27656) 100%);
+  color: #fff;
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+.eh-hero-badge {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.22);
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-weight: 600;
+}
+.eh-hero-title {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.eh-hero-ratio {
+  margin: 0 0 10px;
+  font-size: 11.5px;
+  opacity: 0.92;
+}
+.eh-meal-emojis {
+  display: flex;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  padding: 8px;
+  margin-bottom: 10px;
+}
+.eh-meal-cell {
+  flex: 1;
+  text-align: center;
+  min-width: 0;
+}
+.eh-meal-cell.protein { flex: 0.7; }
+.eh-meal-cell.fat { flex: 0.5; }
+.eh-meal-em { font-size: 18px; line-height: 1; }
+.eh-meal-nm {
+  display: block;
+  font-size: 9.5px;
+  margin-top: 2px;
+  font-weight: 500;
+  opacity: 0.95;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Allergeen-callout binnen hero */
+.eh-allergen-callout {
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.eh-ac-ic { font-size: 22px; line-height: 1; flex-shrink: 0; }
+.eh-ac-body { flex: 1; min-width: 0; }
+.eh-ac-head {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-weight: 600;
+  opacity: 0.85;
+  margin-bottom: 2px;
+}
+.eh-ac-ttl { font-size: 13px; font-weight: 600; }
+.eh-ac-desc {
+  font-size: 11.5px;
+  opacity: 0.92;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+.eh-ac-desc em { font-style: italic; opacity: 0.85; }
+.eh-ac-reactions {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.eh-ac-pill {
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  color: #fff;
+  cursor: pointer;
+  transition: background .12s;
+}
+.eh-ac-pill:hover { background: rgba(255, 255, 255, 0.28); }
+.eh-ac-pill.danger {
+  background: rgba(201, 102, 90, 0.28);
+  border-color: rgba(201, 102, 90, 0.55);
+}
+.eh-ac-pill.danger:hover { background: rgba(201, 102, 90, 0.4); }
+
+/* Hero-actions */
+.eh-hero-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.eh-hero-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.eh-hero-btn.primary {
+  background: #fff;
+  color: var(--color-primary-dark, #b27656);
+}
+.eh-hero-btn.ghost {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Allergeen-track grid (13 cellen) */
+.eh-allergen-track {
+  background: var(--color-white, #fff);
+  border: 1px solid var(--color-light, #f0ebe6);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.eh-allergen-track h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.eh-allergen-track h4 small {
+  color: var(--color-gray, #8a8480);
+  font-size: 11px;
+  font-weight: 500;
+}
+.eh-all-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+@media (max-width: 480px) {
+  .eh-all-grid { grid-template-columns: repeat(5, 1fr); }
+}
+.eh-all-cell {
+  background: var(--color-white, #fff);
+  border: 1px solid var(--color-light, #f0ebe6);
+  border-radius: 8px;
+  padding: 6px 2px;
+  text-align: center;
+  font-size: 9px;
+  cursor: pointer;
+  position: relative;
+  transition: transform .08s;
+}
+.eh-all-cell:hover { transform: translateY(-1px); }
+.eh-all-ic { font-size: 16px; line-height: 1; margin-bottom: 1px; }
+.eh-all-nm { line-height: 1.1; color: var(--color-dark, #2f2a24); font-weight: 500; }
+.eh-all-dose {
+  font-size: 8.5px;
+  color: var(--color-gray, #8a8480);
+  margin-top: 1px;
+}
+.eh-all-cell-veilig {
+  background: rgba(152, 195, 164, 0.18);
+  border-color: var(--color-secondary, #98c3a4);
+}
+.eh-all-cell-veilig .eh-all-dose {
+  color: var(--color-secondary-dark, #6a9d7a);
+  font-weight: 600;
+}
+.eh-all-cell-in-progress {
+  border-color: var(--color-primary, #c98966);
+  border-width: 2px;
+  padding: 5px 1px;
+}
+.eh-all-cell-in-progress .eh-all-dose {
+  color: var(--color-primary-dark, #b27656);
+  font-weight: 600;
+}
+.eh-all-cell-allergisch {
+  background: rgba(201, 102, 90, 0.10);
+  border-color: rgba(201, 102, 90, 0.4);
+}
+.eh-all-cell-allergisch .eh-all-dose {
+  color: var(--color-danger, #c9665a);
+  font-weight: 600;
+}
+.eh-all-cell-paused {
+  background: rgba(224, 169, 109, 0.14);
+  border-color: var(--color-warning, #e0a96d);
+}
+.eh-all-cell-locked-age {
+  opacity: 0.55;
+  background: var(--color-light-2, #f5f1ec);
+}
+.eh-all-cell-locked-age::after {
+  content: '🔒';
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 9px;
+}
+.eh-all-cell-wacht { opacity: 0.65; }
+
+/* Week-plan */
+.eh-week-section {
+  background: var(--color-white, #fff);
+  border: 1px solid var(--color-light, #f0ebe6);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.eh-week-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.eh-week-head h4 { margin: 0; font-size: 13px; }
+.eh-week-regen {
+  background: transparent;
+  color: var(--color-secondary-dark, #6a9d7a);
+  border: 1px solid var(--color-light, #f0ebe6);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.eh-week-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.eh-filter-pill {
+  background: var(--color-light-2, #f5f1ec);
+  border: 1px solid var(--color-light, #f0ebe6);
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 11px;
+  color: var(--color-dark, #2f2a24);
+}
+
+/* Day-card */
+.eh-day-card {
+  background: var(--color-bg, #faf8f5);
+  border: 1px solid var(--color-light, #f0ebe6);
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  display: grid;
+  grid-template-columns: 70px 1fr;
+  align-items: center;
+  gap: 10px;
+}
+.eh-day-card.today {
+  background: rgba(201, 137, 102, 0.08);
+  border-color: var(--color-primary, #c98966);
+  border-width: 2px;
+  padding: 7px 9px;
+}
+.eh-day-pill {
+  background: var(--color-light, #f0ebe6);
+  border-radius: 999px;
+  padding: 4px 0;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-gray, #8a8480);
+}
+.eh-day-card.today .eh-day-pill {
+  background: var(--color-primary, #c98966);
+  color: #fff;
+}
+.eh-day-info { min-width: 0; }
+.eh-day-emojis {
+  font-size: 12px;
+  letter-spacing: 1px;
+  line-height: 1.2;
+  color: var(--color-gray, #8a8480);
+}
+.eh-day-title {
+  font-size: 12px;
+  color: var(--color-dark, #2f2a24);
+  font-weight: 500;
+  margin-top: 2px;
+}
+.eh-day-sub {
+  font-size: 10.5px;
+  color: var(--color-gray, #8a8480);
+  margin-top: 2px;
+}
+.eh-day-badge {
+  display: inline-block;
+  background: rgba(224, 169, 109, 0.22);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #8d6230;
+  margin-top: 3px;
+}
+
+/* Allergen-detail (in Allergenen-tab) */
+.eh-allergen-detail {
+  background: var(--color-white, #fff);
+  border: 1px solid var(--color-light, #f0ebe6);
+  border-radius: 12px;
+  padding: 14px;
+  margin-top: 12px;
+}
+.eh-allergen-detail h4 {
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: var(--color-dark, #2f2a24);
+}
+.eh-detail-desc {
+  margin: 0 0 6px;
+  font-size: 12.5px;
+  color: var(--color-dark, #2f2a24);
+  line-height: 1.4;
+}
+.eh-detail-note {
+  margin: 0 0 10px;
+  font-size: 11.5px;
+  color: var(--color-gray, #8a8480);
+}
+.eh-dose-progress {
+  display: flex;
+  gap: 6px;
+  margin: 10px 0;
+}
+.eh-dose-pip {
+  flex: 1;
+  background: var(--color-light-2, #f5f1ec);
+  border: 1px solid var(--color-light, #f0ebe6);
+  border-radius: 8px;
+  padding: 8px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--color-gray, #8a8480);
+  font-weight: 600;
+}
+.eh-dose-pip.done {
+  background: rgba(152, 195, 164, 0.2);
+  border-color: var(--color-secondary, #98c3a4);
+  color: var(--color-secondary-dark, #6a9d7a);
+}
+.eh-dose-pip.next {
+  border-color: var(--color-primary, #c98966);
+  border-width: 2px;
+  background: rgba(201, 137, 102, 0.06);
+  color: var(--color-primary-dark, #b27656);
+  padding: 7px;
+}
+.eh-dose-pip.reaction {
+  background: rgba(201, 102, 90, 0.10);
+  border-color: rgba(201, 102, 90, 0.4);
+  color: var(--color-danger, #c9665a);
+}
+.eh-detail-status {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.eh-detail-status.safe { background: rgba(152, 195, 164, 0.15); color: var(--color-secondary-dark, #6a9d7a); }
+.eh-detail-status.allergic { background: rgba(201, 102, 90, 0.10); color: var(--color-danger, #c9665a); }
+.eh-detail-status.paused { background: rgba(224, 169, 109, 0.14); color: #8d6230; }
+.eh-detail-status.locked { background: var(--color-light-2, #f5f1ec); color: var(--color-gray, #8a8480); }
+
+.eh-detail-record {
+  margin-top: 10px;
+  padding: 10px;
+  background: var(--color-bg, #faf8f5);
+  border-radius: 8px;
+}
+.eh-detail-record p {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: var(--color-dark, #2f2a24);
+}
+.eh-detail-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.eh-detail-pill {
+  background: var(--color-white, #fff);
+  border: 1px solid var(--color-light, #f0ebe6);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.eh-detail-pill:hover {
+  background: var(--color-light-2, #f5f1ec);
+}
+.eh-detail-pill.danger {
+  border-color: rgba(201, 102, 90, 0.4);
+  color: var(--color-danger, #c9665a);
+}
+
+.eh-detail-history-h {
+  margin: 14px 0 6px;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--color-gray, #8a8480);
+  font-weight: 600;
+}
+.eh-detail-history {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 11.5px;
+}
+.eh-detail-history li {
+  display: grid;
+  grid-template-columns: 70px 1fr auto;
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid var(--color-light, #f0ebe6);
+}
+.eh-detail-history li:first-child { border-top: none; }
+.eh-dose-num { font-weight: 600; color: var(--color-dark, #2f2a24); }
+.eh-dose-date { color: var(--color-gray, #8a8480); }
+.eh-dose-reaction {
+  font-weight: 500;
+  font-size: 11px;
+}
+.eh-dose-reaction-geen    { color: var(--color-secondary-dark, #6a9d7a); }
+.eh-dose-reaction-mild    { color: #8d6230; }
+.eh-dose-reaction-ernstig { color: var(--color-danger, #c9665a); }
+
+/* Logboek + symptomen — gedeeld lijst-pattern */
+.eh-empty-card {
+  background: var(--color-white, #fff);
+  border: 1px dashed var(--color-gray-2, #c9c4be);
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+}
+.eh-empty-card p {
+  margin: 0 0 12px;
+  color: var(--color-gray, #8a8480);
+  font-size: 13px;
+}
+.eh-logbook .eh-hero-btn,
+.eh-symps   .eh-hero-btn {
+  margin-bottom: 12px;
+  background: var(--color-primary, #c98966);
+  color: #fff;
+}
+.eh-log-day {
+  background: var(--color-white, #fff);
+  border: 1px solid var(--color-light, #f0ebe6);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+.eh-log-day h5 {
+  margin: 0 0 6px;
+  font-size: 11.5px;
+  color: var(--color-gray, #8a8480);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.eh-log-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.eh-log-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 1px solid var(--color-light, #f0ebe6);
+}
+.eh-log-row:first-child { border-top: none; }
+.eh-log-row.redflag { background: rgba(201, 102, 90, 0.06); }
+.eh-log-row-main { flex: 1; min-width: 0; }
+.eh-log-row-top {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 11.5px;
+  color: var(--color-gray, #8a8480);
+  margin-bottom: 2px;
+  flex-wrap: wrap;
+}
+.eh-log-time { font-weight: 600; }
+.eh-log-type {
+  background: var(--color-light, #f0ebe6);
+  border-radius: 999px;
+  padding: 2px 8px;
+  color: var(--color-dark, #2f2a24);
+}
+.eh-log-em { font-size: 14px; }
+.eh-log-row-body {
+  font-size: 13px;
+  color: var(--color-dark, #2f2a24);
+  word-break: break-word;
+}
+.eh-log-meta { color: var(--color-gray, #8a8480); font-size: 11.5px; }
+.eh-log-notes {
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--color-gray, #8a8480);
+  font-style: italic;
+}
+.eh-log-del {
+  background: transparent;
+  border: none;
+  color: var(--color-gray-2, #c9c4be);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 4px;
+  flex-shrink: 0;
+}
+.eh-log-del:hover { color: var(--color-danger, #c9665a); }
+.eh-log-sev {
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.eh-log-sev-mild   { background: rgba(152, 195, 164, 0.2); color: var(--color-secondary-dark, #6a9d7a); }
+.eh-log-sev-matig  { background: rgba(224, 169, 109, 0.2); color: #8d6230; }
+.eh-log-sev-heftig { background: rgba(201, 102, 90, 0.16); color: var(--color-danger, #c9665a); }
+.eh-log-flag { color: var(--color-danger, #c9665a); font-size: 14px; }
+
+
+/* ============================================
+   EERSTE HAPJES HUB — extra UI (tips, fase2, bouw, dietary, swap)
+   ============================================ */
+
+/* Tips & herinneringen-card */
+.eh-tips-card {
+  background: var(--color-white, #fff);
+  border: 1px solid var(--color-light, #f0ebe6);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.eh-tips-card h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.eh-tips-card h4 small {
+  color: var(--color-gray, #8a8480);
+  font-size: 11px;
+  font-weight: 500;
+}
+.eh-tips-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.eh-tips-list li + li {
+  margin-top: 4px;
+}
+.eh-tip-btn {
+  width: 100%;
+  background: var(--color-bg, #faf8f5);
+  border: 1px solid var(--color-light, #f0ebe6);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+.eh-tip-btn:hover {
+  background: var(--color-light-2, #f5f1ec);
+}
+.eh-tip-em { font-size: 18px; line-height: 1; flex-shrink: 0; }
+.eh-tip-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.eh-tip-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-dark, #2f2a24);
+}
+.eh-tip-sub {
+  font-size: 11px;
+  color: var(--color-gray, #8a8480);
+}
+.eh-tip-arrow {
+  color: var(--color-gray-2, #c9c4be);
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+/* Fase 2-overgangsprompt */
+.eh-phase2-prompt {
+  background: linear-gradient(135deg, #98c3a4 0%, #6a9d7a 100%);
+  color: #fff;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.eh-phase2-ic { font-size: 28px; flex-shrink: 0; }
+.eh-phase2-body { flex: 1; min-width: 0; }
+.eh-phase2-body h5 {
+  margin: 0 0 2px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.eh-phase2-body p {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.95;
+}
+.eh-phase2-btn {
+  background: #fff;
+  color: #6a9d7a;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Day-actions (swap-knop) */
+.eh-day-card {
+  grid-template-columns: 70px 1fr auto !important;
+}
+.eh-day-actions {
+  display: flex;
+  align-items: center;
+}
+.eh-day-swap {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--color-white, #fff);
+  border: 1px solid var(--color-light, #f0ebe6);
+  color: var(--color-gray, #8a8480);
+  font-size: 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.eh-day-swap:hover {
+  background: var(--color-light-2, #f5f1ec);
+  color: var(--color-secondary-dark, #6a9d7a);
+}
+
+/* Dietary-switcher (select gestyled als pill) */
+.eh-dietary-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--color-light-2, #f5f1ec);
+  border: 1px solid var(--color-light, #f0ebe6);
+  border-radius: 999px;
+  padding: 3px 4px 3px 10px;
+  font-size: 11px;
+}
+.eh-dietary-select {
+  background: transparent;
+  border: none;
+  font-size: 11px;
+  color: var(--color-dark, #2f2a24);
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0 4px;
+}
+.eh-dietary-select:focus {
+  outline: 2px solid var(--color-secondary, #98c3a4);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* HapjesHeld-embed */
+.eh-hh-wrap {
+  margin-top: 14px;
+}
+
+/* Bouw nu-tab */
+.eh-bouw {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.eh-bouw-intro {
+  background: rgba(122, 168, 184, 0.08);
+  border-left: 3px solid var(--color-info, #7ba8b8);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.eh-bouw-intro p {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--color-dark, #2f2a24);
+}
+.eh-pantry-section {
+  background: var(--color-white, #fff);
+  border: 1px solid var(--color-light, #f0ebe6);
+  border-radius: 12px;
+  padding: 12px;
+}
+.eh-pantry-section h5 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--color-gray, #8a8480);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-weight: 600;
+}
+.eh-pantry-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.eh-pantry-chip {
+  background: var(--color-light-2, #f5f1ec);
+  border: 1px solid var(--color-light, #f0ebe6);
+  border-radius: 999px;
+  padding: 5px 11px;
+  font-size: 11.5px;
+  color: var(--color-dark, #2f2a24);
+  cursor: pointer;
+}
+.eh-pantry-chip:hover {
+  border-color: var(--color-secondary, #98c3a4);
+}
+.eh-pantry-chip.selected {
+  background: var(--color-secondary, #98c3a4);
+  border-color: var(--color-secondary-dark, #6a9d7a);
+  color: #fff;
+  font-weight: 500;
+}
+
+.eh-bouw-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+.eh-bouw-suggestion {
+  margin-top: 10px;
+  background: linear-gradient(135deg, #98c3a4 0%, #6a9d7a 100%);
+  color: #fff;
+  border-radius: 14px;
+  padding: 14px;
+}
+.eh-bouw-suggestion.warn {
+  background: rgba(224, 169, 109, 0.14);
+  color: var(--color-dark, #2f2a24);
+  border: 1px solid var(--color-warning, #e0a96d);
+}
+.eh-bouw-suggestion h4 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.eh-bouw-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.eh-bouw-ratio {
+  margin: 0 0 10px;
+  font-size: 11.5px;
+  opacity: 0.92;
+}
+.eh-meal-emojis.bouw {
+  background: rgba(255, 255, 255, 0.15);
+}
+.eh-bouw-warnings {
+  margin-top: 8px;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.eh-bouw-warn {
+  font-size: 11.5px;
+  margin: 2px 0;
+}
+.eh-bouw-suggestion .eh-hero-btn {
+  margin-top: 10px;
+}

@@ -727,3 +727,55 @@ alter table public.child_symptoms
 Alle PDF-gap-features staan nu live op `eerste-hapjes` branch. Volgende stap: **layout-bijsturingsronde** (door user aangevraagd) en aanvullen van skeleton-content (risk-foods bodies, symptoom-bodies, microlearning-artikel-bodies — allemaal door Anneleen).
 
 Geen merge naar `main` tot bijsturing + content compleet zijn.
+
+---
+
+## 2026-05-09 (avond) → 2026-05-10 — AI Gateway + landingspagina-redesign + agenda-kalender
+
+**Context**: bijsturingsronde. Performance-audit + 3 grote ux-wijzigingen.
+
+### Vandaag afgerond
+- ✅ **Performance batch P1** — 4 frontend quick wins:
+  - P1.1: dubbele `subscription-status`-fetch geëlimineerd in `script.js` (3×) via `refreshAdminStatus({fromStatus})`-arg.
+  - P1.2: 9 component-modules lazy-loaded via dynamic `import()` in Router.on-handlers (top-level imports 13→5). Hub-pagina TTI ~30-50% sneller.
+  - P1.3: `LONG_TTL_PREFIXES = ['recipes:', 'ratings:']` in `store.js` krijgen 5 min cache-TTL ipv 30s.
+  - P1.4: `loadInitialAvatar` in `header.js` skipt fetch als profile-cache <5 min oud is.
+- ✅ **AI Gateway (P3)** — `api/_lib/clients.mjs` routeert Anthropic-calls via Vercel AI Gateway als `AI_GATEWAY_API_KEY` aanwezig is. **BYOK-mode** geactiveerd (eigen Anthropic-key in Gateway-providers) → géén markup van Vercel, alleen caching + observability als bonus.
+  - Bug 1: baseURL was `/v1/anthropic`; moest `https://ai-gateway.vercel.sh` zijn (SDK appendt zelf `/v1/messages`).
+  - Bug 2: Gateway eist provider/model-prefix (`anthropic/claude-haiku-4-5`); nieuwe helper `anthropicModel(id)` wrapt model-naam conditioneel. Toegepast in `chat.mjs` + `_lib/conversation.mjs` + `_lib/user-memory.mjs`.
+  - Verificatie: 2 chat-requests zichtbaar in Gateway-dashboard onder key `pril-leven-prod` met $0.00 spend.
+- ✅ **Landingspagina herontwerp** (`home.js` + styles.css) — split-view + sticky bottom-tabs op mobile.
+  - Desktop (≥769px): grid `320px 1fr` — tegels-pane links + timeline-pane rechts, beide tegelijk zichtbaar.
+  - Mobile (≤768px): één pane tegelijk via `[data-active-pane]`, sticky bottom-nav onderaan met 2 tabs (💬 Timeline / ⊞ Functies). Default = timeline; keuze in `localStorage['home:active-pane']`.
+  - Welkom-titel verwijderd; tegel-omschrijvingen ingekort voor smallere kolom; tegels `min-height: 96px` voor uniforme hoogte.
+- ✅ **Footer-pill-links → info-tegels** in `eh-today-grid` — Mijn fasen / Symptomen-uitleg / Risicovoedingen-lijst zijn nu echte cards naast Maaltijden/Symptomen/Allergenen/Agenda. `renderInfoCard()`-helper, `eh-today-foot` block weg.
+- ✅ **Agenda kalender-view** (`agendaModal.js` rewrite) — 3-maand-range weggehaald.
+  - Week: 7 kolommen ma-zo met events stapelend (kleuren per type: groen=meal, oranje=symptom, bruin=intro, rood-rand bij severe).
+  - Maand: 7-koloms grid (5-6 rijen) met gekleurde dots per type per dag-cel; klik op cel → switcht naar week-view rond die dag.
+  - Navigatie: ◀ ▶ knoppen + range-label + "Vandaag"-knop. Cursor verspringt 7d (week) of 1m (maand).
+  - Eén initial fetch (90d historiek); cursor-state bepaalt subset.
+  - Modal-breedte override (`max-width: min(960px, 96vw)`) want base `.modal` cap is 420px.
+- ✅ **Hover-foto Eerste Hapjes-tegel** — `fotos/landing-eerste-hapjes.png` toegevoegd. Verplaatst van project-root naar `fotos/` voor consistentie. Bonus: `fotos/landing-hapjesheld.png` was nog niet ge-tracked, nu meegecommit.
+- ✅ Cache-buster `v=2.22.0 → v=2.24.0` in alle 153 file-imports.
+
+### Open / nog te doen
+- ⬜ **Live test** op Vercel preview (`prillevencommunity-git-eerste-hapjes-…`) — desktop split-view, mobile bottom-nav, agenda kalender-week + maand met echte data, hover-foto Eerste Hapjes.
+- ⬜ **Body's invullen** door Anneleen (microlearning-artikels, symptoom-detail, risk-foods).
+- ⬜ **Merge naar `main`** — pas wanneer bijsturing + content compleet zijn.
+- ⬜ **`pril-leven-web` project** — heeft "Needs Attention" op env-vars in Vercel; niet onderzocht deze sessie.
+
+### Beslissingen genomen
+- **AI SDK NIET geïntroduceerd** — `vercel-plugin` suggereerde dit, maar CLAUDE.md verbiedt nieuwe frameworks zonder bevestiging. baseURL-override op bestaande `@anthropic-ai/sdk` is voldoende.
+- **BYOK boven Vercel-credit-mode** — eigen Anthropic-account = $0 markup van Vercel; Free Credit van $5 blijft onaangeroerd.
+- **Anthropic-only via Gateway**, Voyage embeddings blijven direct (Gateway heeft geen native Voyage-provider).
+- **CSS-only mobile vs desktop** — geen JS-viewport-detection. `[data-active-pane]` + media-queries volstaan.
+- **Default tab = Timeline** (community-first), niet Functies.
+- **Klik op maand-cel = switch naar week-view** rond die dag (geen extra modal-laag).
+- **Dots boven aantal-badges** in maand-cel — visueel rustiger, max 3 zichtbaar dan +N.
+- **Foto's verplaatsen naar `fotos/`** ipv ergens anders houden — consistente conventie voor alle hover-images.
+
+### Lessons learned (volgende sessies)
+- **Vercel AI Gateway baseURL** = `https://ai-gateway.vercel.sh` (zonder pad-suffix). SDK voegt `/v1/messages` zelf toe.
+- **Gateway model-naam-syntax** = `anthropic/<model-id>` (provider-prefix vereist). Direct API mode laat de prefix weg → heb een wrapper-helper.
+- **`.modal { max-width: 420px }`** in base-CSS — voor brede modals (kalender, dashboards) altijd `max-width` overriden, niet alleen `width`.
+- **Cache-buster mass-bump** — `find … -exec sed -i ''` werkt voor 150+ files, maar nu altijd verifiëren met grep dat geen oude versies achterblijven.

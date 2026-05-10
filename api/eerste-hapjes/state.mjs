@@ -1,15 +1,16 @@
-// GET   /api/eerste-hapjes/allergens?child_id=...   → allergenen-lijst
-// POST  /api/eerste-hapjes/allergens                → upsert per (child, allergen)
-//
-// Eerste Hapjes Traject — brok D.
+// GET   /api/eerste-hapjes/state?child_id=<uuid>
+//        → laad de state-rij voor een kindje (creëert default-rij als nog niet bestaat)
+// PATCH /api/eerste-hapjes/state
+//        body: { child_id, ...partial fields }
+//        → updaten van readiness_check / current_phase / dietary / allergen_state / etc.
 
 import { requireAuth, AuthError } from '../_lib/auth.mjs';
 import {
-  loadAllergensForChild,
-  sanitizeAllergenInput,
-  upsertAllergen,
+  loadState,
+  patchState,
+  sanitizeStatePatch,
   HttpError,
-} from '../_lib/eersteHapjes-allergens.mjs';
+} from '../_lib/eersteHapjes-state.mjs';
 
 function json(res, status, body) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -27,12 +28,13 @@ function parseBody(req) {
 }
 
 function isUuid(s) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(s));
+  return typeof s === 'string' &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
 }
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, PATCH, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') { res.statusCode = 204; return res.end(); }
 
@@ -51,37 +53,29 @@ export default async function handler(req, res) {
       if (!childId || !isUuid(childId)) {
         return json(res, 400, { error: 'child_id is verplicht.' });
       }
-      try {
-        const allergens = await loadAllergensForChild(auth.userId, childId);
-        return json(res, 200, { allergens });
-      } catch (err) {
-        if (err instanceof HttpError) return json(res, err.status, { error: err.message });
-        throw err;
-      }
+      const state = await loadState(auth.userId, childId);
+      return json(res, 200, { state });
     }
 
-    if (req.method === 'POST') {
+    if (req.method === 'PATCH') {
       const body = parseBody(req);
       if (body === null) return json(res, 400, { error: 'Ongeldige JSON.' });
-      let clean;
-      try {
-        clean = sanitizeAllergenInput(body);
-      } catch (err) {
-        if (err instanceof HttpError) return json(res, err.status, { error: err.message });
-        throw err;
+      const childId = body.child_id;
+      if (!childId || !isUuid(childId)) {
+        return json(res, 400, { error: 'child_id is verplicht.' });
       }
-      try {
-        const allergen = await upsertAllergen(auth.userId, clean);
-        return json(res, 200, { allergen });
-      } catch (err) {
-        if (err instanceof HttpError) return json(res, err.status, { error: err.message });
-        throw err;
+      const patch = sanitizeStatePatch(body);
+      if (Object.keys(patch).length === 0) {
+        return json(res, 400, { error: 'Geen geldige velden om te patchen.' });
       }
+      const state = await patchState(auth.userId, childId, patch);
+      return json(res, 200, { state });
     }
 
     return json(res, 405, { error: 'Method not allowed' });
   } catch (err) {
-    console.error('[eerste-hapjes/allergens]', err);
-    return json(res, err.status || 500, { error: err.message || 'Er ging iets mis.' });
+    if (err instanceof HttpError) return json(res, err.status, { error: err.message });
+    console.error('[eerste-hapjes/state]', err);
+    return json(res, 500, { error: err.message || 'Er ging iets mis.' });
   }
 }
