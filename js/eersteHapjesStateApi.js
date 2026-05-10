@@ -1,62 +1,66 @@
 /* ============================================
    EERSTE HAPJES — STATE API (frontend wrapper)
    Praat met /api/eerste-hapjes/state + /api/eerste-hapjes/doses.
+   Gebruikt het bestaande sessieToken-patroon (zelfde als eersteHapjesApi.js).
    Geen state-cache hier — caller beheert dat zelf.
 ============================================ */
 
-import { supabaseFetch } from './supabase.js?v=2.25.0';
+import { sessionRefreshIfNeeded } from './supabase.js?v=2.25.0';
+
+async function call(path, { method = 'GET', body = null } = {}) {
+  const session = await sessionRefreshIfNeeded();
+  if (!session) throw new Error('Niet ingelogd.');
+
+  const res = await fetch('/api/eerste-hapjes' + path, {
+    method,
+    headers: {
+      'Authorization': 'Bearer ' + session.access_token,
+      'Content-Type': 'application/json',
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  let data = null;
+  try { data = await res.json(); } catch { /* lege body ok */ }
+
+  if (!res.ok) {
+    throw new Error(data?.error || `Server-fout (${res.status}).`);
+  }
+  return data;
+}
 
 /** GET state voor 1 kind. Server-side wordt default-rij gemaakt als ontbrekend. */
 export async function loadEhState(childId) {
-  const r = await supabaseFetch(`/api/eerste-hapjes/state?child_id=${encodeURIComponent(childId)}`);
-  if (!r.ok) throw new Error(`state load: ${r.status}`);
-  const j = await r.json();
-  return j.state;
+  const data = await call(`/state?child_id=${encodeURIComponent(childId)}`);
+  return data.state;
 }
 
 /** PATCH partial state. */
 export async function patchEhState(childId, patch) {
-  const r = await supabaseFetch('/api/eerste-hapjes/state', {
+  const data = await call('/state', {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ child_id: childId, ...patch }),
+    body: { child_id: childId, ...patch },
   });
-  if (!r.ok) throw new Error(`state patch: ${r.status}`);
-  const j = await r.json();
-  return j.state;
+  return data.state;
 }
 
 /** GET alle allergeen-doses voor een kind (optioneel filter op key). */
 export async function loadEhDoses(childId, allergenKey) {
-  let url = `/api/eerste-hapjes/doses?child_id=${encodeURIComponent(childId)}`;
-  if (allergenKey) url += `&allergen_key=${encodeURIComponent(allergenKey)}`;
-  const r = await supabaseFetch(url);
-  if (!r.ok) throw new Error(`doses load: ${r.status}`);
-  const j = await r.json();
-  return j.doses || [];
+  let path = `/doses?child_id=${encodeURIComponent(childId)}`;
+  if (allergenKey) path += `&allergen_key=${encodeURIComponent(allergenKey)}`;
+  const data = await call(path);
+  return data.doses || [];
 }
 
 /** POST nieuwe dose. 409 bij dubbele dose-number per allergeen. */
 export async function createEhDose(payload) {
-  const r = await supabaseFetch('/api/eerste-hapjes/doses', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  if (!r.ok) {
-    const txt = await r.text().catch(() => '');
-    throw new Error(`dose create: ${r.status} ${txt}`);
-  }
-  const j = await r.json();
-  return j.dose;
+  const data = await call('/doses', { method: 'POST', body: payload });
+  return data.dose;
 }
 
 /** DELETE 1 dose op id. */
 export async function deleteEhDose(doseId) {
-  const r = await supabaseFetch(`/api/eerste-hapjes/doses/${encodeURIComponent(doseId)}`, {
-    method: 'DELETE',
-  });
-  if (!r.ok) throw new Error(`dose delete: ${r.status}`);
+  await call(`/doses/${encodeURIComponent(doseId)}`, { method: 'DELETE' });
   return true;
 }
 
@@ -66,15 +70,8 @@ export async function deleteEhDose(doseId) {
 
 /**
  * Bouw allergeen-context voor de generator op basis van doses + state.
- * @param {Array} doses    — alle doses voor het kindje
- * @param {Object} state   — eerste_hapjes_state
- * @param {number} ageMonths
- * @returns {{
- *   ageMonths, completed, inProgress, knownAllergies, paused, daysSinceLastDose
- * }}
  */
 export function buildAllergenContext(doses, state, ageMonths) {
-  // Tel succesvolle doses (reaction === 'geen') per allergeen
   const successByKey = {};
   let lastDate = null;
 
