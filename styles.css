@@ -8210,3 +8210,66 @@ body.is-eerste-hapjes #app-nav { display: none; }
 .eh-phase4-prompt .eh-phase2-btn {
   color: #a89065 !important;
 }
+
+
+/* ============================================
+   WEEKSCHEMA-tab — volledig per-dag overzicht
+   ============================================ */
+.eh-week-day {
+  background: var(--color-white, #fff);
+  border: 1px solid var(--color-light, #f0ebe6);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+.eh-week-day.today {
+  border-color: var(--color-primary, #c98966);
+  border-width: 2px;
+  padding: 9px 11px;
+  background: rgba(201, 137, 102, 0.04);
+}
+.eh-week-day-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.eh-week-day-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.eh-week-row {
+  display: grid;
+  grid-template-columns: 100px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  background: var(--color-bg, #faf8f5);
+  border-radius: 8px;
+  font-size: 12px;
+}
+.eh-week-row-slot {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--color-gray, #8a8480);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.eh-week-row-slot span { color: var(--color-gray, #8a8480); }
+.eh-week-row-title {
+  color: var(--color-dark, #2f2a24);
+  font-weight: 500;
+  word-break: break-word;
+}
+.eh-week-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+@media (max-width: 480px) {
+  .eh-week-row { grid-template-columns: 80px 1fr auto; font-size: 11.5px; }
+}
