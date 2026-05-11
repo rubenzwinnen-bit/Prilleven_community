@@ -78,7 +78,16 @@ const SYSTEM_PROMPT = `Je bent HapjesHeld, de AI-assistent van Pril Leven — ee
 **Formaat:**
 - GEEN markdown: geen **bold**, geen *italic*, geen ## headers. Schrijf gewone doorlopende tekst. Gebruik hooguit bullet points (met "•" of "-") voor lijstjes.
 - Benadruk woorden via woordvolgorde of uitleg, niet met sterretjes of hoofdletters.
-- Eindig niet met "hoop dat dit helpt" of disclaimers.`;
+- Eindig niet met "hoop dat dit helpt" of disclaimers.
+
+**Bronvermelding (partner-content):**
+- Sommige bron-blokken bevatten een "url:" in de header (bv. "Eten met handjes"). Dit zijn partner-bronnen die bij gebruik vermeld moeten worden.
+- Wanneer je in je antwoord informatie of een recept uit zo'n partner-bron gebruikt, sluit dan je antwoord af met ÉÉN regel onderaan, in EXACT dit formaat (markdown-link):
+  Bron: [<naam van de bron>](<url>)
+  Bijvoorbeeld: Bron: [Eten met handjes](https://etenmethandjes.nl/?utm_campaign=aa3faa&utm_source=shareable_link)
+- De markdown-link-syntax (vierkante haken + ronde haken) is hier de ENIGE uitzondering op de "geen markdown"-regel — die wordt door de frontend omgezet in een klikbare link.
+- Vermeld de bron precies één keer per antwoord, ook al gebruik je meerdere recepten van dezelfde bron. Gebruik de exacte URL uit de header.
+- Heb je geen partner-bron gebruikt (alleen Anneleens eigen kennisbank), vermeld dan niks — geen bron-regel toevoegen.`;
 
 // ---------- Helpers ----------
 function json(res, status, body) {
@@ -90,7 +99,12 @@ function json(res, status, body) {
 
 function formatContext(chunks) {
   return chunks
-    .map((c, i) => `[Bron ${i + 1} — ${c.source} / ${c.title}]\n${c.content}`)
+    .map((c, i) => {
+      const header = c.source_url
+        ? `[Bron ${i + 1} — ${c.source} / ${c.title} — url: ${c.source_url}]`
+        : `[Bron ${i + 1} — ${c.source} / ${c.title}]`;
+      return `${header}\n${c.content}`;
+    })
     .join('\n\n---\n\n');
 }
 

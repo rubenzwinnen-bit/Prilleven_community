@@ -56,10 +56,47 @@ function relativeTime(iso) {
   return d.toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' });
 }
 
+// XSS-veilig: tekst als text-nodes, URLs als <a target="_blank">.
+// Parse links voor bot-berichten zodat partner-bronnen klikbaar zijn.
+// Ondersteunt:
+//   1. Markdown-links [label](https://url)  → klikbare <a>label</a>
+//   2. Bare http(s) URLs                   → klikbare <a>url</a>
+function renderTextWithLinks(parent, text) {
+  const re = /\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<>]+[^\s<>.,;:!?)\]"'])/g;
+  let lastIndex = 0;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > lastIndex) {
+      parent.appendChild(document.createTextNode(text.slice(lastIndex, m.index)));
+    }
+    const a = document.createElement('a');
+    if (m[1] && m[2]) {
+      // Markdown-link: label = m[1], url = m[2]
+      a.href = m[2];
+      a.textContent = m[1];
+    } else {
+      // Bare URL
+      a.href = m[3];
+      a.textContent = m[3];
+    }
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    parent.appendChild(a);
+    lastIndex = re.lastIndex;
+  }
+  if (lastIndex < text.length) {
+    parent.appendChild(document.createTextNode(text.slice(lastIndex)));
+  }
+}
+
 function appendMsg(role, text, extra = '') {
   const div = document.createElement('div');
   div.className = `msg ${role}`;
-  div.textContent = text;
+  if (role === 'bot') {
+    renderTextWithLinks(div, text);
+  } else {
+    div.textContent = text;
+  }
   if (extra) {
     const small = document.createElement('small');
     small.textContent = extra;

@@ -101,6 +101,7 @@ function normalizeRow(chunk, fileSource) {
   return {
     id: chunk.id,
     source,
+    source_url: chunk.source_url || null,
     title: chunk.title || '',
     content: chunk.content || chunk.text || '',
     category: chunk.category || null,

@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=2.1.0" />
+  <link rel="stylesheet" href="/styles.css?v=2.1.2" />
 
   <style>
     html, body { height: 100%; }
@@ -306,6 +306,13 @@
       font-size: .75rem;
     }
     .msg.user small { color: rgba(255,255,255,.85); }
+    .msg.bot a {
+      color: #0066cc;
+      text-decoration: underline;
+      font-weight: 500;
+    }
+    .msg.bot a:hover { color: #004999; }
+    .msg.bot a:visited { color: #0066cc; }
 
     form {
       display: flex;
@@ -892,9 +899,9 @@
     </div>
   </div>
 
-  <script src="/js/chat.js?v=2.1.0" type="module"></script>
+  <script src="/js/chat.js?v=2.1.2" type="module"></script>
   <script type="module">
-    import { mountHeaderAvatar, attachLogoutHandler } from '/js/headerAvatarStandalone.js?v=2.1.0';
+    import { mountHeaderAvatar, attachLogoutHandler } from '/js/headerAvatarStandalone.js?v=2.1.2';
     document.addEventListener('DOMContentLoaded', () => {
       // Verberg de oude email-span — vervangen door avatar-pill
       document.getElementById('header-user-email')?.remove();
