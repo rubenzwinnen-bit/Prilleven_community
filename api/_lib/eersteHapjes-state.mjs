@@ -113,7 +113,7 @@ export function sanitizeStatePatch(input) {
   }
   if (input.current_phase !== undefined) {
     const n = Number(input.current_phase);
-    if (!Number.isInteger(n) || n < 0 || n > 4) throw new HttpError(422, 'current_phase 0-4.');
+    if (!Number.isInteger(n) || n < 0 || n > 3) throw new HttpError(422, 'current_phase 0-3.');
     out.current_phase = n;
   }
   if (input.meals_per_day !== undefined) {

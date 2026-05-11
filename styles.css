@@ -8417,3 +8417,42 @@ body.is-eerste-hapjes #app-nav { display: none; }
 .eh-bouw-replace-btn:hover {
   background: var(--color-primary-dark, #b27656);
 }
+
+
+/* ============================================
+   ALLERGEN-INIT wizard (eerste hub-open voor kindjes >= 5 mnd)
+   ============================================ */
+.eh-wizard-overlay .eh-hub-overlay-inner {
+  max-width: 480px;
+}
+.eh-wizard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+.eh-wizard-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--color-bg, #faf8f5);
+  border: 1px solid var(--color-light, #f0ebe6);
+  border-radius: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+.eh-wizard-row:hover { background: var(--color-light-2, #f5f1ec); }
+.eh-wizard-row input { margin: 0; width: 18px; height: 18px; accent-color: var(--color-secondary-dark, #6a9d7a); }
+.eh-wizard-ic { font-size: 20px; }
+.eh-wizard-label { font-size: 13px; color: var(--color-dark, #2f2a24); font-weight: 500; }
+.eh-wizard-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+.eh-wizard-actions .eh-hero-btn { padding: 9px 16px; font-size: 13px; }
+.eh-wizard-actions .eh-hero-btn.primary { background: var(--color-secondary, #98c3a4); color: #fff; }
+.eh-wizard-actions .eh-hero-btn.primary:hover { background: var(--color-secondary-dark, #6a9d7a); }
+.eh-wizard-actions .eh-hero-btn.ghost { background: transparent; color: var(--color-gray, #8a8480); border: 1px solid var(--color-light, #f0ebe6); }

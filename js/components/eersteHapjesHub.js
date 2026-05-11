@@ -13,38 +13,38 @@
      openEersteHapjesHub({ child })
 ============================================ */
 
-import { escapeHtml, showToast } from '../utils.js?v=2.29.0';
+import { escapeHtml, showToast } from '../utils.js?v=2.30.0';
 import {
   loadEhState,
   patchEhState,
   loadEhDoses,
   createEhDose,
   buildAllergenContext,
-} from '../eersteHapjesStateApi.js?v=2.29.0';
+} from '../eersteHapjesStateApi.js?v=2.30.0';
 import {
   generateWeekPlan,
   generateFruitWeek,
-} from '../eersteHapjesMealGenerator.js?v=2.29.0';
-import { getRecipes } from '../store.js?v=2.29.0';
-import * as Router from '../router.js?v=2.29.0';
-import { ALLERGEN_FLOW } from '../content/eersteHapjes-allergen-flow.js?v=2.29.0';
+} from '../eersteHapjesMealGenerator.js?v=2.30.0';
+import { getRecipes } from '../store.js?v=2.30.0';
+import * as Router from '../router.js?v=2.30.0';
+import { ALLERGEN_FLOW } from '../content/eersteHapjes-allergen-flow.js?v=2.30.0';
 import {
   getMealsForChild,
   getSymptomsForChild,
   deleteMealLog,
   deleteSymptom,
-} from '../eersteHapjesApi.js?v=2.29.0';
-import { openMealLogModal } from './mealLogModal.js?v=2.29.0';
-import { openSymptomLogModal } from './symptomLogModal.js?v=2.29.0';
-import { getSymptomMeta, isRedFlag } from '../content/eersteHapjes-symptoms.js?v=2.29.0';
-import { renderEhChatBox, bindEhChatBox } from './ehChatBox.js?v=2.29.0';
+} from '../eersteHapjesApi.js?v=2.30.0';
+import { openMealLogModal } from './mealLogModal.js?v=2.30.0';
+import { openSymptomLogModal } from './symptomLogModal.js?v=2.30.0';
+import { getSymptomMeta, isRedFlag } from '../content/eersteHapjes-symptoms.js?v=2.30.0';
+import { renderEhChatBox, bindEhChatBox } from './ehChatBox.js?v=2.30.0';
 import {
   CATEGORIES,
   INGREDIENTS,
   CATEGORY_ORDER,
   DIETARY_STYLES,
-} from '../content/eersteHapjes-meal-ingredients.js?v=2.29.0';
-import { ALLERGEN_COOLDOWN_DAYS } from '../content/eersteHapjes-allergen-flow.js?v=2.29.0';
+} from '../content/eersteHapjes-meal-ingredients.js?v=2.30.0';
+import { ALLERGEN_COOLDOWN_DAYS } from '../content/eersteHapjes-allergen-flow.js?v=2.30.0';
 
 const READINESS_SIGNALS = [
   { key: 'zitten',     label: 'Mijn kindje kan stabiel rechtop zitten (met lichte ondersteuning)' },
@@ -63,12 +63,19 @@ const SUB_TABS = [
 ];
 
 const PHASE_OPTIONS = [
-  { phase: 0, mealsPerDay: 1, label: 'Fase 0 · Voorbereiden',       minAge: 0,  ageHint: '< 6 mnd' },
-  { phase: 1, mealsPerDay: 1, label: 'Fase 1 · 1 warme maaltijd',   minAge: 6,  ageHint: 'vanaf 6 mnd' },
-  { phase: 2, mealsPerDay: 2, label: 'Fase 2 · 2 warme maaltijden', minAge: 6,  ageHint: 'vanaf 6 mnd' },
-  { phase: 3, mealsPerDay: 2, label: 'Fase 3 · + fruit-maaltijd',   minAge: 8,  ageHint: 'vanaf 8 mnd' },
-  { phase: 4, mealsPerDay: 2, label: 'Fase 4 · + ontbijt',          minAge: 10, ageHint: 'vanaf 10 mnd' },
+  { phase: 0, mealsPerDay: 1, label: 'Fase 0 · Voorbereiden',     minAge: 0,  maxAge: 7,  ageHint: '< 7 mnd' },
+  { phase: 1, mealsPerDay: 1, label: 'Fase 1 · 1 warme maaltijd', minAge: 6,  ageHint: 'vanaf 6 mnd' },
+  { phase: 2, mealsPerDay: 1, label: 'Fase 2 · + fruit-maaltijd', minAge: 8,  ageHint: 'vanaf 8 mnd' },
+  { phase: 3, mealsPerDay: 1, label: 'Fase 3 · + ontbijt',        minAge: 10, ageHint: 'vanaf 10 mnd' },
 ];
+
+/** Bepaalt de start-fase voor een nieuw kindje op basis van leeftijd. */
+function suggestStartPhase(ageMonths) {
+  if (ageMonths < 7)  return 0;
+  if (ageMonths < 8)  return 1;
+  if (ageMonths < 10) return 2;
+  return 3;
+}
 
 const MEAL_TYPE_LABEL = { ontbijt: 'Ontbijt', lunch: 'Lunch', diner: 'Diner', snack: 'Snack' };
 const REACTION_EMOJI  = { positief: '😋', neutraal: '😐', afwijzing: '😖' };
@@ -120,7 +127,34 @@ export async function openEersteHapjesHub({ child, target = null }) {
     ]);
     ctx.state = state;
     ctx.doses = doses;
-    if (state.current_phase >= 1) {
+
+    const ageMonths = computeAgeMonths(ctx.child.birthdate);
+
+    // Auto-skip fase 0 voor kindjes ≥ 7 mnd: readiness-checklist niet meer nodig.
+    if (state.current_phase === 0 && ageMonths >= 7) {
+      const suggested = suggestStartPhase(ageMonths);
+      ctx.state = await patchEhState(child.id, {
+        current_phase: suggested,
+        phase_started_at: new Date().toISOString(),
+      });
+    }
+
+    // Eerste-keer-onboarding wizard: voor kindjes ≥ 5 mnd waar de ouder
+    // nog niet heeft aangegeven welke allergenen al geïntroduceerd zijn.
+    if (ageMonths >= 5 && !ctx.state.allergen_state?.onboarding_completed) {
+      const updated = await runAllergenInitWizard(host, ctx);
+      if (updated) {
+        // Reload state + doses na wizard
+        const [s2, d2] = await Promise.all([
+          loadEhState(child.id),
+          loadEhDoses(child.id),
+        ]);
+        ctx.state = s2;
+        ctx.doses = d2;
+      }
+    }
+
+    if (ctx.state.current_phase >= 1) {
       await ensureMeals(ctx);
     }
   } catch (err) {
@@ -130,6 +164,101 @@ export async function openEersteHapjesHub({ child, target = null }) {
   }
 
   render(host, ctx);
+}
+
+/* ============================================
+   Allergen-init wizard
+   Verschijnt bij eerste hub-open voor kindjes ≥ 5 mnd. Ouder vinkt aan welke
+   allergenen al geïntroduceerd zijn. Voor elk aangevinkt allergeen: maak
+   3× dose (dose_number 1/2/3, reaction='geen') zodat de flow ze als 'veilig'
+   beschouwt. Zet allergen_state.onboarding_completed = true.
+   Returns true als state gewijzigd is.
+============================================ */
+async function runAllergenInitWizard(host, ctx) {
+  const childName = escapeHtml(ctx.child.name || 'je kindje');
+  const overlay = document.createElement('div');
+  overlay.className = 'eh-hub-overlay eh-wizard-overlay';
+  overlay.innerHTML = `
+    <div class="eh-hub-overlay-inner">
+      <div class="eh-hub-modal">
+        <div class="eh-hub-head">
+          <div class="eh-hub-head-main">
+            <h2>Welke allergenen kreeg ${childName} al?</h2>
+            <div class="eh-hub-sub">Vink alles aan wat je al hebt geïntroduceerd (zonder reactie). Niet zeker? Laat leeg — dan zit het in de roadmap.</div>
+          </div>
+        </div>
+        <div class="eh-hub-body">
+          <div class="eh-wizard-list">
+            ${ALLERGEN_FLOW.map((a) => `
+              <label class="eh-wizard-row">
+                <input type="checkbox" data-allergen-key="${escapeHtml(a.key)}">
+                <span class="eh-wizard-ic">${a.icon}</span>
+                <span class="eh-wizard-label">${escapeHtml(a.label)}</span>
+              </label>
+            `).join('')}
+          </div>
+          <div class="eh-wizard-actions">
+            <button class="eh-hero-btn ghost" data-action="wizard-skip" type="button">Overslaan</button>
+            <button class="eh-hero-btn primary" data-action="wizard-save" type="button">Bewaar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  document.body.classList.add('modal-open');
+
+  return new Promise((resolve) => {
+    function close(updated) {
+      document.body.classList.remove('modal-open');
+      overlay.remove();
+      resolve(updated);
+    }
+
+    overlay.querySelector('[data-action="wizard-skip"]').addEventListener('click', async () => {
+      try {
+        await patchEhState(ctx.child.id, {
+          allergen_state: {
+            ...(ctx.state.allergen_state || {}),
+            onboarding_completed: true,
+          },
+        });
+      } catch (_) { /* niet kritisch */ }
+      close(true);
+    });
+
+    overlay.querySelector('[data-action="wizard-save"]').addEventListener('click', async () => {
+      const checked = Array.from(overlay.querySelectorAll('input[data-allergen-key]:checked'))
+        .map((el) => el.dataset.allergenKey);
+      try {
+        // Voor elk gecheckt allergeen: 3 dose-records (1/2/3, reaction='geen')
+        for (const key of checked) {
+          for (let dose = 1; dose <= 3; dose++) {
+            try {
+              await createEhDose({
+                child_id: ctx.child.id,
+                allergen_key: key,
+                dose_number: dose,
+                reaction: 'geen',
+              });
+            } catch (_) { /* dubbele dose → 409 → skip */ }
+          }
+        }
+        // Markeer wizard als voltooid
+        await patchEhState(ctx.child.id, {
+          allergen_state: {
+            ...(ctx.state.allergen_state || {}),
+            onboarding_completed: true,
+          },
+        });
+        showToast(checked.length > 0 ? `${checked.length} allergeen(en) gemarkeerd als geïntroduceerd.` : 'Voorkeur opgeslagen.', 'success');
+      } catch (err) {
+        console.error('[Wizard] save failed', err);
+        showToast('Kon niet opslaan.', 'error');
+      }
+      close(true);
+    });
+  });
 }
 
 /* ============================================
@@ -241,9 +370,8 @@ function bindPhase0(overlay, ctx) {
 function renderPhase1or2(ctx, overlay) {
   const childName = escapeHtml(ctx.child.name || 'je kindje');
   const phase = ctx.state.current_phase;
-  const mealCount = ctx.state.meals_per_day;
-  const fruitSuffix = phase >= 3 ? ' + fruit' : '';
-  const subTitle = `Fase ${phase} · ${mealCount} warme maaltijd${mealCount === 2 ? 'en' : ''}/dag${fruitSuffix}`;
+  const phaseLabel = (PHASE_OPTIONS.find((o) => o.phase === phase) || {}).label || `Fase ${phase}`;
+  const subTitle = phaseLabel.replace(/^Fase \d+ · /, '');
 
   return `
     <div class="eh-hub-modal">
@@ -344,30 +472,28 @@ function renderRoadmap(ctx) {
   const todayMeals = today.meals;
   const todayIntro = today.allergenIntro;
 
-  const ageMonths = computeAgeMonths(ctx.child.birthdate);
-  const summary = buildAllergenSummary(ctx.doses, ctx.state, ageMonths);
-
-  if (ctx.state.current_phase >= 3) buildFruitWeekIfNeeded(ctx);
-  if (ctx.state.current_phase >= 4) buildBreakfastWeekIfNeeded(ctx);
+  if (ctx.state.current_phase >= 2) buildFruitWeekIfNeeded(ctx);
+  if (ctx.state.current_phase >= 3) buildBreakfastWeekIfNeeded(ctx);
 
   return `
     ${renderPauseBanner(ctx)}
     ${renderPhase2Prompt(ctx)}
     ${renderPhase3Prompt(ctx)}
-    ${renderPhase4Prompt(ctx)}
     ${renderTodayCard(ctx, todayMeals, todayIntro)}
-    ${renderTipsCard(ctx, summary)}
     ${renderHapjesHeldEmbed(ctx)}
   `;
 }
+
+// (renderTipsCard / buildTips / handleTipAction blijven in code maar worden
+// niet meer aangeroepen in Vandaag-tab — user-request 2026-05-11.)
 
 /* === Vandaag-card: 1 tegel met alle slots + allergen-intro onderaan === */
 function renderTodayCard(ctx, todayMeals, todayIntro) {
   const phase = ctx.state.current_phase;
   const slots = [];
 
-  // Slot: ontbijt (fase 4)
-  if (phase >= 4) {
+  // Slot: ontbijt (fase 3)
+  if (phase >= 3) {
     if (ctx.breakfastWeek === null) {
       slots.push({ icon: '🥣', label: 'Ontbijt', titleHtml: '<em class="eh-slot-loading">Laden…</em>' });
     } else if (ctx.breakfastWeek.length === 0) {
@@ -398,8 +524,8 @@ function renderTodayCard(ctx, todayMeals, todayIntro) {
     });
   });
 
-  // Slot: fruit (fase 3+)
-  if (phase >= 3 && ctx.fruitWeek?.[0]) {
+  // Slot: fruit (fase 2+)
+  if (phase >= 2 && ctx.fruitWeek?.[0]) {
     const m = ctx.fruitWeek[0];
     slots.push({
       icon: '🍓',
@@ -519,34 +645,34 @@ function renderFruitWarnings(warnings) {
   `;
 }
 
-/* Fase 3-overgangsprompt — alleen als fase 2 + voldoende variatie */
-function renderPhase3Prompt(ctx) {
-  if (ctx.state.current_phase !== 2) return '';
-  if (!isReadyForPhase3(ctx)) return '';
+/* Fase 2-overgangsprompt — fase 1 → 2 (toevoeging fruit), vanaf ~8 mnd */
+function renderPhase2Prompt(ctx) {
+  if (ctx.state.current_phase !== 1) return '';
+  if (!isReadyForPhase2(ctx)) return '';
   return `
     <div class="eh-phase2-prompt eh-phase3-prompt">
       <span class="eh-phase2-ic">🍓</span>
       <div class="eh-phase2-body">
-        <h5>Klaar voor Fase 3?</h5>
-        <p>${escapeHtml(ctx.child.name || 'Je kindje')} eet vlot 2 warme maaltijden — voeg een fruit-maaltijd toe (vanaf ~8-9 mnd).</p>
+        <h5>Klaar voor Fase 2?</h5>
+        <p>${escapeHtml(ctx.child.name || 'Je kindje')} kan nu ook een fruit-maaltijd erbij (vanaf ~8 mnd).</p>
       </div>
-      <button class="eh-phase2-btn" data-action="advance-phase3" type="button">Start Fase 3 →</button>
+      <button class="eh-phase2-btn" data-action="advance-phase2" type="button">Start Fase 2 →</button>
     </div>
   `;
 }
 
-/* Fase 4-overgangsprompt — alleen als fase 3 + leeftijd ≥ 12 mnd */
-function renderPhase4Prompt(ctx) {
-  if (ctx.state.current_phase !== 3) return '';
-  if (!isReadyForPhase4(ctx)) return '';
+/* Fase 3-overgangsprompt — fase 2 → 3 (toevoeging ontbijt), vanaf 10 mnd */
+function renderPhase3Prompt(ctx) {
+  if (ctx.state.current_phase !== 2) return '';
+  if (!isReadyForPhase3(ctx)) return '';
   return `
     <div class="eh-phase2-prompt eh-phase4-prompt">
       <span class="eh-phase2-ic">🥣</span>
       <div class="eh-phase2-body">
-        <h5>Klaar voor Fase 4?</h5>
+        <h5>Klaar voor Fase 3?</h5>
         <p>${escapeHtml(ctx.child.name || 'Je kindje')} kan nu ook een ontbijt erbij — uit jouw recepten met "ochtend"-tag.</p>
       </div>
-      <button class="eh-phase2-btn" data-action="advance-phase4" type="button">Start Fase 4 →</button>
+      <button class="eh-phase2-btn" data-action="advance-phase3" type="button">Start Fase 3 →</button>
     </div>
   `;
 }
@@ -662,23 +788,6 @@ function renderTipsCard(ctx, summary) {
           </li>
         `).join('')}
       </ul>
-    </div>
-  `;
-}
-
-/* Fase 2-overgangsprompt — alleen als fase 1 + voldoende logs */
-function renderPhase2Prompt(ctx) {
-  if (ctx.state.current_phase !== 1) return '';
-  const ready = isReadyForPhase2(ctx);
-  if (!ready) return '';
-  return `
-    <div class="eh-phase2-prompt">
-      <span class="eh-phase2-ic">🌿</span>
-      <div class="eh-phase2-body">
-        <h5>Klaar voor Fase 2?</h5>
-        <p>${escapeHtml(ctx.child.name || 'Je kindje')} eet vlot — je kan nu naar 2 warme maaltijden per dag.</p>
-      </div>
-      <button class="eh-phase2-btn" data-action="advance-phase2" type="button">Start Fase 2 →</button>
     </div>
   `;
 }
@@ -993,17 +1102,22 @@ function bindRoadmap(overlay, ctx) {
     });
   });
 
-  // Fase 2-overgang
+  // HapjesHeld embed-binding
+  const hhWrap = overlay.querySelector('[data-eh-hh-wrap]');
+  if (hhWrap) bindEhChatBox(hhWrap, ctx.child);
+
+  // Fase 2-overgang (fase 1 → 2 = + fruit)
   overlay.querySelector('[data-action="advance-phase2"]')?.addEventListener('click', async () => {
-    if (!confirm(`Naar Fase 2 gaan? ${ctx.child.name} krijgt vanaf nu 2 warme maaltijden per dag.`)) return;
+    if (!confirm(`Naar Fase 2 gaan? ${ctx.child.name} krijgt vanaf nu ook een dagelijkse fruit-maaltijd.`)) return;
     try {
       ctx.state = await patchEhState(ctx.child.id, {
         current_phase: 2,
-        meals_per_day: 2,
+        meals_per_day: 1,
         phase_started_at: new Date().toISOString(),
       });
       ctx.weekPlan = null;
-      showToast('Fase 2 gestart 🌿', 'success');
+      ctx.fruitWeek = null;
+      showToast('Fase 2 gestart 🍓', 'success');
       render(overlay, ctx);
     } catch (err) {
       console.error('[Hub] phase2 failed', err);
@@ -1011,73 +1125,24 @@ function bindRoadmap(overlay, ctx) {
     }
   });
 
-  // HapjesHeld embed-binding
-  const hhWrap = overlay.querySelector('[data-eh-hh-wrap]');
-  if (hhWrap) bindEhChatBox(hhWrap, ctx.child);
-
-  // Fase 3-overgang
+  // Fase 3-overgang (fase 2 → 3 = + ontbijt)
   overlay.querySelector('[data-action="advance-phase3"]')?.addEventListener('click', async () => {
-    if (!confirm(`Naar Fase 3 gaan? ${ctx.child.name} krijgt vanaf nu ook een dagelijkse fruit-maaltijd.`)) return;
+    if (!confirm(`Naar Fase 3 gaan? ${ctx.child.name} krijgt vanaf nu ook een ontbijt-recept uit jouw recepten.`)) return;
     try {
       ctx.state = await patchEhState(ctx.child.id, {
         current_phase: 3,
-        phase_started_at: new Date().toISOString(),
-      });
-      ctx.weekPlan = null;
-      ctx.fruitWeek = null;
-      showToast('Fase 3 gestart 🍓', 'success');
-      render(overlay, ctx);
-    } catch (err) {
-      console.error('[Hub] phase3 failed', err);
-      showToast('Kon Fase 3 niet starten.', 'error');
-    }
-  });
-
-
-  // Fruit-week regenereren
-  overlay.querySelector('[data-action="regen-fruit-week"]')?.addEventListener('click', () => {
-    ctx.fruitWeek = null;
-    ctx.state = { ...ctx.state, current_week_seed: `fruit:${Date.now()}` };
-    render(overlay, ctx);
-  });
-
-  // Fruit loggen
-  overlay.querySelector('[data-action="log-fruit-today"]')?.addEventListener('click', async () => {
-    await openMealLogFromHub(ctx);
-    ctx.meals = null;
-    await reloadAndRender(overlay, ctx);
-  });
-
-  // Fase 4-overgang
-  overlay.querySelector('[data-action="advance-phase4"]')?.addEventListener('click', async () => {
-    if (!confirm(`Naar Fase 4 gaan? ${ctx.child.name} krijgt vanaf nu ook een ontbijt-recept uit jouw recepten.`)) return;
-    try {
-      ctx.state = await patchEhState(ctx.child.id, {
-        current_phase: 4,
+        meals_per_day: 1,
         phase_started_at: new Date().toISOString(),
       });
       ctx.weekPlan = null;
       ctx.fruitWeek = null;
       ctx.breakfastWeek = null;
-      showToast('Fase 4 gestart 🥣', 'success');
+      showToast('Fase 3 gestart 🥣', 'success');
       render(overlay, ctx);
     } catch (err) {
-      console.error('[Hub] phase4 failed', err);
-      showToast('Kon Fase 4 niet starten.', 'error');
+      console.error('[Hub] phase3 failed', err);
+      showToast('Kon Fase 3 niet starten.', 'error');
     }
-  });
-
-  // Ontbijt-week regenereren
-  overlay.querySelector('[data-action="regen-breakfast-week"]')?.addEventListener('click', () => {
-    ctx.breakfastWeek = null;
-    ctx.state = { ...ctx.state, current_week_seed: `breakfast:${Date.now()}` };
-    render(overlay, ctx);
-  });
-
-  // Ontbijt-recept openen
-  overlay.querySelector('[data-action="open-breakfast-recipe"]')?.addEventListener('click', (e) => {
-    const rid = e.currentTarget.dataset.recipeId;
-    if (rid) Router.navigate(`recipe/${rid}`);
   });
 }
 
@@ -1363,8 +1428,8 @@ function bindSymptomen(overlay, ctx) {
 ============================================ */
 function renderWeek(ctx) {
   buildWeekPlanIfNeeded(ctx);
-  if (ctx.state.current_phase >= 3) buildFruitWeekIfNeeded(ctx);
-  if (ctx.state.current_phase >= 4) buildBreakfastWeekIfNeeded(ctx);
+  if (ctx.state.current_phase >= 2) buildFruitWeekIfNeeded(ctx);
+  if (ctx.state.current_phase >= 3) buildBreakfastWeekIfNeeded(ctx);
 
   const phase = ctx.state.current_phase;
   const days = ctx.weekPlan.days;
@@ -1396,8 +1461,8 @@ function renderWeek(ctx) {
 
 function renderWeekDay(ctx, d, idx, phase) {
   const isToday = idx === 0;
-  const fruitMeal = phase >= 3 ? ctx.fruitWeek?.[idx] : null;
-  const breakfastRecipe = phase >= 4 ? ctx.breakfastWeek?.[idx] : null;
+  const fruitMeal = phase >= 2 ? ctx.fruitWeek?.[idx] : null;
+  const breakfastRecipe = phase >= 3 ? ctx.breakfastWeek?.[idx] : null;
 
   return `
     <div class="eh-week-day ${isToday ? 'today' : ''}">
@@ -1406,12 +1471,12 @@ function renderWeekDay(ctx, d, idx, phase) {
         ${d.allergenIntro ? `<span class="eh-day-badge">${d.allergenIntro.icon} ${escapeHtml(d.allergenIntro.label)} ${d.allergenIntro.dose}/${d.allergenIntro.doseTarget}${d.allergenIntro.dose === d.allergenIntro.doseTarget ? ' (laatste)' : ''}</span>` : ''}
       </div>
       <div class="eh-week-day-rows">
-        ${phase >= 4 ? renderWeekRow('🥣', 'Ontbijt', breakfastRecipe?.name || '— geen recept —', 'breakfast') : ''}
+        ${phase >= 3 ? renderWeekRow('🥣', 'Ontbijt', breakfastRecipe?.name || '— geen recept —', 'breakfast') : ''}
         ${d.meals.map((m, mi) => {
           const slot = d.meals.length === 2 ? (mi === 0 ? '🌞 Lunch' : '🌙 Avond') : '🍲 Warm';
           return renderWeekRow('🍲', slot, renderIngredientTitle(m.ingredients), 'warm', idx, mi);
         }).join('')}
-        ${phase >= 3 && fruitMeal ? renderWeekRow('🍓', 'Fruit', renderFruitTitle(fruitMeal.ingredients), 'fruit', idx) : ''}
+        ${phase >= 2 && fruitMeal ? renderWeekRow('🍓', 'Fruit', renderFruitTitle(fruitMeal.ingredients), 'fruit', idx) : ''}
       </div>
     </div>
   `;
@@ -1612,7 +1677,7 @@ function swapFruitDay(overlay, ctx, dayIdx) {
     .flatMap((m) => [m.ingredients.fruit?.key, m.ingredients.groen?.key])
     .filter(Boolean);
   // Lazy import om circulair te vermijden
-  import('../eersteHapjesMealGenerator.js?v=2.29.0').then((mod) => {
+  import('../eersteHapjesMealGenerator.js?v=2.30.0').then((mod) => {
     const newMeal = mod.generateFruitMeal({
       avoidAllergens: ctx.state.allergen_state?.known_allergies || [],
       excludeKeys: used,
@@ -1912,11 +1977,18 @@ function renderHeader(ctx, title, _subtitle) {
 function renderPhaseSelector(ctx) {
   const cur = ctx.state.current_phase;
   const ageMonths = computeAgeMonths(ctx.child.birthdate);
+  // Filter: opties die niet bij de leeftijd horen worden uitgesloten.
+  // - minAge: ouder moet ouder dan deze leeftijd zijn om de fase te kiezen
+  // - maxAge: optie verdwijnt als kindje deze leeftijd voorbij is (bv. fase 0 niet meer voor > 7 mnd)
+  const visible = PHASE_OPTIONS.filter((o) => {
+    if (o.maxAge !== undefined && ageMonths >= o.maxAge) return false;
+    return true;
+  });
   return `
     <label class="eh-phase-pill" title="Wissel van fase — vooruit of achteruit">
       <span>📍</span>
       <select data-action="change-phase" class="eh-phase-select">
-        ${PHASE_OPTIONS.map((o) => {
+        ${visible.map((o) => {
           const allowed = ageMonths >= o.minAge;
           const labelSuffix = allowed ? '' : ` (${o.ageHint})`;
           return `<option value="${o.phase}" ${o.phase === cur ? 'selected' : ''} ${allowed ? '' : 'disabled'}>${escapeHtml(o.label + labelSuffix)}</option>`;
@@ -2038,14 +2110,16 @@ function handleTipAction(overlay, ctx, action, key) {
 }
 
 /**
- * Heuristiek voor fase-2-prompt:
+ * Heuristiek voor fase-2-prompt (fase 1 → 2 = fruit):
  * - Fase 1 actief
+ * - Leeftijd ≥ 8 maanden
  * - Minstens 5 unieke meal-log-dagen in laatste 14 dagen
- * - Nog niet eerder gepromoveerd
  */
 function isReadyForPhase2(ctx) {
   if (ctx.state.current_phase !== 1) return false;
-  if (ctx.meals === null) return false; // pas tonen na logboek-load
+  const ageMonths = computeAgeMonths(ctx.child.birthdate);
+  if (ageMonths < 8) return false;
+  if (ctx.meals === null) return false;
   const cutoff = new Date(Date.now() - 14 * 86400000).toISOString();
   const recent = (ctx.meals || []).filter((m) => m.eaten_at >= cutoff);
   const uniqueDays = new Set(recent.map((m) => m.eaten_at.slice(0, 10)));
@@ -2053,31 +2127,14 @@ function isReadyForPhase2(ctx) {
 }
 
 /**
- * Heuristiek voor fase-3-prompt:
+ * Heuristiek voor fase-3-prompt (fase 2 → 3 = ontbijt):
  * - Fase 2 actief
- * - Leeftijd ≥ 8 maanden (gids: fruit-maaltijd vanaf 8-9 mnd)
- * - Minstens 7 unieke meal-log-dagen in laatste 14 dagen
+ * - Leeftijd ≥ 10 maanden
  */
 function isReadyForPhase3(ctx) {
   if (ctx.state.current_phase !== 2) return false;
   const ageMonths = computeAgeMonths(ctx.child.birthdate);
-  if (ageMonths < 8) return false;
-  if (ctx.meals === null) return false;
-  const cutoff = new Date(Date.now() - 14 * 86400000).toISOString();
-  const recent = (ctx.meals || []).filter((m) => m.eaten_at >= cutoff);
-  const uniqueDays = new Set(recent.map((m) => m.eaten_at.slice(0, 10)));
-  return uniqueDays.size >= 7;
-}
-
-/**
- * Heuristiek voor fase-4-prompt:
- * - Fase 3 actief
- * - Leeftijd ≥ 12 maanden (gids: ontbijt typisch laatst, ~12 mnd)
- */
-function isReadyForPhase4(ctx) {
-  if (ctx.state.current_phase !== 3) return false;
-  const ageMonths = computeAgeMonths(ctx.child.birthdate);
-  return ageMonths >= 12;
+  return ageMonths >= 10;
 }
 
 /** Vervang 1 dag in de week-plan met een nieuwe gegenereerde maaltijd. */
