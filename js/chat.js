@@ -58,9 +58,11 @@ function relativeTime(iso) {
 
 // XSS-veilig: tekst als text-nodes, URLs als <a target="_blank">.
 // Parse links voor bot-berichten zodat partner-bronnen klikbaar zijn.
+// Ondersteunt:
+//   1. Markdown-links [label](https://url)  → klikbare <a>label</a>
+//   2. Bare http(s) URLs                   → klikbare <a>url</a>
 function renderTextWithLinks(parent, text) {
-  // http(s) URL tot whitespace of einde tekst. Trailing leestekens worden afgeknipt.
-  const re = /(https?:\/\/[^\s<>]+[^\s<>.,;:!?)\]"'])/g;
+  const re = /\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<>]+[^\s<>.,;:!?)\]"'])/g;
   let lastIndex = 0;
   let m;
   while ((m = re.exec(text)) !== null) {
@@ -68,10 +70,17 @@ function renderTextWithLinks(parent, text) {
       parent.appendChild(document.createTextNode(text.slice(lastIndex, m.index)));
     }
     const a = document.createElement('a');
-    a.href = m[0];
+    if (m[1] && m[2]) {
+      // Markdown-link: label = m[1], url = m[2]
+      a.href = m[2];
+      a.textContent = m[1];
+    } else {
+      // Bare URL
+      a.href = m[3];
+      a.textContent = m[3];
+    }
     a.target = '_blank';
     a.rel = 'noopener noreferrer';
-    a.textContent = m[0];
     parent.appendChild(a);
     lastIndex = re.lastIndex;
   }
