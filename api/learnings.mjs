@@ -377,11 +377,20 @@ async function uploadUrl(req, res, auth) {
     .storage.from(bucket).createSignedUploadUrl(path);
   if (error) return json(res, 500, { error: error.message });
 
+  // Voor thumbnails (publieke bucket) ook meteen de public-URL meesturen,
+  // zodat de frontend deze direct kan opslaan in `learnings.thumbnail_url`.
+  let public_url = null;
+  if (kind === 'thumb') {
+    const { data: pub } = supabase.storage.from(bucket).getPublicUrl(path);
+    public_url = pub?.publicUrl || null;
+  }
+
   return json(res, 200, {
     bucket,
     path,
     token: data.token,
     signed_url: data.signedUrl,
+    public_url,
   });
 }
 

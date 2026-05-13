@@ -2179,6 +2179,10 @@ body.is-hub #app-nav { display: none; }
 /* Op de hub-landingspagina is de "naar het hub"-knop overbodig */
 body.is-hub .header-home-btn { display: none; }
 
+/* Verberg de navigatiebalk op de Learnings-pagina's
+   (zelfde header als receptenboek maar zonder de recepten-tabs). */
+body.is-learnings #app-nav { display: none; }
+
 /* Logo op het inlog-scherm */
 .auth-logo {
   text-align: center;

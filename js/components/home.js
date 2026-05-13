@@ -5,9 +5,9 @@
    - Mobile: één pane tegelijk, sticky bottom-tabs onderaan om te switchen
 ============================================ */
 
-import * as Store from '../store.js?v=2.3.0';
-import * as Router from '../router.js?v=2.3.0';
-import * as Timeline from './timeline.js?v=2.3.0';
+import * as Store from '../store.js?v=2.3.1';
+import * as Router from '../router.js?v=2.3.1';
+import * as Timeline from './timeline.js?v=2.3.1';
 
 const ACTIVE_PANE_KEY = 'home:active-pane';
 

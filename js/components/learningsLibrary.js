@@ -5,10 +5,10 @@
    toggle en (admin) "Nieuw item" knop met upload-modal.
 ============================================ */
 
-import * as Store from '../store.js?v=2.3.0';
-import * as Router from '../router.js?v=2.3.0';
-import { showToast, confirm } from '../utils.js?v=2.3.0';
-import { sessionGet, sessionRefreshIfNeeded } from '../supabase.js?v=2.3.0';
+import * as Store from '../store.js?v=2.3.1';
+import * as Router from '../router.js?v=2.3.1';
+import { showToast, confirm } from '../utils.js?v=2.3.1';
+import { sessionGet, sessionRefreshIfNeeded } from '../supabase.js?v=2.3.1';
 
 let cachedItems = [];
 let cachedFavIds = new Set();
@@ -409,23 +409,22 @@ async function handleUpload() {
     // 1) Eventuele thumbnail uploaden
     if (thumb) {
       const tu = await apiSend('POST', '/upload-url', {
-        bucket: 'thumb',
+        kind: 'thumb',
         filename: thumb.name,
         contentType: thumb.type,
       });
-      await uploadToSignedUrl(tu.signedUrl, thumb);
-      thumbnailUrl = tu.publicUrl;
+      await uploadToSignedUrl(tu.signed_url, thumb);
+      thumbnailUrl = tu.public_url;
     }
 
     // 2) Hoofdbestand (pdf/video) uploaden
     if (kind === 'pdf' || kind === 'video') {
-      const bucket = kind === 'pdf' ? 'pdf' : 'video';
       const uu = await apiSend('POST', '/upload-url', {
-        bucket,
+        kind,
         filename: file.name,
         contentType: file.type,
       });
-      await uploadToSignedUrl(uu.signedUrl, file, (pct) => {
+      await uploadToSignedUrl(uu.signed_url, file, (pct) => {
         const v = Math.round(pct * 100);
         progressFill.style.width = v + '%';
         progressText.textContent = v + '%';
