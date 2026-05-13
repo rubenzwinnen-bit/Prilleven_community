@@ -5,10 +5,10 @@
    toggle en (admin) "Nieuw item" knop met upload-modal.
 ============================================ */
 
-import * as Store from '../store.js?v=2.3.6';
-import * as Router from '../router.js?v=2.3.6';
-import { showToast, confirm } from '../utils.js?v=2.3.6';
-import { sessionGet, sessionRefreshIfNeeded } from '../supabase.js?v=2.3.6';
+import * as Store from '../store.js?v=2.3.7';
+import * as Router from '../router.js?v=2.3.7';
+import { showToast, confirm } from '../utils.js?v=2.3.7';
+import { sessionGet, sessionRefreshIfNeeded, supabaseStorageUploadXhr, learningsThumbPublicUrl } from '../supabase.js?v=2.3.7';
 
 let cachedItems = [];
 let cachedFavIds = new Set();
@@ -416,23 +416,11 @@ function setupUploadModal() {
   document.getElementById('lu-save')?.addEventListener('click', handleUpload, { signal: listAbort.signal });
 }
 
-async function uploadToSignedUrl(signedUrl, file, onProgress) {
-  // Supabase signed upload-URL gebruikt PUT met x-upsert header niet vereist;
-  // gewoon file als body.
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('PUT', signedUrl);
-    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total);
-    };
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) resolve();
-      else reject(new Error(`Upload mislukt (HTTP ${xhr.status})`));
-    };
-    xhr.onerror = () => reject(new Error('Netwerkfout bij uploaden'));
-    xhr.send(file);
-  });
+/* uploadToSignedUrl verwijderd — we uploaden nu rechtstreeks
+   via supabaseStorageUploadXhr() (POST naar Supabase Storage REST API). */
+
+function sanitizeFilename(name) {
+  return name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80);
 }
 
 async function handleUpload() {
@@ -468,30 +456,28 @@ async function handleUpload() {
     let storagePath = null;
     let thumbnailUrl = null;
 
-    // 1) Eventuele thumbnail uploaden
+    // JWT ophalen voor uploads naar private buckets
+    await sessionRefreshIfNeeded();
+    const session = sessionGet();
+    const jwt = session?.access_token || null;
+
+    // 1) Eventuele thumbnail uploaden (learnings-thumb = publieke bucket)
     if (thumb) {
-      const tu = await apiSend('POST', '/upload-url', {
-        kind: 'thumb',
-        filename: thumb.name,
-        contentType: thumb.type,
-      });
-      await uploadToSignedUrl(tu.signed_url, thumb);
-      thumbnailUrl = tu.public_url;
+      const thumbPath = `${Date.now()}-${sanitizeFilename(thumb.name)}`;
+      await supabaseStorageUploadXhr('learnings-thumb', thumbPath, thumb, jwt);
+      thumbnailUrl = learningsThumbPublicUrl(thumbPath);
     }
 
-    // 2) Hoofdbestand (pdf/video) uploaden
+    // 2) Hoofdbestand (pdf/video) uploaden naar private bucket
     if ((kind === 'pdf' || kind === 'video') && file) {
-      const uu = await apiSend('POST', '/upload-url', {
-        kind,
-        filename: file.name,
-        contentType: file.type,
-      });
-      await uploadToSignedUrl(uu.signed_url, file, (pct) => {
+      const bucket = kind === 'pdf' ? 'learnings-pdf' : 'learnings-video';
+      const filePath = `${Date.now()}-${sanitizeFilename(file.name)}`;
+      await supabaseStorageUploadXhr(bucket, filePath, file, jwt, (pct) => {
         const v = Math.round(pct * 100);
         progressFill.style.width = v + '%';
         progressText.textContent = v + '%';
       });
-      storagePath = uu.path;
+      storagePath = filePath;
     }
 
     if (isEdit) {
