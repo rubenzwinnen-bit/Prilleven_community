@@ -3955,14 +3955,56 @@ body.is-learnings #app-nav { display: none; }
   background: rgba(201, 137, 102, 0.30);
 }
 
-/* Selection popup */
+/* Selection popup — geen eigen achtergrond/pil, alleen container voor de knop
+   (de knop heeft zelf al een pil-vorm; dubbele pil = visuele dubbeling).    */
 .learning-sel-popup {
   position: absolute;
   z-index: 100;
-  background: #fff;
+  background: transparent;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  pointer-events: none;
+}
+.learning-sel-popup .btn {
+  pointer-events: auto;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.22);
+}
+.learning-sel-popup.hidden {
+  display: none;
+}
+
+/* PDF-toolbar extras */
+.learning-pdf-toolbar-sep {
+  display: inline-block;
+  width: 1px;
+  height: 20px;
+  background: #e6dccd;
+  margin: 0 .4rem;
+}
+.learning-pdf-toolbar #pdf-zoom-info,
+.learning-pdf-toolbar #pdf-page-info {
+  min-width: 4ch;
+  text-align: center;
+  font-size: .85rem;
+  color: #6e6453;
+}
+
+/* Pagina-knop in opgeslagen text-clip */
+.learning-note-clip-page {
+  display: inline-block;
+  padding: 2px 8px;
+  margin-right: 6px;
+  font-size: .75rem;
+  font-weight: 600;
+  color: #5a8c66;
+  background: #eaf3ec;
+  border: 1px solid #cfe2d4;
   border-radius: 999px;
-  padding: 4px;
-  box-shadow: 0 4px 18px rgba(0,0,0,0.18);
+  cursor: pointer;
+}
+.learning-note-clip-page:hover {
+  background: #d8ead0;
 }
 
 /* Home-tile accent voor learnings */

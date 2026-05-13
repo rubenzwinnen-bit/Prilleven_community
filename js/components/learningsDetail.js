@@ -9,9 +9,9 @@
    - Video: "Bewaar tijdcode" knop bij actieve notitie.
 ============================================ */
 
-import * as Router from '../router.js?v=2.3.4';
-import { showToast } from '../utils.js?v=2.3.4';
-import { sessionGet, sessionRefreshIfNeeded } from '../supabase.js?v=2.3.4';
+import * as Router from '../router.js?v=2.3.5';
+import { showToast } from '../utils.js?v=2.3.5';
+import { sessionGet, sessionRefreshIfNeeded } from '../supabase.js?v=2.3.5';
 
 let abort = null;
 let item = null;
@@ -179,6 +179,11 @@ function renderViewer() {
         <button class="btn btn-ghost btn-xs" id="pdf-prev">◀</button>
         <span id="pdf-page-info">–</span>
         <button class="btn btn-ghost btn-xs" id="pdf-next">▶</button>
+        <span class="learning-pdf-toolbar-sep"></span>
+        <button class="btn btn-ghost btn-xs" id="pdf-zoom-out" title="Uitzoomen">−</button>
+        <span id="pdf-zoom-info">100%</span>
+        <button class="btn btn-ghost btn-xs" id="pdf-zoom-in" title="Inzoomen">+</button>
+        <button class="btn btn-ghost btn-xs" id="pdf-zoom-reset" title="Auto-fit">⤢</button>
       </div>
       <div class="learning-pdf-canvas-wrap" id="pdf-canvas-wrap">
         <canvas id="pdf-canvas"></canvas>
@@ -196,6 +201,7 @@ function renderViewer() {
 ---------------------------------------- */
 let pdfCurrentPage = 1;
 let pdfLib = null;
+let pdfZoom = null; // null = auto-fit; anders user-zoom factor (0.5 - 4)
 
 async function loadPdfLib() {
   if (pdfLib) return pdfLib;
@@ -213,11 +219,30 @@ async function loadPdf(url, startPage) {
     pdfCurrentPage = Math.min(Math.max(startPage, 1), pdfDoc.numPages);
     document.getElementById('pdf-prev')?.addEventListener('click', () => changePage(-1), { signal: abort.signal });
     document.getElementById('pdf-next')?.addEventListener('click', () => changePage(+1), { signal: abort.signal });
+    document.getElementById('pdf-zoom-in')?.addEventListener('click', () => changeZoom(+0.2), { signal: abort.signal });
+    document.getElementById('pdf-zoom-out')?.addEventListener('click', () => changeZoom(-0.2), { signal: abort.signal });
+    document.getElementById('pdf-zoom-reset')?.addEventListener('click', () => { pdfZoom = null; renderPdfPage(); }, { signal: abort.signal });
     await renderPdfPage();
   } catch (err) {
     document.getElementById('ld-viewer').innerHTML = `
       <div class="empty-state"><div class="empty-state-icon">⚠</div><h3>PDF kon niet geladen worden</h3><p>${err.message}</p></div>`;
   }
+}
+
+function changeZoom(delta) {
+  if (!pdfDoc) return;
+  // Vertrek vanaf huidige auto-fit als er nog geen user-zoom is.
+  const current = pdfZoom ?? computeAutoFitScale();
+  pdfZoom = Math.min(4, Math.max(0.5, current + delta));
+  renderPdfPage();
+}
+
+function computeAutoFitScale() {
+  const viewer = document.getElementById('ld-viewer');
+  const containerWidth = Math.max(320, (viewer?.clientWidth || 800) - 32);
+  // Default PDF-pagina is ongeveer 612pt (US Letter) of 595pt (A4) breed.
+  // We gebruiken een vaste referentie zodat zoom-stappen voorspelbaar zijn.
+  return Math.min(2, Math.max(0.8, containerWidth / 612));
 }
 
 async function changePage(delta) {
@@ -234,19 +259,25 @@ async function renderPdfPage() {
   const page = await pdfDoc.getPage(pdfCurrentPage);
   const canvas = document.getElementById('pdf-canvas');
   const ctx = canvas.getContext('2d');
-  const wrap = document.getElementById('pdf-canvas-wrap');
-  // Meet de viewer-container (parent), niet de wrap zelf — die heeft
-  // width:fit-content en is dus zo breed als zijn inhoud (kip-en-ei).
+  // Bepaal de render-scale: user-zoom wint, anders auto-fit op de viewer.
+  // We meten de viewer-container (parent) i.p.v. de wrap zelf (kip-en-ei
+  // bij width:fit-content).
   const viewer = document.getElementById('ld-viewer');
   const containerWidth = Math.max(320, (viewer?.clientWidth || 800) - 32);
   const viewport0 = page.getViewport({ scale: 1 });
-  const scale = Math.min(2, Math.max(0.8, containerWidth / viewport0.width));
+  const autoScale = Math.min(2, Math.max(0.8, containerWidth / viewport0.width));
+  const scale = pdfZoom ?? autoScale;
   const viewport = page.getViewport({ scale });
-  canvas.width = viewport.width;
-  canvas.height = viewport.height;
+  // Render op devicePixelRatio voor scherpe tekst op retina-schermen.
+  // Canvas is intern groter dan de zichtbare CSS-pixels; PDF.js krijgt
+  // een extra transform mee zodat alles op de juiste schaal getekend wordt.
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  canvas.width = Math.floor(viewport.width * dpr);
+  canvas.height = Math.floor(viewport.height * dpr);
   canvas.style.width = viewport.width + 'px';
   canvas.style.height = viewport.height + 'px';
-  await page.render({ canvasContext: ctx, viewport }).promise;
+  const transform = dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : null;
+  await page.render({ canvasContext: ctx, viewport, transform }).promise;
 
   // Text layer voor selectie → "Opslaan in notitie".
   // We gebruiken PDF.js' officiële TextLayer-builder zodat font-scale,
@@ -283,6 +314,8 @@ async function renderPdfPage() {
   }
 
   document.getElementById('pdf-page-info').textContent = `${pdfCurrentPage} / ${pdfDoc.numPages}`;
+  const zoomInfo = document.getElementById('pdf-zoom-info');
+  if (zoomInfo) zoomInfo.textContent = Math.round(scale * 100) + '%';
 }
 
 /* ----------------------------------------
@@ -388,7 +421,10 @@ function renderClips(note) {
         <div class="learning-note-clip" data-id="${c.id}">
           ${c.clip_type === 'timecode'
               ? `<button class="learning-note-clip-time" data-seconds="${c.seconds || 0}">⏱ ${formatSec(c.seconds || 0)}</button>`
-              : `<blockquote>"${escapeHtml((c.body || '').slice(0, 240))}${(c.body || '').length > 240 ? '…' : ''}"</blockquote>`}
+              : `<blockquote>
+                   ${c.page_nr ? `<button class="learning-note-clip-page" data-page="${c.page_nr}" title="Ga naar pagina ${c.page_nr}">p. ${c.page_nr}</button>` : ''}
+                   "${escapeHtml((c.body || '').slice(0, 240))}${(c.body || '').length > 240 ? '…' : ''}"
+                 </blockquote>`}
           <button class="learning-note-clip-remove" data-id="${c.id}" title="Verwijder">×</button>
         </div>
       `).join('')}
@@ -403,6 +439,16 @@ function renderClips(note) {
         vid.currentTime = sec;
         vid.play().catch(() => {});
       }
+    }, { signal: abort.signal });
+  });
+  // Pagina-knoppen → spring naar pagina in PDF
+  wrap.querySelectorAll('.learning-note-clip-page').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const p = parseInt(btn.dataset.page, 10) || 1;
+      if (!pdfDoc) return;
+      pdfCurrentPage = Math.min(Math.max(p, 1), pdfDoc.numPages);
+      renderPdfPage();
+      scheduleBookmark({ page_nr: pdfCurrentPage });
     }, { signal: abort.signal });
   });
   wrap.querySelectorAll('.learning-note-clip-remove').forEach(btn => {
