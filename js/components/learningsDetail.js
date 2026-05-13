@@ -9,9 +9,9 @@
    - Video: "Bewaar tijdcode" knop bij actieve notitie.
 ============================================ */
 
-import * as Router from '../router.js?v=2.3.2';
-import { showToast } from '../utils.js?v=2.3.2';
-import { sessionGet, sessionRefreshIfNeeded } from '../supabase.js?v=2.3.2';
+import * as Router from '../router.js?v=2.3.3';
+import { showToast } from '../utils.js?v=2.3.3';
+import { sessionGet, sessionRefreshIfNeeded } from '../supabase.js?v=2.3.3';
 
 let abort = null;
 let item = null;
@@ -245,36 +245,38 @@ async function renderPdfPage() {
   canvas.style.height = viewport.height + 'px';
   await page.render({ canvasContext: ctx, viewport }).promise;
 
-  // Text layer voor selectie → "Opslaan in notitie"
+  // Text layer voor selectie → "Opslaan in notitie".
+  // We gebruiken PDF.js' officiële TextLayer-builder zodat font-scale,
+  // kerning en transforms exact matchen met de canvas-render.
   const tl = document.getElementById('pdf-textlayer');
   if (tl && pdfLib) {
     tl.innerHTML = '';
     tl.style.width = viewport.width + 'px';
     tl.style.height = viewport.height + 'px';
     try {
-      const textContent = await page.getTextContent();
-      // Heel simpele text-layer: items als absolute spans.
-      const html = textContent.items.map(it => {
-        const tx = lib_pdfTransform(viewport, it.transform);
-        return `<span style="left:${tx.left}px;top:${tx.top}px;font-size:${tx.fontSize}px;">${escapeHtml(it.str)}</span>`;
-      }).join('');
-      tl.innerHTML = html;
+      const TextLayerCtor = pdfLib.TextLayer;
+      if (TextLayerCtor) {
+        const textLayer = new TextLayerCtor({
+          textContentSource: page.streamTextContent({
+            includeMarkedContent: true,
+            disableNormalization: true,
+          }),
+          container: tl,
+          viewport,
+        });
+        await textLayer.render();
+      } else if (typeof pdfLib.renderTextLayer === 'function') {
+        // Fallback voor oudere PDF.js-builds.
+        await pdfLib.renderTextLayer({
+          textContentSource: page.streamTextContent(),
+          container: tl,
+          viewport,
+        }).promise;
+      }
     } catch { /* text-layer is best-effort */ }
   }
 
   document.getElementById('pdf-page-info').textContent = `${pdfCurrentPage} / ${pdfDoc.numPages}`;
-}
-
-function lib_pdfTransform(viewport, transform) {
-  // pdfjs transform = [a, b, c, d, e, f]. We rekenen om naar viewport-coords.
-  const [a, b, c, d, e, f] = transform;
-  const x = e;
-  const y = viewport.viewBox[3] - f;
-  // Eenvoudige scale via viewport
-  const tx = viewport.transform[0] * x + viewport.transform[4];
-  const ty = viewport.transform[3] * y + viewport.transform[5];
-  const fontSize = Math.abs(viewport.transform[3] * Math.hypot(a, b));
-  return { left: tx, top: ty - fontSize, fontSize };
 }
 
 /* ----------------------------------------

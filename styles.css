@@ -3907,28 +3907,43 @@ body.is-learnings #app-nav { display: none; }
   border-bottom: 1px solid #efeae0;
   margin-bottom: .6rem;
 }
+/* Wrap rond canvas + textlayer:
+   inline-block met fit-content zodat textlayer (absolute) exact over de
+   canvas valt, ongeacht hoe breed de viewer-container is.            */
 .learning-pdf-canvas-wrap {
   position: relative;
+  width: fit-content;
   margin: 0 auto;
-  text-align: center;
 }
 .learning-pdf-canvas-wrap canvas {
   display: block;
-  margin: 0 auto;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
+/* PDF.js TextLayer-container: ligt exact over de canvas. */
 .learning-pdf-textlayer {
   position: absolute;
-  top: 0; left: 50%;
-  transform: translateX(-50%);
-  pointer-events: auto;
+  inset: 0;
+  overflow: clip;
+  line-height: 1;
   color: transparent;
   user-select: text;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  z-index: 1;
 }
-.learning-pdf-textlayer span {
+/* Elk text-item van PDF.js: absolute positie + scaleX-correctie. */
+.learning-pdf-textlayer span,
+.learning-pdf-textlayer br {
+  color: transparent;
   position: absolute;
   white-space: pre;
   cursor: text;
+  transform-origin: 0 0;
+}
+.learning-pdf-textlayer span.markedContent {
+  top: 0;
+  height: 0;
 }
 .learning-pdf-textlayer ::selection {
   background: rgba(201, 137, 102, 0.30);

@@ -8,10 +8,10 @@
    - init() haalt de data op en vult de DOM
 ============================================ */
 
-import * as Store from '../store.js?v=2.3.2';
-import * as Router from '../router.js?v=2.3.2';
-import * as RecipeCard from './recipeCard.js?v=2.3.2';
-import { showToast, confirm, MEAL_MOMENTS, ALLERGENS } from '../utils.js?v=2.3.2';
+import * as Store from '../store.js?v=2.3.3';
+import * as Router from '../router.js?v=2.3.3';
+import * as RecipeCard from './recipeCard.js?v=2.3.3';
+import { showToast, confirm, MEAL_MOMENTS, ALLERGENS } from '../utils.js?v=2.3.3';
 
 /* Cache van pre-fetched data zodat het filteren snel blijft */
 let cachedRecipes = [];
