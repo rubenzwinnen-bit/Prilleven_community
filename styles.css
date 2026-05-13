@@ -1955,55 +1955,47 @@ select.form-control {
 
 /* ============================================
    HOME HUB (landingspagina na login)
+   Twee-pane layout:
+   - Desktop (≥769px): tegels (260px links) + timeline (rest rechts)
+     beide tegelijk zichtbaar; bottom-nav verborgen.
+   - Mobile (≤768px): één pane tegelijk via sticky bottom-tabs.
 ============================================ */
 .home-hub {
-  max-width: 860px;
-  margin: 2rem auto;
+  max-width: 1180px;
+  margin: 1.5rem auto;
   padding: 0 1.25rem;
 }
-.home-welcome {
-  text-align: center;
-  margin-bottom: 2.5rem;
+.home-hub--split {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 1.5rem;
+  align-items: start;
 }
-.home-welcome h1 {
-  font-size: 2.2rem;
-  color: var(--color-secondary-dark);
-  margin-bottom: .5rem;
-  display: inline-block;
-  position: relative;
-  padding-bottom: .55rem;
+.home-pane {
+  min-width: 0;
 }
-.home-welcome h1::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: 0;
-  transform: translateX(-50%);
-  width: 64px;
-  height: 3px;
-  border-radius: 2px;
-  background: var(--color-primary);
+.home-pane-header {
+  margin-bottom: .85rem;
 }
-.home-welcome h1 span {
-  color: var(--color-secondary-dark);
-  text-transform: capitalize;
-}
-.home-lead {
-  color: var(--color-dark-light);
+.home-pane-title {
   font-size: 1.05rem;
+  color: var(--color-secondary-dark);
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: .2px;
 }
 .home-tiles {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 1rem;
+  gap: .65rem;
 }
 .home-tile {
   display: flex;
   align-items: center;
-  gap: 1.25rem;
-  padding: 1.5rem 1.75rem;
+  gap: .85rem;
+  padding: .9rem 1rem;
   background: var(--color-primary);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   border: 2px solid var(--color-primary);
   box-shadow: var(--shadow-sm);
   text-decoration: none;
@@ -2018,7 +2010,7 @@ select.form-control {
   background: var(--color-primary-dark);
   border-color: var(--color-primary-dark);
   color: var(--color-white);
-  padding-top: calc(1.5rem + 220px);
+  padding-top: calc(.9rem + 110px);
 }
 /* Tegel-titel + arrow + omschrijving in wit voor leesbaarheid op terracotta */
 .home-tile .home-tile-title { color: var(--color-white); }
@@ -2041,7 +2033,7 @@ select.form-control {
   z-index: 1;
 }
 .home-tile:hover .home-tile-hover-img {
-  height: 200px;
+  height: 100px;
   opacity: 1;
 }
 /* Icon-cirkels lichter zodat ze contrasteren met de terracotta tegel */
@@ -2071,19 +2063,20 @@ select.form-control {
   flex: 1;
 }
 .home-tile-title {
-  font-size: 1.2rem;
+  font-size: .98rem;
   color: var(--color-dark);
-  margin-bottom: .35rem;
+  margin-bottom: .2rem;
   font-weight: 700;
+  line-height: 1.25;
 }
 .home-tile-desc {
   color: var(--color-dark-light);
-  font-size: .92rem;
-  line-height: 1.5;
+  font-size: .8rem;
+  line-height: 1.4;
   margin: 0;
 }
 .home-tile-arrow {
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   color: var(--color-gray);
   flex-shrink: 0;
   transition: transform .2s ease, color .2s ease;
@@ -2096,16 +2089,88 @@ select.form-control {
   color: var(--color-secondary-dark);
 }
 
-@media (max-width: 640px) {
-  .home-hub { margin: 1.25rem auto; }
-  .home-welcome h1 { font-size: 1.6rem; }
-  .home-tile {
-    padding: 1rem 1.1rem;
-    gap: .85rem;
+/* ============================================
+   HOME HUB — bottom-nav (alleen mobile zichtbaar)
+============================================ */
+.home-bottom-nav {
+  display: none; /* desktop-default verbergen, in @media tonen */
+}
+.home-bottom-nav-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: .55rem .25rem;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: var(--color-gray);
+  font-family: inherit;
+  font-size: .78rem;
+  font-weight: 600;
+  transition: color .15s ease;
+}
+.home-bottom-nav-tab.is-active {
+  color: var(--color-secondary-dark);
+}
+.home-bottom-nav-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+.home-bottom-nav-label {
+  letter-spacing: .2px;
+}
+
+/* ============================================
+   HOME HUB — Mobile (≤768px): tab-switching
+============================================ */
+@media (max-width: 768px) {
+  .home-hub {
+    margin: 1rem auto;
+    padding: 0 1rem;
+    /* Ruimte onderaan voor sticky bottom-nav */
+    padding-bottom: 80px;
   }
+  /* Grid verlaten: één pane tegelijk zichtbaar */
+  .home-hub--split {
+    display: block;
+  }
+  .home-pane {
+    display: none;
+  }
+  .home-hub--split[data-active-pane="timeline"] .home-pane--timeline,
+  .home-hub--split[data-active-pane="functies"] .home-pane--functies {
+    display: block;
+  }
+  /* Op mobile: pane-titel wat compacter */
+  .home-pane-header { margin-bottom: .65rem; }
+  .home-pane-title { font-size: 1rem; }
+
+  /* Tegels op mobile mogen iets ruimer omdat er meer breedte is */
+  .home-tile { padding: 1rem 1.1rem; gap: .85rem; }
   .home-tile-icon { width: 48px; height: 48px; font-size: 1.5rem; }
   .home-tile-title { font-size: 1.05rem; }
   .home-tile-desc { font-size: .85rem; }
+  /* Hover-image effect op touch is irrelevant; padding-uitschuiven uit */
+  .home-tile:hover { padding-top: 1rem; }
+  .home-tile:hover .home-tile-hover-img { height: 0; opacity: 0; }
+
+  /* Sticky bottom-nav */
+  .home-bottom-nav {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 90;
+    background: var(--color-white);
+    border-top: 1px solid var(--color-gray-light, #e5e5e5);
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, .06);
+    padding: 0 .25rem;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 
 /* Verberg de navigatiebalk op de hub-landingspagina */
