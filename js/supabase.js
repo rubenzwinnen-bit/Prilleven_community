@@ -441,7 +441,6 @@ export function supabaseStorageUploadXhr(bucket, filePath, fileBlob, jwt, onProg
     xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
     xhr.setRequestHeader('Authorization', 'Bearer ' + (jwt || SUPABASE_ANON_KEY));
     xhr.setRequestHeader('Content-Type', fileBlob.type || 'application/octet-stream');
-    xhr.setRequestHeader('x-upsert', 'true');
     if (onProgress) {
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) onProgress(e.loaded / e.total);
