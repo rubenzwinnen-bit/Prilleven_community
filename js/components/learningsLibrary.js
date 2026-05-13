@@ -5,14 +5,15 @@
    toggle en (admin) "Nieuw item" knop met upload-modal.
 ============================================ */
 
-import * as Store from '../store.js?v=2.3.5';
-import * as Router from '../router.js?v=2.3.5';
-import { showToast, confirm } from '../utils.js?v=2.3.5';
-import { sessionGet, sessionRefreshIfNeeded } from '../supabase.js?v=2.3.5';
+import * as Store from '../store.js?v=2.3.6';
+import * as Router from '../router.js?v=2.3.6';
+import { showToast, confirm } from '../utils.js?v=2.3.6';
+import { sessionGet, sessionRefreshIfNeeded } from '../supabase.js?v=2.3.6';
 
 let cachedItems = [];
 let cachedFavIds = new Set();
 let listAbort = null;
+let editingItem = null; // null = create-modus, object = edit-modus
 
 const KIND_LABEL = { pdf: 'PDF', blog: 'Blog', video: 'Video' };
 const KIND_ICON  = { pdf: '📄', blog: '📝', video: '🎬' };
@@ -96,7 +97,7 @@ export function render() {
     <div id="learning-upload-modal" class="modal-overlay hidden">
       <div class="modal learning-upload-modal">
         <button class="modal-close" id="lu-close" aria-label="Sluiten">×</button>
-        <h2>Nieuw learning-item</h2>
+        <h2 id="lu-modal-title">Nieuw learning-item</h2>
 
         <label class="auth-label">Type</label>
         <select id="lu-kind" class="auth-input">
@@ -111,8 +112,12 @@ export function render() {
         <label class="auth-label">Korte beschrijving (optioneel)</label>
         <textarea id="lu-desc" class="auth-input" rows="2" maxlength="1000"></textarea>
 
+        <label class="auth-label">Tags (komma-gescheiden, optioneel)</label>
+        <input id="lu-tags" class="auth-input" type="text" maxlength="500" placeholder="bv. slaap, voeding, groei" />
+
         <div id="lu-file-row">
           <label class="auth-label" id="lu-file-label">Bestand</label>
+          <p id="lu-file-note" class="lu-file-note hidden">Leeg laten = huidig bestand behouden.</p>
           <input id="lu-file" class="auth-input" type="file" />
         </div>
 
@@ -192,6 +197,15 @@ export async function init() {
       } finally {
         delete fav.dataset.busy;
       }
+      return;
+    }
+
+    const edit = e.target.closest('.learning-card-edit');
+    if (edit) {
+      e.stopPropagation();
+      const id = edit.dataset.id;
+      const item = cachedItems.find(it => it.id === id);
+      if (item) openEditModal(item);
       return;
     }
 
@@ -300,7 +314,10 @@ function renderGrid() {
           ${it.description ? `<p class="learning-card-desc">${escapeHtml(it.description)}</p>` : ''}
         </div>
         ${admin ? `
-          <button class="learning-card-delete" data-id="${it.id}" data-title="${escapeHtml(it.title)}" title="Verwijderen">🗑</button>
+          <div class="learning-card-admin-btns">
+            <button class="learning-card-edit" data-id="${it.id}" title="Bewerken">✏️</button>
+            <button class="learning-card-delete" data-id="${it.id}" data-title="${escapeHtml(it.title)}" title="Verwijderen">🗑</button>
+          </div>
         ` : ''}
       </article>
     `;
@@ -311,19 +328,57 @@ function renderGrid() {
    ADMIN UPLOAD MODAL
 ---------------------------------------- */
 function openUploadModal() {
+  editingItem = null;
   const m = document.getElementById('learning-upload-modal');
   if (!m) return;
   m.classList.remove('hidden');
   // Reset
+  document.getElementById('lu-modal-title').textContent = 'Nieuw learning-item';
   document.getElementById('lu-kind').value = 'pdf';
+  document.getElementById('lu-kind').disabled = false;
   document.getElementById('lu-title').value = '';
   document.getElementById('lu-desc').value = '';
+  document.getElementById('lu-tags').value = '';
   document.getElementById('lu-body').value = '';
   document.getElementById('lu-file').value = '';
   document.getElementById('lu-thumb').value = '';
+  document.getElementById('lu-file-note').classList.add('hidden');
   document.getElementById('lu-error').classList.add('hidden');
   document.getElementById('lu-progress').classList.add('hidden');
   syncKindUI('pdf');
+}
+
+async function openEditModal(item) {
+  editingItem = item;
+  const m = document.getElementById('learning-upload-modal');
+  if (!m) return;
+  m.classList.remove('hidden');
+
+  document.getElementById('lu-modal-title').textContent = 'Learning bewerken';
+  document.getElementById('lu-kind').value = item.kind;
+  document.getElementById('lu-kind').disabled = true;
+  document.getElementById('lu-title').value = item.title || '';
+  document.getElementById('lu-desc').value = item.description || '';
+  document.getElementById('lu-tags').value = (item.tags || []).join(', ');
+  document.getElementById('lu-body').value = '';
+  document.getElementById('lu-file').value = '';
+  document.getElementById('lu-thumb').value = '';
+  document.getElementById('lu-file-note').classList.remove('hidden');
+  document.getElementById('lu-error').classList.add('hidden');
+  document.getElementById('lu-progress').classList.add('hidden');
+
+  syncKindUI(item.kind);
+
+  // Voor blog: body_html ophalen
+  if (item.kind === 'blog') {
+    try {
+      const data = await apiGet(`/${item.id}`);
+      const learning = data.learning || data;
+      document.getElementById('lu-body').value = learning.body_html || '';
+    } catch (err) {
+      showToast('Fout bij ophalen blog-inhoud: ' + err.message, 'error');
+    }
+  }
 }
 
 function closeUploadModal() {
@@ -387,13 +442,18 @@ async function handleUpload() {
   const kind = document.getElementById('lu-kind').value;
   const title = document.getElementById('lu-title').value.trim();
   const description = document.getElementById('lu-desc').value.trim();
+  const tagsRaw = document.getElementById('lu-tags').value;
+  const tags = tagsRaw.split(',').map(t => t.trim()).filter(Boolean);
   const file = document.getElementById('lu-file').files[0];
   const thumb = document.getElementById('lu-thumb').files[0];
   const body = document.getElementById('lu-body').value.trim();
 
+  const isEdit = !!editingItem;
+
   if (!title) return showErr('Titel is verplicht.');
   if (kind === 'blog' && !body) return showErr('Blog-inhoud is verplicht.');
-  if ((kind === 'pdf' || kind === 'video') && !file) return showErr('Kies een bestand.');
+  // Bestand verplicht bij aanmaken; bij bewerken optioneel
+  if (!isEdit && (kind === 'pdf' || kind === 'video') && !file) return showErr('Kies een bestand.');
 
   const saveBtn = document.getElementById('lu-save');
   saveBtn.disabled = true;
@@ -420,7 +480,7 @@ async function handleUpload() {
     }
 
     // 2) Hoofdbestand (pdf/video) uploaden
-    if (kind === 'pdf' || kind === 'video') {
+    if ((kind === 'pdf' || kind === 'video') && file) {
       const uu = await apiSend('POST', '/upload-url', {
         kind,
         filename: file.name,
@@ -434,14 +494,28 @@ async function handleUpload() {
       storagePath = uu.path;
     }
 
-    // 3) DB-record aanmaken
-    const payload = { kind, title, description: description || null };
-    if (kind === 'blog') payload.body_html = body;
-    if (storagePath) payload.storage_path = storagePath;
-    if (thumbnailUrl) payload.thumbnail_url = thumbnailUrl;
+    if (isEdit) {
+      // 3a) Bestaand item bijwerken (PATCH)
+      const payload = { title, description: description || null };
+      if (tags.length) payload.tags = tags;
+      if (kind === 'blog') payload.body_html = body;
+      if (storagePath) payload.storage_path = storagePath;
+      if (thumbnailUrl !== null) payload.thumbnail_url = thumbnailUrl;
 
-    await apiSend('POST', '', payload);
-    showToast('Toegevoegd aan Learnings', 'success');
+      await apiSend('PATCH', `/${editingItem.id}`, payload);
+      showToast('Bijgewerkt', 'success');
+    } else {
+      // 3b) Nieuw item aanmaken (POST)
+      const payload = { kind, title, description: description || null };
+      if (tags.length) payload.tags = tags;
+      if (kind === 'blog') payload.body_html = body;
+      if (storagePath) payload.storage_path = storagePath;
+      if (thumbnailUrl) payload.thumbnail_url = thumbnailUrl;
+
+      await apiSend('POST', '', payload);
+      showToast('Toegevoegd aan Learnings', 'success');
+    }
+
     closeUploadModal();
     await reload();
   } catch (err) {

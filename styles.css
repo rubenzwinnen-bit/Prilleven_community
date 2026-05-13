@@ -3710,6 +3710,31 @@ body.is-learnings #app-nav { display: none; }
   box-shadow: 0 1px 3px rgba(0,0,0,0.12);
 }
 .learning-card-delete:hover { background: #ffe0e0; }
+.learning-card-admin-btns {
+  position: absolute;
+  top: 8px; right: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.learning-card-admin-btns .learning-card-delete {
+  position: static;
+}
+.learning-card-edit {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.9);
+  cursor: pointer;
+  font-size: .9rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
+.learning-card-edit:hover { background: #e8f5e9; }
+.lu-file-note {
+  margin: 2px 0 6px;
+  font-size: .8rem;
+  color: #7a9e7e;
+}
 
 /* Upload modal */
 .learning-upload-modal {

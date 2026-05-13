@@ -28,7 +28,8 @@
 import { requireAuth, requireAdmin, AuthError } from './_lib/auth.mjs';
 import { supabase } from './_lib/clients.mjs';
 
-const SIGNED_URL_TTL = 60 * 10; // 10 minuten
+const SIGNED_URL_TTL_PDF   = 60 * 10;      // 10 min voor PDF
+const SIGNED_URL_TTL_VIDEO = 60 * 60 * 4;  // 4 uur voor video (streaming)
 
 function json(res, status, body) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -228,10 +229,11 @@ async function getLearning(req, res, auth, id) {
   let signedUrl = null;
   if (learning.kind === 'pdf' || learning.kind === 'video') {
     const bucket = learning.kind === 'pdf' ? 'learnings-pdf' : 'learnings-video';
+    const ttl = learning.kind === 'video' ? SIGNED_URL_TTL_VIDEO : SIGNED_URL_TTL_PDF;
     const { data: signed, error: sErr } = await supabase
       .storage
       .from(bucket)
-      .createSignedUrl(learning.storage_path, SIGNED_URL_TTL);
+      .createSignedUrl(learning.storage_path, ttl);
     if (sErr) {
       console.error('[learnings.getLearning signed-url]', sErr);
       return json(res, 500, { error: 'Kon bestand-URL niet ophalen.' });
@@ -314,13 +316,23 @@ async function updateLearning(req, res, auth, id) {
   }
   const body = parseBody(req);
   if (!body) return json(res, 400, { error: 'Ongeldige body.' });
+
+  // Bestaand record ophalen voor storage_path-wijziging (oud bestand opruimen)
+  let existingRow = null;
+  if (body.storage_path !== undefined) {
+    const { data: existing } = await supabase
+      .from('learnings').select('kind, storage_path').eq('id', id).maybeSingle();
+    existingRow = existing || null;
+  }
+
   const patch = {};
-  if (body.title != null)         patch.title = String(body.title).slice(0, 200);
+  if (body.title != null)             patch.title = String(body.title).slice(0, 200);
   if (body.description !== undefined) patch.description = body.description ? String(body.description).slice(0, 1000) : null;
   if (body.thumbnail_url !== undefined) patch.thumbnail_url = body.thumbnail_url || null;
-  if (body.body_html !== undefined) patch.body_html = body.body_html ? String(body.body_html).slice(0, 200000) : null;
+  if (body.body_html !== undefined)   patch.body_html = body.body_html ? String(body.body_html).slice(0, 200000) : null;
   if (body.tags && Array.isArray(body.tags)) patch.tags = body.tags.map(t => String(t).slice(0, 40)).slice(0, 20);
-  if (body.is_published != null) patch.is_published = !!body.is_published;
+  if (body.is_published != null)      patch.is_published = !!body.is_published;
+  if (body.storage_path !== undefined) patch.storage_path = body.storage_path || null;
 
   if (Object.keys(patch).length === 0) return json(res, 400, { error: 'Geen wijzigingen.' });
 
@@ -328,6 +340,13 @@ async function updateLearning(req, res, auth, id) {
     .from('learnings').update(patch).eq('id', id)
     .select('id, kind, title, is_published').single();
   if (error) return json(res, 500, { error: error.message });
+
+  // Oud bestand opruimen als storage_path veranderd
+  if (existingRow?.storage_path && patch.storage_path && existingRow.storage_path !== patch.storage_path) {
+    const oldBucket = existingRow.kind === 'pdf' ? 'learnings-pdf' : 'learnings-video';
+    await supabase.storage.from(oldBucket).remove([existingRow.storage_path]).catch(() => {});
+  }
+
   return json(res, 200, { learning: data });
 }
 
