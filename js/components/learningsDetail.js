@@ -9,9 +9,9 @@
    - Video: "Bewaar tijdcode" knop bij actieve notitie.
 ============================================ */
 
-import * as Router from '../router.js?v=2.3.1';
-import { showToast } from '../utils.js?v=2.3.1';
-import { sessionGet, sessionRefreshIfNeeded } from '../supabase.js?v=2.3.1';
+import * as Router from '../router.js?v=2.3.2';
+import { showToast } from '../utils.js?v=2.3.2';
+import { sessionGet, sessionRefreshIfNeeded } from '../supabase.js?v=2.3.2';
 
 let abort = null;
 let item = null;
@@ -107,11 +107,13 @@ export async function init(id) {
     const [detail, noteData, bm] = await Promise.all([
       api('GET', `/${id}`),
       api('GET', `/${id}/notes`),
-      api('GET', `/${id}/bookmark`).catch(() => ({ position: null })),
+      api('GET', `/${id}/bookmark`).catch(() => ({ bookmark: null })),
     ]);
-    item = detail;
+    // API: { learning: { ...velden, signed_url, is_favorite, bookmark } }
+    item = detail.learning || detail;
     notes = noteData?.notes || [];
-    bookmark = bm?.position || null;
+    // API: { bookmark: { position, updated_at } | null }
+    bookmark = bm?.bookmark?.position || null;
   } catch (err) {
     document.getElementById('ld-viewer').innerHTML = `
       <div class="empty-state"><div class="empty-state-icon">⚠</div><h3>Fout bij laden</h3><p>${err.message}</p></div>`;

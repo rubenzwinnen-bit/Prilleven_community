@@ -5,10 +5,10 @@
    toggle en (admin) "Nieuw item" knop met upload-modal.
 ============================================ */
 
-import * as Store from '../store.js?v=2.3.1';
-import * as Router from '../router.js?v=2.3.1';
-import { showToast, confirm } from '../utils.js?v=2.3.1';
-import { sessionGet, sessionRefreshIfNeeded } from '../supabase.js?v=2.3.1';
+import * as Store from '../store.js?v=2.3.2';
+import * as Router from '../router.js?v=2.3.2';
+import { showToast, confirm } from '../utils.js?v=2.3.2';
+import { sessionGet, sessionRefreshIfNeeded } from '../supabase.js?v=2.3.2';
 
 let cachedItems = [];
 let cachedFavIds = new Set();
@@ -182,10 +182,11 @@ export async function init() {
       try {
         const id = fav.dataset.id;
         const out = await apiSend('POST', `/${id}/favorite`);
-        if (out?.favorited) cachedFavIds.add(id);
+        const isFav = !!out?.is_favorite;
+        if (isFav) cachedFavIds.add(id);
         else cachedFavIds.delete(id);
-        fav.classList.toggle('active', out?.favorited);
-        fav.innerHTML = out?.favorited ? '❤️' : '♡';
+        fav.classList.toggle('active', isFav);
+        fav.innerHTML = isFav ? '❤️' : '♡';
       } catch (err) {
         showToast('Fout: ' + err.message, 'error');
       } finally {
@@ -233,8 +234,9 @@ export async function init() {
 async function reload() {
   try {
     const data = await apiGet('');
-    cachedItems = data.items || [];
-    cachedFavIds = new Set(data.favorites || []);
+    // API retourneert { learnings: [...] } met `is_favorite` per item.
+    cachedItems = data.learnings || [];
+    cachedFavIds = new Set(cachedItems.filter(it => it.is_favorite).map(it => it.id));
     renderGrid();
   } catch (err) {
     const grid = document.getElementById('learnings-grid');
