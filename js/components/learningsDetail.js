@@ -9,9 +9,9 @@
    - Video: "Bewaar tijdcode" knop bij actieve notitie.
 ============================================ */
 
-import * as Router from '../router.js?v=2.3.3';
-import { showToast } from '../utils.js?v=2.3.3';
-import { sessionGet, sessionRefreshIfNeeded } from '../supabase.js?v=2.3.3';
+import * as Router from '../router.js?v=2.3.4';
+import { showToast } from '../utils.js?v=2.3.4';
+import { sessionGet, sessionRefreshIfNeeded } from '../supabase.js?v=2.3.4';
 
 let abort = null;
 let item = null;
@@ -235,7 +235,10 @@ async function renderPdfPage() {
   const canvas = document.getElementById('pdf-canvas');
   const ctx = canvas.getContext('2d');
   const wrap = document.getElementById('pdf-canvas-wrap');
-  const containerWidth = wrap.clientWidth - 16;
+  // Meet de viewer-container (parent), niet de wrap zelf — die heeft
+  // width:fit-content en is dus zo breed als zijn inhoud (kip-en-ei).
+  const viewer = document.getElementById('ld-viewer');
+  const containerWidth = Math.max(320, (viewer?.clientWidth || 800) - 32);
   const viewport0 = page.getViewport({ scale: 1 });
   const scale = Math.min(2, Math.max(0.8, containerWidth / viewport0.width));
   const viewport = page.getViewport({ scale });
@@ -253,6 +256,9 @@ async function renderPdfPage() {
     tl.innerHTML = '';
     tl.style.width = viewport.width + 'px';
     tl.style.height = viewport.height + 'px';
+    // PDF.js v4 vereist --scale-factor op de container voor correcte
+    // font-size berekening; zonder dit zijn de tekst-spans niet te selecteren.
+    tl.style.setProperty('--scale-factor', String(scale));
     try {
       const TextLayerCtor = pdfLib.TextLayer;
       if (TextLayerCtor) {
