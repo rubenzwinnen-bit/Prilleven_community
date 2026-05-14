@@ -1,23 +1,24 @@
 /* ============================================
    HOME COMPONENT
-   Landingspagina na login. Twee-pane layout:
-   - Desktop: tegels (smal links) + timeline (groot rechts) tegelijk zichtbaar
+   Landingspagina na login. Drie-pane layout:
+   - Desktop: Functies (links) | Timeline of Room (midden) | Rooms-nav (rechts)
    - Mobile: één pane tegelijk, sticky bottom-tabs onderaan om te switchen
 ============================================ */
 
-import * as Store from '../store.js?v=2.4.1';
-import * as Router from '../router.js?v=2.4.1';
-import * as Timeline from './timeline.js?v=2.4.1';
+import * as Store from '../store.js?v=2.4.2';
+import * as Router from '../router.js?v=2.4.2';
+import * as Timeline from './timeline.js?v=2.4.2';
+import * as ChatRooms from './chatRooms.js?v=2.4.2';
 
 const ACTIVE_PANE_KEY = 'home:active-pane';
 
 function getInitialPane() {
   // Default = timeline (community-first). Op mobile onthouden we de laatste
-  // keuze in localStorage zodat een terugkeer-bezoek bij de "Functies"-tab
-  // landt als dat de laatste was.
+  // keuze in localStorage. Geldige waarden: timeline | functies | rooms.
   try {
     const stored = localStorage.getItem(ACTIVE_PANE_KEY);
-    return stored === 'functies' ? 'functies' : 'timeline';
+    if (stored === 'functies' || stored === 'rooms') return stored;
+    return 'timeline';
   } catch {
     return 'timeline';
   }
@@ -78,7 +79,7 @@ export function render() {
   const initialPane = getInitialPane();
 
   return `
-    <div class="home-hub home-hub--split" data-active-pane="${initialPane}">
+    <div class="home-hub home-hub--tri" data-active-pane="${initialPane}">
       <section class="home-pane home-pane--functies" data-pane="functies" aria-label="Functies">
         <div class="home-pane-header">
           <h2 class="home-pane-title">Functies</h2>
@@ -87,14 +88,22 @@ export function render() {
           ${tileCards}
         </div>
       </section>
-      <section class="home-pane home-pane--timeline" data-pane="timeline" aria-label="Timeline">
-        ${Timeline.render()}
+      <section class="home-pane home-pane--timeline" data-pane="timeline" data-view="timeline" aria-label="Timeline">
+        <div id="home-timeline-inner">
+          ${Timeline.render()}
+        </div>
+        <div id="home-chatroom-mount"></div>
       </section>
+      ${ChatRooms.renderNav()}
     </div>
     <nav class="home-bottom-nav" role="tablist" aria-label="Landingspagina-secties">
       <button class="home-bottom-nav-tab" data-pane="timeline" role="tab" aria-selected="${initialPane === 'timeline'}">
         <span class="home-bottom-nav-icon" aria-hidden="true">💬</span>
         <span class="home-bottom-nav-label">Timeline</span>
+      </button>
+      <button class="home-bottom-nav-tab" data-pane="rooms" role="tab" aria-selected="${initialPane === 'rooms'}">
+        <span class="home-bottom-nav-icon" aria-hidden="true">🗨️</span>
+        <span class="home-bottom-nav-label">Rooms</span>
       </button>
       <button class="home-bottom-nav-tab" data-pane="functies" role="tab" aria-selected="${initialPane === 'functies'}">
         <span class="home-bottom-nav-icon" aria-hidden="true">⊞</span>
@@ -148,7 +157,8 @@ export function init() {
     btn.classList.toggle('is-active', btn.dataset.pane === initial);
   });
 
-  // Timeline init (events + feed laden) — alleen relevant als timeline-pane
-  // gerenderd is, wat altijd zo is in deze split-layout.
+  // Timeline init (events + feed laden).
   Timeline.init();
+  // Chatrooms-nav init (laadt rooms-lijst).
+  ChatRooms.init();
 }
