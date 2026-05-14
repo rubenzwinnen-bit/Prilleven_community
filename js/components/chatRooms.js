@@ -5,10 +5,10 @@
    Gebruikt /api/chat-rooms.
 ============================================ */
 
-import * as Store from '../store.js?v=2.4.4';
-import * as Api from '../chatRoomsApi.js?v=2.4.4';
-import { formatRelativeTime } from '../utils.js?v=2.4.4';
-import { renderAvatar, renderAuthorMeta } from '../profileRender.js?v=2.4.4';
+import * as Store from '../store.js?v=2.4.5';
+import * as Api from '../chatRoomsApi.js?v=2.4.5';
+import { formatRelativeTime } from '../utils.js?v=2.4.5';
+import { renderAvatar, renderAuthorMeta } from '../profileRender.js?v=2.4.5';
 
 const EDIT_WINDOW_MS = 15 * 60 * 1000;
 
