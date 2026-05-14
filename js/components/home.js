@@ -5,9 +5,9 @@
    - Mobile: één pane tegelijk, sticky bottom-tabs onderaan om te switchen
 ============================================ */
 
-import * as Store from '../store.js?v=2.3.8';
-import * as Router from '../router.js?v=2.3.8';
-import * as Timeline from './timeline.js?v=2.3.8';
+import * as Store from '../store.js?v=2.3.9';
+import * as Router from '../router.js?v=2.3.9';
+import * as Timeline from './timeline.js?v=2.3.9';
 
 const ACTIVE_PANE_KEY = 'home:active-pane';
 
@@ -49,7 +49,7 @@ export function render() {
       desc: 'Documenten, blogs en videos om door te lezen of bekijken.',
       href: '#/learnings',
       accent: 'sage-deep',
-      hoverImg: '/fotos/learnings.jpeg',
+      hoverImg: '/fotos/learnings.png',
     },
   ];
 

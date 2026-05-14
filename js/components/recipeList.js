@@ -8,15 +8,19 @@
    - init() haalt de data op en vult de DOM
 ============================================ */
 
-import * as Store from '../store.js?v=2.3.8';
-import * as Router from '../router.js?v=2.3.8';
-import * as RecipeCard from './recipeCard.js?v=2.3.8';
-import { showToast, confirm, MEAL_MOMENTS, ALLERGENS } from '../utils.js?v=2.3.8';
+import * as Store from '../store.js?v=2.3.9';
+import * as Router from '../router.js?v=2.3.9';
+import * as RecipeCard from './recipeCard.js?v=2.3.9';
+import { showToast, confirm, MEAL_MOMENTS, ALLERGENS } from '../utils.js?v=2.3.9';
 
 /* Cache van pre-fetched data zodat het filteren snel blijft */
 let cachedRecipes = [];
 let cachedFavIds = [];
 let cachedRatings = {};
+
+/* Set van allergenen die de gebruiker wil WEGFILTEREN (verbergen).
+   Een recept dat één van deze allergenen bevat valt buiten de lijst. */
+let excludedAllergens = new Set();
 
 /* AbortController om vorige listeners op te ruimen wanneer de pagina
    opnieuw wordt geïnitialiseerd. Voorkomt dat dezelfde click-handler
@@ -43,11 +47,25 @@ export function render() {
           ${MEAL_MOMENTS.map(m => `<option value="${m.id}">${m.label}</option>`).join('')}
         </select>
 
-        <select class="filter-select" id="filter-allergen">
-          <option value="">Alle allergenen</option>
-          ${ALLERGENS.map(a => `<option value="${a}">${a}</option>`).join('')}
-        </select>
+        <div class="allergen-filter" id="allergen-filter">
+          <button type="button" class="allergen-filter-btn" id="allergen-filter-btn" aria-expanded="false">
+            <span class="allergen-filter-label">Verberg allergenen</span>
+            <span class="allergen-filter-count" id="allergen-filter-count"></span>
+            <span class="allergen-filter-caret">&#9662;</span>
+          </button>
+          <div class="allergen-filter-pop hidden" id="allergen-filter-pop">
+            ${ALLERGENS.map(a => `
+              <label class="allergen-filter-opt">
+                <input type="checkbox" value="${a}" />
+                <span>${a}</span>
+              </label>
+            `).join('')}
+            <button type="button" class="allergen-filter-clear" id="allergen-filter-clear">Wis alles</button>
+          </div>
+        </div>
       </div>
+
+      <div class="allergen-filter-chips" id="allergen-filter-chips"></div>
 
       <div class="toolbar-right" id="toolbar-admin">
       </div>
@@ -205,7 +223,77 @@ export async function init() {
      consistentie) */
   document.getElementById('recipe-search')?.addEventListener('input', filterRecipes, { signal: listAbort.signal });
   document.getElementById('filter-moment')?.addEventListener('change', filterRecipes, { signal: listAbort.signal });
-  document.getElementById('filter-allergen')?.addEventListener('change', filterRecipes, { signal: listAbort.signal });
+
+  /* Allergenen-filter: dropdown openen/sluiten */
+  const filterBtn = document.getElementById('allergen-filter-btn');
+  const filterPop = document.getElementById('allergen-filter-pop');
+  filterBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const open = filterPop.classList.toggle('hidden');
+    filterBtn.setAttribute('aria-expanded', String(!open));
+  }, { signal: listAbort.signal });
+
+  /* Klik buiten dropdown → sluit */
+  document.addEventListener('click', (e) => {
+    if (!filterPop || filterPop.classList.contains('hidden')) return;
+    if (e.target.closest('#allergen-filter')) return;
+    filterPop.classList.add('hidden');
+    filterBtn?.setAttribute('aria-expanded', 'false');
+  }, { signal: listAbort.signal });
+
+  /* Checkbox-wijziging → update excludedAllergens + filter opnieuw */
+  filterPop?.addEventListener('change', (e) => {
+    const cb = e.target.closest('input[type="checkbox"]');
+    if (!cb) return;
+    if (cb.checked) excludedAllergens.add(cb.value);
+    else excludedAllergens.delete(cb.value);
+    renderAllergenChipsAndCount();
+    filterRecipes();
+  }, { signal: listAbort.signal });
+
+  /* "Wis alles"-knop */
+  document.getElementById('allergen-filter-clear')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    excludedAllergens.clear();
+    filterPop.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+    renderAllergenChipsAndCount();
+    filterRecipes();
+  }, { signal: listAbort.signal });
+
+  /* Chip ✕ → ontvink de bijbehorende checkbox */
+  document.getElementById('allergen-filter-chips')?.addEventListener('click', (e) => {
+    const chipBtn = e.target.closest('.allergen-chip-x');
+    if (!chipBtn) return;
+    const allergen = chipBtn.dataset.allergen;
+    excludedAllergens.delete(allergen);
+    const cb = filterPop.querySelector(`input[type="checkbox"][value="${allergen}"]`);
+    if (cb) cb.checked = false;
+    renderAllergenChipsAndCount();
+    filterRecipes();
+  }, { signal: listAbort.signal });
+}
+
+/* ----------------------------------------
+   ALLERGEN-CHIPS + COUNT UPDATEN
+---------------------------------------- */
+function renderAllergenChipsAndCount() {
+  const chipsEl = document.getElementById('allergen-filter-chips');
+  const countEl = document.getElementById('allergen-filter-count');
+  if (!chipsEl || !countEl) return;
+
+  const n = excludedAllergens.size;
+  countEl.textContent = n > 0 ? `(${n})` : '';
+
+  if (n === 0) {
+    chipsEl.innerHTML = '';
+    return;
+  }
+  chipsEl.innerHTML = [...excludedAllergens].map(a => `
+    <span class="allergen-chip">
+      <span class="allergen-chip-label">geen ${a}</span>
+      <button type="button" class="allergen-chip-x" data-allergen="${a}" aria-label="Verwijder filter ${a}">&times;</button>
+    </span>
+  `).join('');
 }
 
 /* ----------------------------------------
@@ -240,7 +328,6 @@ function renderGrid(recipes, admin = false) {
 function filterRecipes() {
   const searchVal = (document.getElementById('recipe-search')?.value || '').toLowerCase();
   const momentVal = document.getElementById('filter-moment')?.value || '';
-  const allergenVal = document.getElementById('filter-allergen')?.value || '';
 
   const filtered = cachedRecipes.filter(recipe => {
     const matchesSearch = !searchVal ||
@@ -250,10 +337,13 @@ function filterRecipes() {
     const matchesMoment = !momentVal ||
       (recipe.mealMoments || []).includes(momentVal);
 
-    const matchesAllergen = !allergenVal ||
-      (recipe.allergens || []).includes(allergenVal);
+    /* Recept WEGFILTEREN als het minstens één van de uitgesloten
+       allergenen bevat. Lege set → alle recepten zichtbaar. */
+    const recipeAllergens = recipe.allergens || [];
+    const passesAllergens = excludedAllergens.size === 0 ||
+      !recipeAllergens.some(a => excludedAllergens.has(a));
 
-    return matchesSearch && matchesMoment && matchesAllergen;
+    return matchesSearch && matchesMoment && passesAllergens;
   });
 
   const grid = document.getElementById('recipe-grid');
