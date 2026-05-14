@@ -20,7 +20,7 @@ import { requireAuth, requireAdmin, AuthError } from './_lib/auth.mjs';
 import { supabase } from './_lib/clients.mjs';
 import { findBlockedWord } from './_lib/moderation.mjs';
 import { getAccessStatus } from './_lib/subscription.mjs';
-import { signImageUrls } from './_lib/community.mjs';
+import { signImageUrls, loadAdminUserIds } from './_lib/community.mjs';
 
 async function attachAvatarUrls(rows) {
   if (!rows || rows.length === 0) return [];
@@ -37,6 +37,19 @@ async function attachAvatarUrl(row) {
   if (!row.avatar_path) return { ...row, avatar_url: null };
   const map = await signImageUrls([row.avatar_path]);
   return { ...row, avatar_url: map.get(row.avatar_path) || null };
+}
+
+async function attachAdminFlags(rows) {
+  if (!rows || rows.length === 0) return [];
+  const userIds = [...new Set(rows.map(r => r.user_id).filter(Boolean))];
+  const adminSet = userIds.length ? await loadAdminUserIds(userIds) : new Set();
+  return rows.map(r => ({ ...r, author_is_admin: adminSet.has(r.user_id) }));
+}
+
+async function attachAdminFlag(row) {
+  if (!row || !row.user_id) return row;
+  const adminSet = await loadAdminUserIds([row.user_id]);
+  return { ...row, author_is_admin: adminSet.has(row.user_id) };
 }
 
 const EDIT_WINDOW_MS = 15 * 60 * 1000;
@@ -254,7 +267,8 @@ export default async function handler(req, res) {
       if (!room || !room.is_active) return json(res, 404, { error: 'Room niet gevonden.' });
       const topics = await loadTopicsForRoom(room.id);
       const signed = await attachAvatarUrls(topics);
-      return json(res, 200, { room, topics: signed });
+      const withFlags = await attachAdminFlags(signed);
+      return json(res, 200, { room, topics: withFlags });
     }
 
     /* ----- topic create ----- */
@@ -287,13 +301,13 @@ export default async function handler(req, res) {
         .select('id, room_id, user_id, title, body, is_pinned, edited_at, created_at')
         .single();
       if (error) throw error;
-      const topicOut = await attachAvatarUrl({
+      const topicOut = await attachAdminFlag(await attachAvatarUrl({
         ...data,
         nickname: profile.nickname,
         avatar_path: profile.avatar_path || null,
         replies_count: 0,
         last_reply_at: null,
-      });
+      }));
       return json(res, 201, { topic: topicOut });
     }
 
@@ -302,8 +316,9 @@ export default async function handler(req, res) {
       if (!isUuid(params.id)) return json(res, 400, { error: 'Ongeldige topic-id.' });
       const topic = await loadTopicById(params.id);
       if (!topic) return json(res, 404, { error: 'Topic niet gevonden.' });
-      const topicSigned = await attachAvatarUrl(topic);
-      const replies = await loadRepliesForTopic(topic.id);
+      const topicSigned = await attachAdminFlag(await attachAvatarUrl(topic));
+      const repliesRaw = await loadRepliesForTopic(topic.id);
+      const replies = await attachAdminFlags(repliesRaw);
       return json(res, 200, { topic: topicSigned, replies });
     }
 
@@ -348,7 +363,7 @@ export default async function handler(req, res) {
         .single();
       if (error) throw error;
       const enriched = await loadTopicById(data.id);
-      const signed = enriched ? await attachAvatarUrl(enriched) : data;
+      const signed = enriched ? await attachAdminFlag(await attachAvatarUrl(enriched)) : await attachAdminFlag(data);
       return json(res, 200, { topic: signed });
     }
 
@@ -424,11 +439,11 @@ export default async function handler(req, res) {
         .select('id, topic_id, user_id, body, edited_at, created_at')
         .single();
       if (error) throw error;
-      const replyOut = await attachAvatarUrl({
+      const replyOut = await attachAdminFlag(await attachAvatarUrl({
         ...data,
         nickname: profile.nickname,
         avatar_path: profile.avatar_path || null,
-      });
+      }));
       return json(res, 201, { reply: replyOut });
     }
 
@@ -463,11 +478,11 @@ export default async function handler(req, res) {
         .single();
       if (error) throw error;
       const profile = await loadCommunityProfile(auth.userId);
-      const replyOut = await attachAvatarUrl({
+      const replyOut = await attachAdminFlag(await attachAvatarUrl({
         ...data,
         nickname: profile?.nickname || null,
         avatar_path: profile?.avatar_path || null,
-      });
+      }));
       return json(res, 200, { reply: replyOut });
     }
 

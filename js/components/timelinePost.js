@@ -5,11 +5,9 @@
 
 import {
   escapeHtml,
-  formatRelativeTime,
-  colorFromSeed,
-  initialsFromName,
   nl2br,
-} from '../utils.js?v=2.4.3';
+} from '../utils.js?v=2.4.4';
+import { renderAvatar, renderAuthorMeta } from '../profileRender.js?v=2.4.4';
 
 /* Categorie-labels (zelfde lijst als in api/_lib/community.mjs ALLOWED_CATEGORIES). */
 export const CATEGORIES = [
@@ -25,20 +23,7 @@ export function categoryMeta(id) {
   return CATEGORIES.find(c => c.id === id) || CATEGORIES[0];
 }
 
-/** Render een avatar — foto als url aanwezig, anders gekleurde initialen-bol. */
-function renderAvatar(url, color, initials, className) {
-  if (url) {
-    return `<span class="${className} has-photo"><img src="${escapeHtml(url)}" alt=""></span>`;
-  }
-  return `<span class="${className}" style="background:${color};">${escapeHtml(initials)}</span>`;
-}
-
 export function renderPostCard(post, currentUserId = null, isAdminUser = false) {
-  const nickname = post.nickname || '(naamloos)';
-  const initials = initialsFromName(nickname);
-  const color    = colorFromSeed(post.user_id);
-  const time     = formatRelativeTime(post.created_at);
-  const edited   = post.edited_at ? ' · bewerkt' : '';
   const pinned   = post.is_pinned ? ' is-pinned' : '';
   const body     = nl2br(escapeHtml(post.body));
   const cat      = categoryMeta(post.category);
@@ -53,12 +38,9 @@ export function renderPostCard(post, currentUserId = null, isAdminUser = false) 
     <article class="tl-post${pinned}" data-post-id="${escapeHtml(post.id)}" data-category="${escapeHtml(cat.id)}" data-likes="${likes}" data-replies="${replies}" data-liked="${liked ? '1' : '0'}">
       ${post.is_pinned ? '<div class="tl-pinned-tag">📌 Mededeling</div>' : ''}
       <header class="tl-post-head">
-        ${renderAvatar(post.avatar_url, color, initials, 'tl-avatar')}
+        ${renderAvatar(post, 'tl-avatar')}
         <div class="tl-post-meta">
-          <span class="tl-nickname">${escapeHtml(nickname)}</span>
-          ${post.author_is_admin ? '<span class="tl-admin-badge" title="Administrator">Admin</span>' : ''}
-          <span class="tl-meta-sep">·</span>
-          <span class="tl-time">${escapeHtml(time)}${edited}</span>
+          ${renderAuthorMeta(post)}
         </div>
         ${cat.id !== 'algemeen' ? `<span class="tl-cat tl-cat--${escapeHtml(cat.id)}" title="Categorie">${cat.emoji} ${escapeHtml(cat.label)}</span>` : ''}
         ${renderMenu({ isOwn, canEdit, type: 'post', isAdminUser, isPinned: post.is_pinned })}
@@ -186,11 +168,6 @@ function formatRelativeFuture(isoString) {
 
 /** Render één reply-rij. Gebruikt door timeline.js bij expand of nieuwe reply. */
 export function renderReplyRow(reply, currentUserId = null, isAdminUser = false) {
-  const nickname = reply.nickname || '(naamloos)';
-  const initials = initialsFromName(nickname);
-  const color    = colorFromSeed(reply.user_id);
-  const time     = formatRelativeTime(reply.created_at);
-  const edited   = reply.edited_at ? ' · bewerkt' : '';
   const body     = nl2br(escapeHtml(reply.body));
   const isOwn    = currentUserId && reply.user_id === currentUserId;
   const canEdit  = isOwn && (Date.now() - new Date(reply.created_at).getTime() < 15 * 60 * 1000);
@@ -199,13 +176,10 @@ export function renderReplyRow(reply, currentUserId = null, isAdminUser = false)
 
   return `
     <div class="tl-reply" data-reply-id="${escapeHtml(reply.id)}" data-liked="${liked ? '1' : '0'}">
-      ${renderAvatar(reply.avatar_url, color, initials, 'tl-avatar tl-avatar-sm')}
+      ${renderAvatar(reply, 'tl-avatar tl-avatar-sm')}
       <div class="tl-reply-bubble">
         <div class="tl-reply-meta">
-          <span class="tl-nickname">${escapeHtml(nickname)}</span>
-          ${reply.author_is_admin ? '<span class="tl-admin-badge tl-admin-badge-sm" title="Administrator">Admin</span>' : ''}
-          <span class="tl-meta-sep">·</span>
-          <span class="tl-time">${escapeHtml(time)}${edited}</span>
+          ${renderAuthorMeta(reply, { smallBadge: true })}
           ${renderMenu({ isOwn, canEdit, type: 'reply', isAdminUser })}
         </div>
         <div class="tl-reply-body" data-role="reply-body">${body}</div>

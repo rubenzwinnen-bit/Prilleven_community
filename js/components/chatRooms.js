@@ -5,9 +5,10 @@
    Gebruikt /api/chat-rooms.
 ============================================ */
 
-import * as Store from '../store.js?v=2.4.3';
-import * as Api from '../chatRoomsApi.js?v=2.4.3';
-import { colorFromSeed, initialsFromName, formatRelativeTime } from '../utils.js?v=2.4.3';
+import * as Store from '../store.js?v=2.4.4';
+import * as Api from '../chatRoomsApi.js?v=2.4.4';
+import { formatRelativeTime } from '../utils.js?v=2.4.4';
+import { renderAvatar, renderAuthorMeta } from '../profileRender.js?v=2.4.4';
 
 const EDIT_WINDOW_MS = 15 * 60 * 1000;
 
@@ -43,21 +44,8 @@ function withinEditWindow(createdAt) {
   return (Date.now() - new Date(createdAt).getTime()) < EDIT_WINDOW_MS;
 }
 
-function renderAvatar(url, color, initials, className) {
-  if (url) {
-    return `<span class="${className} has-photo"><img src="${escapeHtml(url)}" alt=""></span>`;
-  }
-  return `<span class="${className}" style="background:${color};">${escapeHtml(initials)}</span>`;
-}
-
 function avatarFor(row, sizeClass) {
-  const name = row?.nickname || 'Onbekend';
-  return renderAvatar(
-    row?.avatar_url || null,
-    colorFromSeed(row?.user_id || name),
-    initialsFromName(name),
-    `tl-avatar ${sizeClass}`,
-  );
+  return renderAvatar(row, `tl-avatar ${sizeClass}`);
 }
 
 /* ---------------- Render: Rooms-nav (rechter kolom) ---------------- */
@@ -95,6 +83,7 @@ function renderRoomView() {
               <h3 class="topic-title">${escapeHtml(t.title)}</h3>
               <p class="topic-meta">
                 <span class="topic-author">${escapeHtml(t.nickname || 'Onbekend')}</span>
+                ${t.author_is_admin ? '<span class="tl-admin-badge tl-admin-badge-sm" title="Administrator">Admin</span>' : ''}
                 <span class="topic-sep">·</span>
                 <span class="topic-date">${formatRelativeTime(t.created_at)}</span>
                 <span class="topic-sep">·</span>
@@ -185,6 +174,7 @@ function renderReplyCard(r, me, admin) {
         <div class="reply-bubble">
           <header class="reply-head">
             <span class="reply-author">${escapeHtml(r.nickname || 'Onbekend')}</span>
+            ${r.author_is_admin ? '<span class="tl-admin-badge tl-admin-badge-sm" title="Administrator">Admin</span>' : ''}
             <span class="reply-date">${formatRelativeTime(r.created_at)}${r.edited_at ? ' · bewerkt' : ''}</span>
           </header>
           <p class="reply-body">${escapeHtml(r.body)}</p>
@@ -229,6 +219,7 @@ function renderTopicView() {
           ${avatarFor(t, 'tl-avatar')}
           <p class="topic-meta">
             <span class="topic-author">${escapeHtml(t.nickname || 'Onbekend')}</span>
+            ${t.author_is_admin ? '<span class="tl-admin-badge" title="Administrator">Admin</span>' : ''}
             <span class="topic-sep">·</span>
             <span class="topic-date">${formatRelativeTime(t.created_at)}${t.edited_at ? ' · bewerkt' : ''}</span>
           </p>

@@ -13,11 +13,11 @@
      recepten parallel op en bouwt de UI op
 ============================================ */
 
-import * as Store from '../store.js?v=2.4.3';
-import * as Router from '../router.js?v=2.4.3';
+import * as Store from '../store.js?v=2.4.4';
+import * as Router from '../router.js?v=2.4.4';
 import {
   showToast, escapeHtml, WEEKDAYS, SCHEDULE_SLOTS, getSlotLabel
-} from '../utils.js?v=2.4.3';
+} from '../utils.js?v=2.4.4';
 
 /* ----------------------------------------
    STATE / CACHE
