@@ -4228,7 +4228,7 @@ body.is-learnings #app-nav { display: none; }
 }
 .rooms-back-timeline:hover {
   background: #f3f9f3;
-  border-color: var(--color-primary, #82be93);
+  border-color: var(--color-secondary-dark, #82be93);
 }
 
 .rooms-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .5rem; }
@@ -4253,15 +4253,15 @@ body.is-learnings #app-nav { display: none; }
 }
 .rooms-list-btn:hover {
   background: #f3f9f3;
-  border-color: var(--color-primary, #82be93);
+  border-color: var(--color-secondary-dark, #82be93);
 }
 .rooms-list-item.is-active .rooms-list-btn {
-  background: var(--color-primary, #82be93);
-  border-color: var(--color-secondary-dark, #5a7a64);
+  background: var(--color-secondary-dark, #82BE93);
+  border-color: var(--color-secondary-dark, #82BE93);
   box-shadow: 0 2px 8px rgba(130,190,147,0.35);
 }
 .rooms-list-item.is-active .rooms-list-btn:hover {
-  background: var(--color-primary, #82be93);
+  background: var(--color-secondary-dark, #82BE93);
 }
 .rooms-list-item.is-active .rooms-list-title,
 .rooms-list-item.is-active .rooms-list-desc {
@@ -4547,7 +4547,7 @@ body.is-learnings #app-nav { display: none; }
 }
 .reply-card.is-editing {
   background: #f8fbf8;
-  border-color: var(--color-primary, #82be93);
+  border-color: var(--color-secondary-dark, #82be93);
 }
 .reply-edit-form {
   flex: 1;
