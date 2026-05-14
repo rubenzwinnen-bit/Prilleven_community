@@ -5,12 +5,12 @@
    Gebruikt /api/chat-rooms.
 ============================================ */
 
-import * as Store from '../store.js?v=2.4.5';
-import * as Api from '../chatRoomsApi.js?v=2.4.5';
-import { formatRelativeTime } from '../utils.js?v=2.4.5';
-import { renderAvatar, renderAuthorMeta } from '../profileRender.js?v=2.4.5';
+import * as Store from '../store.js?v=2.4.6';
+import * as Api from '../chatRoomsApi.js?v=2.4.6';
+import { formatRelativeTime } from '../utils.js?v=2.4.6';
+import { renderAvatar, renderAuthorMeta } from '../profileRender.js?v=2.4.6';
 
-const EDIT_WINDOW_MS = 15 * 60 * 1000;
+// Edit-window verwijderd: eigen items zijn altijd bewerkbaar.
 
 /* ---------------- State ---------------- */
 const state = {
@@ -39,9 +39,9 @@ function isAdmin() {
   try { return !!Store.isAdmin(); } catch { return false; }
 }
 
-function withinEditWindow(createdAt) {
-  if (!createdAt) return false;
-  return (Date.now() - new Date(createdAt).getTime()) < EDIT_WINDOW_MS;
+function withinEditWindow(_createdAt) {
+  // Geen tijdslimiet meer — eigen items zijn altijd bewerkbaar.
+  return true;
 }
 
 function avatarFor(row, sizeClass) {

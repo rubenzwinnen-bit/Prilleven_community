@@ -4184,15 +4184,15 @@ body.is-learnings #app-nav { display: none; }
 ============================================ */
 .home-hub--tri {
   display: grid;
-  grid-template-columns: 230px minmax(0, 1fr) 250px;
-  gap: 1.25rem;
+  grid-template-columns: 220px minmax(0, 1fr) 240px;
+  gap: 1rem;
   align-items: start;
-  max-width: 1920px;
+  max-width: 2200px;
   width: 100%;
   margin-left: auto;
   margin-right: auto;
-  padding-left: .5rem;
-  padding-right: .5rem;
+  padding-left: .35rem;
+  padding-right: .35rem;
   box-sizing: border-box;
 }
 

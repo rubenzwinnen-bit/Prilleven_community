@@ -6,8 +6,8 @@
 import {
   escapeHtml,
   nl2br,
-} from '../utils.js?v=2.4.5';
-import { renderAvatar, renderAuthorMeta } from '../profileRender.js?v=2.4.5';
+} from '../utils.js?v=2.4.6';
+import { renderAvatar, renderAuthorMeta } from '../profileRender.js?v=2.4.6';
 
 /* Categorie-labels (zelfde lijst als in api/_lib/community.mjs ALLOWED_CATEGORIES). */
 export const CATEGORIES = [
@@ -32,7 +32,7 @@ export function renderPostCard(post, currentUserId = null, isAdminUser = false) 
   const replies  = Number(post.replies_count || 0);
   const liked    = !!post.liked_by_me;
   const isOwn    = currentUserId && post.user_id === currentUserId;
-  const canEdit  = isOwn && (Date.now() - new Date(post.created_at).getTime() < 15 * 60 * 1000);
+  const canEdit  = isOwn;
 
   return `
     <article class="tl-post${pinned}" data-post-id="${escapeHtml(post.id)}" data-category="${escapeHtml(cat.id)}" data-likes="${likes}" data-replies="${replies}" data-liked="${liked ? '1' : '0'}">
@@ -170,7 +170,7 @@ function formatRelativeFuture(isoString) {
 export function renderReplyRow(reply, currentUserId = null, isAdminUser = false) {
   const body     = nl2br(escapeHtml(reply.body));
   const isOwn    = currentUserId && reply.user_id === currentUserId;
-  const canEdit  = isOwn && (Date.now() - new Date(reply.created_at).getTime() < 15 * 60 * 1000);
+  const canEdit  = isOwn;
   const likes    = Number(reply.likes_count || 0);
   const liked    = !!reply.liked_by_me;
 

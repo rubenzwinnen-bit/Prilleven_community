@@ -52,8 +52,6 @@ async function attachAdminFlag(row) {
   return { ...row, author_is_admin: adminSet.has(row.user_id) };
 }
 
-const EDIT_WINDOW_MS = 15 * 60 * 1000;
-
 function json(res, status, body) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
@@ -336,8 +334,6 @@ export default async function handler(req, res) {
       if (getErr) throw getErr;
       if (!existing) return json(res, 404, { error: 'Topic niet gevonden.' });
       if (existing.user_id !== auth.userId) return json(res, 403, { error: 'Niet jouw topic.' });
-      const ageMs = Date.now() - new Date(existing.created_at).getTime();
-      if (ageMs > EDIT_WINDOW_MS) return json(res, 403, { error: 'Edit-venster verstreken (15 min).' });
 
       const updates = {};
       if (typeof body.title === 'string') {
@@ -461,8 +457,6 @@ export default async function handler(req, res) {
       if (getErr) throw getErr;
       if (!existing) return json(res, 404, { error: 'Reactie niet gevonden.' });
       if (existing.user_id !== auth.userId) return json(res, 403, { error: 'Niet jouw reactie.' });
-      const ageMs = Date.now() - new Date(existing.created_at).getTime();
-      if (ageMs > EDIT_WINDOW_MS) return json(res, 403, { error: 'Edit-venster verstreken (15 min).' });
 
       const text = String(body.body || '').trim();
       if (text.length < 1 || text.length > 2000) {
