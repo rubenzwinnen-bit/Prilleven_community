@@ -8,10 +8,10 @@
    - init() haalt de data op en vult de DOM
 ============================================ */
 
-import * as Store from '../store.js?v=2.3.9';
-import * as Router from '../router.js?v=2.3.9';
-import * as RecipeCard from './recipeCard.js?v=2.3.9';
-import { showToast, confirm, MEAL_MOMENTS, ALLERGENS } from '../utils.js?v=2.3.9';
+import * as Store from '../store.js?v=2.4.0';
+import * as Router from '../router.js?v=2.4.0';
+import * as RecipeCard from './recipeCard.js?v=2.4.0';
+import { showToast, confirm, MEAL_MOMENTS, ALLERGENS } from '../utils.js?v=2.4.0';
 
 /* Cache van pre-fetched data zodat het filteren snel blijft */
 let cachedRecipes = [];
@@ -119,18 +119,6 @@ export async function init() {
   /* ---- Admin check ---- */
   const admin = Store.isAdmin();
 
-  /* ---- Admin toolbar: "Alle recepten verwijderen" knop ---- */
-  if (admin && cachedRecipes.length > 0) {
-    const toolbarAdmin = document.getElementById('toolbar-admin');
-    if (toolbarAdmin) {
-      toolbarAdmin.innerHTML = `
-        <button class="btn btn-danger btn-sm" id="btn-delete-all-recipes">
-          &#128465; Alle recepten verwijderen
-        </button>
-      `;
-    }
-  }
-
   /* ---- Recepten renderen ---- */
   renderGrid(cachedRecipes, admin);
 
@@ -185,23 +173,6 @@ export async function init() {
         await Store.deleteRecipe(id);
         showToast(`"${name}" verwijderd`, 'info');
         cachedRecipes = cachedRecipes.filter(r => r.id !== id);
-        renderGrid(cachedRecipes, admin);
-      } catch (err) {
-        showToast('Fout bij verwijderen: ' + err.message, 'error');
-      }
-      return;
-    }
-
-    /* Admin: Alle recepten verwijderen */
-    const deleteAllBtn = e.target.closest('#btn-delete-all-recipes');
-    if (deleteAllBtn) {
-      e.stopPropagation();
-      const ok = await confirm('Weet je zeker dat je ALLE recepten wilt verwijderen? Dit kan niet ongedaan gemaakt worden.');
-      if (!ok) return;
-      try {
-        await Store.deleteAllRecipes();
-        showToast('Alle recepten verwijderd', 'info');
-        cachedRecipes = [];
         renderGrid(cachedRecipes, admin);
       } catch (err) {
         showToast('Fout bij verwijderen: ' + err.message, 'error');
