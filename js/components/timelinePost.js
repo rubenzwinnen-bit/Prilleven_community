@@ -9,7 +9,7 @@ import {
   colorFromSeed,
   initialsFromName,
   nl2br,
-} from '../utils.js?v=2.4.2';
+} from '../utils.js?v=2.4.3';
 
 /* Categorie-labels (zelfde lijst als in api/_lib/community.mjs ALLOWED_CATEGORIES). */
 export const CATEGORIES = [
@@ -60,7 +60,7 @@ export function renderPostCard(post, currentUserId = null, isAdminUser = false) 
           <span class="tl-meta-sep">·</span>
           <span class="tl-time">${escapeHtml(time)}${edited}</span>
         </div>
-        <span class="tl-cat tl-cat--${escapeHtml(cat.id)}" title="Categorie">${cat.emoji} ${escapeHtml(cat.label)}</span>
+        ${cat.id !== 'algemeen' ? `<span class="tl-cat tl-cat--${escapeHtml(cat.id)}" title="Categorie">${cat.emoji} ${escapeHtml(cat.label)}</span>` : ''}
         ${renderMenu({ isOwn, canEdit, type: 'post', isAdminUser, isPinned: post.is_pinned })}
       </header>
       <div class="tl-post-body" data-role="post-body">${body}</div>

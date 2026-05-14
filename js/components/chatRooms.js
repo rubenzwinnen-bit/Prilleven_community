@@ -5,8 +5,11 @@
    Gebruikt /api/chat-rooms.
 ============================================ */
 
-import * as Store from '../store.js?v=2.4.2';
-import * as Api from '../chatRoomsApi.js?v=2.4.2';
+import * as Store from '../store.js?v=2.4.3';
+import * as Api from '../chatRoomsApi.js?v=2.4.3';
+import { colorFromSeed, initialsFromName, formatRelativeTime } from '../utils.js?v=2.4.3';
+
+const EDIT_WINDOW_MS = 15 * 60 * 1000;
 
 /* ---------------- State ---------------- */
 const state = {
@@ -17,6 +20,8 @@ const state = {
   currentRoom: null,
   currentTopic: null,
   replies: [],
+  editingTopicId: null,  // inline edit-modus topic
+  editingReplyId: null,  // inline edit-modus reply
 };
 
 /* ---------------- Utils ---------------- */
@@ -29,19 +34,30 @@ function escapeHtml(s) {
     .replace(/'/g, '&#39;');
 }
 
-function fmtDate(iso) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  const now = new Date();
-  const sameDay = d.toDateString() === now.toDateString();
-  const opts = sameDay
-    ? { hour: '2-digit', minute: '2-digit' }
-    : { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' };
-  return d.toLocaleString('nl-BE', opts);
-}
-
 function isAdmin() {
   try { return !!Store.isAdmin(); } catch { return false; }
+}
+
+function withinEditWindow(createdAt) {
+  if (!createdAt) return false;
+  return (Date.now() - new Date(createdAt).getTime()) < EDIT_WINDOW_MS;
+}
+
+function renderAvatar(url, color, initials, className) {
+  if (url) {
+    return `<span class="${className} has-photo"><img src="${escapeHtml(url)}" alt=""></span>`;
+  }
+  return `<span class="${className}" style="background:${color};">${escapeHtml(initials)}</span>`;
+}
+
+function avatarFor(row, sizeClass) {
+  const name = row?.nickname || 'Onbekend';
+  return renderAvatar(
+    row?.avatar_url || null,
+    colorFromSeed(row?.user_id || name),
+    initialsFromName(name),
+    `tl-avatar ${sizeClass}`,
+  );
 }
 
 /* ---------------- Render: Rooms-nav (rechter kolom) ---------------- */
@@ -73,14 +89,19 @@ function renderRoomView() {
     : state.topics.map(t => `
         <article class="topic-card${t.is_pinned ? ' is-pinned' : ''}" data-topic-id="${t.id}">
           ${t.is_pinned ? `<span class="topic-pin" title="Vastgepind">📌</span>` : ''}
-          <h3 class="topic-title">${escapeHtml(t.title)}</h3>
-          <p class="topic-meta">
-            <span class="topic-author">${escapeHtml(t.nickname || 'Onbekend')}</span>
-            <span class="topic-sep">·</span>
-            <span class="topic-date">${fmtDate(t.created_at)}</span>
-            <span class="topic-sep">·</span>
-            <span class="topic-replies">${t.replies_count || 0} reacties</span>
-          </p>
+          <div class="topic-card-head">
+            ${avatarFor(t, 'tl-avatar-sm')}
+            <div class="topic-card-head-text">
+              <h3 class="topic-title">${escapeHtml(t.title)}</h3>
+              <p class="topic-meta">
+                <span class="topic-author">${escapeHtml(t.nickname || 'Onbekend')}</span>
+                <span class="topic-sep">·</span>
+                <span class="topic-date">${formatRelativeTime(t.created_at)}</span>
+                <span class="topic-sep">·</span>
+                <span class="topic-replies">${t.replies_count || 0} reacties</span>
+              </p>
+            </div>
+          </div>
           <p class="topic-snippet">${escapeHtml((t.body || '').slice(0, 200))}${(t.body || '').length > 200 ? '…' : ''}</p>
         </article>
       `).join('');
@@ -109,29 +130,86 @@ function renderRoomView() {
 }
 
 /* ---------------- Render: Topic-view (in midden-pane) ---------------- */
+function renderTopicBody(t, isOwn, canEdit) {
+  if (state.editingTopicId === t.id) {
+    return `
+      <form class="topic-edit-form" id="topic-edit-form">
+        <input class="chatroom-input" id="topic-edit-title" type="text"
+               maxlength="120" required value="${escapeHtml(t.title)}" />
+        <textarea class="chatroom-textarea" id="topic-edit-body"
+                  rows="4" maxlength="4000" required>${escapeHtml(t.body)}</textarea>
+        <div class="topic-edit-actions">
+          <button class="btn btn-secondary" type="button" data-action="cancel-topic-edit">Annuleer</button>
+          <button class="btn btn-primary" type="submit">Opslaan</button>
+        </div>
+      </form>
+    `;
+  }
+  return `
+    <p class="topic-body-text">${escapeHtml(t.body)}</p>
+    ${isOwn && canEdit ? `
+      <div class="topic-body-actions">
+        <button class="topic-edit-btn" data-action="edit-topic" type="button">Bewerken</button>
+      </div>
+    ` : ''}
+  `;
+}
+
+function renderReplyCard(r, me, admin) {
+  const isOwn = r.user_id === me;
+  const canDelete = admin || isOwn;
+  const canEdit = isOwn && withinEditWindow(r.created_at);
+
+  if (state.editingReplyId === r.id) {
+    return `
+      <article class="reply-card is-editing" data-reply-id="${r.id}">
+        <div class="reply-row">
+          ${avatarFor(r, 'tl-avatar-sm')}
+          <form class="reply-edit-form" data-reply-edit-id="${r.id}">
+            <textarea class="chatroom-textarea reply-edit-textarea"
+                      rows="2" maxlength="2000" required>${escapeHtml(r.body)}</textarea>
+            <div class="reply-edit-actions">
+              <button class="btn btn-secondary" type="button" data-action="cancel-reply-edit">Annuleer</button>
+              <button class="btn btn-primary" type="submit">Opslaan</button>
+            </div>
+          </form>
+        </div>
+      </article>
+    `;
+  }
+
+  return `
+    <article class="reply-card" data-reply-id="${r.id}">
+      <div class="reply-row">
+        ${avatarFor(r, 'tl-avatar-sm')}
+        <div class="reply-bubble">
+          <header class="reply-head">
+            <span class="reply-author">${escapeHtml(r.nickname || 'Onbekend')}</span>
+            <span class="reply-date">${formatRelativeTime(r.created_at)}${r.edited_at ? ' · bewerkt' : ''}</span>
+          </header>
+          <p class="reply-body">${escapeHtml(r.body)}</p>
+          <div class="reply-actions">
+            ${canEdit ? `<button class="reply-edit" data-action="edit-reply" data-reply-id="${r.id}" type="button">Bewerken</button>` : ''}
+            ${canDelete ? `<button class="reply-del" data-action="delete-reply" data-reply-id="${r.id}" type="button" title="Verwijderen">Verwijder</button>` : ''}
+          </div>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
 function renderTopicView() {
   const t = state.currentTopic;
   if (!t) return `<div class="chatroom-empty">Topic niet gevonden.</div>`;
   const admin = isAdmin();
   const me = Store.getCurrentUser()?.id;
+  const isOwnTopic = t.user_id === me;
+  const canEditTopic = isOwnTopic && withinEditWindow(t.created_at);
+  const canDeleteTopic = admin || isOwnTopic;
 
   const repliesHtml = state.replies.length === 0
     ? `<div class="chatroom-empty">Nog geen reacties — wees de eerste!</div>`
-    : state.replies.map(r => {
-        const canDelete = admin || r.user_id === me;
-        return `
-          <article class="reply-card" data-reply-id="${r.id}">
-            <header class="reply-head">
-              <span class="reply-author">${escapeHtml(r.nickname || 'Onbekend')}</span>
-              <span class="reply-date">${fmtDate(r.created_at)}${r.edited_at ? ' · bewerkt' : ''}</span>
-              ${canDelete ? `<button class="reply-del" data-action="delete-reply" data-reply-id="${r.id}" title="Verwijderen">×</button>` : ''}
-            </header>
-            <p class="reply-body">${escapeHtml(r.body)}</p>
-          </article>
-        `;
-      }).join('');
-
-  const canDeleteTopic = admin || t.user_id === me;
+    : state.replies.map(r => renderReplyCard(r, me, admin)).join('');
 
   return `
     <div class="topic-view" data-topic-id="${t.id}">
@@ -147,12 +225,15 @@ function renderTopicView() {
         </div>
       </header>
       <article class="topic-body-card">
-        <p class="topic-meta">
-          <span class="topic-author">${escapeHtml(t.nickname || 'Onbekend')}</span>
-          <span class="topic-sep">·</span>
-          <span class="topic-date">${fmtDate(t.created_at)}${t.edited_at ? ' · bewerkt' : ''}</span>
-        </p>
-        <p class="topic-body-text">${escapeHtml(t.body)}</p>
+        <div class="topic-body-head">
+          ${avatarFor(t, 'tl-avatar')}
+          <p class="topic-meta">
+            <span class="topic-author">${escapeHtml(t.nickname || 'Onbekend')}</span>
+            <span class="topic-sep">·</span>
+            <span class="topic-date">${formatRelativeTime(t.created_at)}${t.edited_at ? ' · bewerkt' : ''}</span>
+          </p>
+        </div>
+        ${renderTopicBody(t, isOwnTopic, canEditTopic)}
       </article>
       <div class="reply-list" id="reply-list">${repliesHtml}</div>
       <form class="reply-form" id="reply-form">
@@ -167,9 +248,6 @@ function renderTopicView() {
 /* ---------------- DOM swap ---------------- */
 function getMiddlePane() {
   return document.querySelector('.home-pane--timeline');
-}
-function getTimelineInner() {
-  return document.getElementById('home-timeline-inner');
 }
 function getChatroomMount() {
   return document.getElementById('home-chatroom-mount');
@@ -192,8 +270,16 @@ function showTimeline() {
   state.activeTopicId = null;
   state.currentRoom = null;
   state.currentTopic = null;
+  state.editingTopicId = null;
+  state.editingReplyId = null;
   // Reset actieve room highlight in nav
   document.querySelectorAll('.rooms-list-item').forEach(el => el.classList.remove('is-active'));
+}
+
+function highlightActiveRoom(slug) {
+  document.querySelectorAll('.rooms-list-item').forEach(el => {
+    el.classList.toggle('is-active', el.dataset.slug === slug);
+  });
 }
 
 /* ---------------- Actions ---------------- */
@@ -212,11 +298,10 @@ async function openRoom(slug) {
   state.currentTopic = null;
   state.topics = data.topics || [];
   state.replies = [];
+  state.editingTopicId = null;
+  state.editingReplyId = null;
   showChatroom(renderRoomView());
-  // Highlight in nav
-  document.querySelectorAll('.rooms-list-item').forEach(el => {
-    el.classList.toggle('is-active', el.dataset.slug === slug);
-  });
+  highlightActiveRoom(slug);
   bindRoomViewHandlers();
 }
 
@@ -231,12 +316,14 @@ async function openTopic(id) {
   state.activeTopicId = id;
   state.currentTopic = data.topic;
   state.replies = data.replies || [];
-  // Zorg dat de room ook actief is in nav
+  state.editingTopicId = null;
+  state.editingReplyId = null;
   if (state.currentTopic?.room_id && !state.currentRoom) {
-    // Indien direct geopend: room ophalen via /rooms-lijst
     const found = state.rooms.find(r => r.id === state.currentTopic.room_id);
     if (found) state.currentRoom = found;
   }
+  // Houd actieve highlight ook in topic-view
+  if (state.currentRoom?.slug) highlightActiveRoom(state.currentRoom.slug);
   showChatroom(renderTopicView());
   bindTopicViewHandlers();
 }
@@ -248,6 +335,11 @@ async function refreshTopics() {
   state.topics = data.topics || [];
   showChatroom(renderRoomView());
   bindRoomViewHandlers();
+}
+
+function rerenderTopic() {
+  showChatroom(renderTopicView());
+  bindTopicViewHandlers();
 }
 
 /* ---------------- Handlers ---------------- */
@@ -296,8 +388,7 @@ function bindTopicViewHandlers() {
     const { ok, data, error } = await Api.pinTopic(t.id, !t.is_pinned);
     if (!ok) { alert(error || 'Pinnen mislukt.'); return; }
     state.currentTopic = { ...t, is_pinned: data.is_pinned };
-    showChatroom(renderTopicView());
-    bindTopicViewHandlers();
+    rerenderTopic();
   });
 
   const delBtn = document.getElementById('topic-del-btn');
@@ -309,6 +400,32 @@ function bindTopicViewHandlers() {
     else showTimeline();
   });
 
+  /* --- Topic edit --- */
+  document.querySelector('[data-action="edit-topic"]')?.addEventListener('click', () => {
+    state.editingTopicId = state.currentTopic.id;
+    rerenderTopic();
+  });
+  document.querySelector('[data-action="cancel-topic-edit"]')?.addEventListener('click', () => {
+    state.editingTopicId = null;
+    rerenderTopic();
+  });
+  const topicEditForm = document.getElementById('topic-edit-form');
+  topicEditForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const title = document.getElementById('topic-edit-title')?.value.trim();
+    const body  = document.getElementById('topic-edit-body')?.value.trim();
+    if (!title || !body) return;
+    const submitBtn = topicEditForm.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
+    const { ok, data, error } = await Api.editTopic(state.currentTopic.id, { title, body });
+    if (submitBtn) submitBtn.disabled = false;
+    if (!ok) { alert(error || 'Bewerken mislukt.'); return; }
+    state.currentTopic = data.topic;
+    state.editingTopicId = null;
+    rerenderTopic();
+  });
+
+  /* --- Reply form (nieuwe reactie) --- */
   const form = document.getElementById('reply-form');
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -323,6 +440,41 @@ function bindTopicViewHandlers() {
     await openTopic(state.currentTopic.id);
   });
 
+  /* --- Reply edit --- */
+  document.querySelectorAll('[data-action="edit-reply"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.replyId;
+      if (!id) return;
+      state.editingReplyId = id;
+      rerenderTopic();
+    });
+  });
+  document.querySelectorAll('[data-action="cancel-reply-edit"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.editingReplyId = null;
+      rerenderTopic();
+    });
+  });
+  document.querySelectorAll('.reply-edit-form').forEach(formEl => {
+    formEl.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = formEl.dataset.replyEditId;
+      const textarea = formEl.querySelector('.reply-edit-textarea');
+      const text = textarea?.value.trim();
+      if (!text || !id) return;
+      const submitBtn = formEl.querySelector('button[type="submit"]');
+      if (submitBtn) submitBtn.disabled = true;
+      const { ok, data, error } = await Api.editReply(id, text);
+      if (submitBtn) submitBtn.disabled = false;
+      if (!ok) { alert(error || 'Bewerken mislukt.'); return; }
+      // Vervang reply lokaal
+      state.replies = state.replies.map(r => r.id === id ? data.reply : r);
+      state.editingReplyId = null;
+      rerenderTopic();
+    });
+  });
+
+  /* --- Reply delete --- */
   document.querySelectorAll('[data-action="delete-reply"]').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();

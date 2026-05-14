@@ -20,6 +20,24 @@ import { requireAuth, requireAdmin, AuthError } from './_lib/auth.mjs';
 import { supabase } from './_lib/clients.mjs';
 import { findBlockedWord } from './_lib/moderation.mjs';
 import { getAccessStatus } from './_lib/subscription.mjs';
+import { signImageUrls } from './_lib/community.mjs';
+
+async function attachAvatarUrls(rows) {
+  if (!rows || rows.length === 0) return [];
+  const paths = rows.map(r => r.avatar_path).filter(Boolean);
+  const map = paths.length ? await signImageUrls(paths) : new Map();
+  return rows.map(r => ({
+    ...r,
+    avatar_url: r.avatar_path ? (map.get(r.avatar_path) || null) : null,
+  }));
+}
+
+async function attachAvatarUrl(row) {
+  if (!row) return row;
+  if (!row.avatar_path) return { ...row, avatar_url: null };
+  const map = await signImageUrls([row.avatar_path]);
+  return { ...row, avatar_url: map.get(row.avatar_path) || null };
+}
 
 const EDIT_WINDOW_MS = 15 * 60 * 1000;
 
@@ -112,7 +130,7 @@ async function isAdminUser(email) {
 async function loadCommunityProfile(userId) {
   const { data, error } = await supabase
     .from('community_profiles')
-    .select('user_id, nickname')
+    .select('user_id, nickname, avatar_path')
     .eq('user_id', userId)
     .maybeSingle();
   if (error) throw error;
@@ -183,10 +201,18 @@ async function loadRepliesForTopic(topicId) {
   const userIds = [...new Set(data.map(r => r.user_id))];
   const { data: profs } = await supabase
     .from('community_profiles')
-    .select('user_id, nickname')
+    .select('user_id, nickname, avatar_path')
     .in('user_id', userIds);
-  const nick = new Map((profs || []).map(p => [p.user_id, p.nickname]));
-  return data.map(r => ({ ...r, nickname: nick.get(r.user_id) || null }));
+  const profMap = new Map((profs || []).map(p => [p.user_id, p]));
+  const enriched = data.map(r => {
+    const p = profMap.get(r.user_id);
+    return {
+      ...r,
+      nickname: p?.nickname || null,
+      avatar_path: p?.avatar_path || null,
+    };
+  });
+  return attachAvatarUrls(enriched);
 }
 
 /* ---------------- Handler ---------------- */
@@ -227,7 +253,8 @@ export default async function handler(req, res) {
       const room = await loadRoomBySlug(params.slug);
       if (!room || !room.is_active) return json(res, 404, { error: 'Room niet gevonden.' });
       const topics = await loadTopicsForRoom(room.id);
-      return json(res, 200, { room, topics });
+      const signed = await attachAvatarUrls(topics);
+      return json(res, 200, { room, topics: signed });
     }
 
     /* ----- topic create ----- */
@@ -260,9 +287,14 @@ export default async function handler(req, res) {
         .select('id, room_id, user_id, title, body, is_pinned, edited_at, created_at')
         .single();
       if (error) throw error;
-      return json(res, 201, {
-        topic: { ...data, nickname: profile.nickname, replies_count: 0, last_reply_at: null },
+      const topicOut = await attachAvatarUrl({
+        ...data,
+        nickname: profile.nickname,
+        avatar_path: profile.avatar_path || null,
+        replies_count: 0,
+        last_reply_at: null,
       });
+      return json(res, 201, { topic: topicOut });
     }
 
     /* ----- topic get ----- */
@@ -270,8 +302,9 @@ export default async function handler(req, res) {
       if (!isUuid(params.id)) return json(res, 400, { error: 'Ongeldige topic-id.' });
       const topic = await loadTopicById(params.id);
       if (!topic) return json(res, 404, { error: 'Topic niet gevonden.' });
+      const topicSigned = await attachAvatarUrl(topic);
       const replies = await loadRepliesForTopic(topic.id);
-      return json(res, 200, { topic, replies });
+      return json(res, 200, { topic: topicSigned, replies });
     }
 
     /* ----- topic edit ----- */
@@ -315,7 +348,8 @@ export default async function handler(req, res) {
         .single();
       if (error) throw error;
       const enriched = await loadTopicById(data.id);
-      return json(res, 200, { topic: enriched || data });
+      const signed = enriched ? await attachAvatarUrl(enriched) : data;
+      return json(res, 200, { topic: signed });
     }
 
     /* ----- topic delete (eigen OF admin) ----- */
@@ -390,7 +424,12 @@ export default async function handler(req, res) {
         .select('id, topic_id, user_id, body, edited_at, created_at')
         .single();
       if (error) throw error;
-      return json(res, 201, { reply: { ...data, nickname: profile.nickname } });
+      const replyOut = await attachAvatarUrl({
+        ...data,
+        nickname: profile.nickname,
+        avatar_path: profile.avatar_path || null,
+      });
+      return json(res, 201, { reply: replyOut });
     }
 
     /* ----- reply edit ----- */
@@ -424,7 +463,12 @@ export default async function handler(req, res) {
         .single();
       if (error) throw error;
       const profile = await loadCommunityProfile(auth.userId);
-      return json(res, 200, { reply: { ...data, nickname: profile?.nickname || null } });
+      const replyOut = await attachAvatarUrl({
+        ...data,
+        nickname: profile?.nickname || null,
+        avatar_path: profile?.avatar_path || null,
+      });
+      return json(res, 200, { reply: replyOut });
     }
 
     /* ----- reply delete (eigen OF admin) ----- */

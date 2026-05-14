@@ -4184,10 +4184,16 @@ body.is-learnings #app-nav { display: none; }
 ============================================ */
 .home-hub--tri {
   display: grid;
-  grid-template-columns: 240px 1fr 240px;
-  gap: 1.25rem;
+  grid-template-columns: 260px minmax(0, 1fr) 280px;
+  gap: 1.5rem;
   align-items: start;
-  max-width: 1320px;
+  max-width: 1600px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  box-sizing: border-box;
 }
 
 /* Middle pane: timeline vs chatroom toggle.
@@ -4250,9 +4256,16 @@ body.is-learnings #app-nav { display: none; }
   border-color: var(--color-primary, #82be93);
 }
 .rooms-list-item.is-active .rooms-list-btn {
-  background: #eaf4ec;
-  border-color: var(--color-primary, #82be93);
-  box-shadow: 0 0 0 2px rgba(130,190,147,0.18) inset;
+  background: var(--color-primary, #82be93);
+  border-color: var(--color-secondary-dark, #5a7a64);
+  box-shadow: 0 2px 8px rgba(130,190,147,0.35);
+}
+.rooms-list-item.is-active .rooms-list-btn:hover {
+  background: var(--color-primary, #82be93);
+}
+.rooms-list-item.is-active .rooms-list-title,
+.rooms-list-item.is-active .rooms-list-desc {
+  color: var(--color-white, #fff);
 }
 .rooms-list-title { font-weight: 700; font-size: .92rem; color: var(--color-dark); }
 .rooms-list-desc  { font-size: .78rem; color: var(--color-dark-light); line-height: 1.35; }
@@ -4451,12 +4464,107 @@ body.is-learnings #app-nav { display: none; }
 }
 .reply-form .btn { align-self: flex-end; }
 
+/* ----- Avatars in topics/replies (zelfde stijl als timeline) ----- */
+.topic-card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: .55rem;
+  margin-bottom: .35rem;
+}
+.topic-card-head-text { flex: 1; min-width: 0; }
+.topic-body-head {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  margin-bottom: .55rem;
+}
+.topic-body-head .topic-meta { margin: 0; }
+
+/* Reply layout met avatar links en bubble rechts */
+.reply-row {
+  display: flex;
+  align-items: flex-start;
+  gap: .55rem;
+}
+.reply-bubble { flex: 1; min-width: 0; }
+.reply-card { padding: .55rem .65rem; }
+.reply-actions {
+  display: flex;
+  gap: .35rem;
+  margin-top: .3rem;
+  justify-content: flex-end;
+}
+.reply-edit, .reply-del {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm, 6px);
+  padding: .15rem .5rem;
+  font-size: .75rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--color-gray);
+  font-family: inherit;
+}
+.reply-edit:hover {
+  background: #f3f9f3;
+  border-color: var(--color-primary);
+  color: var(--color-primary-dark, var(--color-secondary-dark));
+}
+.reply-del { font-size: .75rem; padding: .15rem .5rem; }
+.reply-del:hover { background: #fcebea; border-color: #c0392b; color: #c0392b; }
+
+/* Topic / reply edit-forms */
+.topic-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+.topic-edit-actions, .reply-edit-actions {
+  display: flex;
+  gap: .4rem;
+  justify-content: flex-end;
+}
+.topic-body-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: .4rem;
+}
+.topic-edit-btn {
+  background: transparent;
+  border: 1px solid var(--color-gray-light, #e5e5e5);
+  border-radius: var(--radius-sm, 6px);
+  padding: .25rem .6rem;
+  font-size: .78rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--color-dark-light);
+  font-family: inherit;
+}
+.topic-edit-btn:hover {
+  background: #f3f9f3;
+  border-color: var(--color-primary);
+  color: var(--color-primary-dark, var(--color-secondary-dark));
+}
+.reply-card.is-editing {
+  background: #f8fbf8;
+  border-color: var(--color-primary, #82be93);
+}
+.reply-edit-form {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+}
+.reply-edit-textarea { font-size: .9rem; }
+
 /* ----- Mobile (≤768px): rooms-pane mag ook 1 kolom worden bij 3-koloms layout ----- */
 @media (max-width: 1024px) and (min-width: 769px) {
   /* Tablet: rooms-kolom even compact */
   .home-hub--tri {
-    grid-template-columns: 200px 1fr 220px;
+    grid-template-columns: 210px minmax(0, 1fr) 230px;
     gap: 1rem;
+    padding-left: .5rem;
+    padding-right: .5rem;
   }
 }
 @media (max-width: 768px) {
