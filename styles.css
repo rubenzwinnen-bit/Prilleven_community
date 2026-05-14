@@ -1611,6 +1611,144 @@ select.form-control {
 }
 
 /* ============================================
+   ALLERGENEN-FILTER (multi-exclude dropdown)
+   In de recepten-toolbar; gebruiker kiest 1+ allergenen
+   die uit de receptenlijst weggefilterd moeten worden.
+============================================ */
+.allergen-filter {
+  position: relative;
+  display: inline-block;
+}
+
+.allergen-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.65rem 0.85rem;
+  border: 2px solid var(--color-light);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  background: var(--color-white);
+  cursor: pointer;
+  font-family: 'Poppins', sans-serif;
+  color: inherit;
+}
+
+.allergen-filter-btn:hover {
+  border-color: var(--color-primary);
+}
+
+.allergen-filter-btn[aria-expanded="true"] {
+  border-color: var(--color-primary);
+}
+
+.allergen-filter-count {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.allergen-filter-caret {
+  font-size: 0.7rem;
+  opacity: 0.6;
+}
+
+.allergen-filter-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 50;
+  min-width: 200px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--color-white);
+  border: 1px solid var(--color-light);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  padding: 0.4rem 0;
+}
+
+.allergen-filter-opt {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.85rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  text-transform: capitalize;
+}
+
+.allergen-filter-opt:hover {
+  background: var(--color-bg);
+}
+
+.allergen-filter-opt input[type="checkbox"] {
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.allergen-filter-clear {
+  display: block;
+  width: calc(100% - 1.4rem);
+  margin: 0.4rem 0.7rem 0.2rem;
+  padding: 0.4rem;
+  border: none;
+  border-top: 1px solid var(--color-light);
+  background: transparent;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.85rem;
+  color: var(--color-primary);
+  cursor: pointer;
+  text-align: center;
+}
+
+.allergen-filter-clear:hover {
+  background: var(--color-bg);
+}
+
+.allergen-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+}
+
+.allergen-filter-chips:empty {
+  margin-top: 0;
+}
+
+.allergen-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.5rem 0.25rem 0.7rem;
+  background: var(--color-bg);
+  border: 1px solid var(--color-light);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  text-transform: lowercase;
+}
+
+.allergen-chip-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted, #888);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+.allergen-chip-x:hover {
+  background: var(--color-light);
+  color: var(--color-text);
+}
+
+/* ============================================
    LEGE STAAT (geen recepten, geen favorieten)
 ============================================ */
 .empty-state {
@@ -1955,55 +2093,47 @@ select.form-control {
 
 /* ============================================
    HOME HUB (landingspagina na login)
+   Twee-pane layout:
+   - Desktop (≥769px): tegels (260px links) + timeline (rest rechts)
+     beide tegelijk zichtbaar; bottom-nav verborgen.
+   - Mobile (≤768px): één pane tegelijk via sticky bottom-tabs.
 ============================================ */
 .home-hub {
-  max-width: 860px;
-  margin: 2rem auto;
+  max-width: 1180px;
+  margin: 1.5rem auto;
   padding: 0 1.25rem;
 }
-.home-welcome {
-  text-align: center;
-  margin-bottom: 2.5rem;
+.home-hub--split {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 1.5rem;
+  align-items: start;
 }
-.home-welcome h1 {
-  font-size: 2.2rem;
-  color: var(--color-secondary-dark);
-  margin-bottom: .5rem;
-  display: inline-block;
-  position: relative;
-  padding-bottom: .55rem;
+.home-pane {
+  min-width: 0;
 }
-.home-welcome h1::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: 0;
-  transform: translateX(-50%);
-  width: 64px;
-  height: 3px;
-  border-radius: 2px;
-  background: var(--color-primary);
+.home-pane-header {
+  margin-bottom: .85rem;
 }
-.home-welcome h1 span {
-  color: var(--color-secondary-dark);
-  text-transform: capitalize;
-}
-.home-lead {
-  color: var(--color-dark-light);
+.home-pane-title {
   font-size: 1.05rem;
+  color: var(--color-secondary-dark);
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: .2px;
 }
 .home-tiles {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 1rem;
+  gap: .65rem;
 }
 .home-tile {
   display: flex;
   align-items: center;
-  gap: 1.25rem;
-  padding: 1.5rem 1.75rem;
+  gap: .85rem;
+  padding: .9rem 1rem;
   background: var(--color-primary);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   border: 2px solid var(--color-primary);
   box-shadow: var(--shadow-sm);
   text-decoration: none;
@@ -2018,7 +2148,7 @@ select.form-control {
   background: var(--color-primary-dark);
   border-color: var(--color-primary-dark);
   color: var(--color-white);
-  padding-top: calc(1.5rem + 220px);
+  padding-top: calc(.9rem + 110px);
 }
 /* Tegel-titel + arrow + omschrijving in wit voor leesbaarheid op terracotta */
 .home-tile .home-tile-title { color: var(--color-white); }
@@ -2041,7 +2171,7 @@ select.form-control {
   z-index: 1;
 }
 .home-tile:hover .home-tile-hover-img {
-  height: 200px;
+  height: 100px;
   opacity: 1;
 }
 /* Icon-cirkels lichter zodat ze contrasteren met de terracotta tegel */
@@ -2071,19 +2201,20 @@ select.form-control {
   flex: 1;
 }
 .home-tile-title {
-  font-size: 1.2rem;
+  font-size: .98rem;
   color: var(--color-dark);
-  margin-bottom: .35rem;
+  margin-bottom: .2rem;
   font-weight: 700;
+  line-height: 1.25;
 }
 .home-tile-desc {
   color: var(--color-dark-light);
-  font-size: .92rem;
-  line-height: 1.5;
+  font-size: .8rem;
+  line-height: 1.4;
   margin: 0;
 }
 .home-tile-arrow {
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   color: var(--color-gray);
   flex-shrink: 0;
   transition: transform .2s ease, color .2s ease;
@@ -2096,16 +2227,88 @@ select.form-control {
   color: var(--color-secondary-dark);
 }
 
-@media (max-width: 640px) {
-  .home-hub { margin: 1.25rem auto; }
-  .home-welcome h1 { font-size: 1.6rem; }
-  .home-tile {
-    padding: 1rem 1.1rem;
-    gap: .85rem;
+/* ============================================
+   HOME HUB — bottom-nav (alleen mobile zichtbaar)
+============================================ */
+.home-bottom-nav {
+  display: none; /* desktop-default verbergen, in @media tonen */
+}
+.home-bottom-nav-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: .55rem .25rem;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: var(--color-gray);
+  font-family: inherit;
+  font-size: .78rem;
+  font-weight: 600;
+  transition: color .15s ease;
+}
+.home-bottom-nav-tab.is-active {
+  color: var(--color-secondary-dark);
+}
+.home-bottom-nav-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+.home-bottom-nav-label {
+  letter-spacing: .2px;
+}
+
+/* ============================================
+   HOME HUB — Mobile (≤768px): tab-switching
+============================================ */
+@media (max-width: 768px) {
+  .home-hub {
+    margin: 1rem auto;
+    padding: 0 1rem;
+    /* Ruimte onderaan voor sticky bottom-nav */
+    padding-bottom: 80px;
   }
+  /* Grid verlaten: één pane tegelijk zichtbaar */
+  .home-hub--split {
+    display: block;
+  }
+  .home-pane {
+    display: none;
+  }
+  .home-hub--split[data-active-pane="timeline"] .home-pane--timeline,
+  .home-hub--split[data-active-pane="functies"] .home-pane--functies {
+    display: block;
+  }
+  /* Op mobile: pane-titel wat compacter */
+  .home-pane-header { margin-bottom: .65rem; }
+  .home-pane-title { font-size: 1rem; }
+
+  /* Tegels op mobile mogen iets ruimer omdat er meer breedte is */
+  .home-tile { padding: 1rem 1.1rem; gap: .85rem; }
   .home-tile-icon { width: 48px; height: 48px; font-size: 1.5rem; }
   .home-tile-title { font-size: 1.05rem; }
   .home-tile-desc { font-size: .85rem; }
+  /* Hover-image effect op touch is irrelevant; padding-uitschuiven uit */
+  .home-tile:hover { padding-top: 1rem; }
+  .home-tile:hover .home-tile-hover-img { height: 0; opacity: 0; }
+
+  /* Sticky bottom-nav */
+  .home-bottom-nav {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 90;
+    background: var(--color-white);
+    border-top: 1px solid var(--color-gray-light, #e5e5e5);
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, .06);
+    padding: 0 .25rem;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 
 /* Verberg de navigatiebalk op de hub-landingspagina */
@@ -2113,6 +2316,10 @@ body.is-hub #app-nav { display: none; }
 
 /* Op de hub-landingspagina is de "naar het hub"-knop overbodig */
 body.is-hub .header-home-btn { display: none; }
+
+/* Verberg de navigatiebalk op de Learnings-pagina's
+   (zelfde header als receptenboek maar zonder de recepten-tabs). */
+body.is-learnings #app-nav { display: none; }
 
 /* Logo op het inlog-scherm */
 .auth-logo {
@@ -3526,3 +3733,448 @@ body.is-hub .header-home-btn { display: none; }
 .tl-reply.is-highlighted {
   animation: tl-highlight-pulse 1.4s ease-out;
 }
+
+/* ============================================
+   LEARNINGS LIBRARY
+   Overzicht van Learning-items (pdf / blog / video).
+============================================ */
+.learnings-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 1rem 1rem 4rem;
+}
+.learnings-header {
+  margin: 1rem 0 1.5rem;
+}
+.learnings-header-inner { padding: 0 .25rem; }
+.learnings-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-dark, #171717);
+  margin: 0 0 .25rem;
+}
+.learnings-subtitle {
+  color: var(--color-dark-light, #555);
+  margin: 0;
+  font-size: .98rem;
+}
+.learnings-toolbar { margin-bottom: 1.5rem; }
+.learnings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1rem;
+}
+.learning-card {
+  position: relative;
+  background: #fff;
+  border-radius: 14px;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  transition: transform .18s ease, box-shadow .18s ease;
+  display: flex;
+  flex-direction: column;
+}
+.learning-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.10);
+}
+.learning-card-thumb {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: #f1efe9;
+}
+.learning-card-thumb--placeholder {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 3rem;
+  color: #b9b3a8;
+}
+.learning-card-body { padding: .85rem 1rem 1rem; flex: 1; }
+.learning-card-kind {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: .72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: .4rem;
+}
+.learning-card-kind--pdf   { background: #fdebd6; color: #a55a14; }
+.learning-card-kind--blog  { background: #e3efe2; color: #2f5c33; }
+.learning-card-kind--video { background: #e2e8f8; color: #2c3e8a; }
+.learning-card-title {
+  margin: 0 0 .3rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-dark, #171717);
+  line-height: 1.3;
+}
+.learning-card-desc {
+  margin: 0;
+  color: var(--color-dark-light, #555);
+  font-size: .85rem;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.learning-card-fav {
+  position: absolute;
+  top: 8px; left: 8px;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.92);
+  border: none;
+  cursor: pointer;
+  font-size: 1.05rem;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  transition: transform .15s ease;
+}
+.learning-card-fav:hover { transform: scale(1.08); }
+.learning-card-fav.active { background: #fff; }
+.learning-card-delete {
+  position: absolute;
+  top: 8px; right: 8px;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.92);
+  border: none;
+  cursor: pointer;
+  font-size: .9rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
+.learning-card-delete:hover { background: #ffe0e0; }
+.learning-card-admin-btns {
+  position: absolute;
+  top: 8px; right: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.learning-card-admin-btns .learning-card-delete {
+  position: static;
+}
+.learning-card-edit {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.9);
+  cursor: pointer;
+  font-size: .9rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
+.learning-card-edit:hover { background: #e8f5e9; }
+.lu-file-note {
+  margin: 2px 0 6px;
+  font-size: .8rem;
+  color: #7a9e7e;
+}
+
+/* Upload modal */
+.learning-upload-modal {
+  max-width: 540px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.modal-close {
+  position: absolute;
+  top: 12px; right: 14px;
+  background: none; border: none;
+  font-size: 1.6rem;
+  cursor: pointer;
+  color: #888;
+}
+.auth-label {
+  display: block;
+  margin: .75rem 0 .3rem;
+  font-size: .85rem;
+  font-weight: 500;
+  color: var(--color-dark, #171717);
+}
+.modal-actions {
+  display: flex; gap: .5rem; justify-content: flex-end;
+  margin-top: 1.2rem;
+}
+.learnings-progress {
+  margin: 1rem 0;
+  display: flex; align-items: center; gap: .6rem;
+}
+.learnings-progress-bar {
+  flex: 1;
+  height: 8px;
+  background: #efeae0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.learnings-progress-bar > div {
+  height: 100%;
+  background: var(--color-primary, #C98966);
+  width: 0%;
+  transition: width .2s ease;
+}
+
+/* ============================================
+   LEARNINGS DETAIL
+============================================ */
+.learning-detail {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+.learning-detail-top {
+  display: flex; align-items: center; gap: .8rem;
+  margin-bottom: 1rem;
+}
+.learning-detail-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--color-dark, #171717);
+}
+.learning-detail-body {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+@media (max-width: 768px) {
+  .learning-detail-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Notes sidebar */
+.learning-notes {
+  background: #fff;
+  border-radius: 14px;
+  padding: .9rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  position: sticky;
+  top: 80px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+}
+.learning-notes-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: .6rem;
+  font-weight: 600;
+  color: var(--color-dark, #171717);
+}
+.learning-notes-list {
+  list-style: none;
+  padding: 0; margin: 0 0 .8rem;
+}
+.learning-notes-empty {
+  color: #999;
+  font-size: .85rem;
+  font-style: italic;
+  padding: .3rem 0;
+}
+.learning-note-item {
+  padding: .5rem .7rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: .9rem;
+  color: var(--color-dark, #171717);
+  transition: background .12s ease;
+}
+.learning-note-item:hover { background: #f6f3ec; }
+.learning-note-item.is-active {
+  background: #e3efe2;
+  font-weight: 600;
+}
+.learning-note-editor {
+  border-top: 1px solid #efeae0;
+  padding-top: .8rem;
+  display: flex; flex-direction: column; gap: .5rem;
+}
+.learning-note-actions {
+  display: flex; justify-content: space-between; gap: .5rem;
+}
+.learning-note-clips {
+  margin-top: .3rem;
+}
+.learning-note-clips-list {
+  display: flex; flex-direction: column; gap: .35rem;
+}
+.learning-note-clip {
+  display: flex; align-items: flex-start; gap: .4rem;
+  background: #f6f3ec;
+  border-left: 3px solid var(--color-primary, #C98966);
+  padding: .35rem .55rem;
+  border-radius: 6px;
+  font-size: .82rem;
+}
+.learning-note-clip blockquote {
+  margin: 0; flex: 1;
+  color: #444;
+  line-height: 1.35;
+}
+.learning-note-clip-time {
+  background: #fff;
+  border: 1px solid #e0d9c8;
+  border-radius: 6px;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-size: .8rem;
+}
+.learning-note-clip-time:hover { background: #efeae0; }
+.learning-note-clip-remove {
+  background: transparent; border: none;
+  cursor: pointer; color: #aaa;
+  font-size: 1rem; line-height: 1;
+}
+.learning-note-clip-remove:hover { color: #c33; }
+
+/* Viewer */
+.learning-viewer {
+  background: #fff;
+  border-radius: 14px;
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  min-height: 60vh;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  position: relative;
+}
+.learning-blog {
+  line-height: 1.65;
+  color: var(--color-dark, #171717);
+  font-size: 1rem;
+  max-width: 720px;
+  margin: 0 auto;
+}
+.learning-blog h1, .learning-blog h2, .learning-blog h3 {
+  margin: 1.6em 0 .5em;
+}
+.learning-blog img {
+  max-width: 100%; height: auto;
+  border-radius: 8px;
+  margin: .8em 0;
+}
+.learning-blog p { margin: 0 0 1em; }
+
+/* PDF viewer */
+.learning-pdf-toolbar {
+  display: flex; align-items: center; justify-content: center;
+  gap: .6rem;
+  padding: .4rem 0;
+  position: sticky; top: 0;
+  background: #fff;
+  z-index: 2;
+  border-bottom: 1px solid #efeae0;
+  margin-bottom: .6rem;
+}
+/* Wrap rond canvas + textlayer:
+   inline-block met fit-content zodat textlayer (absolute) exact over de
+   canvas valt, ongeacht hoe breed de viewer-container is.            */
+.learning-pdf-canvas-wrap {
+  position: relative;
+  width: fit-content;
+  margin: 0 auto;
+}
+.learning-pdf-canvas-wrap canvas {
+  display: block;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+/* PDF.js TextLayer-container: ligt exact over de canvas.
+   Let op: --scale-factor wordt per render via JS gezet — vereist door
+   PDF.js v4 om de font-size van text-spans correct te berekenen.   */
+.learning-pdf-textlayer {
+  --scale-factor: 1;
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  opacity: 1;
+  line-height: 1;
+  color: transparent;
+  user-select: text;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  z-index: 2;
+  pointer-events: auto;
+}
+/* Elk text-item van PDF.js: absolute positie + scaleX-correctie. */
+.learning-pdf-textlayer span,
+.learning-pdf-textlayer br {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0 0;
+  pointer-events: auto;
+}
+.learning-pdf-textlayer span.markedContent {
+  top: 0;
+  height: 0;
+}
+.learning-pdf-textlayer ::selection {
+  background: rgba(201, 137, 102, 0.30);
+}
+
+/* Selection popup — geen eigen achtergrond/pil, alleen container voor de knop
+   (de knop heeft zelf al een pil-vorm; dubbele pil = visuele dubbeling).    */
+.learning-sel-popup {
+  position: absolute;
+  z-index: 100;
+  background: transparent;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  pointer-events: none;
+}
+.learning-sel-popup .btn {
+  pointer-events: auto;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.22);
+}
+.learning-sel-popup.hidden {
+  display: none;
+}
+
+/* PDF-toolbar extras */
+.learning-pdf-toolbar-sep {
+  display: inline-block;
+  width: 1px;
+  height: 20px;
+  background: #e6dccd;
+  margin: 0 .4rem;
+}
+.learning-pdf-toolbar #pdf-zoom-info,
+.learning-pdf-toolbar #pdf-page-info {
+  min-width: 4ch;
+  text-align: center;
+  font-size: .85rem;
+  color: #6e6453;
+}
+
+/* Pagina-knop in opgeslagen text-clip */
+.learning-note-clip-page {
+  display: inline-block;
+  padding: 2px 8px;
+  margin-right: 6px;
+  font-size: .75rem;
+  font-weight: 600;
+  color: #5a8c66;
+  background: #eaf3ec;
+  border: 1px solid #cfe2d4;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.learning-note-clip-page:hover {
+  background: #d8ead0;
+}
+
+/* Home-tile accent voor learnings */
+.home-tile--sage-deep {
+  background: linear-gradient(135deg, #5a8c66 0%, #6ea27d 100%);
+  color: #fff;
+}
+.home-tile--sage-deep .home-tile-desc { color: rgba(255,255,255,0.92); }
+.home-tile--sage-deep .home-tile-arrow { color: #fff; }
+

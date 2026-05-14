@@ -422,6 +422,49 @@ export async function sessionRefreshIfNeeded({ force = false } = {}) {
 }
 
 /* ----------------------------------------
+   DIRECT UPLOAD NAAR SUPABASE STORAGE (XHR)
+   Upload een bestand rechtstreeks naar de Supabase
+   Storage REST API via POST. Gebruikt de meegegeven
+   JWT als Authorization-token (voor private buckets).
+   Ondersteunt voortgangsrapportage via onProgress.
+
+   bucket    - bv. 'learnings-video'
+   filePath  - pad binnen de bucket, bv. '1234-video.mp4'
+   fileBlob  - File of Blob object
+   jwt       - access token van de ingelogde gebruiker
+   onProgress - optionele callback(fraction 0..1)
+---------------------------------------- */
+export function supabaseStorageUploadXhr(bucket, filePath, fileBlob, jwt, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${SUPABASE_URL}/storage/v1/object/${bucket}/${filePath}`);
+    xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
+    xhr.setRequestHeader('Authorization', 'Bearer ' + (jwt || SUPABASE_ANON_KEY));
+    xhr.setRequestHeader('Content-Type', fileBlob.type || 'application/octet-stream');
+    if (onProgress) {
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) onProgress(e.loaded / e.total);
+      };
+    }
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) resolve();
+      else reject(new Error(`Upload mislukt (HTTP ${xhr.status}): ${xhr.responseText}`));
+    };
+    xhr.onerror = () => reject(new Error('Netwerkfout bij uploaden'));
+    xhr.send(fileBlob);
+  });
+}
+
+/* ----------------------------------------
+   PUBLIEKE URL VAN EEN LEARNINGS THUMBNAIL
+   learnings-thumb is een publieke bucket;
+   bestanden zijn zonder auth leesbaar.
+---------------------------------------- */
+export function learningsThumbPublicUrl(filePath) {
+  return `${SUPABASE_URL}/storage/v1/object/public/learnings-thumb/${filePath}`;
+}
+
+/* ----------------------------------------
    DATA-URI NAAR BLOB CONVERTEREN
    Hulpfunctie om een base64 image om te zetten
    naar een Blob die we kunnen uploaden.
