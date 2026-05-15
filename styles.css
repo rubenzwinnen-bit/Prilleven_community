@@ -4657,3 +4657,357 @@ body.is-learnings #app-nav { display: none; }
   .chatroom-title, .topic-detail-title { font-size: 1.05rem; }
 }
 
+
+
+/* ============================================================
+   PROFIEL
+   Profielpagina — account + kinderen beheren
+   Route: #/profiel
+============================================================ */
+
+.profiel-page {
+  padding: 1.5rem 1rem 4rem;
+}
+
+.profiel-page-inner {
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+.profiel-loading,
+.profiel-error {
+  color: var(--color-gray);
+  padding: 2rem 0;
+  text-align: center;
+}
+
+/* ---- Paginatitel ---- */
+.profiel-header {
+  margin-bottom: 1.75rem;
+}
+
+.profiel-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--color-dark);
+  margin: 0;
+}
+
+/* ---- Sectie ---- */
+.profiel-section {
+  background: var(--color-white);
+  border: 1px solid var(--color-light);
+  border-radius: 16px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,.04);
+}
+
+.profiel-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.profiel-section-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--color-dark);
+  margin: 0;
+}
+
+/* ---- Account rows ---- */
+.profiel-account-row {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .5rem 0;
+  border-bottom: 1px solid var(--color-light);
+}
+
+.profiel-account-row:last-child {
+  border-bottom: none;
+}
+
+.profiel-account-label {
+  min-width: 160px;
+  font-size: .85rem;
+  color: var(--color-gray);
+  flex-shrink: 0;
+}
+
+.profiel-account-value {
+  font-size: .9rem;
+  color: var(--color-dark);
+}
+
+.profiel-account-value--action {
+  display: flex;
+  align-items: center;
+}
+
+/* ---- Lege toestand ---- */
+.profiel-empty {
+  color: var(--color-gray);
+  font-size: .9rem;
+  padding: .5rem 0;
+}
+
+.profiel-empty-inline {
+  font-size: .85rem;
+  color: var(--color-gray);
+  font-style: italic;
+}
+
+/* ---- Kindkaart ---- */
+.profiel-kind-card {
+  border: 1px solid var(--color-light);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: .85rem;
+}
+
+.profiel-kind-card:last-child {
+  margin-bottom: 0;
+}
+
+.profiel-kind-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .85rem 1rem;
+  background: var(--color-bg);
+  flex-wrap: wrap;
+}
+
+.profiel-kind-info {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+
+.profiel-kind-naam {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--color-dark);
+}
+
+.profiel-kind-leeftijd,
+.profiel-kind-texture {
+  font-size: .8rem;
+  color: var(--color-gray);
+  background: var(--color-light);
+  padding: .15rem .55rem;
+  border-radius: 20px;
+}
+
+.profiel-kind-actions {
+  display: flex;
+  gap: .4rem;
+  flex-shrink: 0;
+}
+
+.profiel-kind-details {
+  padding: .75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+
+.profiel-kind-detail-row {
+  display: flex;
+  gap: .75rem;
+  align-items: flex-start;
+}
+
+.profiel-kind-detail-label {
+  min-width: 200px;
+  font-size: .82rem;
+  color: var(--color-gray);
+  padding-top: .15rem;
+  flex-shrink: 0;
+}
+
+.profiel-kind-detail-val {
+  font-size: .88rem;
+  color: var(--color-dark);
+  line-height: 1.5;
+}
+
+/* ---- Tags ---- */
+.profiel-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  align-items: center;
+}
+
+.profiel-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  background: var(--color-light);
+  color: var(--color-dark);
+  font-size: .78rem;
+  padding: .2rem .6rem;
+  border-radius: 20px;
+}
+
+.profiel-tag--intro {
+  background: rgba(152,195,164,.18);
+  color: var(--color-secondary-dark, #5d9870);
+}
+
+.profiel-tag--removable {
+  padding-right: .3rem;
+}
+
+.profiel-tag-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: .9rem;
+  line-height: 1;
+  color: var(--color-gray);
+  padding: 0 .1rem;
+  display: flex;
+  align-items: center;
+}
+
+.profiel-tag-remove:hover {
+  color: var(--color-danger);
+}
+
+/* ---- Formulier ---- */
+.profiel-kind-form {
+  border: 1px solid var(--color-secondary);
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  margin-top: .85rem;
+  background: var(--color-white);
+}
+
+.profiel-form-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 1.1rem;
+  color: var(--color-dark);
+}
+
+.profiel-form-row {
+  margin-bottom: 1rem;
+}
+
+.profiel-form-label {
+  display: block;
+  font-size: .85rem;
+  font-weight: 500;
+  color: var(--color-dark);
+  margin-bottom: .35rem;
+}
+
+.profiel-form-label .req {
+  color: var(--color-primary);
+  margin-left: .1rem;
+}
+
+.profiel-form-optional {
+  font-weight: 400;
+  color: var(--color-gray);
+  font-size: .8rem;
+}
+
+.profiel-radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem .9rem;
+}
+
+.profiel-radio-label {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .88rem;
+  cursor: pointer;
+}
+
+.profiel-allergen-input-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+
+.profiel-allergen-add-row {
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+}
+
+.auth-input--sm {
+  max-width: 260px;
+  padding: .45rem .75rem;
+  font-size: .88rem;
+}
+
+.profiel-textarea {
+  resize: vertical;
+  min-height: 70px;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+.profiel-form-actions {
+  display: flex;
+  gap: .6rem;
+  justify-content: flex-end;
+  margin-top: 1.25rem;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 600px) {
+  .profiel-account-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .25rem;
+  }
+
+  .profiel-account-label {
+    min-width: unset;
+  }
+
+  .profiel-kind-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .profiel-kind-detail-row {
+    flex-direction: column;
+    gap: .2rem;
+  }
+
+  .profiel-kind-detail-label {
+    min-width: unset;
+  }
+
+  .profiel-form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .profiel-form-actions .btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .auth-input--sm {
+    max-width: 100%;
+  }
+
+  .profiel-allergen-add-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

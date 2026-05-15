@@ -4,11 +4,10 @@
    profile-modal voor nickname + foto) en uitlogknop.
 ============================================ */
 
-import * as Store from '../store.js?v=2.4.13';
-import { sessionClear, sessionGet, invalidateSubscriptionCache } from '../supabase.js?v=2.4.13';
-import { initialsFromName, colorFromSeed, escapeHtml } from '../utils.js?v=2.4.13';
-import * as Api from '../communityApi.js?v=2.4.13';
-import { openProfileModal } from './profileModal.js?v=2.4.13';
+import * as Store from '../store.js?v=2.5.0';
+import { sessionClear, sessionGet, invalidateSubscriptionCache } from '../supabase.js?v=2.5.0';
+import { initialsFromName, colorFromSeed, escapeHtml } from '../utils.js?v=2.5.0';
+import * as Api from '../communityApi.js?v=2.5.0';
 
 /* Cache key voor nickname + avatar-url zodat header bij volgende
    page-load meteen de juiste pill kan tonen (geen email-flicker). */
@@ -86,14 +85,8 @@ export function init() {
 
   const avatarBtn = document.getElementById('header-avatar-btn');
   if (avatarBtn) {
-    avatarBtn.addEventListener('click', async () => {
-      const updated = await openProfileModal();
-      if (updated) {
-        refreshHeaderAvatar(updated);
-        // Trigger event zodat andere views (bv. timeline composer-nick)
-        // hun weergave kunnen verversen.
-        document.dispatchEvent(new CustomEvent('community:profile-updated', { detail: updated }));
-      }
+    avatarBtn.addEventListener('click', () => {
+      window.location.hash = '#/profiel';
     });
   }
 
