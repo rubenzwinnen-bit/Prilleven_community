@@ -5,8 +5,8 @@
    Admin-items staan in een dropdown menu.
 ============================================ */
 
-import * as Router from '../router.js?v=2.4.6';
-import { isAdmin } from '../store.js?v=2.4.6';
+import * as Router from '../router.js?v=2.4.8';
+import { isAdmin } from '../store.js?v=2.4.8';
 
 /* ----------------------------------------
    NAVIGATIE ITEMS

@@ -5,10 +5,11 @@
    Gebruikt /api/chat-rooms.
 ============================================ */
 
-import * as Store from '../store.js?v=2.4.6';
-import * as Api from '../chatRoomsApi.js?v=2.4.6';
-import { formatRelativeTime } from '../utils.js?v=2.4.6';
-import { renderAvatar, renderAuthorMeta } from '../profileRender.js?v=2.4.6';
+import * as Store from '../store.js?v=2.4.8';
+import * as Api from '../chatRoomsApi.js?v=2.4.8';
+import { formatRelativeTime } from '../utils.js?v=2.4.8';
+import { renderAvatar, renderAuthorMeta } from '../profileRender.js?v=2.4.8';
+import { sessionGet } from '../supabase.js?v=2.4.8';
 
 // Edit-window verwijderd: eigen items zijn altijd bewerkbaar.
 
@@ -192,8 +193,8 @@ function renderTopicView() {
   const t = state.currentTopic;
   if (!t) return `<div class="chatroom-empty">Topic niet gevonden.</div>`;
   const admin = isAdmin();
-  const me = Store.getCurrentUser()?.id;
-  const isOwnTopic = t.user_id === me;
+  const me = sessionGet()?.user_id || null;
+  const isOwnTopic = !!me && t.user_id === me;
   const canEditTopic = isOwnTopic && withinEditWindow(t.created_at);
   const canDeleteTopic = admin || isOwnTopic;
 
@@ -479,6 +480,45 @@ function bindTopicViewHandlers() {
   });
 }
 
+/* ---------------- Rooms-cache (instant render na inloggen) ---------------- */
+const ROOMS_CACHE_KEY = 'pril_chatrooms_list_v1';
+const ROOMS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 min
+
+function readRoomsCache() {
+  try {
+    const raw = localStorage.getItem(ROOMS_CACHE_KEY);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (!obj || !Array.isArray(obj.rooms)) return null;
+    if (Date.now() - (obj.t || 0) > ROOMS_CACHE_TTL_MS) return null;
+    return obj.rooms;
+  } catch { return null; }
+}
+function writeRoomsCache(rooms) {
+  try {
+    localStorage.setItem(ROOMS_CACHE_KEY, JSON.stringify({ rooms, t: Date.now() }));
+  } catch {}
+}
+function renderRoomsList(rooms) {
+  const list = document.getElementById('rooms-list');
+  if (!list) return;
+  list.innerHTML = rooms.map(r => `
+    <li class="rooms-list-item" data-slug="${escapeHtml(r.slug)}">
+      <button class="rooms-list-btn" type="button">
+        <span class="rooms-list-title">${escapeHtml(r.title)}</span>
+        ${r.description ? `<span class="rooms-list-desc">${escapeHtml(r.description)}</span>` : ''}
+      </button>
+    </li>
+  `).join('');
+  list.querySelectorAll('.rooms-list-item').forEach(li => {
+    li.addEventListener('click', () => {
+      const slug = li.dataset.slug;
+      if (slug) openRoom(slug);
+    });
+  });
+  if (state.activeSlug) highlightActiveRoom(state.activeSlug);
+}
+
 /* ---------------- Public init (nav) ---------------- */
 export async function init() {
   const navBtn = document.getElementById('rooms-back-timeline');
@@ -487,25 +527,26 @@ export async function init() {
   const list = document.getElementById('rooms-list');
   if (!list) return;
 
+  // 1. Toon direct uit cache (instant) als die er is.
+  const cached = readRoomsCache();
+  if (cached && cached.length) {
+    state.rooms = cached;
+    renderRoomsList(cached);
+  }
+
+  // 2. Refresh in background.
   const { ok, data, error } = await Api.listRooms();
   if (!ok) {
-    list.innerHTML = `<li class="rooms-error">${escapeHtml(error || 'Kon rooms niet laden.')}</li>`;
+    if (!cached || !cached.length) {
+      list.innerHTML = `<li class="rooms-error">${escapeHtml(error || 'Kon rooms niet laden.')}</li>`;
+    }
     return;
   }
-  state.rooms = data.rooms || [];
-  list.innerHTML = state.rooms.map(r => `
-    <li class="rooms-list-item" data-slug="${escapeHtml(r.slug)}">
-      <button class="rooms-list-btn" type="button">
-        <span class="rooms-list-title">${escapeHtml(r.title)}</span>
-        ${r.description ? `<span class="rooms-list-desc">${escapeHtml(r.description)}</span>` : ''}
-      </button>
-    </li>
-  `).join('');
-
-  list.querySelectorAll('.rooms-list-item').forEach(li => {
-    li.addEventListener('click', () => {
-      const slug = li.dataset.slug;
-      if (slug) openRoom(slug);
-    });
-  });
+  const fresh = data.rooms || [];
+  writeRoomsCache(fresh);
+  // Alleen herrenderen als de data echt veranderd is — anders flikkering vermijden.
+  if (JSON.stringify(state.rooms) !== JSON.stringify(fresh)) {
+    state.rooms = fresh;
+    renderRoomsList(fresh);
+  }
 }
