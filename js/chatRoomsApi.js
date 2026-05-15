@@ -5,7 +5,7 @@
    Geeft altijd { ok, status, data, error } terug.
 ============================================ */
 
-import { sessionRefreshIfNeeded } from './supabase.js?v=2.4.10';
+import { sessionRefreshIfNeeded } from './supabase.js?v=2.4.11';
 
 async function call(path, { method = 'GET', body = null } = {}) {
   const session = await sessionRefreshIfNeeded();
@@ -39,6 +39,8 @@ async function call(path, { method = 'GET', body = null } = {}) {
 /* ----- Rooms ----- */
 export const listRooms = () => call('');
 export const getRoom   = (slug) => call('/' + encodeURIComponent(slug));
+export const editRoom  = (slug, updates) =>
+  call('/' + encodeURIComponent(slug), { method: 'PATCH', body: updates });
 
 /* ----- Topics ----- */
 export const createTopic = (slug, { title, body }) =>

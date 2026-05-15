@@ -7,6 +7,7 @@
 // Routes (intern):
 //   GET    /api/chat-rooms                         → lijst actieve rooms
 //   GET    /api/chat-rooms/:slug                   → room + topics
+//   PATCH  /api/chat-rooms/:slug                   → admin: room title/description aanpassen
 //   POST   /api/chat-rooms/:slug/topics            → topic aanmaken
 //   GET    /api/chat-rooms/topics/:id              → topic + replies
 //   PATCH  /api/chat-rooms/topics/:id              → eigen topic editten (15min)
@@ -96,7 +97,8 @@ function matchRoute(req) {
 
   // /:slug   en  /:slug/topics
   if (seg.length === 1) {
-    if (m === 'GET') return { route: 'room.get', params: { slug: seg[0] } };
+    if (m === 'GET')   return { route: 'room.get',  params: { slug: seg[0] } };
+    if (m === 'PATCH') return { route: 'room.edit', params: { slug: seg[0] } };
   }
   if (seg.length === 2 && seg[1] === 'topics') {
     if (m === 'POST') return { route: 'topic.create', params: { slug: seg[0] } };
@@ -267,6 +269,47 @@ export default async function handler(req, res) {
       const signed = await attachAvatarUrls(topics);
       const withFlags = await attachAdminFlags(signed);
       return json(res, 200, { room, topics: withFlags });
+    }
+
+    /* ----- room edit (admin: title/description) ----- */
+    if (route === 'room.edit') {
+      try { await requireAdmin(req); }
+      catch (e) {
+        if (e instanceof AuthError) return json(res, e.status, { error: e.message });
+        throw e;
+      }
+      if (!isSlug(params.slug)) return json(res, 400, { error: 'Ongeldige slug.' });
+      const body = parseBody(req);
+      if (body === null) return json(res, 400, { error: 'Ongeldige JSON.' });
+
+      const room = await loadRoomBySlug(params.slug);
+      if (!room) return json(res, 404, { error: 'Room niet gevonden.' });
+
+      const updates = {};
+      if (typeof body.title === 'string') {
+        const t = body.title.trim();
+        if (t.length < 1 || t.length > 80) {
+          return json(res, 422, { error: 'Titel moet 1-80 tekens zijn.' });
+        }
+        if (findBlockedWord(t)) return json(res, 422, { error: 'Titel bevat ongepaste taal.' });
+        updates.title = t;
+      }
+      if (typeof body.description === 'string') {
+        const d = body.description.trim();
+        if (d.length > 500) return json(res, 422, { error: 'Beschrijving max 500 tekens.' });
+        if (d && findBlockedWord(d)) return json(res, 422, { error: 'Beschrijving bevat ongepaste taal.' });
+        updates.description = d || null;
+      }
+      if (Object.keys(updates).length === 0) return json(res, 422, { error: 'Geen wijzigingen.' });
+
+      const { data, error } = await supabase
+        .from('chat_rooms')
+        .update(updates)
+        .eq('id', room.id)
+        .select('id, slug, title, description, sort_order, is_active')
+        .single();
+      if (error) throw error;
+      return json(res, 200, { room: data });
     }
 
     /* ----- topic create ----- */

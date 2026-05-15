@@ -5,11 +5,11 @@
    Gebruikt /api/chat-rooms.
 ============================================ */
 
-import * as Store from '../store.js?v=2.4.10';
-import * as Api from '../chatRoomsApi.js?v=2.4.10';
-import { formatRelativeTime } from '../utils.js?v=2.4.10';
-import { renderAvatar, renderAuthorMeta } from '../profileRender.js?v=2.4.10';
-import { sessionGet } from '../supabase.js?v=2.4.10';
+import * as Store from '../store.js?v=2.4.11';
+import * as Api from '../chatRoomsApi.js?v=2.4.11';
+import { formatRelativeTime } from '../utils.js?v=2.4.11';
+import { renderAvatar, renderAuthorMeta } from '../profileRender.js?v=2.4.11';
+import { sessionGet } from '../supabase.js?v=2.4.11';
 
 // Edit-window verwijderd: eigen items zijn altijd bewerkbaar.
 
@@ -24,6 +24,7 @@ const state = {
   replies: [],
   editingTopicId: null,  // inline edit-modus topic
   editingReplyId: null,  // inline edit-modus reply
+  editingRoomIntro: false, // admin bewerkt room-intro
 };
 
 /* ---------------- Utils ---------------- */
@@ -69,9 +70,41 @@ export function renderNav() {
 }
 
 /* ---------------- Render: Room-view (in midden-pane, vervangt timeline) ---------------- */
+function renderRoomHeader(room, admin) {
+  if (state.editingRoomIntro && admin) {
+    return `
+      <header class="chatroom-header chatroom-header--editing">
+        <button class="chatroom-back" id="chatroom-back" type="button" aria-label="Terug naar rooms">←</button>
+        <form class="chatroom-intro-edit-form" id="chatroom-intro-edit-form">
+          <input class="chatroom-input" id="chatroom-intro-edit-title" type="text"
+                 maxlength="80" required value="${escapeHtml(room.title)}" />
+          <textarea class="chatroom-textarea" id="chatroom-intro-edit-desc"
+                    rows="2" maxlength="500"
+                    placeholder="Korte beschrijving van deze chatruimte">${escapeHtml(room.description || '')}</textarea>
+          <div class="chatroom-intro-edit-actions">
+            <button class="btn btn-secondary" type="button" data-action="cancel-intro-edit">Annuleer</button>
+            <button class="btn btn-primary" type="submit">Opslaan</button>
+          </div>
+        </form>
+      </header>
+    `;
+  }
+  return `
+    <header class="chatroom-header">
+      <div class="chatroom-header-top">
+        <button class="chatroom-back" id="chatroom-back" type="button" aria-label="Terug naar rooms">←</button>
+        <h2 class="chatroom-title">${escapeHtml(room.title)}</h2>
+        ${admin ? `<button class="chatroom-intro-edit-btn" data-action="edit-intro" type="button" title="Intro bewerken">Bewerken</button>` : ''}
+      </div>
+      ${room.description ? `<p class="chatroom-desc">${escapeHtml(room.description)}</p>` : ''}
+    </header>
+  `;
+}
+
 function renderRoomView() {
   const room = state.currentRoom;
   if (!room) return `<div class="chatroom-empty">Room niet gevonden.</div>`;
+  const admin = isAdmin();
 
   const topicsHtml = state.topics.length === 0
     ? `<div class="chatroom-empty">Nog geen onderwerpen — start het eerste!</div>`
@@ -98,13 +131,7 @@ function renderRoomView() {
 
   return `
     <div class="chatroom-view" data-room-slug="${escapeHtml(room.slug)}">
-      <header class="chatroom-header">
-        <button class="chatroom-back" id="chatroom-back" type="button" aria-label="Terug naar rooms">←</button>
-        <div class="chatroom-header-text">
-          <h2 class="chatroom-title">${escapeHtml(room.title)}</h2>
-          ${room.description ? `<p class="chatroom-desc">${escapeHtml(room.description)}</p>` : ''}
-        </div>
-      </header>
+      ${renderRoomHeader(room, admin)}
       <form class="chatroom-new-topic" id="chatroom-new-topic">
         <input class="chatroom-input" id="chatroom-new-title" type="text"
                placeholder="Titel van je onderwerp" maxlength="120" required />
@@ -264,6 +291,7 @@ function showTimeline() {
   state.currentTopic = null;
   state.editingTopicId = null;
   state.editingReplyId = null;
+  state.editingRoomIntro = false;
   // Reset actieve room highlight in nav
   document.querySelectorAll('.rooms-list-item').forEach(el => el.classList.remove('is-active'));
 }
@@ -299,28 +327,33 @@ function writeRoomCache(slug, room, topics) {
 
 /* ---------------- Actions ---------------- */
 async function openRoom(slug) {
+  // Markeer onmiddellijk welke room we openen — anders blijft de UI op "Laden…" hangen
+  // omdat de background-refresh-check (state.activeSlug !== slug) misloopt.
+  state.activeSlug = slug;
+  state.activeTopicId = null;
+  state.currentTopic = null;
+  state.replies = [];
+  state.editingTopicId = null;
+  state.editingReplyId = null;
+  state.editingRoomIntro = false;
+
   // 1. Toon direct uit cache als die er is.
   const cached = readRoomCache(slug);
   if (cached) {
-    state.activeSlug = slug;
-    state.activeTopicId = null;
     state.currentRoom = cached.room;
-    state.currentTopic = null;
     state.topics = cached.topics || [];
-    state.replies = [];
-    state.editingTopicId = null;
-    state.editingReplyId = null;
     showChatroom(renderRoomView());
     highlightActiveRoom(slug);
     bindRoomViewHandlers();
   } else {
-    const mount = getChatroomMount();
-    if (mount) mount.innerHTML = `<div class="chatroom-empty">Laden…</div>`;
-    showChatroom(mount?.innerHTML || '');
+    showChatroom(`<div class="chatroom-empty">Laden…</div>`);
+    highlightActiveRoom(slug);
   }
 
   // 2. Refresh op de achtergrond.
   const { ok, data, error } = await Api.getRoom(slug);
+  if (state.activeSlug !== slug) return; // gebruiker is intussen naar andere room
+
   if (!ok) {
     if (!cached) {
       showChatroom(`<div class="chatroom-empty">${escapeHtml(error || 'Kon room niet laden.')}</div>`);
@@ -330,20 +363,15 @@ async function openRoom(slug) {
   // Sla nieuwste versie op.
   writeRoomCache(slug, data.room, data.topics || []);
 
-  // Alleen opnieuw renderen als we nog in deze room zitten én de data echt verschilt.
-  if (state.activeSlug !== slug) return;
-  const sameRoom = cached && JSON.stringify(cached.room) === JSON.stringify(data.room);
-  const sameTopics = cached && JSON.stringify(cached.topics || []) === JSON.stringify(data.topics || []);
-  if (sameRoom && sameTopics) return;
+  // Alleen herrenderen als er echt iets veranderd is (of als er nog geen cache was).
+  if (cached) {
+    const sameRoom = JSON.stringify(cached.room) === JSON.stringify(data.room);
+    const sameTopics = JSON.stringify(cached.topics || []) === JSON.stringify(data.topics || []);
+    if (sameRoom && sameTopics) return;
+  }
 
-  state.activeSlug = slug;
-  state.activeTopicId = null;
   state.currentRoom = data.room;
-  state.currentTopic = null;
   state.topics = data.topics || [];
-  state.replies = [];
-  state.editingTopicId = null;
-  state.editingReplyId = null;
   showChatroom(renderRoomView());
   highlightActiveRoom(slug);
   bindRoomViewHandlers();
@@ -391,6 +419,40 @@ function rerenderTopic() {
 function bindRoomViewHandlers() {
   const back = document.getElementById('chatroom-back');
   back?.addEventListener('click', () => showTimeline());
+
+  /* --- Admin: room-intro bewerken --- */
+  document.querySelector('[data-action="edit-intro"]')?.addEventListener('click', () => {
+    state.editingRoomIntro = true;
+    showChatroom(renderRoomView());
+    bindRoomViewHandlers();
+    document.getElementById('chatroom-intro-edit-title')?.focus();
+  });
+  document.querySelector('[data-action="cancel-intro-edit"]')?.addEventListener('click', () => {
+    state.editingRoomIntro = false;
+    showChatroom(renderRoomView());
+    bindRoomViewHandlers();
+  });
+  const introForm = document.getElementById('chatroom-intro-edit-form');
+  introForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const title = document.getElementById('chatroom-intro-edit-title')?.value.trim();
+    const desc  = document.getElementById('chatroom-intro-edit-desc')?.value.trim();
+    if (!title || !state.currentRoom) return;
+    const submitBtn = introForm.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
+    const { ok, data, error } = await Api.editRoom(state.currentRoom.slug, { title, description: desc });
+    if (submitBtn) submitBtn.disabled = false;
+    if (!ok) { alert(error || 'Bewerken mislukt.'); return; }
+    state.currentRoom = { ...state.currentRoom, ...data.room };
+    state.editingRoomIntro = false;
+    // Cache + rooms-list bijwerken zodat de nieuwe titel in de zijbalk verschijnt.
+    writeRoomCache(state.currentRoom.slug, state.currentRoom, state.topics || []);
+    state.rooms = state.rooms.map(r => r.id === state.currentRoom.id ? { ...r, ...data.room } : r);
+    writeRoomsCache(state.rooms);
+    renderRoomsList(state.rooms);
+    showChatroom(renderRoomView());
+    bindRoomViewHandlers();
+  });
 
   const form = document.getElementById('chatroom-new-topic');
   form?.addEventListener('submit', async (e) => {
