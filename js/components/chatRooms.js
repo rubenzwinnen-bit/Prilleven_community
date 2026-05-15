@@ -5,11 +5,11 @@
    Gebruikt /api/chat-rooms.
 ============================================ */
 
-import * as Store from '../store.js?v=2.4.9';
-import * as Api from '../chatRoomsApi.js?v=2.4.9';
-import { formatRelativeTime } from '../utils.js?v=2.4.9';
-import { renderAvatar, renderAuthorMeta } from '../profileRender.js?v=2.4.9';
-import { sessionGet } from '../supabase.js?v=2.4.9';
+import * as Store from '../store.js?v=2.4.10';
+import * as Api from '../chatRoomsApi.js?v=2.4.10';
+import { formatRelativeTime } from '../utils.js?v=2.4.10';
+import { renderAvatar, renderAuthorMeta } from '../profileRender.js?v=2.4.10';
+import { sessionGet } from '../supabase.js?v=2.4.10';
 
 // Edit-window verwijderd: eigen items zijn altijd bewerkbaar.
 
@@ -274,16 +274,68 @@ function highlightActiveRoom(slug) {
   });
 }
 
+/* ---------------- Per-room cache (instant render van topics) ---------------- */
+const ROOM_CACHE_PREFIX = 'pril_chatroom_v1_';
+const ROOM_CACHE_TTL_MS = 2 * 60 * 1000; // 2 min — kort, alleen om koude functie-start te overbruggen.
+
+function readRoomCache(slug) {
+  try {
+    const raw = localStorage.getItem(ROOM_CACHE_PREFIX + slug);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (!obj || !obj.room) return null;
+    if (Date.now() - (obj.t || 0) > ROOM_CACHE_TTL_MS) return null;
+    return obj;
+  } catch { return null; }
+}
+function writeRoomCache(slug, room, topics) {
+  try {
+    localStorage.setItem(
+      ROOM_CACHE_PREFIX + slug,
+      JSON.stringify({ room, topics: topics || [], t: Date.now() })
+    );
+  } catch {}
+}
+
 /* ---------------- Actions ---------------- */
 async function openRoom(slug) {
-  const mount = getChatroomMount();
-  if (mount) mount.innerHTML = `<div class="chatroom-empty">Laden…</div>`;
-  showChatroom(mount?.innerHTML || '');
+  // 1. Toon direct uit cache als die er is.
+  const cached = readRoomCache(slug);
+  if (cached) {
+    state.activeSlug = slug;
+    state.activeTopicId = null;
+    state.currentRoom = cached.room;
+    state.currentTopic = null;
+    state.topics = cached.topics || [];
+    state.replies = [];
+    state.editingTopicId = null;
+    state.editingReplyId = null;
+    showChatroom(renderRoomView());
+    highlightActiveRoom(slug);
+    bindRoomViewHandlers();
+  } else {
+    const mount = getChatroomMount();
+    if (mount) mount.innerHTML = `<div class="chatroom-empty">Laden…</div>`;
+    showChatroom(mount?.innerHTML || '');
+  }
+
+  // 2. Refresh op de achtergrond.
   const { ok, data, error } = await Api.getRoom(slug);
   if (!ok) {
-    showChatroom(`<div class="chatroom-empty">${escapeHtml(error || 'Kon room niet laden.')}</div>`);
+    if (!cached) {
+      showChatroom(`<div class="chatroom-empty">${escapeHtml(error || 'Kon room niet laden.')}</div>`);
+    }
     return;
   }
+  // Sla nieuwste versie op.
+  writeRoomCache(slug, data.room, data.topics || []);
+
+  // Alleen opnieuw renderen als we nog in deze room zitten én de data echt verschilt.
+  if (state.activeSlug !== slug) return;
+  const sameRoom = cached && JSON.stringify(cached.room) === JSON.stringify(data.room);
+  const sameTopics = cached && JSON.stringify(cached.topics || []) === JSON.stringify(data.topics || []);
+  if (sameRoom && sameTopics) return;
+
   state.activeSlug = slug;
   state.activeTopicId = null;
   state.currentRoom = data.room;
@@ -325,6 +377,7 @@ async function refreshTopics() {
   const { ok, data } = await Api.getRoom(state.activeSlug);
   if (!ok) return;
   state.topics = data.topics || [];
+  writeRoomCache(state.activeSlug, data.room, data.topics || []);
   showChatroom(renderRoomView());
   bindRoomViewHandlers();
 }
