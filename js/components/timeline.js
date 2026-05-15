@@ -4,14 +4,14 @@
    Stap 4: voegt like + replies toe via event-delegation.
 ============================================ */
 
-import { showToast, escapeHtml, processImageForUpload, confirm as confirmDialog, nl2br, formatRelativeTime } from '../utils.js?v=2.3.9';
-import * as Api from '../communityApi.js?v=2.3.9';
-import { sessionGet } from '../supabase.js?v=2.3.9';
-import * as Store from '../store.js?v=2.3.9';
+import { showToast, escapeHtml, processImageForUpload, confirm as confirmDialog, nl2br, formatRelativeTime } from '../utils.js?v=2.4.13';
+import * as Api from '../communityApi.js?v=2.4.13';
+import { sessionGet } from '../supabase.js?v=2.4.13';
+import * as Store from '../store.js?v=2.4.13';
 import { ensureNickname, getCachedNickname, invalidateNicknameCache }
-  from './nicknameModal.js?v=2.3.9';
-import { openProfileModal } from './profileModal.js?v=2.3.9';
-import { renderPostCard, renderReplyRow, renderPoll, CATEGORIES } from './timelinePost.js?v=2.3.9';
+  from './nicknameModal.js?v=2.4.13';
+import { openProfileModal } from './profileModal.js?v=2.4.13';
+import { renderPostCard, renderReplyRow, renderPoll } from './timelinePost.js?v=2.4.13';
 
 function currentUserId() {
   return sessionGet()?.user_id || null;
@@ -21,27 +21,32 @@ function isAdminUser() {
 }
 
 const MAX_BODY = 4000;
-let currentCategory = null; // null = "Alle"
 
 export function render() {
-  const catOptions = CATEGORIES.map(c =>
-    `<option value="${c.id}">${c.emoji} ${c.label}</option>`
-  ).join('');
-
-  const filterChips = [
-    `<button type="button" class="tl-filter-chip is-active" data-cat="">Alle</button>`,
-    ...CATEGORIES.map(c =>
-      `<button type="button" class="tl-filter-chip" data-cat="${c.id}">${c.emoji} ${c.label}</button>`
-    ),
-  ].join('');
-
   return `
     <section class="tl-wrap" id="tl-wrap">
       <div class="tl-main">
         <div class="tl-composer" id="tl-composer">
           <div class="tl-composer-head">
             <span class="tl-composer-title">Wat speelt er bij jou?</span>
-            <span class="tl-composer-nick" id="tl-composer-nick"></span>
+            <div class="tl-composer-head-right">
+              <span class="tl-composer-nick" id="tl-composer-nick"></span>
+              <div class="tl-bell" data-role="bell">
+                <button type="button" class="tl-bell-btn" id="tl-bell-btn" aria-label="Notificaties" aria-expanded="false">
+                  <span class="tl-bell-icon">🔔</span>
+                  <span class="tl-bell-badge hidden" id="tl-bell-badge">0</span>
+                </button>
+                <div class="tl-bell-dropdown hidden" id="tl-bell-dropdown" data-role="bell-dropdown">
+                  <div class="tl-bell-head">
+                    <strong>Notificaties</strong>
+                    <button type="button" class="tl-bell-mark-read" id="tl-bell-mark-read">Markeer gelezen</button>
+                  </div>
+                  <div class="tl-bell-list" id="tl-bell-list">
+                    <div class="tl-empty">Laden…</div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           <textarea
             id="tl-composer-body"
@@ -52,8 +57,6 @@ export function render() {
           ></textarea>
           <div class="tl-composer-foot">
             <div class="tl-composer-left">
-              <label for="tl-composer-cat" class="visually-hidden">Categorie</label>
-              <select id="tl-composer-cat" class="tl-composer-cat">${catOptions}</select>
               <button type="button" class="tl-composer-photo" id="tl-photo-btn" title="Foto toevoegen">📷</button>
               <input type="file" id="tl-photo-input" accept="image/*" class="visually-hidden">
               <button type="button" class="tl-composer-photo" id="tl-poll-toggle" title="Poll toevoegen">📊</button>
@@ -88,27 +91,6 @@ export function render() {
           <div id="tl-composer-error" class="auth-error hidden"></div>
         </div>
 
-        <div class="tl-toolbar">
-          <div class="tl-filterbar" id="tl-filterbar" role="tablist" aria-label="Filter op categorie">
-            ${filterChips}
-          </div>
-          <div class="tl-bell" data-role="bell">
-            <button type="button" class="tl-bell-btn" id="tl-bell-btn" aria-label="Notificaties" aria-expanded="false">
-              <span class="tl-bell-icon">🔔</span>
-              <span class="tl-bell-badge hidden" id="tl-bell-badge">0</span>
-            </button>
-            <div class="tl-bell-dropdown hidden" id="tl-bell-dropdown" data-role="bell-dropdown">
-              <div class="tl-bell-head">
-                <strong>Notificaties</strong>
-                <button type="button" class="tl-bell-mark-read" id="tl-bell-mark-read">Markeer gelezen</button>
-              </div>
-              <div class="tl-bell-list" id="tl-bell-list">
-                <div class="tl-empty">Laden…</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
         ${Store.isAdmin() ? `
           <div class="tl-admin-bar">
             <span class="tl-admin-label">🛡 Admin</span>
@@ -136,8 +118,6 @@ export async function init() {
   const editNick  = document.getElementById('tl-edit-nick');
   const nickEl    = document.getElementById('tl-composer-nick');
   const feedEl    = document.getElementById('tl-feed');
-  const catEl       = document.getElementById('tl-composer-cat');
-  const filterBar   = document.getElementById('tl-filterbar');
   const photoBtn    = document.getElementById('tl-photo-btn');
   const photoInput  = document.getElementById('tl-photo-input');
   const photoPrev   = document.getElementById('tl-photo-preview');
@@ -297,8 +277,6 @@ export async function init() {
         return;
       }
 
-      const category = catEl?.value || 'algemeen';
-
       // Verzamel poll-data (throwt bij ongeldig)
       let pollData = null;
       try {
@@ -326,7 +304,7 @@ export async function init() {
       }
 
       submitBtn.textContent = 'Plaatsen…';
-      const { ok, data, error, status } = await Api.createPost({ body: text, category, image_path, poll: pollData });
+      const { ok, data, error, status } = await Api.createPost({ body: text, category: 'algemeen', image_path, poll: pollData });
       if (!ok) {
         // Sommige fouten verdienen een specifieke melding
         if (status === 412) {
@@ -339,7 +317,6 @@ export async function init() {
 
       bodyEl.value = '';
       counter.textContent = `0 / ${MAX_BODY}`;
-      if (catEl) catEl.value = 'algemeen';
       clearPhoto();
       clearPoll();
       prependPost(data.post);
@@ -364,19 +341,6 @@ export async function init() {
 
   /* ----- Notificatie-bell ----- */
   initBell();
-
-  /* ----- Filterbalk ----- */
-  filterBar?.addEventListener('click', async (e) => {
-    const chip = e.target.closest('.tl-filter-chip');
-    if (!chip) return;
-    const newCat = chip.dataset.cat || null;
-    if (newCat === currentCategory) return;
-    currentCategory = newCat;
-    filterBar.querySelectorAll('.tl-filter-chip').forEach(c =>
-      c.classList.toggle('is-active', c === chip)
-    );
-    await loadAndRenderFeed(feedEl);
-  });
 
   /* ----- Feed laden ----- */
   await loadAndRenderFeed(feedEl);
@@ -698,20 +662,6 @@ async function refreshBellList() {
 async function navigateToPost(postId, replyId = null) {
   // Probeer direct in de huidige feed
   let card = document.querySelector(`.tl-post[data-post-id="${CSS.escape(postId)}"]`);
-  if (!card) {
-    // Reset filter naar "Alle" en herlaad de feed
-    if (currentCategory) {
-      currentCategory = null;
-      const filterBar = document.getElementById('tl-filterbar');
-      if (filterBar) {
-        filterBar.querySelectorAll('.tl-filter-chip').forEach(c =>
-          c.classList.toggle('is-active', !c.dataset.cat)
-        );
-      }
-      await loadAndRenderFeed(document.getElementById('tl-feed'));
-      card = document.querySelector(`.tl-post[data-post-id="${CSS.escape(postId)}"]`);
-    }
-  }
   if (!card) {
     // Post staat niet (meer) in de feed — kan verwijderd zijn of paginatie
     showToast('Bericht niet meer beschikbaar.', 'error');
@@ -1136,17 +1086,14 @@ function bumpReplyCount(card, delta) {
 
 async function loadAndRenderFeed(feedEl) {
   feedEl.innerHTML = `<div class="tl-empty">Posts laden…</div>`;
-  const { ok, data, error } = await Api.getPosts({ limit: 20, category: currentCategory });
+  const { ok, data, error } = await Api.getPosts({ limit: 20 });
   if (!ok) {
     feedEl.innerHTML = `<div class="tl-empty tl-error">Kon feed niet laden: ${escapeHtml(error)}</div>`;
     return;
   }
   const posts = data.posts || [];
   if (posts.length === 0) {
-    const msg = currentCategory
-      ? `Nog geen berichten in deze categorie.`
-      : `Nog geen berichten — wees de eerste!`;
-    feedEl.innerHTML = `<div class="tl-empty">${escapeHtml(msg)}</div>`;
+    feedEl.innerHTML = `<div class="tl-empty">Nog geen berichten — wees de eerste!</div>`;
     return;
   }
   feedEl.innerHTML = posts.map(p => renderPostCard(p, currentUserId(), isAdminUser())).join('');
@@ -1155,10 +1102,6 @@ async function loadAndRenderFeed(feedEl) {
 function prependPost(post) {
   const feedEl = document.getElementById('tl-feed');
   if (!feedEl) return;
-
-  // Als de actieve filter deze categorie uitsluit: niets renderen
-  // (de toast bevestigt dat de post is geplaatst).
-  if (currentCategory && post.category !== currentCategory) return;
 
   // Als er een "lege" placeholder of error stond, vervang die volledig.
   const empty = feedEl.querySelector('.tl-empty');

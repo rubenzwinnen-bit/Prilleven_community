@@ -19,10 +19,10 @@
      naar Supabase Storage in plaats van base64
 ============================================ */
 
-import * as Store from '../store.js?v=2.3.9';
-import * as Router from '../router.js?v=2.3.9';
-import { supabaseStorageUpload } from '../supabase.js?v=2.3.9';
-import { showToast, escapeHtml } from '../utils.js?v=2.3.9';
+import * as Store from '../store.js?v=2.4.13';
+import * as Router from '../router.js?v=2.4.13';
+import { supabaseStorageUpload } from '../supabase.js?v=2.4.13';
+import { showToast, escapeHtml } from '../utils.js?v=2.4.13';
 
 /* ----------------------------------------
    RENDER (skeleton)
@@ -31,6 +31,17 @@ export function render() {
   return `
     <div class="recipe-form-container" id="import-page">
       <h2>Recepten Importeren</h2>
+
+      <!-- ======== MANUEEL TOEVOEGEN ======== -->
+      <div class="import-section" style="border-color:var(--color-primary);background:#f3f9f3;margin-bottom:1rem">
+        <h3 style="margin-bottom:0.5rem">&#10010; Voeg recept manueel toe</h3>
+        <p class="text-muted" style="font-size:0.85rem;margin-bottom:0.75rem">
+          Eén recept tegelijk invoeren via een formulier (naam, foto, eetmomenten, ingrediënten, bereiding ...).
+        </p>
+        <button class="btn btn-primary" id="btn-new-recipe-manual">
+          &#9998; Nieuw recept aanmaken
+        </button>
+      </div>
 
       <!-- ======== MAP IMPORT ======== -->
       <div class="import-section" style="border-color:var(--color-primary);background:#fef9f5">
@@ -126,6 +137,9 @@ export function render() {
 ---------------------------------------- */
 export async function init() {
   /* ---- Listeners ---- */
+  document.getElementById('btn-new-recipe-manual')?.addEventListener('click', () => {
+    Router.navigate('new-recipe');
+  });
   document.getElementById('btn-download-csv-template')?.addEventListener('click', downloadCsvTemplate);
   document.getElementById('btn-import-csv')?.addEventListener('click', importFromFolder);
   document.getElementById('folder-input')?.addEventListener('change', showFolderStatus);

@@ -2272,14 +2272,19 @@ select.form-control {
     padding-bottom: 80px;
   }
   /* Grid verlaten: één pane tegelijk zichtbaar */
-  .home-hub--split {
+  .home-hub--split,
+  .home-hub--tri {
     display: block;
   }
-  .home-pane {
+  .home-pane,
+  .rooms-pane {
     display: none;
   }
   .home-hub--split[data-active-pane="timeline"] .home-pane--timeline,
-  .home-hub--split[data-active-pane="functies"] .home-pane--functies {
+  .home-hub--split[data-active-pane="functies"] .home-pane--functies,
+  .home-hub--tri[data-active-pane="timeline"] .home-pane--timeline,
+  .home-hub--tri[data-active-pane="functies"] .home-pane--functies,
+  .home-hub--tri[data-active-pane="rooms"] .rooms-pane {
     display: block;
   }
   /* Op mobile: pane-titel wat compacter */
@@ -2313,6 +2318,9 @@ select.form-control {
 
 /* Verberg de navigatiebalk op de hub-landingspagina */
 body.is-hub #app-nav { display: none; }
+/* Op de landing-page: header mag mee variabel meegroeien met de browserbreedte,
+   net als de middelste kolom (zie #app-content:has(.home-hub--tri)). */
+body.is-hub .header-inner { max-width: none; }
 
 /* Op de hub-landingspagina is de "naar het hub"-knop overbodig */
 body.is-hub .header-home-btn { display: none; }
@@ -2531,7 +2539,7 @@ body.is-learnings #app-nav { display: none; }
 .tl-composer-head {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   margin-bottom: 0.5rem;
   gap: 0.75rem;
   flex-wrap: wrap;
@@ -2540,6 +2548,11 @@ body.is-learnings #app-nav { display: none; }
   font-weight: 600;
   color: var(--color-secondary-dark);
   font-size: 1rem;
+}
+.tl-composer-head-right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
 }
 .tl-composer-nick {
   font-size: 0.8rem;
@@ -3373,17 +3386,6 @@ body.is-learnings #app-nav { display: none; }
    COMMUNITY TIMELINE — STAP 10: bell + notificaties
 ============================================ */
 
-/* Toolbar = filterbalk + bell op één lijn */
-.tl-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.tl-toolbar .tl-filterbar {
-  flex: 1;
-  margin-bottom: 0;
-}
-
 .tl-bell {
   position: relative;
   flex-shrink: 0;
@@ -4177,4 +4179,481 @@ body.is-learnings #app-nav { display: none; }
 }
 .home-tile--sage-deep .home-tile-desc { color: rgba(255,255,255,0.92); }
 .home-tile--sage-deep .home-tile-arrow { color: #fff; }
+
+/* ============================================
+   CHATROOMS — 3-koloms layout + rooms-nav + room/topic-view
+   Desktop: Functies (links) | Timeline of Room (midden) | Rooms (rechts)
+   Mobile:  via bottom-nav één pane tegelijk
+============================================ */
+.home-hub--tri {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr) 170px;
+  gap: .85rem;
+  align-items: start;
+  max-width: 2200px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: .25rem;
+  padding-right: .25rem;
+  box-sizing: border-box;
+}
+
+/* Landing-page mag de volledige browserbreedte benutten i.p.v. de standaard
+   1140px-clamp van #app-content. Modern browsers ondersteunen :has(). */
+#app-content:has(.home-hub--tri) {
+  max-width: none;
+  padding-left: .75rem;
+  padding-right: .75rem;
+}
+
+/* Functies-tegels (links): enkel titels tonen, compacter. */
+.home-pane--functies .home-tile-desc { display: none; }
+.home-pane--functies .home-tile {
+  padding: .65rem .85rem;
+  gap: .6rem;
+}
+.home-pane--functies .home-tile-title {
+  font-size: .9rem;
+  margin-bottom: 0;
+}
+.home-pane--functies .home-tile:hover {
+  padding-top: calc(.65rem + 90px);
+}
+.home-pane--functies .home-tile:hover .home-tile-hover-img {
+  height: 80px;
+}
+
+/* Middle pane: timeline vs chatroom toggle.
+   Bij default toont timeline; data-view="chatroom" verbergt timeline en toont mount. */
+.home-pane--timeline #home-chatroom-mount { display: none; }
+.home-pane--timeline[data-view="chatroom"] #home-timeline-inner { display: none; }
+.home-pane--timeline[data-view="chatroom"] #home-chatroom-mount { display: block; }
+
+/* Op de landing-page mag de tijdlijn de volledige midden-kolom benutten.
+   Standaard .tl-wrap clampt naar 720px (voor de stand-alone /timeline route);
+   binnen home-hub--tri overrulen we dat. Idem voor de chatroom-view. */
+.home-pane--timeline .tl-wrap,
+.home-pane--timeline .chatroom-view,
+.home-pane--timeline .topic-view {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+/* ----- Rooms-pane (rechts) ----- */
+.rooms-pane { min-width: 0; }
+.rooms-pane-header { margin-bottom: .85rem; }
+.rooms-pane-title {
+  font-size: 1.05rem;
+  color: var(--color-secondary-dark);
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: .2px;
+}
+.rooms-pane-body { display: flex; flex-direction: column; gap: .5rem; }
+
+.rooms-back-timeline {
+  background: var(--color-white);
+  border: 1px solid var(--color-gray-light, #e5e5e5);
+  border-radius: var(--radius-md);
+  padding: .55rem .75rem;
+  font-family: inherit;
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--color-secondary-dark);
+  cursor: pointer;
+  text-align: left;
+}
+.rooms-back-timeline:hover {
+  background: #f3f9f3;
+  border-color: var(--color-secondary-dark, #82be93);
+}
+
+.rooms-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .35rem; }
+.rooms-loading, .rooms-error { padding: .5rem .25rem; color: var(--color-gray); font-size: .85rem; }
+.rooms-error { color: #c0392b; }
+
+.rooms-list-item { margin: 0; }
+.rooms-list-btn {
+  width: 100%;
+  display: block;
+  padding: .55rem .75rem;
+  background: var(--color-white);
+  border: 1px solid var(--color-gray-light, #e5e5e5);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.rooms-list-btn:hover {
+  background: #f3f9f3;
+  border-color: var(--color-secondary-dark, #82be93);
+}
+.rooms-list-item.is-active .rooms-list-btn {
+  background: var(--color-secondary-dark, #82BE93);
+  border-color: var(--color-secondary-dark, #82BE93);
+  box-shadow: 0 2px 8px rgba(130,190,147,0.35);
+}
+.rooms-list-item.is-active .rooms-list-btn:hover {
+  background: var(--color-secondary-dark, #82BE93);
+}
+.rooms-list-item.is-active .rooms-list-title {
+  color: var(--color-white, #fff);
+}
+.rooms-list-title {
+  font-weight: 600;
+  font-size: .85rem;
+  color: var(--color-secondary-dark);
+}
+/* Beschrijving niet tonen — alleen titels in de tegels. */
+.rooms-list-desc { display: none; }
+
+/* ----- Chatroom view (binnen midden-pane) ----- */
+.chatroom-view, .topic-view {
+  background: var(--color-white);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.1rem 1.25rem;
+  border: 1px solid var(--color-gray-light, #e5e5e5);
+}
+.chatroom-empty {
+  padding: 1.25rem;
+  text-align: center;
+  color: var(--color-gray);
+  background: var(--color-white);
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--color-gray-light, #e5e5e5);
+}
+.chatroom-header {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+  margin-bottom: 1rem;
+  padding-bottom: .75rem;
+  border-bottom: 1px solid var(--color-gray-light, #e5e5e5);
+}
+.chatroom-header-top {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.topic-detail-header {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  margin-bottom: 1rem;
+  padding-bottom: .75rem;
+  border-bottom: 1px solid var(--color-gray-light, #e5e5e5);
+}
+.chatroom-back {
+  background: transparent;
+  border: 0;
+  font-size: 1.3rem;
+  cursor: pointer;
+  color: var(--color-secondary-dark);
+  padding: .15rem .35rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.chatroom-back:hover { color: var(--color-primary-dark); }
+.chatroom-header-text, .topic-detail-header-text { flex: 1; min-width: 0; }
+.chatroom-title, .topic-detail-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-secondary-dark);
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+/* Beschrijving springt in onder de titel (uitlijning met de titel, niet met de ←). */
+.chatroom-desc {
+  font-size: .85rem;
+  color: var(--color-dark-light);
+  margin: 0 0 0 calc(.15rem + .35rem + 1.3rem + .5rem);
+  line-height: 1.4;
+}
+.chatroom-intro-edit-btn {
+  background: var(--color-white);
+  border: 1px solid var(--color-gray-light, #e5e5e5);
+  border-radius: var(--radius-sm, 8px);
+  padding: .3rem .65rem;
+  font-size: .8rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--color-dark);
+  flex-shrink: 0;
+}
+.chatroom-intro-edit-btn:hover {
+  background: #f3f9f3;
+  border-color: var(--color-secondary-dark, #82be93);
+  color: var(--color-secondary-dark);
+}
+/* Inline edit-form voor de room-intro (admin) */
+.chatroom-header--editing { flex-direction: row; align-items: flex-start; }
+.chatroom-intro-edit-form { flex: 1; display: flex; flex-direction: column; gap: .5rem; min-width: 0; }
+.chatroom-intro-edit-actions { display: flex; gap: .5rem; justify-content: flex-end; }
+.topic-detail-header-text { display: flex; align-items: center; gap: .4rem; }
+.topic-detail-actions { display: flex; gap: .4rem; flex-shrink: 0; }
+.topic-pin-btn, .topic-del-btn {
+  background: var(--color-white);
+  border: 1px solid var(--color-gray-light, #e5e5e5);
+  border-radius: var(--radius-sm, 8px);
+  padding: .3rem .65rem;
+  font-size: .8rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--color-dark);
+}
+.topic-pin-btn:hover { background: #f3f9f3; border-color: var(--color-primary); color: var(--color-primary-dark); }
+.topic-del-btn:hover { background: #fcebea; border-color: #c0392b; color: #c0392b; }
+
+/* ----- Nieuwe-topic form ----- */
+.chatroom-new-topic {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  padding: .85rem;
+  background: #f8fbf8;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-gray-light, #e5e5e5);
+  margin-bottom: 1rem;
+}
+.chatroom-input, .chatroom-textarea {
+  width: 100%;
+  border: 1px solid var(--color-gray-light, #e5e5e5);
+  border-radius: var(--radius-sm, 8px);
+  padding: .5rem .65rem;
+  font-family: inherit;
+  font-size: .92rem;
+  background: var(--color-white);
+  color: var(--color-dark);
+  resize: vertical;
+}
+.chatroom-input:focus, .chatroom-textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(130,190,147,.2);
+}
+.chatroom-new-foot { display: flex; justify-content: flex-end; }
+
+/* ----- Topic cards (lijst) ----- */
+.topic-list { display: flex; flex-direction: column; gap: .55rem; }
+.topic-card {
+  position: relative;
+  padding: .85rem 1rem;
+  background: var(--color-white);
+  border: 1px solid var(--color-gray-light, #e5e5e5);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.topic-card:hover {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+  background: #fafdfa;
+}
+.topic-card.is-pinned {
+  background: #fffaf0;
+  border-color: #e8c897;
+}
+.topic-pin {
+  position: absolute;
+  top: .55rem;
+  right: .65rem;
+  font-size: 1rem;
+  opacity: .85;
+}
+.topic-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-secondary-dark);
+  margin: 0 0 .25rem 0;
+  padding-right: 1.5rem;
+}
+.topic-meta {
+  font-size: .78rem;
+  color: var(--color-gray);
+  margin: 0 0 .3rem 0;
+}
+.topic-author { font-weight: 600; color: var(--color-dark-light); }
+.topic-sep    { margin: 0 .3rem; opacity: .55; }
+.topic-snippet {
+  font-size: .87rem;
+  color: var(--color-dark-light);
+  margin: 0;
+  line-height: 1.45;
+}
+
+/* ----- Topic-detail (eigen body + replies) ----- */
+.topic-body-card {
+  padding: .85rem 1rem;
+  background: #f8fbf8;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-gray-light, #e5e5e5);
+  margin-bottom: 1rem;
+}
+.topic-body-text {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-size: .95rem;
+  color: var(--color-dark);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.reply-list { display: flex; flex-direction: column; gap: .5rem; margin-bottom: 1rem; }
+.reply-card {
+  padding: .65rem .85rem;
+  background: var(--color-white);
+  border: 1px solid var(--color-gray-light, #e5e5e5);
+  border-radius: var(--radius-md);
+}
+.reply-head {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin-bottom: .25rem;
+  font-size: .78rem;
+}
+.reply-author { font-weight: 700; color: var(--color-secondary-dark); }
+.reply-date   { color: var(--color-gray); flex: 1; }
+.reply-del {
+  background: transparent;
+  border: 0;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--color-gray);
+  padding: 0 .25rem;
+}
+.reply-del:hover { color: #c0392b; }
+.reply-body {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-size: .9rem;
+  color: var(--color-dark);
+  margin: 0;
+  line-height: 1.45;
+}
+
+.reply-form {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  align-items: stretch;
+}
+.reply-form .btn { align-self: flex-end; }
+
+/* ----- Avatars in topics/replies (zelfde stijl als timeline) ----- */
+.topic-card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: .55rem;
+  margin-bottom: .35rem;
+}
+.topic-card-head-text { flex: 1; min-width: 0; }
+.topic-body-head {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  margin-bottom: .55rem;
+}
+.topic-body-head .topic-meta { margin: 0; }
+
+/* Reply layout met avatar links en bubble rechts */
+.reply-row {
+  display: flex;
+  align-items: flex-start;
+  gap: .55rem;
+}
+.reply-bubble { flex: 1; min-width: 0; }
+.reply-card { padding: .55rem .65rem; }
+.reply-actions {
+  display: flex;
+  gap: .35rem;
+  margin-top: .3rem;
+  justify-content: flex-end;
+}
+.reply-edit, .reply-del {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm, 6px);
+  padding: .15rem .5rem;
+  font-size: .75rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--color-gray);
+  font-family: inherit;
+}
+.reply-edit:hover {
+  background: #f3f9f3;
+  border-color: var(--color-primary);
+  color: var(--color-primary-dark, var(--color-secondary-dark));
+}
+.reply-del { font-size: .75rem; padding: .15rem .5rem; }
+.reply-del:hover { background: #fcebea; border-color: #c0392b; color: #c0392b; }
+
+/* Topic / reply edit-forms */
+.topic-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+.topic-edit-actions, .reply-edit-actions {
+  display: flex;
+  gap: .4rem;
+  justify-content: flex-end;
+}
+.topic-body-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: .4rem;
+}
+.topic-edit-btn {
+  background: transparent;
+  border: 1px solid var(--color-gray-light, #e5e5e5);
+  border-radius: var(--radius-sm, 6px);
+  padding: .25rem .6rem;
+  font-size: .78rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--color-dark-light);
+  font-family: inherit;
+}
+.topic-edit-btn:hover {
+  background: #f3f9f3;
+  border-color: var(--color-primary);
+  color: var(--color-primary-dark, var(--color-secondary-dark));
+}
+.reply-card.is-editing {
+  background: #f8fbf8;
+  border-color: var(--color-secondary-dark, #82be93);
+}
+.reply-edit-form {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+}
+.reply-edit-textarea { font-size: .9rem; }
+
+/* ----- Mobile (≤768px): rooms-pane mag ook 1 kolom worden bij 3-koloms layout ----- */
+@media (max-width: 1024px) and (min-width: 769px) {
+  /* Tablet: functies links iets breder, rooms-kolom compacter */
+  .home-hub--tri {
+    grid-template-columns: 220px minmax(0, 1fr) 160px;
+    gap: .85rem;
+    padding-left: .5rem;
+    padding-right: .5rem;
+  }
+}
+@media (max-width: 768px) {
+  .home-hub--tri { padding-bottom: 80px; }
+  .chatroom-view, .topic-view { padding: .85rem .9rem 1rem; }
+  .chatroom-title, .topic-detail-title { font-size: 1.05rem; }
+}
 

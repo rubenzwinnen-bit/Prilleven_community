@@ -581,10 +581,8 @@ export async function createReply(userId, postId, { body }) {
 
 /* ============================================
    EDIT / DELETE — posts en replies
-   Server doet authoritatieve eigenaar + 15-min check.
+   Server doet authoritatieve eigenaar-check.
 ============================================ */
-
-const EDIT_WINDOW_MS = 15 * 60 * 1000;
 
 export async function editPost(userId, postId, newBody) {
   const body = typeof newBody === 'string' ? newBody.trim() : '';
@@ -600,9 +598,6 @@ export async function editPost(userId, postId, newBody) {
   if (!existing) throw Object.assign(new Error('Post bestaat niet.'), { status: 404 });
   if (existing.user_id !== userId) {
     throw Object.assign(new Error('Geen rechten om deze post te wijzigen.'), { status: 403 });
-  }
-  if (Date.now() - new Date(existing.created_at).getTime() > EDIT_WINDOW_MS) {
-    throw Object.assign(new Error('Bewerken kan alleen binnen 15 minuten na plaatsen.'), { status: 409 });
   }
 
   const { error } = await supabase
@@ -659,9 +654,6 @@ export async function editReply(userId, replyId, newBody) {
   if (!existing) throw Object.assign(new Error('Reactie bestaat niet.'), { status: 404 });
   if (existing.user_id !== userId) {
     throw Object.assign(new Error('Geen rechten om deze reactie te wijzigen.'), { status: 403 });
-  }
-  if (Date.now() - new Date(existing.created_at).getTime() > EDIT_WINDOW_MS) {
-    throw Object.assign(new Error('Bewerken kan alleen binnen 15 minuten na plaatsen.'), { status: 409 });
   }
 
   const { error } = await supabase

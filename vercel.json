@@ -8,6 +8,7 @@
   "rewrites": [
     { "source": "/api/community/:path*", "destination": "/api/community" },
     { "source": "/api/learnings/:path*", "destination": "/api/learnings" },
+    { "source": "/api/chat-rooms/:path*", "destination": "/api/chat-rooms" },
     { "source": "/((?!api/)(?!.*\\.).*)", "destination": "/index.html" }
   ],
   "functions": {
