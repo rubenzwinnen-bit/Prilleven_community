@@ -2318,6 +2318,9 @@ select.form-control {
 
 /* Verberg de navigatiebalk op de hub-landingspagina */
 body.is-hub #app-nav { display: none; }
+/* Op de landing-page: header mag mee variabel meegroeien met de browserbreedte,
+   net als de middelste kolom (zie #app-content:has(.home-hub--tri)). */
+body.is-hub .header-inner { max-width: none; }
 
 /* Op de hub-landingspagina is de "naar het hub"-knop overbodig */
 body.is-hub .header-home-btn { display: none; }
