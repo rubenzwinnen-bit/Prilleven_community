@@ -4202,6 +4202,18 @@ body.is-learnings #app-nav { display: none; }
 .home-pane--timeline[data-view="chatroom"] #home-timeline-inner { display: none; }
 .home-pane--timeline[data-view="chatroom"] #home-chatroom-mount { display: block; }
 
+/* Op de landing-page mag de tijdlijn de volledige midden-kolom benutten.
+   Standaard .tl-wrap clampt naar 720px (voor de stand-alone /timeline route);
+   binnen home-hub--tri overrulen we dat. Idem voor de chatroom-view. */
+.home-pane--timeline .tl-wrap,
+.home-pane--timeline .chatroom-view,
+.home-pane--timeline .topic-view {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
 /* ----- Rooms-pane (rechts) ----- */
 .rooms-pane { min-width: 0; }
 .rooms-pane-header { margin-bottom: .85rem; }
