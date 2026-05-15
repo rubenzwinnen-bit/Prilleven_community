@@ -4184,8 +4184,8 @@ body.is-learnings #app-nav { display: none; }
 ============================================ */
 .home-hub--tri {
   display: grid;
-  grid-template-columns: 190px minmax(0, 1fr) 200px;
-  gap: .75rem;
+  grid-template-columns: 240px minmax(0, 1fr) 170px;
+  gap: .85rem;
   align-items: start;
   max-width: 2200px;
   width: 100%;
@@ -4194,6 +4194,31 @@ body.is-learnings #app-nav { display: none; }
   padding-left: .25rem;
   padding-right: .25rem;
   box-sizing: border-box;
+}
+
+/* Landing-page mag de volledige browserbreedte benutten i.p.v. de standaard
+   1140px-clamp van #app-content. Modern browsers ondersteunen :has(). */
+#app-content:has(.home-hub--tri) {
+  max-width: none;
+  padding-left: .75rem;
+  padding-right: .75rem;
+}
+
+/* Functies-tegels (links): enkel titels tonen, compacter. */
+.home-pane--functies .home-tile-desc { display: none; }
+.home-pane--functies .home-tile {
+  padding: .65rem .85rem;
+  gap: .6rem;
+}
+.home-pane--functies .home-tile-title {
+  font-size: .9rem;
+  margin-bottom: 0;
+}
+.home-pane--functies .home-tile:hover {
+  padding-top: calc(.65rem + 90px);
+}
+.home-pane--functies .home-tile:hover .home-tile-hover-img {
+  height: 80px;
 }
 
 /* Middle pane: timeline vs chatroom toggle.
@@ -4615,10 +4640,10 @@ body.is-learnings #app-nav { display: none; }
 
 /* ----- Mobile (≤768px): rooms-pane mag ook 1 kolom worden bij 3-koloms layout ----- */
 @media (max-width: 1024px) and (min-width: 769px) {
-  /* Tablet: rooms-kolom even compact */
+  /* Tablet: functies links iets breder, rooms-kolom compacter */
   .home-hub--tri {
-    grid-template-columns: 210px minmax(0, 1fr) 230px;
-    gap: 1rem;
+    grid-template-columns: 220px minmax(0, 1fr) 160px;
+    gap: .85rem;
     padding-left: .5rem;
     padding-right: .5rem;
   }

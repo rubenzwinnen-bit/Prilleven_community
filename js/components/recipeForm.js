@@ -10,10 +10,10 @@
      en vult het formulier in
 ============================================ */
 
-import * as Store from '../store.js?v=2.4.11';
-import * as Router from '../router.js?v=2.4.11';
-import { supabaseStorageUpload, dataUriToBlob } from '../supabase.js?v=2.4.11';
-import { showToast, ALLERGENS, MEAL_MOMENTS, escapeHtml } from '../utils.js?v=2.4.11';
+import * as Store from '../store.js?v=2.4.12';
+import * as Router from '../router.js?v=2.4.12';
+import { supabaseStorageUpload, dataUriToBlob } from '../supabase.js?v=2.4.12';
+import { showToast, ALLERGENS, MEAL_MOMENTS, escapeHtml } from '../utils.js?v=2.4.12';
 
 /* ----------------------------------------
    RENDER
