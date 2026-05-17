@@ -520,6 +520,9 @@ function setupApp() {
     // Verberg nav ook op de Learnings-pagina's (eigen header, geen recepten-tabs)
     const isLearnings = Router.getCurrentPath().split('/')[0] === 'learnings';
     document.body.classList.toggle('is-learnings', isLearnings);
+    // Verberg nav op de profielpagina
+    const isProfiel = Router.getCurrentPath() === 'profiel';
+    document.body.classList.toggle('is-profiel', isProfiel);
     if (initFn) await initFn();
 
     /* Scroll-positie herstellen als we terugkomen op een eerder bezochte

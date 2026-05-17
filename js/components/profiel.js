@@ -11,6 +11,30 @@ import * as Api from '../childrenApi.js?v=2.5.0';
 import { openProfileModal } from './profileModal.js?v=2.5.0';
 
 /* ----------------------------------------
+   ALLERGEENLIJST (EU Big-14 + veelvoorkomend bij baby's)
+---------------------------------------- */
+const ALLERGEN_OPTIONS = [
+  { key: 'melk',         label: 'Melk (koemelk)' },
+  { key: 'ei',           label: 'Ei' },
+  { key: 'gluten',       label: 'Gluten (tarwe, rogge, gerst)' },
+  { key: 'pinda',        label: 'Pinda' },
+  { key: 'noten',        label: 'Boomharde noten (walnoot, hazelnoot, amandel…)' },
+  { key: 'vis',          label: 'Vis' },
+  { key: 'schaaldieren', label: 'Schaaldieren (garnaal, kreeft…)' },
+  { key: 'weekdieren',   label: 'Weekdieren (mossel, inktvis…)' },
+  { key: 'soja',         label: 'Soja' },
+  { key: 'sesam',        label: 'Sesam' },
+  { key: 'lupine',       label: 'Lupine' },
+  { key: 'mosterd',      label: 'Mosterd' },
+  { key: 'selderij',     label: 'Selderij' },
+  { key: 'sulfiet',      label: 'Sulfiet / sulfieten' },
+  { key: 'kiwi',         label: 'Kiwi' },
+  { key: 'perzik',       label: 'Perzik / steenvruchten' },
+  { key: 'aardbei',      label: 'Aardbei' },
+  { key: 'appel',        label: 'Appel' },
+];
+
+/* ----------------------------------------
    LEEFTIJD BEREKENEN
 ---------------------------------------- */
 function calcAge(birthdate) {
@@ -56,8 +80,7 @@ export async function init() {
     return;
   }
 
-  const children = data.children || [];
-  renderPage(container, children);
+  renderPage(container, data.children || []);
 }
 
 /* ----------------------------------------
@@ -97,7 +120,6 @@ function renderPage(container, children) {
           ? '<p class="profiel-empty">Nog geen kinderen toegevoegd.</p>'
           : children.map(c => renderKindCard(c)).join('')}
       </div>
-      <div id="profiel-kind-form-wrap" class="hidden"></div>
     </section>
   `;
 
@@ -113,7 +135,10 @@ function renderKindCard(kind) {
   const eczema = kind.has_eczema ? 'Ja' : 'Nee';
 
   const allergies = Array.isArray(kind.known_allergies) && kind.known_allergies.length > 0
-    ? kind.known_allergies.map(a => `<span class="profiel-tag">${escapeHtml(a)}</span>`).join('')
+    ? kind.known_allergies.map(a => {
+        const opt = ALLERGEN_OPTIONS.find(o => o.key === a);
+        return `<span class="profiel-tag">${escapeHtml(opt ? opt.label.split(' (')[0] : a)}</span>`;
+      }).join('')
     : '<span class="profiel-empty-inline">Geen bekende allergieën</span>';
 
   const introduced = Array.isArray(kind.introduced_allergens) && kind.introduced_allergens.length > 0
@@ -130,7 +155,7 @@ function renderKindCard(kind) {
         </div>
         <div class="profiel-kind-actions">
           <button class="btn btn-outline btn-sm kind-edit-btn" data-id="${escapeHtml(kind.id)}">Bewerken</button>
-          <button class="btn btn-outline btn-sm btn-danger kind-delete-btn" data-id="${escapeHtml(kind.id)}" title="Kind archiveren">Verwijderen</button>
+          <button class="btn btn-outline btn-sm btn-danger kind-delete-btn" data-id="${escapeHtml(kind.id)}">Verwijderen</button>
         </div>
       </div>
       <div class="profiel-kind-details">
@@ -167,7 +192,8 @@ function renderKindCard(kind) {
 function renderKindForm(kind = null) {
   const isEdit = !!kind;
   const v = kind || {};
-  const allergies = Array.isArray(v.known_allergies) ? v.known_allergies : [];
+  const selected = new Set(Array.isArray(v.known_allergies) ? v.known_allergies : []);
+  const selectedCount = selected.size;
 
   return `
     <div class="profiel-kind-form" id="profiel-kind-form">
@@ -214,15 +240,26 @@ function renderKindForm(kind = null) {
 
       <div class="profiel-form-row">
         <label class="profiel-form-label">Bekende allergieën</label>
-        <div class="profiel-allergen-input-wrap">
-          <div class="profiel-tags" id="pkf-allergy-tags">
-            ${allergies.map(a => renderAllergenTag(a)).join('')}
+        <div class="profiel-allergen-dropdown-wrap" id="pkf-allergen-wrap">
+          <button type="button" class="profiel-allergen-trigger" id="pkf-allergen-trigger" aria-expanded="false">
+            <span id="pkf-allergen-label">${selectedCount > 0 ? `${selectedCount} geselecteerd` : 'Kies allergieën…'}</span>
+            <span class="profiel-allergen-arrow">▾</span>
+          </button>
+          <div class="profiel-allergen-panel hidden" id="pkf-allergen-panel">
+            ${ALLERGEN_OPTIONS.map(opt => `
+              <label class="profiel-allergen-option">
+                <input type="checkbox" name="pkf-allergen" value="${opt.key}"
+                  ${selected.has(opt.key) ? 'checked' : ''}>
+                <span>${escapeHtml(opt.label)}</span>
+              </label>
+            `).join('')}
           </div>
-          <div class="profiel-allergen-add-row">
-            <input type="text" id="pkf-allergy-input" class="auth-input auth-input--sm"
-              placeholder="Typ een allergeen en druk Enter" maxlength="50" autocomplete="off">
-            <button type="button" class="btn btn-outline btn-sm" id="pkf-allergy-add-btn">+ Toevoegen</button>
-          </div>
+        </div>
+        <div class="profiel-tags profiel-allergen-selected-tags" id="pkf-selected-allergen-tags">
+          ${[...selected].map(k => {
+            const opt = ALLERGEN_OPTIONS.find(o => o.key === k);
+            return opt ? `<span class="profiel-tag">${escapeHtml(opt.label.split(' (')[0])}</span>` : '';
+          }).join('')}
         </div>
       </div>
 
@@ -250,17 +287,10 @@ function renderKindForm(kind = null) {
   `;
 }
 
-function renderAllergenTag(allergen) {
-  return `<span class="profiel-tag profiel-tag--removable" data-allergen="${escapeHtml(allergen)}">
-    ${escapeHtml(allergen)}<button type="button" class="profiel-tag-remove" aria-label="Verwijder ${escapeHtml(allergen)}">×</button>
-  </span>`;
-}
-
 /* ----------------------------------------
    EVENT HANDLERS
 ---------------------------------------- */
 function bindPageEvents(container, children) {
-  // Nickname/avatar modal vanuit header
   document.getElementById('profiel-edit-nickname-btn')?.addEventListener('click', async () => {
     const updated = await openProfileModal();
     if (updated) {
@@ -269,18 +299,20 @@ function bindPageEvents(container, children) {
     }
   });
 
-  // Kind toevoegen
+  // Kind toevoegen → form onderaan de lijst
   document.getElementById('profiel-add-kind-btn')?.addEventListener('click', () => {
-    openForm(null, children, container);
+    // Sluit eventueel open bewerkformulier
+    closeInlineForm();
+    openAddForm(container);
   });
 
-  // Kind bewerken
+  // Bewerken / verwijderen via event delegation
   container.addEventListener('click', (e) => {
     const editBtn = e.target.closest('.kind-edit-btn');
     if (editBtn) {
       const id = editBtn.dataset.id;
       const kind = children.find(c => c.id === id);
-      if (kind) openForm(kind, children, container);
+      if (kind) openEditForm(kind, container);
       return;
     }
 
@@ -288,57 +320,111 @@ function bindPageEvents(container, children) {
     if (deleteBtn) {
       const id = deleteBtn.dataset.id;
       const kind = children.find(c => c.id === id);
-      if (kind) confirmDelete(kind, children, container);
+      if (kind) confirmDelete(kind, container);
     }
   });
 }
 
 /* ----------------------------------------
-   FORMULIER OPENEN
+   FORMULIER HELPERS
 ---------------------------------------- */
-function openForm(kind, children, container) {
-  const formWrap = document.getElementById('profiel-kind-form-wrap');
-  if (!formWrap) return;
-  formWrap.innerHTML = renderKindForm(kind);
-  formWrap.classList.remove('hidden');
-  formWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-  const allergyTags = formWrap.querySelector('#pkf-allergy-tags');
-  const allergyInput = formWrap.querySelector('#pkf-allergy-input');
-  const allergyAddBtn = formWrap.querySelector('#pkf-allergy-add-btn');
+// Sluit inline formulier als dat open staat (in een kaart)
+function closeInlineForm() {
+  const existing = document.getElementById('profiel-kind-form');
+  if (!existing) return;
+  const wrap = existing.closest('.profiel-kind-card[data-editing]');
+  if (wrap) {
+    const kindId = wrap.dataset.id;
+    // We herstellen via een herlaad — simpelste aanpak
+    wrap.removeAttribute('data-editing');
+  }
+}
+
+// Bewerken: vervang de kaart door het formulier IN PLACE
+function openEditForm(kind, container) {
+  // Sluit andere open formulieren
+  const existingForm = document.getElementById('profiel-kind-form');
+  if (existingForm) {
+    const oldCard = existingForm.closest('.profiel-kind-card');
+    if (oldCard && oldCard.dataset.id !== kind.id) {
+      // Andere kaart was open — herstel die eerst (simpel: herlaad pagina-sectie)
+      // We laten het voor nu gewoon vervangen
+    }
+  }
+  // Sluit ook "toevoegen"-formulier
+  const addWrap = document.getElementById('profiel-add-form-wrap');
+  if (addWrap) addWrap.remove();
+
+  const card = document.querySelector(`.profiel-kind-card[data-id="${CSS.escape(kind.id)}"]`);
+  if (!card) return;
+
+  card.setAttribute('data-editing', '1');
+  card.innerHTML = renderKindForm(kind);
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  bindFormEvents(card, kind, container);
+}
+
+// Toevoegen: voeg een nieuwe formulier-kaart toe onderaan de lijst
+function openAddForm(container) {
+  const list = document.getElementById('profiel-kinderen-list');
+  if (!list) return;
+
+  // Verwijder al bestaand toevoegformulier
+  const existing = document.getElementById('profiel-add-form-wrap');
+  if (existing) existing.remove();
+
+  const wrap = document.createElement('div');
+  wrap.id = 'profiel-add-form-wrap';
+  wrap.className = 'profiel-kind-card';
+  wrap.innerHTML = renderKindForm(null);
+  list.appendChild(wrap);
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  bindFormEvents(wrap, null, container);
+}
+
+// Bindt alle events in een formulier (werkt voor zowel kaart-in-place als nieuw)
+function bindFormEvents(formWrap, kind, container) {
   const errorEl = formWrap.querySelector('#pkf-error');
   const saveBtn = formWrap.querySelector('#pkf-save-btn');
   const cancelBtn = formWrap.querySelector('#pkf-cancel-btn');
 
-  function getAllergies() {
-    return [...allergyTags.querySelectorAll('[data-allergen]')]
-      .map(el => el.dataset.allergen);
-  }
+  // Allergieën dropdown
+  const trigger = formWrap.querySelector('#pkf-allergen-trigger');
+  const panel = formWrap.querySelector('#pkf-allergen-panel');
+  const label = formWrap.querySelector('#pkf-allergen-label');
+  const selectedTagsEl = formWrap.querySelector('#pkf-selected-allergen-tags');
 
-  function addAllergen() {
-    const val = allergyInput.value.trim().toLowerCase().slice(0, 50);
-    if (!val) return;
-    const existing = getAllergies();
-    if (existing.includes(val)) { allergyInput.value = ''; return; }
-    if (existing.length >= 30) return;
-    allergyTags.insertAdjacentHTML('beforeend', renderAllergenTag(val));
-    allergyInput.value = '';
-    allergyInput.focus();
-  }
-
-  allergyAddBtn?.addEventListener('click', addAllergen);
-  allergyInput?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); addAllergen(); }
+  trigger?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = !panel.classList.contains('hidden');
+    panel.classList.toggle('hidden', isOpen);
+    trigger.setAttribute('aria-expanded', String(!isOpen));
   });
 
-  allergyTags?.addEventListener('click', (e) => {
-    const removeBtn = e.target.closest('.profiel-tag-remove');
-    if (removeBtn) removeBtn.closest('[data-allergen]').remove();
+  // Sluit panel bij klik buiten
+  document.addEventListener('click', function closePanel(e) {
+    if (!formWrap.contains(e.target)) {
+      panel?.classList.add('hidden');
+      trigger?.setAttribute('aria-expanded', 'false');
+      document.removeEventListener('click', closePanel);
+    }
   });
 
-  cancelBtn?.addEventListener('click', () => {
-    formWrap.classList.add('hidden');
-    formWrap.innerHTML = '';
+  // Update label + tags bij elke checkbox-wijziging
+  panel?.addEventListener('change', () => updateAllergenDisplay(panel, label, selectedTagsEl));
+
+  cancelBtn?.addEventListener('click', async () => {
+    if (kind) {
+      // Herstel de originele kaart
+      const card = formWrap; // formWrap IS de kaart bij edit
+      card.removeAttribute('data-editing');
+      card.innerHTML = renderKindCard(kind);
+    } else {
+      formWrap.remove();
+    }
   });
 
   saveBtn?.addEventListener('click', async () => {
@@ -348,7 +434,7 @@ function openForm(kind, children, container) {
     const birthdate = formWrap.querySelector('#pkf-birthdate').value;
     const texture = formWrap.querySelector('input[name="pkf-texture"]:checked')?.value || null;
     const hasEczema = formWrap.querySelector('input[name="pkf-eczema"]:checked')?.value === 'ja';
-    const known_allergies = getAllergies();
+    const known_allergies = getSelectedAllergens(panel);
     const previous_reactions = formWrap.querySelector('#pkf-reactions').value.trim() || null;
     const notes = formWrap.querySelector('#pkf-notes').value.trim() || null;
 
@@ -358,21 +444,11 @@ function openForm(kind, children, container) {
     saveBtn.disabled = true;
     saveBtn.textContent = 'Opslaan…';
 
-    const payload = {
-      name, birthdate,
-      texture_preference: texture,
-      has_eczema: hasEczema,
-      known_allergies,
-      previous_reactions,
-      notes,
-    };
+    const payload = { name, birthdate, texture_preference: texture, has_eczema: hasEczema, known_allergies, previous_reactions, notes };
 
-    let result;
-    if (kind) {
-      result = await Api.updateChild(kind.id, payload);
-    } else {
-      result = await Api.createChild(payload);
-    }
+    const result = kind
+      ? await Api.updateChild(kind.id, payload)
+      : await Api.createChild(payload);
 
     if (!result.ok) {
       showFormError(errorEl, result.error || 'Er ging iets mis.');
@@ -381,28 +457,37 @@ function openForm(kind, children, container) {
       return;
     }
 
-    // Ververs de lijst
-    formWrap.classList.add('hidden');
-    formWrap.innerHTML = '';
     const fresh = await Api.getChildren();
-    if (fresh.ok) {
-      renderPage(container, fresh.data.children || []);
-    }
+    if (fresh.ok) renderPage(container, fresh.data.children || []);
     showToast(kind ? 'Profiel bijgewerkt.' : 'Kind toegevoegd.', 'success');
   });
 }
 
 /* ----------------------------------------
+   ALLERGEENDROPDOWN HELPERS
+---------------------------------------- */
+function getSelectedAllergens(panel) {
+  if (!panel) return [];
+  return [...panel.querySelectorAll('input[name="pkf-allergen"]:checked')]
+    .map(cb => cb.value);
+}
+
+function updateAllergenDisplay(panel, label, tagsEl) {
+  const selected = getSelectedAllergens(panel);
+  label.textContent = selected.length > 0 ? `${selected.length} geselecteerd` : 'Kies allergieën…';
+  tagsEl.innerHTML = selected.map(k => {
+    const opt = ALLERGEN_OPTIONS.find(o => o.key === k);
+    return opt ? `<span class="profiel-tag">${escapeHtml(opt.label.split(' (')[0])}</span>` : '';
+  }).join('');
+}
+
+/* ----------------------------------------
    VERWIJDEREN BEVESTIGEN
 ---------------------------------------- */
-async function confirmDelete(kind, children, container) {
+async function confirmDelete(kind, container) {
   if (!confirm(`Wil je "${kind.name}" verwijderen? Dit is niet ongedaan te maken.`)) return;
-
   const { ok, error } = await Api.archiveChild(kind.id);
-  if (!ok) {
-    showToast(error || 'Verwijderen mislukt.', 'error');
-    return;
-  }
+  if (!ok) { showToast(error || 'Verwijderen mislukt.', 'error'); return; }
   const fresh = await Api.getChildren();
   if (fresh.ok) renderPage(container, fresh.data.children || []);
   showToast(`${kind.name} verwijderd.`, 'success');

@@ -2328,6 +2328,7 @@ body.is-hub .header-home-btn { display: none; }
 /* Verberg de navigatiebalk op de Learnings-pagina's
    (zelfde header als receptenboek maar zonder de recepten-tabs). */
 body.is-learnings #app-nav { display: none; }
+body.is-profiel #app-nav { display: none; }
 
 /* Logo op het inlog-scherm */
 .auth-logo {
@@ -4935,16 +4936,80 @@ body.is-learnings #app-nav { display: none; }
   cursor: pointer;
 }
 
-.profiel-allergen-input-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: .5rem;
+/* ---- Allergeendropdown ---- */
+.profiel-allergen-dropdown-wrap {
+  position: relative;
 }
 
-.profiel-allergen-add-row {
+.profiel-allergen-trigger {
   display: flex;
-  gap: .5rem;
   align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  width: 100%;
+  padding: .55rem .85rem;
+  background: var(--color-white);
+  border: 1px solid var(--color-light);
+  border-radius: 10px;
+  font-size: .88rem;
+  color: var(--color-dark);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: border-color .15s;
+}
+
+.profiel-allergen-trigger:hover,
+.profiel-allergen-trigger[aria-expanded="true"] {
+  border-color: var(--color-secondary);
+}
+
+.profiel-allergen-arrow {
+  font-size: .75rem;
+  color: var(--color-gray);
+  flex-shrink: 0;
+}
+
+.profiel-allergen-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--color-white);
+  border: 1px solid var(--color-light);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.1);
+  z-index: 100;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: .4rem 0;
+}
+
+.profiel-allergen-option {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .5rem 1rem;
+  cursor: pointer;
+  font-size: .86rem;
+  color: var(--color-dark);
+  transition: background .1s;
+}
+
+.profiel-allergen-option:hover {
+  background: var(--color-bg);
+}
+
+.profiel-allergen-option input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  accent-color: var(--color-secondary);
+}
+
+.profiel-allergen-selected-tags {
+  margin-top: .5rem;
+  min-height: 0;
 }
 
 .auth-input--sm {
@@ -5002,12 +5067,5 @@ body.is-learnings #app-nav { display: none; }
     text-align: center;
   }
 
-  .auth-input--sm {
-    max-width: 100%;
-  }
-
-  .profiel-allergen-add-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
 }
+
