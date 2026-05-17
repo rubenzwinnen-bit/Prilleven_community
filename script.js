@@ -8,7 +8,7 @@
    5. Start de router
 ============================================ */
 
-import * as Store from './js/store.js?v=2.5.0';
+import * as Store from './js/store.js?v=2.5.2';
 import {
   checkAllowedUser,
   checkCanSignUp,
@@ -22,22 +22,23 @@ import {
   fetchSubscriptionStatus,
   subscriptionAccessMessage,
   invalidateSubscriptionCache,
-} from './js/supabase.js?v=2.5.0';
-import * as Router from './js/router.js?v=2.5.0';
-import * as Header from './js/components/header.js?v=2.5.0';
-import * as Nav from './js/components/nav.js?v=2.5.0';
-import * as Home from './js/components/home.js?v=2.5.0';
-import * as RecipeList from './js/components/recipeList.js?v=2.5.0';
-import * as RecipeDetail from './js/components/recipeDetail.js?v=2.5.0';
-import * as ImportRecipes from './js/components/importRecipes.js?v=2.5.0';
-import * as WeekSchedule from './js/components/weekSchedule.js?v=2.5.0';
-import * as Favorites from './js/components/favorites.js?v=2.5.0';
-import * as ShoppingList from './js/components/shoppingList.js?v=2.5.0';
-import * as RecipeForm from './js/components/recipeForm.js?v=2.5.0';
-import * as IngredientIcons from './js/components/ingredientIcons.js?v=2.5.0';
-import * as LearningsLibrary from './js/components/learningsLibrary.js?v=2.5.0';
-import * as LearningsDetail from './js/components/learningsDetail.js?v=2.5.0';
-import * as Profiel from './js/components/profiel.js?v=2.5.0';
+} from './js/supabase.js?v=2.5.2';
+import * as Router from './js/router.js?v=2.5.2';
+import * as Header from './js/components/header.js?v=2.5.2';
+import * as Nav from './js/components/nav.js?v=2.5.2';
+import * as Home from './js/components/home.js?v=2.5.2';
+import * as RecipeList from './js/components/recipeList.js?v=2.5.2';
+import * as RecipeDetail from './js/components/recipeDetail.js?v=2.5.2';
+import * as ImportRecipes from './js/components/importRecipes.js?v=2.5.2';
+import * as WeekSchedule from './js/components/weekSchedule.js?v=2.5.2';
+import * as Favorites from './js/components/favorites.js?v=2.5.2';
+import * as ShoppingList from './js/components/shoppingList.js?v=2.5.2';
+import * as RecipeForm from './js/components/recipeForm.js?v=2.5.2';
+import * as IngredientIcons from './js/components/ingredientIcons.js?v=2.5.2';
+import * as LearningsLibrary from './js/components/learningsLibrary.js?v=2.5.2';
+import * as LearningsDetail from './js/components/learningsDetail.js?v=2.5.2';
+import * as Profiel from './js/components/profiel.js?v=2.5.2';
+import * as Allergenen from './js/components/allergenen.js?v=2.5.2';
 
 /* ============================================
    RECOVERY TOKEN DETECTIE
@@ -523,6 +524,9 @@ function setupApp() {
     // Verberg nav op de profielpagina
     const isProfiel = Router.getCurrentPath() === 'profiel';
     document.body.classList.toggle('is-profiel', isProfiel);
+    // Verberg nav op de allergenen-pagina
+    const isAllergenen = Router.getCurrentPath() === 'allergenen';
+    document.body.classList.toggle('is-allergenen', isAllergenen);
     if (initFn) await initFn();
 
     /* Scroll-positie herstellen als we terugkomen op een eerder bezochte
@@ -614,6 +618,11 @@ function setupApp() {
   /* --- Profiel --- */
   Router.on('profiel', async () => {
     await renderPage(Profiel.render(), Profiel.init);
+  });
+
+  /* --- Allergenen introduceren --- */
+  Router.on('allergenen', async () => {
+    await renderPage(Allergenen.render(), Allergenen.init);
   });
 
   /* --- 404 pagina --- */

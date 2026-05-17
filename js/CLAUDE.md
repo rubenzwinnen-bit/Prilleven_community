@@ -47,6 +47,8 @@ Pril Leven heeft historisch **twee** parallel-lopende auth-systemen. Begrijp het
 | `chat.js` | Logic voor `chat.html` — chat-interface met sidebar (conversations), profile-modal, memory-modal. |
 | `admin-chat.js` | Logic voor `admin-chat.html` — admin dashboard tabs (overview, users, queries, conversations, fallbacks). |
 | `communityApi.js` | Wrapper rond `/api/community/*`. Doet `sessionRefreshIfNeeded()` vóór elke call, returnt `{ ok, status, data, error }`. Exporteert: `getMyProfile`, `setMyNickname`, `updateMyProfile`, `getAvatarUploadUrl`, `getPosts`, `createPost`, `votePoll`, `getUploadUrl`, `uploadToStorage`, replies, likes, edit/delete, `reportTarget`, admin (`togglePin`, `listReports`, `resolveReport`), notifications. |
+| `chatRoomsApi.js` | Wrapper rond `/api/chat-rooms/*`. Zelfde patroon als `communityApi.js`. Exporteert: `listRooms`, `getRoom`, `editRoom` (admin), topics + replies CRUD, `pinTopic` (admin). |
+| `profileRender.js` | Gedeelde helper om community-avatar + nickname-blok te renderen (gebruikt door timeline + chatrooms). |
 | `headerAvatarStandalone.js` | Klein avatar-component voor losse pagina's (`chat.html`, `admin-chat.html`) zonder de volledige header. |
 | `components/` | Pagina/feature-componenten. |
 
@@ -63,6 +65,7 @@ Pril Leven heeft historisch **twee** parallel-lopende auth-systemen. Begrijp het
 | `importRecipes.js` | Bulk JSON import (admin). |
 | `ingredientIcons.js` | Beheer van ingrediënt-iconen (admin). |
 | `timeline.js`, `timelinePost.js` | Community-feed pagina + losse post-detail. |
+| `chatRooms.js` | Chatruimtes-pane (rechts op landing) + room-view + topic-detail. Heeft per-room topic-cache (`pril_chatroom_v1_<slug>`, TTL 2 min) voor instant render. Set `state.activeSlug` **vóór** elke async fetch om freeze-bug bij race te vermijden. Admin kan room-intro inline bewerken via PATCH route. |
 | `nicknameModal.js` | Modal om community-nickname in te stellen vóór posten. |
 | `profileModal.js` | Modal voor community-profiel (nickname + avatar). |
 

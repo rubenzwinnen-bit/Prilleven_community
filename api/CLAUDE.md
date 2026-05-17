@@ -46,6 +46,16 @@ Interne routes (in `matchRoute()`):
 - Pad-detectie: gebruikt `req.query.path` (Vercel auto-parse), valt terug op `req.url` parsing.
 - Alle endpoints: `requireAuth` upfront, `findBlockedWord()` op alle user-content, image-paden moeten beginnen met `<userId>/`.
 
+### `chat-rooms.mjs` — `/api/chat-rooms/*` (catch-all)
+Chatruimtes (topics + replies + admin). Eén function, rewrite: `/api/chat-rooms/(.*) → /api/chat-rooms`. Routing in `matchRoute()`. Belangrijkste routes:
+- `GET /` — alle rooms (lijst met counts)
+- `GET /:slug` — room + recente topics
+- `PATCH /:slug` — admin-only: room-intro (`title`, `description`) bewerken
+- `GET/POST /:slug/topics` + `PATCH/DELETE /topics/:id`
+- `GET/POST /topics/:id/replies` + `PATCH/DELETE /replies/:id`
+- `POST /topics/:id/pin` (admin)
+- Alle endpoints: `requireAuth`, `findBlockedWord` op user-content, admin via `requireAdmin`.
+
 ### `webhooks/plugpay.mjs` — POST `/api/webhooks/plugpay`
 **KRITISCH endpoint — NOOIT aanpassen zonder expliciete bevestiging.** Foutieve wijziging = users zonder toegang.
 - Authenticatie: HMAC-SHA256 (`PLUGPAY_WEBHOOK_SECRET`) **OF** Bearer token (`PLUGPAY_WEBHOOK_BEARER`). Als beide leeg → trust-mode (dev only, met warning log).

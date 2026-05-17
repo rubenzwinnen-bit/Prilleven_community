@@ -198,6 +198,8 @@ Op Vercel zelf staan deze al ingesteld via project settings.
 - **RLS-fouten verschijnen als lege response** — niet als error. Bij "data komt niet binnen": eerst RLS-policy checken.
 - **Community routes** lopen via 1 catch-all rewrite naar `/api/community` — die functie doet zelf de routing.
 - **Admin-detectie** heeft een fallback (zie commit `845bd27`); breek deze niet.
+- **App-breedte** wordt globaal geclampt door `#app-content { max-width: var(--max-width) /* 1140px */ }`. De landing-page (3-koloms hub) overschrijft dat via `#app-content:has(.home-hub--tri) { max-width: none }` en `body.is-hub .header-inner { max-width: none }`. Gebruik dezelfde `body.is-hub` of `:has()`-hook als je later andere pagina's de volle browserbreedte wilt geven.
+- **Chatruimtes** (`/api/chat-rooms/*`) lopen via 1 catch-all rewrite, vergelijkbaar met community. Routing zit in `api/chat-rooms.mjs::matchRoute()`.
 
 ---
 

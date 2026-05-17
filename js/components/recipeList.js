@@ -8,15 +8,16 @@
    - init() haalt de data op en vult de DOM
 ============================================ */
 
-import * as Store from '../store.js?v=2.5.0';
-import * as Router from '../router.js?v=2.5.0';
-import * as RecipeCard from './recipeCard.js?v=2.5.0';
-import { showToast, confirm, MEAL_MOMENTS, ALLERGENS } from '../utils.js?v=2.5.0';
+import * as Store from '../store.js?v=2.5.2';
+import * as Router from '../router.js?v=2.5.2';
+import * as RecipeCard from './recipeCard.js?v=2.5.2';
+import { showToast, confirm, MEAL_MOMENTS, ALLERGENS } from '../utils.js?v=2.5.2';
 
 /* Cache van pre-fetched data zodat het filteren snel blijft */
 let cachedRecipes = [];
 let cachedFavIds = [];
 let cachedRatings = {};
+let cachedFavCounts = {};
 
 /* Set van allergenen die de gebruiker wil WEGFILTEREN (verbergen).
    Een recept dat één van deze allergenen bevat valt buiten de lijst. */
@@ -96,15 +97,17 @@ export async function init() {
 
   /* ---- Data ophalen (parallel voor snelheid) ---- */
   try {
-    const [recipes, favIds, ratingsMap] = await Promise.all([
+    const [recipes, favIds, ratingsMap, favCounts] = await Promise.all([
       Store.getRecipes(),
       Store.getFavoriteRecipeIds(),
       Store.getAllRatings(),
+      Store.getFavoriteCountsMap(),
     ]);
 
     cachedRecipes = recipes;
     cachedFavIds = favIds;
     cachedRatings = ratingsMap;
+    cachedFavCounts = favCounts;
   } catch (err) {
     console.error('Fout bij laden recepten:', err);
     grid.innerHTML = `
@@ -141,8 +144,18 @@ export async function init() {
         /* Update lokale cache zodat filteren juist blijft */
         if (isFav) {
           if (!cachedFavIds.includes(id)) cachedFavIds.push(id);
+          cachedFavCounts[id] = (cachedFavCounts[id] || 0) + 1;
         } else {
           cachedFavIds = cachedFavIds.filter(fid => fid !== id);
+          cachedFavCounts[id] = Math.max(0, (cachedFavCounts[id] || 1) - 1);
+        }
+        /* Update de zichtbare teller op de kaart */
+        const card = favBtn.closest('.recipe-card');
+        const countEl = card?.querySelector('.fav-count');
+        const n = cachedFavCounts[id] || 0;
+        if (countEl) {
+          countEl.textContent = n;
+          countEl.classList.toggle('hidden', n === 0);
         }
         showToast(isFav ? 'Toegevoegd aan favorieten' : 'Verwijderd uit favorieten');
       } catch (err) {
@@ -288,7 +301,7 @@ function renderGrid(recipes, admin = false) {
   }
 
   grid.innerHTML = recipes
-    .map(r => RecipeCard.render(r, cachedFavIds, cachedRatings, admin))
+    .map(r => RecipeCard.render(r, cachedFavIds, cachedRatings, admin, cachedFavCounts))
     .join('');
 }
 
@@ -322,7 +335,7 @@ function filterRecipes() {
 
   if (filtered.length > 0) {
     grid.innerHTML = filtered
-      .map(r => RecipeCard.render(r, cachedFavIds, cachedRatings, Store.isAdmin()))
+      .map(r => RecipeCard.render(r, cachedFavIds, cachedRatings, Store.isAdmin(), cachedFavCounts))
       .join('');
   } else {
     grid.innerHTML = `

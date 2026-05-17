@@ -5,7 +5,7 @@
    beoordeling en favoriet-knop.
 ============================================ */
 
-import { escapeHtml, renderStarsDisplay, getMealMomentLabel } from '../utils.js?v=2.5.0';
+import { escapeHtml, renderStarsDisplay, getMealMomentLabel } from '../utils.js?v=2.5.2';
 
 /* ----------------------------------------
    RENDER
@@ -17,14 +17,16 @@ import { escapeHtml, renderStarsDisplay, getMealMomentLabel } from '../utils.js?
    server-call moeten doen (N+1 probleem).
 
    Parameters:
-     recipe     - het recept object
-     favIds     - array van favoriete recept IDs (optioneel)
-     ratingsMap - object {recipeId: {average, count}} (optioneel)
-     admin      - boolean, toon beheer-knoppen (optioneel)
+     recipe       - het recept object
+     favIds       - array van favoriete recept IDs (optioneel)
+     ratingsMap   - object {recipeId: {average, count}} (optioneel)
+     admin        - boolean, toon beheer-knoppen (optioneel)
+     favCounts    - object {recipeId: count} totaal aantal favorieten (optioneel)
 ---------------------------------------- */
-export function render(recipe, favIds = [], ratingsMap = {}, admin = false) {
+export function render(recipe, favIds = [], ratingsMap = {}, admin = false, favCounts = {}) {
   const isFav = favIds.includes(recipe.id);
   const { average, count } = ratingsMap[recipe.id] || { average: 0, count: 0 };
+  const favCount = favCounts[recipe.id] || 0;
 
   /* Afbeelding of placeholder */
   const imageHtml = recipe.image
@@ -47,10 +49,13 @@ export function render(recipe, favIds = [], ratingsMap = {}, admin = false) {
 
   return `
     <article class="recipe-card" data-recipe-id="${recipe.id}">
-      <!-- Favoriet knop -->
-      <button class="fav-btn ${isFav ? 'active' : ''}" data-fav-id="${recipe.id}" title="${isFav ? 'Verwijder uit favorieten' : 'Voeg toe aan favorieten'}">
-        ${isFav ? '&#10084;&#65039;' : '&#9825;'}
-      </button>
+      <!-- Favoriet knop + teller -->
+      <div class="fav-wrap">
+        <button class="fav-btn ${isFav ? 'active' : ''}" data-fav-id="${recipe.id}" title="${isFav ? 'Verwijder uit favorieten' : 'Voeg toe aan favorieten'}">
+          ${isFav ? '&#10084;&#65039;' : '&#9825;'}
+        </button>
+        <span class="fav-count ${favCount === 0 ? 'hidden' : ''}" title="Aantal keer toegevoegd aan favorieten">${favCount}</span>
+      </div>
 
       <!-- Afbeelding -->
       ${imageHtml}

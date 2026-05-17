@@ -8,7 +8,7 @@
    omdat dit een lokale voorkeur is.
 ============================================ */
 
-import { supabaseFetch, supabaseStorageDelete } from './supabase.js?v=2.5.0';
+import { supabaseFetch, supabaseStorageDelete } from './supabase.js?v=2.5.2';
 
 /* ============================================
    IN-MEMORY CACHE LAAG
@@ -126,7 +126,7 @@ export async function refreshAdminStatus() {
     return false;
   }
   try {
-    const { fetchSubscriptionStatus } = await import('./supabase.js?v=2.5.0');
+    const { fetchSubscriptionStatus } = await import('./supabase.js?v=2.5.2');
     const status = await fetchSubscriptionStatus(user);
     const v = !!status?.is_admin;
     _adminCache = { email: user, value: v, loaded: true };
@@ -526,6 +526,7 @@ export async function toggleFavorite(recipeId) {
 
   /* Cache invalideren ongeacht uitkomst */
   _cacheInvalidate(`favorites:${user}`);
+  _cacheInvalidate('fav-counts:');
 
   if (Array.isArray(deleted) && deleted.length > 0) {
     /* Bestond al -> nu verwijderd */
@@ -557,6 +558,26 @@ export async function getFavoriteRecipes() {
   const favIds = await getFavoriteRecipeIds();
   if (favIds.length === 0) return [];
   return await getRecipesByIds(favIds);
+}
+
+/** Haal het aantal keer dat elk recept als favoriet is gemarkeerd
+ *  (geaggregeerd over alle users). Geeft { recipeId: count } terug.
+ *  Leest van de SQL-view `recipe_favorite_counts`. */
+export async function getFavoriteCountsMap() {
+  const key = 'fav-counts:all';
+  const cached = _cacheGet(key);
+  if (cached) return cached;
+
+  const data = await supabaseFetch(
+    '/rest/v1/recipe_favorite_counts?select=recipe_id,favorite_count',
+    { headers: { 'Range-Unit': 'items', 'Range': '0-9999' } }
+  );
+  const map = {};
+  for (const row of data || []) {
+    map[row.recipe_id] = row.favorite_count;
+  }
+  _cacheSet(key, map);
+  return map;
 }
 
 /* ============================================

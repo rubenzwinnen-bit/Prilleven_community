@@ -392,3 +392,34 @@ Nieuwe sectie na bestaande gegevens-sectie:
 - **Geen GitHub MCP nu** — `gh` CLI via bash voldoet voor solo-werk.
 - **Supabase MCP read-only** — schrijven blijft via SQL-in-chat → handmatig in Supabase Editor.
 - **Cache-buster blijft handmatig** — regel in CLAUDE.md voorlopig genoeg, hook pas bij gebleken pijn.
+
+---
+
+## 2026-05-15 — Chatruimtes polish + landing volledige breedte (branch `uitbouw-chat-ruimtes` → main)
+
+**Context**: Restant-werk op de chatruimtes-feature (caching, freeze-bug, admin-edit) en de hardnekkige width-clamp op de landing-page eindelijk opgelost. Branch `uitbouw-chat-ruimtes` gemerged in `main` (commit `fd66b8d`) — productie-deploy actief.
+
+### Vandaag afgerond
+- ✅ **Per-room topic-cache** (`pril_chatroom_v1_<slug>`, TTL 2 min) — rooms openen instant, daarna background-refresh. Lost trage laadtijd op voor "Melk voeding", "Eerste hapjes", "Allergieën", "Feedback".
+- ✅ **Freeze-bug** op eerste click op een chatruimte gefixt: `state.activeSlug` wordt nu meteen gezet, voor de cache-check en API-call. Voorkomt race waarbij `state.activeSlug !== slug` true was na fetch.
+- ✅ **Admin kan room-intro bewerken**: nieuwe `PATCH /api/chat-rooms/:slug` (admin-only, `findBlockedWord` validatie). Inline edit-form in de room-header met Annuleer/Opslaan. Cache wordt mee bijgewerkt.
+- ✅ **Header-alignment in chatroom-view**: `chatroom-header` herstructureerd naar column-layout met back+title+edit op één rij en description ingesprongen onder de titel.
+- ✅ **Landing volle browserbreedte** (eindelijk!). Root-cause was `#app-content { max-width: var(--max-width) /* 1140px */ }` — die clampte heel de app, ook al stond op `.home-hub--tri` zelf `max-width: 2200px`. Gefixt via:
+  - `#app-content:has(.home-hub--tri) { max-width: none }` voor de hoofdcontent
+  - `body.is-hub .header-inner { max-width: none }` voor de header
+- ✅ **Layout-tuning landing**: grid `240px / 1fr / 170px` (functies wijder, chatrooms smaller). Functies-tegels nu titels-only + compact. Bij 1600px viewport krijgt de midden-kolom 1131px (was ~777px = +45%).
+- ✅ **Cache-buster** bumped 2.4.6 → 2.4.13 over de hele branch.
+- ✅ **Supabase RLS** geverifieerd via MCP: alle UPDATE-policies op `chat_topics`, `chat_replies`, `community_posts`, `community_replies` zijn nu zonder 15-min check — migratie `2026-05-14-remove-edit-window.sql` is correct toegepast.
+- ✅ **Branch gemerged** in `main`. 14 commits, 39 bestanden, 2243 inserts. Vercel deploy automatisch.
+
+### Beslissingen
+- **`body.is-hub` + `:has()` als landing-only hook** voor breedte-overrides — niet de globale `--max-width` wijzigen (zou alle andere pagina's raken). Patroon toegevoegd aan root CLAUDE.md (sectie 8) zodat toekomstige sessies het kennen.
+- **PATCH /api/chat-rooms/:slug** is admin-only via `requireAdmin` + `findBlockedWord`. Geen aparte audit-log (chat-rooms zijn weinig wijzigingen, low-risk).
+- **Per-room cache TTL = 2 min** — kort genoeg voor verse data bij active gebruik, lang genoeg om instant render bij snelle terug-navigatie te bieden.
+
+### Open / nog te doen
+- ⬜ Visuele check op productie na deploy (1280px + 1600px viewport + mobile).
+- ⬜ Hover-image effect op functies-tegels nu kleiner door compactere padding — eventueel hover-img-hoogte heroverwegen als gebruiker het minder duidelijk vindt.
+
+### Niet vergeten
+- CLAUDE.md-updates: root (width-clamp + chat-rooms catch-all), `api/` (chat-rooms.mjs endpoint), `js/` (chatRoomsApi + chatRooms.js + profileRender). Allemaal beknopt — één regel of bullet.

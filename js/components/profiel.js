@@ -4,35 +4,20 @@
    Route: #/profiel
 ============================================ */
 
-import * as Store from '../store.js?v=2.5.0';
-import { sessionGet } from '../supabase.js?v=2.5.0';
-import { escapeHtml, showToast } from '../utils.js?v=2.5.0';
-import * as Api from '../childrenApi.js?v=2.5.0';
-import { openProfileModal } from './profileModal.js?v=2.5.0';
+import * as Store from '../store.js?v=2.5.2';
+import { sessionGet } from '../supabase.js?v=2.5.2';
+import { escapeHtml, showToast } from '../utils.js?v=2.5.2';
+import * as Api from '../childrenApi.js?v=2.5.2';
+import { openProfileModal } from './profileModal.js?v=2.5.2';
+import { ALLERGEN_FLOW } from '../content/eersteHapjes-allergen-flow.js?v=2.5.2';
 
 /* ----------------------------------------
-   ALLERGEENLIJST (EU Big-14 + veelvoorkomend bij baby's)
+   ALLERGEENLIJST (13 standaard-allergenen, identiek aan tracker)
+   Eén bron van waarheid: ALLERGEN_FLOW.
 ---------------------------------------- */
-const ALLERGEN_OPTIONS = [
-  { key: 'melk',         label: 'Melk (koemelk)' },
-  { key: 'ei',           label: 'Ei' },
-  { key: 'gluten',       label: 'Gluten (tarwe, rogge, gerst)' },
-  { key: 'pinda',        label: 'Pinda' },
-  { key: 'noten',        label: 'Boomharde noten (walnoot, hazelnoot, amandel…)' },
-  { key: 'vis',          label: 'Vis' },
-  { key: 'schaaldieren', label: 'Schaaldieren (garnaal, kreeft…)' },
-  { key: 'weekdieren',   label: 'Weekdieren (mossel, inktvis…)' },
-  { key: 'soja',         label: 'Soja' },
-  { key: 'sesam',        label: 'Sesam' },
-  { key: 'lupine',       label: 'Lupine' },
-  { key: 'mosterd',      label: 'Mosterd' },
-  { key: 'selderij',     label: 'Selderij' },
-  { key: 'sulfiet',      label: 'Sulfiet / sulfieten' },
-  { key: 'kiwi',         label: 'Kiwi' },
-  { key: 'perzik',       label: 'Perzik / steenvruchten' },
-  { key: 'aardbei',      label: 'Aardbei' },
-  { key: 'appel',        label: 'Appel' },
-];
+const ALLERGEN_OPTIONS = [...ALLERGEN_FLOW]
+  .sort((a, b) => a.order - b.order)
+  .map(a => ({ key: a.key, label: a.label }));
 
 /* ----------------------------------------
    LEEFTIJD BEREKENEN

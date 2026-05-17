@@ -593,6 +593,38 @@ select.form-control {
   filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
 }
 
+/* Wrapper rond hartje + teller op de recipe-card */
+.fav-wrap {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.fav-wrap .fav-btn {
+  position: static;
+  top: auto;
+  right: auto;
+}
+.fav-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.4rem;
+  padding: 0 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 999px;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.25));
+}
+.fav-count.hidden { display: none; }
+
 .fav-btn:hover {
   transform: scale(1.2);
 }
@@ -2329,6 +2361,7 @@ body.is-hub .header-home-btn { display: none; }
    (zelfde header als receptenboek maar zonder de recepten-tabs). */
 body.is-learnings #app-nav { display: none; }
 body.is-profiel #app-nav { display: none; }
+body.is-allergenen #app-nav { display: none; }
 
 /* Logo op het inlog-scherm */
 .auth-logo {
@@ -5067,5 +5100,298 @@ body.is-profiel #app-nav { display: none; }
     text-align: center;
   }
 
+}
+
+/* ============================================
+   ALLERGENEN INTRODUCEREN
+   Tracker per kindje voor de 13 standaard-allergenen.
+============================================ */
+.allergenen-page {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.allergenen-header {
+  margin-bottom: 1.25rem;
+}
+.allergenen-header h2 {
+  margin: 0 0 .35rem 0;
+  color: var(--color-primary);
+  font-size: 1.6rem;
+}
+.allergenen-intro {
+  margin: 0;
+  color: var(--color-dark-light);
+  line-height: 1.5;
+  font-size: .95rem;
+}
+
+.allergenen-welcome {
+  max-width: 480px;
+  margin: 3rem auto;
+  text-align: center;
+  padding: 1.5rem;
+  background: var(--color-white);
+  border: 1px solid var(--color-gray-light);
+  border-radius: 16px;
+}
+.allergenen-welcome h2 {
+  color: var(--color-primary);
+  margin-top: 0;
+}
+.allergenen-welcome p {
+  color: var(--color-dark-light);
+  margin-bottom: 1.25rem;
+}
+
+/* Kind-switcher chips */
+.allergenen-switcher {
+  margin-bottom: 1rem;
+}
+.allergenen-switcher-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+.allergenen-child-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .35rem .75rem .35rem .35rem;
+  background: var(--color-white);
+  border: 1px solid var(--color-gray-light);
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: .9rem;
+  color: var(--color-dark);
+  transition: background .15s, border-color .15s;
+}
+.allergenen-child-chip:hover {
+  background: var(--color-bg);
+}
+.allergenen-child-chip.active {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+}
+.allergenen-child-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: 50%;
+  color: #fff;
+  font-size: .75rem;
+  font-weight: 600;
+}
+
+/* Grid / lijst */
+.allergenen-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: .6rem;
+}
+.allergenen-item {
+  background: var(--color-white);
+  border: 1px solid var(--color-gray-light);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: box-shadow .15s, border-color .15s;
+}
+.allergenen-item:hover {
+  border-color: var(--color-secondary);
+}
+.allergenen-item-head {
+  display: grid;
+  grid-template-columns: 2.2rem 1fr auto 1.1rem;
+  align-items: center;
+  gap: .65rem;
+  width: 100%;
+  padding: .85rem 1rem;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  color: var(--color-dark);
+}
+.allergenen-item-icon {
+  font-size: 1.4rem;
+  text-align: center;
+}
+.allergenen-item-label {
+  font-weight: 600;
+  font-size: 1rem;
+}
+.allergenen-item-status {
+  font-size: .85rem;
+  color: var(--color-dark-light);
+  white-space: nowrap;
+}
+.allergenen-item-caret {
+  transition: transform .2s;
+  color: var(--color-gray);
+}
+.allergenen-item.open .allergenen-item-caret {
+  transform: rotate(180deg);
+}
+.allergenen-item-body {
+  display: none;
+  padding: 0 1rem 1rem 1rem;
+  border-top: 1px solid var(--color-bg);
+}
+.allergenen-item.open .allergenen-item-body {
+  display: block;
+}
+.allergenen-item-suggestion {
+  margin: .75rem 0 .5rem 0;
+  line-height: 1.5;
+  color: var(--color-dark);
+}
+.allergenen-item-note,
+.allergenen-item-alt {
+  margin: .25rem 0;
+  font-size: .9rem;
+  color: var(--color-dark-light);
+  line-height: 1.45;
+}
+
+/* Statusvarianten */
+.allergenen-item--veilig {
+  border-color: #82BE93;
+  background: rgba(130, 190, 147, 0.06);
+}
+.allergenen-item--allergisch {
+  border-color: #d9534f;
+  background: rgba(217, 83, 79, 0.06);
+}
+.allergenen-item--in-progress {
+  border-color: var(--color-warning, #e6b800);
+}
+.allergenen-item--locked-age {
+  opacity: .65;
+}
+
+.allergenen-allergic-box {
+  margin: .5rem 0 .25rem 0;
+  padding: .65rem .85rem;
+  background: rgba(217, 83, 79, 0.08);
+  border-radius: 10px;
+  color: #8a2a26;
+  font-size: .9rem;
+}
+.allergenen-allergic-box a {
+  color: inherit;
+  font-weight: 600;
+}
+
+/* Dose-lijst */
+.allergenen-doses {
+  margin: .75rem 0;
+}
+.allergenen-doses h4 {
+  margin: 0 0 .35rem 0;
+  font-size: .9rem;
+  color: var(--color-dark-light);
+  font-weight: 600;
+}
+.allergenen-dose-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: .35rem;
+}
+.allergenen-dose {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  align-items: center;
+  gap: .5rem;
+  padding: .4rem .6rem;
+  background: var(--color-bg);
+  border-radius: 8px;
+  font-size: .88rem;
+}
+.allergenen-dose-num {
+  font-weight: 600;
+  color: var(--color-primary);
+}
+.allergenen-dose-date {
+  color: var(--color-dark-light);
+}
+.allergenen-dose-reaction {
+  font-size: .82rem;
+  color: var(--color-dark-light);
+}
+.allergenen-dose-notes {
+  grid-column: 1 / -1;
+  color: var(--color-dark-light);
+  font-size: .85rem;
+  font-style: italic;
+}
+.allergenen-dose--mild { border-left: 3px solid var(--color-warning, #e6b800); }
+.allergenen-dose--ernstig { border-left: 3px solid #d9534f; }
+
+/* Dose-modal */
+.allergenen-dose-modal {
+  max-width: 480px;
+  width: 100%;
+  background: var(--color-white);
+  padding: 1.5rem;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+.allergenen-dose-modal h3 {
+  margin: 0 0 .25rem 0;
+  color: var(--color-primary);
+}
+.allergenen-dose-modal-sub {
+  margin: 0 0 .75rem 0;
+  font-size: .9rem;
+  color: var(--color-dark-light);
+  line-height: 1.4;
+}
+.allergenen-dose-modal label {
+  font-weight: 600;
+  font-size: .9rem;
+  margin-top: .25rem;
+  color: var(--color-dark);
+}
+.allergenen-dose-modal input,
+.allergenen-dose-modal select,
+.allergenen-dose-modal textarea {
+  padding: .55rem .75rem;
+  border: 1px solid var(--color-gray-light);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: .95rem;
+  background: var(--color-white);
+  color: var(--color-dark);
+}
+.allergenen-dose-modal textarea {
+  resize: vertical;
+  min-height: 70px;
+}
+
+@media (max-width: 600px) {
+  .allergenen-item-head {
+    grid-template-columns: 2rem 1fr auto;
+    gap: .5rem;
+  }
+  .allergenen-item-caret { display: none; }
+  .allergenen-dose {
+    grid-template-columns: auto 1fr;
+  }
+  .allergenen-dose-date,
+  .allergenen-dose-reaction {
+    grid-column: 2 / 3;
+  }
 }
 
