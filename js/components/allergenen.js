@@ -8,21 +8,24 @@
    automatisch als 'allergisch' getoond.
 ============================================ */
 
-import { escapeHtml, showToast, colorFromSeed, initialsFromName } from '../utils.js?v=2.5.2';
-import { getChildren } from '../childrenApi.js?v=2.5.2';
+import { escapeHtml, showToast, colorFromSeed, initialsFromName } from '../utils.js?v=2.5.3';
+import { getChildren } from '../childrenApi.js?v=2.5.3';
 import {
   loadEhState,
   patchEhState,
   loadEhDoses,
   createEhDose,
   deleteEhDose,
-} from '../eersteHapjesStateApi.js?v=2.5.2';
+} from '../eersteHapjesStateApi.js?v=2.5.3';
+import { loadSymptomsForChild } from '../eersteHapjesSymptomsApi.js?v=2.5.3';
 import {
   ALLERGEN_FLOW,
   REACTION_LEVELS,
   getEligibleAllergens,
   getAllergenStatus,
-} from '../content/eersteHapjes-allergen-flow.js?v=2.5.2';
+} from '../content/eersteHapjes-allergen-flow.js?v=2.5.3';
+import { openSymptomLogModal } from './symptomLogModal.js?v=2.5.3';
+import { mountAllergenenAgenda } from './allergenenAgenda.js?v=2.5.3';
 
 let state = {
   loaded: false,
@@ -30,6 +33,7 @@ let state = {
   activeId: null,
   ehState: null,
   doses: [],
+  symptoms: [],
   error: null,
 };
 
@@ -101,13 +105,16 @@ async function loadChildren() {
 async function loadChildData(childId) {
   state.ehState = null;
   state.doses = [];
+  state.symptoms = [];
   try {
-    const [s, d] = await Promise.all([
+    const [s, d, sy] = await Promise.all([
       loadEhState(childId),
       loadEhDoses(childId),
+      loadSymptomsForChild(childId).catch(() => []),
     ]);
     state.ehState = s;
     state.doses = d;
+    state.symptoms = sy || [];
 
     // Sync known_allergies vanuit profiel → eerste_hapjes_state
     const child = state.children.find(c => c.id === childId);
@@ -166,16 +173,136 @@ async function renderApp(root) {
         Volg de 13 allergenen — telkens 3 doses met een rustpauze van minstens 2 dagen ertussen.
         Bekende allergieën uit het profiel zijn automatisch gemarkeerd.
       </p>
+      <div class="allergenen-header-actions">
+        <button type="button" class="btn btn-outline btn-sm" data-action="open-agenda">
+          📅 Open agenda
+        </button>
+        <button type="button" class="btn btn-outline btn-sm" data-action="log-symptom">
+          ➕ Symptoom loggen
+        </button>
+      </div>
     </header>
     ${renderSwitcher(state.children, active)}
+    <div class="allergenen-warn-slot" id="allergenen-warn-slot"></div>
     <div class="allergenen-grid" id="allergenen-grid">
       <div class="empty-state"><div class="empty-state-icon">&#9203;</div><h3>Data laden…</h3></div>
     </div>
   `;
   bindSwitcher(root);
+  bindHeaderActions(root);
 
   await loadChildData(active.id);
+  renderArtsWarning(root);
   renderGrid(root, active);
+}
+
+function bindHeaderActions(root) {
+  root.querySelector('[data-action="open-agenda"]')?.addEventListener('click', () => {
+    openAgendaModal();
+  });
+  root.querySelector('[data-action="log-symptom"]')?.addEventListener('click', async () => {
+    const active = state.children.find(c => c.id === state.activeId);
+    if (!active) return;
+    const result = await openSymptomLogModal({ childId: active.id, childName: active.name });
+    if (!result) return;
+    state.symptoms = [result.symptom, ...state.symptoms];
+    if (result.red_flag) {
+      showToast('Symptoom geregistreerd — raadpleeg een arts.', 'warning');
+    } else {
+      showToast('Symptoom geregistreerd.', 'success');
+    }
+    renderArtsWarning(root);
+    renderGrid(root, active);
+  });
+}
+
+function shouldShowArtsWarning() {
+  // Trigger: laatste dose met ernstige reactie of een heftig symptoom in laatste 14 dagen.
+  const cutoff = Date.now() - 14 * 86400000;
+  const recentErnstigeDose = (state.doses || []).some(d => {
+    if (d.reaction !== 'ernstig') return false;
+    const t = new Date((d.intro_date || '') + 'T00:00:00Z').getTime();
+    return Number.isFinite(t) && t >= cutoff;
+  });
+  const recentHeftigSymptom = (state.symptoms || []).some(s => {
+    if (s.severity !== 'heftig') return false;
+    const t = new Date(s.occurred_at || 0).getTime();
+    return Number.isFinite(t) && t >= cutoff;
+  });
+  return recentErnstigeDose || recentHeftigSymptom;
+}
+
+function renderArtsWarning(root) {
+  const slot = root.querySelector('#allergenen-warn-slot');
+  if (!slot) return;
+  if (!shouldShowArtsWarning()) { slot.innerHTML = ''; return; }
+  slot.innerHTML = `
+    <div class="allergenen-arts-warn">
+      <strong>⚠️ Raadpleeg een arts.</strong>
+      Er is recent een ernstige reactie of heftig symptoom gelogd voor dit kindje.
+      Pril Leven geeft geen medisch advies — neem contact op met je huisarts,
+      kinderarts of Kind &amp; Gezin.
+    </div>
+  `;
+}
+
+async function openAgendaModal() {
+  // Verzamel data per kindje (cache voor actief kind staat al in state).
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay agenda-overlay';
+  overlay.innerHTML = `
+    <div class="modal agenda-modal">
+      <header class="agenda-modal-header">
+        <h2>Agenda — introducties &amp; symptomen</h2>
+        <button class="btn btn-outline btn-sm" data-action="close">Sluiten</button>
+      </header>
+      <div class="agenda-modal-body" id="agenda-modal-body">
+        <div class="empty-state"><div class="empty-state-icon">&#9203;</div><h3>Data laden…</h3></div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const close = () => overlay.remove();
+  overlay.querySelector('[data-action="close"]').addEventListener('click', close);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  document.addEventListener('keydown', function escHandler(e) {
+    if (e.key === 'Escape' && document.body.contains(overlay)) {
+      document.removeEventListener('keydown', escHandler);
+      close();
+    }
+  });
+
+  // Laad per kindje state + doses + symptomen.
+  const dataByChild = {};
+  await Promise.all(state.children.map(async (c) => {
+    if (c.id === state.activeId) {
+      dataByChild[c.id] = {
+        ehState: state.ehState,
+        doses: state.doses,
+        symptoms: state.symptoms,
+      };
+      return;
+    }
+    try {
+      const [s, d, sy] = await Promise.all([
+        loadEhState(c.id),
+        loadEhDoses(c.id),
+        loadSymptomsForChild(c.id).catch(() => []),
+      ]);
+      dataByChild[c.id] = { ehState: s, doses: d, symptoms: sy || [] };
+    } catch {
+      dataByChild[c.id] = { ehState: null, doses: [], symptoms: [] };
+    }
+  }));
+
+  const body = overlay.querySelector('#agenda-modal-body');
+  body.innerHTML = '';
+  mountAllergenenAgenda(body, {
+    children: state.children,
+    dataByChild,
+    activeIds: [state.activeId],
+  });
 }
 
 function renderSwitcher(children, active) {
@@ -251,6 +378,7 @@ function renderGrid(root, child) {
       try {
         await deleteEhDose(id);
         state.doses = state.doses.filter(d => d.id !== id);
+        renderArtsWarning(root);
         renderGrid(root, child);
       } catch (err) {
         showToast(err.message || 'Verwijderen mislukt.', 'error');
@@ -379,10 +507,17 @@ function openDoseModal(childId, allergenKey, doseNumber) {
       });
       state.doses = [...state.doses, dose];
       close();
-      showToast('Dose geregistreerd.', 'success');
+      if (dose.reaction === 'ernstig') {
+        showToast('Ernstige reactie gelogd — raadpleeg een arts.', 'warning');
+      } else {
+        showToast('Dose geregistreerd.', 'success');
+      }
       const root = document.getElementById('allergenen-root');
       const child = state.children.find(c => c.id === childId);
-      if (root && child) renderGrid(root, child);
+      if (root && child) {
+        renderArtsWarning(root);
+        renderGrid(root, child);
+      }
     } catch (err) {
       errorEl.textContent = err.message || 'Opslaan mislukt.';
       errorEl.classList.remove('hidden');

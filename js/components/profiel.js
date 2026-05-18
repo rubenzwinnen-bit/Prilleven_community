@@ -4,12 +4,12 @@
    Route: #/profiel
 ============================================ */
 
-import * as Store from '../store.js?v=2.5.2';
-import { sessionGet } from '../supabase.js?v=2.5.2';
-import { escapeHtml, showToast } from '../utils.js?v=2.5.2';
-import * as Api from '../childrenApi.js?v=2.5.2';
-import { openProfileModal } from './profileModal.js?v=2.5.2';
-import { ALLERGEN_FLOW } from '../content/eersteHapjes-allergen-flow.js?v=2.5.2';
+import * as Store from '../store.js?v=2.5.3';
+import { sessionGet } from '../supabase.js?v=2.5.3';
+import { escapeHtml, showToast } from '../utils.js?v=2.5.3';
+import * as Api from '../childrenApi.js?v=2.5.3';
+import { openProfileModal } from './profileModal.js?v=2.5.3';
+import { ALLERGEN_FLOW } from '../content/eersteHapjes-allergen-flow.js?v=2.5.3';
 
 /* ----------------------------------------
    ALLERGEENLIJST (13 standaard-allergenen, identiek aan tracker)

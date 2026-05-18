@@ -5,10 +5,10 @@
    - Mobile: één pane tegelijk, sticky bottom-tabs onderaan om te switchen
 ============================================ */
 
-import * as Store from '../store.js?v=2.5.2';
-import * as Router from '../router.js?v=2.5.2';
-import * as Timeline from './timeline.js?v=2.5.2';
-import * as ChatRooms from './chatRooms.js?v=2.5.2';
+import * as Store from '../store.js?v=2.5.3';
+import * as Router from '../router.js?v=2.5.3';
+import * as Timeline from './timeline.js?v=2.5.3';
+import * as ChatRooms from './chatRooms.js?v=2.5.3';
 
 const ACTIVE_PANE_KEY = 'home:active-pane';
 
