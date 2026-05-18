@@ -8,24 +8,24 @@
    automatisch als 'allergisch' getoond.
 ============================================ */
 
-import { escapeHtml, showToast, colorFromSeed, initialsFromName } from '../utils.js?v=2.5.5';
-import { getChildren } from '../childrenApi.js?v=2.5.5';
+import { escapeHtml, showToast, colorFromSeed, initialsFromName } from '../utils.js?v=2.5.6';
+import { getChildren } from '../childrenApi.js?v=2.5.6';
 import {
   loadEhState,
   patchEhState,
   loadEhDoses,
   createEhDose,
   deleteEhDose,
-} from '../eersteHapjesStateApi.js?v=2.5.5';
-import { loadSymptomsForChild } from '../eersteHapjesSymptomsApi.js?v=2.5.5';
+} from '../eersteHapjesStateApi.js?v=2.5.6';
+import { loadSymptomsForChild } from '../eersteHapjesSymptomsApi.js?v=2.5.6';
 import {
   ALLERGEN_FLOW,
   REACTION_LEVELS,
   getEligibleAllergens,
   getAllergenStatus,
-} from '../content/eersteHapjes-allergen-flow.js?v=2.5.5';
-import { openSymptomLogModal } from './symptomLogModal.js?v=2.5.5';
-import { mountAllergenenAgenda } from './allergenenAgenda.js?v=2.5.5';
+} from '../content/eersteHapjes-allergen-flow.js?v=2.5.6';
+import { openSymptomLogModal } from './symptomLogModal.js?v=2.5.6';
+import { mountAllergenenAgenda } from './allergenenAgenda.js?v=2.5.6';
 
 let state = {
   loaded: false,
@@ -547,16 +547,6 @@ function renderGrid(root, child) {
     });
   });
 
-  // Nieuwe dose registreren
-  grid.querySelectorAll('[data-action="add-dose"]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const key = btn.dataset.key;
-      const doseNumber = parseInt(btn.dataset.dose, 10);
-      openDoseModal(child.id, key, doseNumber);
-    });
-  });
-
   // Dose verwijderen
   grid.querySelectorAll('[data-action="delete-dose"]').forEach(btn => {
     btn.addEventListener('click', async (e) => {
@@ -619,6 +609,46 @@ const SEVERITY_DISPLAY = {
   heftig: { icon: '🔴', label: 'Ernstig' },
 };
 
+const SYMPTOM_DETAIL_LABELS = {
+  time_after_eating: {
+    'direct':     'Direct (<15 min)',
+    'snel':       'Snel (15 min – 1 u)',
+    'later':      'Later (1 – 4 u)',
+    'veel-later': 'Veel later (>4 u)',
+    'onbekend':   'Onbekend tijdstip',
+  },
+  duration: {
+    'kort':          'Kort (<30 min)',
+    'paar-uur':      'Een paar uur',
+    'halve-dag':     'Een halve dag',
+    'dag-of-langer': 'Een dag of langer',
+    'nog-bezig':     'Nog bezig',
+  },
+  worsened: {
+    'stabiel':         'Bleef stabiel',
+    'langzaam-erger':  'Langzaam erger',
+    'snel-erger':      'Snel erger',
+    'minder':          'Werden minder',
+  },
+  behavior: {
+    'normaal':       'Normaal',
+    'onrustig':      'Onrustig/huilerig',
+    'ongemakkelijk': 'Erg ongemakkelijk',
+    'suf':           'Suf/lethargisch',
+  },
+};
+
+function symptomDetailChips(s) {
+  const parts = [];
+  for (const field of ['time_after_eating', 'duration', 'worsened', 'behavior']) {
+    const v = s[field];
+    if (!v) continue;
+    const label = SYMPTOM_DETAIL_LABELS[field]?.[v];
+    if (label) parts.push(label);
+  }
+  return parts;
+}
+
 function formatSymptomDateTime(iso) {
   if (!iso) return '';
   const d = new Date(iso);
@@ -637,11 +667,8 @@ function renderAllergenItem(allergen, ctx, ageMonths, child) {
     .filter(s => s.linked_allergen_key === allergen.key)
     .sort((a, b) => new Date(b.occurred_at || 0) - new Date(a.occurred_at || 0));
   const successCount = ctx.inProgress[allergen.key] || (ctx.completed.includes(allergen.key) ? 3 : 0);
-  const nextDose = dosesForKey.length + 1;
   const stuck = dosesForKey.length >= 3 && !ctx.completed.includes(allergen.key)
     && !ctx.knownAllergies.includes(allergen.key);
-  const canLog = status !== 'allergisch' && status !== 'veilig' && status !== 'locked-age'
-    && nextDose <= 3;
 
   const statusLabel = {
     'veilig':      '✅ Veilig',
@@ -690,7 +717,7 @@ function renderAllergenItem(allergen, ctx, ageMonths, child) {
                   <span class="allergenen-dose-num">Dose ${d.dose_number}</span>
                   <span class="allergenen-dose-date">${escapeHtml(d.intro_date)}</span>
                   ${d.notes ? `<span class="allergenen-dose-notes">${escapeHtml(d.notes)}</span>` : ''}
-                  <button class="btn btn-outline btn-sm" data-action="delete-dose" data-id="${d.id}" title="Verwijderen">&#128465;</button>
+                  <button class="allergenen-dose-del" data-action="delete-dose" data-id="${d.id}" title="Verwijderen" aria-label="Dose verwijderen">&#128465;</button>
                 </li>
               `).join('')}
             </ul>
@@ -703,22 +730,22 @@ function renderAllergenItem(allergen, ctx, ageMonths, child) {
             <ul class="allergenen-symptom-list">
               ${symptomsForKey.map(s => {
                 const sev = SEVERITY_DISPLAY[s.severity] || { icon: '⚪', label: s.severity || '' };
+                const chips = symptomDetailChips(s);
                 return `
                 <li class="allergenen-symptom allergenen-symptom--${s.severity}">
                   <span class="allergenen-symptom-severity">${sev.icon} ${escapeHtml(sev.label)}</span>
                   <span class="allergenen-symptom-date">${escapeHtml(formatSymptomDateTime(s.occurred_at))}</span>
+                  ${chips.length ? `
+                    <span class="allergenen-symptom-details">
+                      ${chips.map(c => `<span class="allergenen-symptom-chip">${escapeHtml(c)}</span>`).join('')}
+                    </span>
+                  ` : ''}
                   ${s.notes ? `<span class="allergenen-symptom-notes">${escapeHtml(s.notes)}</span>` : ''}
                 </li>
                 `;
               }).join('')}
             </ul>
           </div>
-        ` : ''}
-
-        ${canLog && nextDose <= 3 ? `
-          <button class="btn btn-primary btn-sm" data-action="add-dose" data-key="${allergen.key}" data-dose="${nextDose}">
-            Dose ${nextDose} registreren
-          </button>
         ` : ''}
       </div>
     </li>

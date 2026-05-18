@@ -13,8 +13,8 @@
      })
 ============================================ */
 
-import { escapeHtml, colorFromSeed, initialsFromName } from '../utils.js?v=2.5.5';
-import { ALLERGEN_FLOW } from '../content/eersteHapjes-allergen-flow.js?v=2.5.5';
+import { escapeHtml, colorFromSeed, initialsFromName } from '../utils.js?v=2.5.6';
+import { ALLERGEN_FLOW } from '../content/eersteHapjes-allergen-flow.js?v=2.5.6';
 
 const COOLDOWN_DAYS = 3;
 const TARGET_SUCCESSES = 3;
