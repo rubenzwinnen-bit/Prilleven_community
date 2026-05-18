@@ -8,24 +8,24 @@
    automatisch als 'allergisch' getoond.
 ============================================ */
 
-import { escapeHtml, showToast, colorFromSeed, initialsFromName } from '../utils.js?v=2.5.4';
-import { getChildren } from '../childrenApi.js?v=2.5.4';
+import { escapeHtml, showToast, colorFromSeed, initialsFromName } from '../utils.js?v=2.5.5';
+import { getChildren } from '../childrenApi.js?v=2.5.5';
 import {
   loadEhState,
   patchEhState,
   loadEhDoses,
   createEhDose,
   deleteEhDose,
-} from '../eersteHapjesStateApi.js?v=2.5.4';
-import { loadSymptomsForChild } from '../eersteHapjesSymptomsApi.js?v=2.5.4';
+} from '../eersteHapjesStateApi.js?v=2.5.5';
+import { loadSymptomsForChild } from '../eersteHapjesSymptomsApi.js?v=2.5.5';
 import {
   ALLERGEN_FLOW,
   REACTION_LEVELS,
   getEligibleAllergens,
   getAllergenStatus,
-} from '../content/eersteHapjes-allergen-flow.js?v=2.5.4';
-import { openSymptomLogModal } from './symptomLogModal.js?v=2.5.4';
-import { mountAllergenenAgenda } from './allergenenAgenda.js?v=2.5.4';
+} from '../content/eersteHapjes-allergen-flow.js?v=2.5.5';
+import { openSymptomLogModal } from './symptomLogModal.js?v=2.5.5';
+import { mountAllergenenAgenda } from './allergenenAgenda.js?v=2.5.5';
 
 let state = {
   loaded: false,
@@ -613,11 +613,29 @@ function renderNextUpBanner(nextUp, ctx) {
   `;
 }
 
+const SEVERITY_DISPLAY = {
+  mild:   { icon: '🟢', label: 'Mild' },
+  matig:  { icon: '🟠', label: 'Twijfel' },
+  heftig: { icon: '🔴', label: 'Ernstig' },
+};
+
+function formatSymptomDateTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const date = d.toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' });
+  const time = d.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' });
+  return `${date} ${time}`;
+}
+
 function renderAllergenItem(allergen, ctx, ageMonths, child) {
   const status = getAllergenStatus(allergen.key, ctx, ageMonths);
   const dosesForKey = state.doses
     .filter(d => d.allergen_key === allergen.key)
     .sort((a, b) => (a.dose_number - b.dose_number));
+  const symptomsForKey = (state.symptoms || [])
+    .filter(s => s.linked_allergen_key === allergen.key)
+    .sort((a, b) => new Date(b.occurred_at || 0) - new Date(a.occurred_at || 0));
   const successCount = ctx.inProgress[allergen.key] || (ctx.completed.includes(allergen.key) ? 3 : 0);
   const nextDose = dosesForKey.length + 1;
   const stuck = dosesForKey.length >= 3 && !ctx.completed.includes(allergen.key)
@@ -671,11 +689,28 @@ function renderAllergenItem(allergen, ctx, ageMonths, child) {
                 <li class="allergenen-dose allergenen-dose--${d.reaction}">
                   <span class="allergenen-dose-num">Dose ${d.dose_number}</span>
                   <span class="allergenen-dose-date">${escapeHtml(d.intro_date)}</span>
-                  <span class="allergenen-dose-reaction">${escapeHtml(REACTION_LEVELS[d.reaction]?.label || d.reaction)}</span>
                   ${d.notes ? `<span class="allergenen-dose-notes">${escapeHtml(d.notes)}</span>` : ''}
                   <button class="btn btn-outline btn-sm" data-action="delete-dose" data-id="${d.id}" title="Verwijderen">&#128465;</button>
                 </li>
               `).join('')}
+            </ul>
+          </div>
+        ` : ''}
+
+        ${symptomsForKey.length > 0 ? `
+          <div class="allergenen-symptoms">
+            <h4>Gelogde symptomen</h4>
+            <ul class="allergenen-symptom-list">
+              ${symptomsForKey.map(s => {
+                const sev = SEVERITY_DISPLAY[s.severity] || { icon: '⚪', label: s.severity || '' };
+                return `
+                <li class="allergenen-symptom allergenen-symptom--${s.severity}">
+                  <span class="allergenen-symptom-severity">${sev.icon} ${escapeHtml(sev.label)}</span>
+                  <span class="allergenen-symptom-date">${escapeHtml(formatSymptomDateTime(s.occurred_at))}</span>
+                  ${s.notes ? `<span class="allergenen-symptom-notes">${escapeHtml(s.notes)}</span>` : ''}
+                </li>
+                `;
+              }).join('')}
             </ul>
           </div>
         ` : ''}

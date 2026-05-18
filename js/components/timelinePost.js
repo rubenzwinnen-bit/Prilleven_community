@@ -6,8 +6,8 @@
 import {
   escapeHtml,
   nl2br,
-} from '../utils.js?v=2.5.4';
-import { renderAvatar, renderAuthorMeta } from '../profileRender.js?v=2.5.4';
+} from '../utils.js?v=2.5.5';
+import { renderAvatar, renderAuthorMeta } from '../profileRender.js?v=2.5.5';
 
 /* Categorie-labels (zelfde lijst als in api/_lib/community.mjs ALLOWED_CATEGORIES). */
 export const CATEGORIES = [

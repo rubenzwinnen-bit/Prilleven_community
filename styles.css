@@ -6188,3 +6188,65 @@ body.is-allergenen #app-nav { display: none; }
     grid-template-columns: 1fr;
   }
 }
+
+.eh-symptom-empty-hint {
+  margin: .4rem 0 0;
+  padding: .55rem .75rem;
+  border-radius: 8px;
+  background: #fff7e6;
+  border: 1px solid #f0d49a;
+  color: #7a5500;
+  font-size: .82rem;
+  line-height: 1.4;
+}
+
+/* ============================================
+   ALLERGENEN — gelogde symptomen onder allergeen
+============================================ */
+.allergenen-symptoms {
+  margin-top: .75rem;
+}
+.allergenen-symptoms h4 {
+  margin: 0 0 .35rem;
+  font-size: .88rem;
+  color: #555;
+  font-weight: 600;
+}
+.allergenen-symptom-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+}
+.allergenen-symptom {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: .6rem;
+  row-gap: .15rem;
+  align-items: baseline;
+  padding: .5rem .65rem;
+  border-radius: 8px;
+  border-left: 4px solid #ccc;
+  background: #fafafa;
+  font-size: .85rem;
+}
+.allergenen-symptom--mild   { border-left-color: #6cae72; background: #ecf5ed; }
+.allergenen-symptom--matig  { border-left-color: #e9a23b; background: #fff4e2; }
+.allergenen-symptom--heftig { border-left-color: #d95553; background: #fdecec; }
+.allergenen-symptom-severity {
+  font-weight: 600;
+  color: #333;
+  white-space: nowrap;
+}
+.allergenen-symptom-date {
+  color: #6b6b6b;
+  font-size: .82rem;
+}
+.allergenen-symptom-notes {
+  grid-column: 1 / -1;
+  color: #444;
+  font-style: italic;
+  line-height: 1.35;
+}

@@ -8,8 +8,8 @@
    severity in bestaande waarden: mild | matig | heftig.
 ============================================ */
 
-import { escapeHtml } from '../utils.js?v=2.5.4';
-import { createSymptom } from '../eersteHapjesSymptomsApi.js?v=2.5.4';
+import { escapeHtml } from '../utils.js?v=2.5.5';
+import { createSymptom } from '../eersteHapjesSymptomsApi.js?v=2.5.5';
 
 const SEVERITY_OPTIONS = [
   { value: 'mild',   icon: '🟢', label: 'Mild',    hint: 'meestal verder doen' },
@@ -101,8 +101,13 @@ export function openSymptomLogModal({ childId, childName, introducedKeys = [] })
               ${introducedKeys.map(k => `
                 <option value="${k}">${escapeHtml(ALLERGEN_LABELS[k] || k)}</option>
               `).join('')}
-              <option value="onbekend">Onbekend / niet zeker</option>
             </select>
+            ${introducedKeys.length === 0 ? `
+              <p class="eh-symptom-empty-hint">
+                Er zijn nog geen allergenen geïntroduceerd voor dit kindje.
+                Log eerst een dose vóór je een symptoom registreert.
+              </p>
+            ` : ''}
           </div>
 
           <!-- Ernst (stoplicht) -->
@@ -223,7 +228,7 @@ export function openSymptomLogModal({ childId, childName, introducedKeys = [] })
     $('[data-action="save"]').addEventListener('click', async () => {
       clearError();
       const allergenKey = $('#eh-symptom-allergen').value;
-      if (!allergenKey) return showError('Kies een allergeen (of "Onbekend").');
+      if (!allergenKey) return showError('Kies een allergeen.');
       if (!state.severity) return showError('Kies een ernst.');
 
       const occurredAt = parseLocalInput($('#eh-symptom-when').value);
