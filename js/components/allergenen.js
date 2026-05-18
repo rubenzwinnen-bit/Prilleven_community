@@ -48,7 +48,9 @@ function ageMonthsFromBirthdate(birthdate) {
 
 function deriveStatusContext(doses, ehState) {
   const successByKey = {};
+  const totalByKey = {};
   for (const d of doses) {
+    totalByKey[d.allergen_key] = (totalByKey[d.allergen_key] || 0) + 1;
     if (d.reaction === 'geen') {
       successByKey[d.allergen_key] = (successByKey[d.allergen_key] || 0) + 1;
     }
@@ -68,6 +70,7 @@ function deriveStatusContext(doses, ehState) {
   return {
     completed,
     inProgress,
+    totalByKey,
     knownAllergies: ehState?.allergen_state?.known_allergies || [],
     preIntroduced: preIntro,
     paused: !!ehState?.allergen_state?.paused,
@@ -84,8 +87,9 @@ function getNextDoseSuggestion(ctx, ageMonths) {
     if (ctx.knownAllergies.includes(a.key)) continue;
     if (ctx.completed.includes(a.key)) continue;
     if (a.ageCondition.introFrom && ageMonths < a.ageCondition.introFrom) continue;
-    const count = ctx.inProgress[a.key] || 0;
-    return { allergen: a, doseNumber: count + 1 };
+    const total = ctx.totalByKey[a.key] || 0;
+    if (total >= 3) continue; // 3 doses geregistreerd maar niet veilig → vastgelopen, sla over
+    return { allergen: a, doseNumber: total + 1 };
   }
   return null;
 }
@@ -590,8 +594,11 @@ function renderAllergenItem(allergen, ctx, ageMonths, child) {
     .filter(d => d.allergen_key === allergen.key)
     .sort((a, b) => (a.dose_number - b.dose_number));
   const successCount = ctx.inProgress[allergen.key] || (ctx.completed.includes(allergen.key) ? 3 : 0);
-  const nextDose = Math.min(3, dosesForKey.length + 1);
-  const canLog = status !== 'allergisch' && status !== 'veilig' && status !== 'locked-age';
+  const nextDose = dosesForKey.length + 1;
+  const stuck = dosesForKey.length >= 3 && !ctx.completed.includes(allergen.key)
+    && !ctx.knownAllergies.includes(allergen.key);
+  const canLog = status !== 'allergisch' && status !== 'veilig' && status !== 'locked-age'
+    && nextDose <= 3;
 
   const statusLabel = {
     'veilig':      '✅ Veilig',
@@ -619,6 +626,15 @@ function renderAllergenItem(allergen, ctx, ageMonths, child) {
           <div class="allergenen-allergic-box">
             Dit allergeen staat in het profiel als bekende allergie.
             Wijzig dit in <a href="#/profiel">Mijn profiel</a> om de tracker opnieuw te activeren.
+          </div>
+        ` : ''}
+
+        ${stuck ? `
+          <div class="allergenen-stuck-box">
+            Er was een reactie tijdens de 3 introducties — dit allergeen heeft
+            geen 3× <em>geen reactie</em>. Verwijder een dose en log opnieuw na
+            een rustperiode, of markeer dit allergeen als allergie in
+            <a href="#/profiel">Mijn profiel</a>.
           </div>
         ` : ''}
 

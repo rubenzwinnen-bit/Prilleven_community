@@ -5289,6 +5289,20 @@ body.is-allergenen #app-nav { display: none; }
   color: inherit;
   font-weight: 600;
 }
+.allergenen-stuck-box {
+  margin: .5rem 0 .25rem 0;
+  padding: .65rem .85rem;
+  background: #fff4e5;
+  border: 1px solid #f0b97a;
+  border-radius: 10px;
+  color: #6b3a00;
+  font-size: .9rem;
+  line-height: 1.4;
+}
+.allergenen-stuck-box a {
+  color: inherit;
+  font-weight: 600;
+}
 
 /* Dose-lijst */
 .allergenen-doses {
