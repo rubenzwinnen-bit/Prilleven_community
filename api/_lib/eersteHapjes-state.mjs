@@ -167,12 +167,19 @@ export function sanitizeStatePatch(input) {
       if (!ALLERGEN_KEYS.has(k)) throw new HttpError(422, `Onbekende allergeen-key: ${k}`);
     }
     const excluded = Array.isArray(a.excluded_keys) ? a.excluded_keys : [];
+    const preIntro = Array.isArray(a.pre_introduced) ? a.pre_introduced : [];
+    for (const k of preIntro) {
+      if (!ALLERGEN_KEYS.has(k)) throw new HttpError(422, `Onbekende allergeen-key: ${k}`);
+    }
     out.allergen_state = {
       paused: !!a.paused,
       paused_reason: a.paused_reason ? String(a.paused_reason).slice(0, 200) : null,
       paused_allergen: a.paused_allergen && ALLERGEN_KEYS.has(a.paused_allergen) ? a.paused_allergen : null,
       known_allergies: [...new Set(known)],
       excluded_keys: [...new Set(excluded.map(s => String(s).slice(0, 60)))],
+      started: !!a.started,
+      setup_done: !!a.setup_done,
+      pre_introduced: [...new Set(preIntro)],
     };
   }
 
