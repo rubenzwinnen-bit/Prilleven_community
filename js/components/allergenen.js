@@ -679,15 +679,13 @@ function openDoseModal(childId, allergenKey, doseNumber) {
       <label for="dose-date">Datum</label>
       <input type="date" id="dose-date" value="${today}" max="${today}">
 
-      <label for="dose-reaction">Reactie</label>
-      <select id="dose-reaction">
-        <option value="geen">Geen reactie</option>
-        <option value="mild">Milde reactie</option>
-        <option value="ernstig">Ernstige reactie</option>
-      </select>
+      <p class="allergenen-dose-modal-hint">
+        Een reactie komt vaak pas later. Merk je iets op? Log dit apart via
+        <strong>“Symptoom loggen”</strong> op het overzicht.
+      </p>
 
       <label for="dose-notes">Notities (optioneel)</label>
-      <textarea id="dose-notes" rows="3" maxlength="500" placeholder="Hoeveelheid, reactie, observaties…"></textarea>
+      <textarea id="dose-notes" rows="3" maxlength="500" placeholder="Hoeveelheid, observaties…"></textarea>
 
       <div id="dose-error" class="auth-error hidden"></div>
 
@@ -705,7 +703,6 @@ function openDoseModal(childId, allergenKey, doseNumber) {
 
   overlay.querySelector('#dose-save').addEventListener('click', async () => {
     const date = overlay.querySelector('#dose-date').value;
-    const reaction = overlay.querySelector('#dose-reaction').value;
     const notes = overlay.querySelector('#dose-notes').value.trim();
     const errorEl = overlay.querySelector('#dose-error');
 
@@ -715,16 +712,12 @@ function openDoseModal(childId, allergenKey, doseNumber) {
         allergen_key: allergenKey,
         dose_number: doseNumber,
         intro_date: date,
-        reaction,
+        reaction: 'geen',
         notes: notes || null,
       });
       state.doses = [...state.doses, dose];
       close();
-      if (dose.reaction === 'ernstig') {
-        showToast('Ernstige reactie gelogd — raadpleeg een arts.', 'warning');
-      } else {
-        showToast('Dose geregistreerd.', 'success');
-      }
+      showToast('Dose geregistreerd.', 'success');
       const root = document.getElementById('allergenen-root');
       const child = state.children.find(c => c.id === childId);
       if (root && child) {

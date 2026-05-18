@@ -1,23 +1,19 @@
 /* ============================================
    EERSTE HAPJES — SYMPTOM LOG MODAL
-   Eén-staps modal om een symptoom te loggen.
-   Velden: type (grid van 16 met icoon+label), ernst,
-   tijdstip, notitie.
-   Returnt Promise<{symptom, red_flag} | null>.
+   Eenvoudig: stoplicht-ernst (🟢/🟠/🔴) + tijd + notitie.
+   Backend krijgt symptom_type='anders' (vereenvoudiging) en
+   severity in bestaande waarden: mild | matig | heftig.
 ============================================ */
 
 import { escapeHtml } from '../utils.js?v=2.5.3';
 import { createSymptom } from '../eersteHapjesSymptomsApi.js?v=2.5.3';
-import { SYMPTOMS, SEVERITIES, getSymptom } from '../content/eersteHapjes-symptoms.js?v=2.5.3';
-import { openSymptomDetailModal } from './symptomDetailModal.js?v=2.5.3';
 
-/**
- * Toon de symptoom-log modal.
- * @param {object} opts
- * @param {string} opts.childId
- * @param {string} opts.childName
- * @returns {Promise<{symptom: object, red_flag: boolean}|null>}
- */
+const SEVERITY_OPTIONS = [
+  { value: 'mild',   icon: '🟢', label: 'Mild',    hint: 'meestal verder doen' },
+  { value: 'matig',  icon: '🟠', label: 'Twijfel', hint: 'tijdelijk pauzeren + opvolgen' },
+  { value: 'heftig', icon: '🔴', label: 'Ernstig', hint: 'stoppen + medische hulp' },
+];
+
 export function openSymptomLogModal({ childId, childName }) {
   return new Promise((resolve) => {
     const overlay = document.createElement('div');
@@ -25,7 +21,7 @@ export function openSymptomLogModal({ childId, childName }) {
     overlay.innerHTML = `
       <div class="modal eh-symptom-modal">
         <header class="eh-symptom-header">
-          <h2>Symptoom loggen</h2>
+          <h2>Reactie loggen</h2>
           <p class="eh-symptom-sub">
             Voor ${escapeHtml(childName || '')} —
             <span class="eh-symptom-disclaimer">
@@ -35,31 +31,20 @@ export function openSymptomLogModal({ childId, childName }) {
         </header>
 
         <div class="eh-symptom-form">
-          <!-- Type -->
+          <!-- Ernst (stoplicht) -->
           <div class="eh-symptom-field">
             <label>
-              Soort
-              <button type="button" class="eh-symptom-info-link" data-action="open-symptom-list">
+              Ernst
+              <button type="button" class="eh-symptom-info-link" data-action="open-legend">
                 Wat betekenen deze? →
               </button>
             </label>
-            <div class="eh-symptom-grid" data-group="symptom_type">
-              ${SYMPTOMS.map(t => `
-                <button type="button" class="eh-symptom-tile" data-value="${t.key}">
-                  <span class="eh-symptom-info" data-symptom-info="${t.key}" aria-label="Uitleg ${escapeHtml(t.label)}">i</span>
-                  <span class="eh-symptom-label">${escapeHtml(t.label)}</span>
-                </button>
-              `).join('')}
-            </div>
-          </div>
-
-          <!-- Ernst -->
-          <div class="eh-symptom-field">
-            <label>Ernst</label>
-            <div class="eh-symptom-chips" data-group="severity">
-              ${SEVERITIES.map(s => `
-                <button type="button" class="eh-symptom-chip" data-value="${s.value}">
-                  ${escapeHtml(s.label)}
+            <div class="eh-stoplight" data-group="severity">
+              ${SEVERITY_OPTIONS.map(s => `
+                <button type="button" class="eh-stoplight-chip eh-stoplight-chip--${s.value}" data-value="${s.value}">
+                  <span class="eh-stoplight-icon">${s.icon}</span>
+                  <span class="eh-stoplight-label">${escapeHtml(s.label)}</span>
+                  <span class="eh-stoplight-hint">${escapeHtml(s.hint)}</span>
                 </button>
               `).join('')}
             </div>
@@ -94,65 +79,44 @@ export function openSymptomLogModal({ childId, childName }) {
     `;
     document.body.appendChild(overlay);
 
-    // ----- state -----
-    const state = { symptom_type: null, severity: null };
-
+    const state = { severity: null };
     const $ = (sel) => overlay.querySelector(sel);
     const errorEl = $('[data-error]');
     const showError = (msg) => { errorEl.textContent = msg; errorEl.classList.remove('hidden'); };
     const clearError = () => errorEl.classList.add('hidden');
 
-    // Default: tijd = nu
     $('#eh-symptom-when').value = toLocalInput(new Date());
 
-    // Type-grid (single-select) — info-knop opent detail-modal voor één symptoom.
-    overlay.querySelector('[data-group="symptom_type"]').addEventListener('click', async (e) => {
-      const info = e.target.closest('[data-symptom-info]');
-      if (info) {
-        e.stopPropagation();
-        const sym = getSymptom(info.dataset.symptomInfo);
-        if (sym) await openSymptomDetailModal({ symptomKey: sym.key });
-        return;
-      }
-      const tile = e.target.closest('.eh-symptom-tile');
-      if (!tile) return;
-      overlay.querySelectorAll('.eh-symptom-tile').forEach(b => b.classList.remove('selected'));
-      tile.classList.add('selected');
-      state.symptom_type = tile.dataset.value;
-    });
-
-    // "Wat betekenen deze?"-link → lijst-weergave.
-    overlay.querySelector('[data-action="open-symptom-list"]').addEventListener('click', async () => {
-      await openSymptomDetailModal({ listMode: true });
-    });
-
-    // Ernst-chips (single-select)
+    // Stoplicht-chips (single-select)
     overlay.querySelector('[data-group="severity"]').addEventListener('click', (e) => {
-      const chip = e.target.closest('.eh-symptom-chip');
+      const chip = e.target.closest('.eh-stoplight-chip');
       if (!chip) return;
-      overlay.querySelectorAll('[data-group="severity"] .eh-symptom-chip').forEach(b => b.classList.remove('selected'));
+      overlay.querySelectorAll('.eh-stoplight-chip').forEach(b => b.classList.remove('selected'));
       chip.classList.add('selected');
       state.severity = chip.dataset.value;
+    });
+
+    // Legend popup
+    overlay.querySelector('[data-action="open-legend"]').addEventListener('click', () => {
+      openStoplightLegend();
     });
 
     // Save
     $('[data-action="save"]').addEventListener('click', async () => {
       clearError();
-      if (!state.symptom_type) return showError('Kies een soort symptoom.');
       if (!state.severity) return showError('Kies een ernst.');
 
       const occurredAt = parseLocalInput($('#eh-symptom-when').value);
       if (!occurredAt) return showError('Kies een geldig tijdstip.');
 
       const notes = $('#eh-symptom-notes').value.trim();
-
       const buttons = overlay.querySelectorAll('.eh-symptom-actions button');
       buttons.forEach(b => b.disabled = true);
 
       try {
         const result = await createSymptom({
           child_id:     childId,
-          symptom_type: state.symptom_type,
+          symptom_type: 'anders',
           severity:     state.severity,
           occurred_at:  occurredAt,
           notes:        notes || null,
@@ -176,6 +140,81 @@ export function openSymptomLogModal({ childId, childName }) {
     function close(result) {
       overlay.remove();
       resolve(result);
+    }
+  });
+}
+
+/* ============================================
+   STOPLICHT-LEGEND (popup met uitleg per kleur)
+============================================ */
+function openStoplightLegend() {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay eh-stoplight-legend-overlay';
+  overlay.innerHTML = `
+    <div class="modal eh-stoplight-legend">
+      <header class="eh-stoplight-legend-header">
+        <h2>Stoplicht — uitleg</h2>
+        <p class="eh-symptom-sub">
+          <span class="eh-symptom-disclaimer">Dit vervangt geen medisch advies.</span>
+        </p>
+      </header>
+
+      <section class="eh-stoplight-section eh-stoplight-section--green">
+        <h4>🟢 Mild — meestal verder doen</h4>
+        <ul>
+          <li>1–2 rode vlekjes rond mond door contact met voeding</li>
+          <li>Kortdurende lichte roodheid</li>
+          <li>Eenmalig losse stoelgang</li>
+          <li>Wat meer windjes</li>
+          <li>Licht veranderd stoelgangpatroon</li>
+          <li>Klein beetje voeding teruggeven/spugen</li>
+          <li>Kind eet minder van een nieuw allergeen maar is verder oké</li>
+        </ul>
+      </section>
+
+      <section class="eh-stoplight-section eh-stoplight-section--orange">
+        <h4>🟠 Twijfel — tijdelijk pauzeren + opvolgen</h4>
+        <ul>
+          <li>Herhaald braken</li>
+          <li>Toenemende huiduitslag</li>
+          <li>Netelroos op meerdere plaatsen</li>
+          <li>Diarree meerdere keren</li>
+          <li>Opvallend ongemak/huilen</li>
+          <li>Symptomen die telkens terugkomen bij hetzelfde allergeen</li>
+        </ul>
+      </section>
+
+      <section class="eh-stoplight-section eh-stoplight-section--red">
+        <h4>🔴 Ernstig — stoppen + medische hulp</h4>
+        <ul>
+          <li>Moeite met ademhalen</li>
+          <li>Zwelling lippen/tong/oogleden</li>
+          <li>Heesheid/piepend ademhalen</li>
+          <li>Sufheid/flauwvallen</li>
+          <li>Ernstige herhaaldelijke braakreacties</li>
+          <li>Snelle verspreiding van netelroos</li>
+          <li>Combinatie van meerdere symptomen tegelijk</li>
+        </ul>
+      </section>
+
+      <p class="eh-stoplight-disclaimer-foot">
+        Bij twijfel: contacteer je huisarts, kinderarts of Kind &amp; Gezin.
+      </p>
+
+      <footer class="eh-stoplight-legend-actions">
+        <button class="btn btn-primary" data-action="close">Sluiten</button>
+      </footer>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const close = () => overlay.remove();
+  overlay.querySelector('[data-action="close"]').addEventListener('click', close);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  document.addEventListener('keydown', function escHandler(e) {
+    if (e.key === 'Escape' && document.body.contains(overlay)) {
+      document.removeEventListener('keydown', escHandler);
+      close();
     }
   });
 }
