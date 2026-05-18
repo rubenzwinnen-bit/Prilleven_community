@@ -5,7 +5,7 @@
    Geen state-cache hier — caller beheert dat zelf.
 ============================================ */
 
-import { sessionRefreshIfNeeded } from './supabase.js?v=2.5.6';
+import { sessionRefreshIfNeeded } from './supabase.js?v=2.5.7';
 
 async function call(path, { method = 'GET', body = null } = {}) {
   const session = await sessionRefreshIfNeeded();
@@ -55,6 +55,15 @@ export async function loadEhDoses(childId, allergenKey) {
 /** POST nieuwe dose. 409 bij dubbele dose-number per allergeen. */
 export async function createEhDose(payload) {
   const data = await call('/doses', { method: 'POST', body: payload });
+  return data.dose;
+}
+
+/** PATCH 1 dose op id (intro_date / notes / reaction). */
+export async function updateEhDose(doseId, patch) {
+  const data = await call(`/doses/${encodeURIComponent(doseId)}`, {
+    method: 'PATCH',
+    body: patch,
+  });
   return data.dose;
 }
 

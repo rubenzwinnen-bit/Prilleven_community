@@ -260,6 +260,40 @@ export async function createDose(userId, clean) {
   return data;
 }
 
+export function sanitizeDosePatch(body) {
+  if (!body || typeof body !== 'object') throw new HttpError(400, 'Body ongeldig.');
+  const out = {};
+
+  if (body.intro_date !== undefined) {
+    out.intro_date = parseIsoDate(body.intro_date, 'intro_date');
+    if (!out.intro_date) throw new HttpError(422, 'intro_date is verplicht.');
+  }
+  if (body.notes !== undefined) {
+    out.notes = sanitizeNotes(body.notes);
+  }
+  if (body.reaction !== undefined) {
+    if (!REACTIONS.has(body.reaction)) throw new HttpError(422, 'reaction ongeldig.');
+    out.reaction = body.reaction;
+  }
+
+  if (Object.keys(out).length === 0) {
+    throw new HttpError(422, 'Geen wijzigingen meegegeven.');
+  }
+  return out;
+}
+
+export async function updateDose(userId, doseId, patch) {
+  if (!isUuid(doseId)) throw new HttpError(422, 'dose_id ongeldig.');
+  const { data, error } = await supabase
+    .from('eerste_hapjes_allergen_doses')
+    .update(patch)
+    .eq('user_id', userId).eq('id', doseId)
+    .select(DOSE_COLS).maybeSingle();
+  if (error) throw new HttpError(500, error.message);
+  if (!data) throw new HttpError(404, 'Dose niet gevonden.');
+  return data;
+}
+
 export async function deleteDose(userId, doseId) {
   if (!isUuid(doseId)) throw new HttpError(422, 'dose_id ongeldig.');
   const { error } = await supabase

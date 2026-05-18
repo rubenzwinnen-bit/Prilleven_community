@@ -8,24 +8,24 @@
    automatisch als 'allergisch' getoond.
 ============================================ */
 
-import { escapeHtml, showToast, colorFromSeed, initialsFromName } from '../utils.js?v=2.5.6';
-import { getChildren } from '../childrenApi.js?v=2.5.6';
+import { escapeHtml, showToast, colorFromSeed, initialsFromName } from '../utils.js?v=2.5.7';
+import { getChildren } from '../childrenApi.js?v=2.5.7';
 import {
   loadEhState,
   patchEhState,
   loadEhDoses,
   createEhDose,
-  deleteEhDose,
-} from '../eersteHapjesStateApi.js?v=2.5.6';
-import { loadSymptomsForChild } from '../eersteHapjesSymptomsApi.js?v=2.5.6';
+  updateEhDose,
+} from '../eersteHapjesStateApi.js?v=2.5.7';
+import { loadSymptomsForChild } from '../eersteHapjesSymptomsApi.js?v=2.5.7';
 import {
   ALLERGEN_FLOW,
   REACTION_LEVELS,
   getEligibleAllergens,
   getAllergenStatus,
-} from '../content/eersteHapjes-allergen-flow.js?v=2.5.6';
-import { openSymptomLogModal } from './symptomLogModal.js?v=2.5.6';
-import { mountAllergenenAgenda } from './allergenenAgenda.js?v=2.5.6';
+} from '../content/eersteHapjes-allergen-flow.js?v=2.5.7';
+import { openSymptomLogModal } from './symptomLogModal.js?v=2.5.7';
+import { mountAllergenenAgenda } from './allergenenAgenda.js?v=2.5.7';
 
 let state = {
   loaded: false,
@@ -547,20 +547,36 @@ function renderGrid(root, child) {
     });
   });
 
-  // Dose verwijderen
-  grid.querySelectorAll('[data-action="delete-dose"]').forEach(btn => {
+  // Dose bewerken
+  grid.querySelectorAll('[data-action="edit-dose"]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const dose = state.doses.find(d => d.id === id);
+      if (!dose) return;
+      openDoseModal(child.id, dose.allergen_key, dose.dose_number, { existing: dose });
+    });
+  });
+
+  // Symptoom bewerken
+  grid.querySelectorAll('[data-action="edit-symptom"]').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
       const id = btn.dataset.id;
-      if (!confirm('Deze dose verwijderen?')) return;
-      try {
-        await deleteEhDose(id);
-        state.doses = state.doses.filter(d => d.id !== id);
-        renderArtsWarning(root);
-        renderGrid(root, child);
-      } catch (err) {
-        showToast(err.message || 'Verwijderen mislukt.', 'error');
-      }
+      const sym = (state.symptoms || []).find(s => s.id === id);
+      if (!sym) return;
+      const introducedKeys = computeIntroducedKeys(state.doses, state.ehState);
+      const result = await openSymptomLogModal({
+        childId: child.id,
+        childName: child.name,
+        introducedKeys,
+        existing: sym,
+      });
+      if (!result?.symptom) return;
+      state.symptoms = state.symptoms.map(s => s.id === result.symptom.id ? result.symptom : s);
+      showToast('Symptoom bijgewerkt.', 'success');
+      renderArtsWarning(root);
+      renderGrid(root, child);
     });
   });
 }
@@ -717,7 +733,7 @@ function renderAllergenItem(allergen, ctx, ageMonths, child) {
                   <span class="allergenen-dose-num">Dose ${d.dose_number}</span>
                   <span class="allergenen-dose-date">${escapeHtml(d.intro_date)}</span>
                   ${d.notes ? `<span class="allergenen-dose-notes">${escapeHtml(d.notes)}</span>` : ''}
-                  <button class="allergenen-dose-del" data-action="delete-dose" data-id="${d.id}" title="Verwijderen" aria-label="Dose verwijderen">&#128465;</button>
+                  <button class="allergenen-dose-edit" data-action="edit-dose" data-id="${d.id}" title="Bewerken" aria-label="Dose bewerken">&#9998;</button>
                 </li>
               `).join('')}
             </ul>
@@ -741,6 +757,7 @@ function renderAllergenItem(allergen, ctx, ageMonths, child) {
                     </span>
                   ` : ''}
                   ${s.notes ? `<span class="allergenen-symptom-notes">${escapeHtml(s.notes)}</span>` : ''}
+                  <button class="allergenen-symptom-edit" data-action="edit-symptom" data-id="${s.id}" title="Bewerken" aria-label="Symptoom bewerken">&#9998;</button>
                 </li>
                 `;
               }).join('')}
@@ -752,19 +769,22 @@ function renderAllergenItem(allergen, ctx, ageMonths, child) {
   `;
 }
 
-function openDoseModal(childId, allergenKey, doseNumber) {
+function openDoseModal(childId, allergenKey, doseNumber, { existing = null } = {}) {
+  const isEdit = !!existing;
   const allergen = ALLERGEN_FLOW.find(a => a.key === allergenKey);
   const today = new Date().toISOString().slice(0, 10);
+  const initialDate = isEdit ? (existing.intro_date || today) : today;
+  const initialNotes = isEdit ? (existing.notes || '') : '';
 
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
     <div class="modal allergenen-dose-modal">
-      <h3>${escapeHtml(allergen?.label || allergenKey)} — dose ${doseNumber}</h3>
+      <h3>${escapeHtml(allergen?.label || allergenKey)} — dose ${doseNumber}${isEdit ? ' (bewerken)' : ''}</h3>
       <p class="allergenen-dose-modal-sub">${escapeHtml(allergen?.suggestedFood || '')}</p>
 
       <label for="dose-date">Datum</label>
-      <input type="date" id="dose-date" value="${today}" max="${today}">
+      <input type="date" id="dose-date" value="${escapeHtml(initialDate)}" max="${today}">
 
       <p class="allergenen-dose-modal-hint">
         Een reactie komt vaak pas later. Merk je iets op? Log dit apart via
@@ -772,13 +792,13 @@ function openDoseModal(childId, allergenKey, doseNumber) {
       </p>
 
       <label for="dose-notes">Notities (optioneel)</label>
-      <textarea id="dose-notes" rows="3" maxlength="500" placeholder="Hoeveelheid, observaties…"></textarea>
+      <textarea id="dose-notes" rows="3" maxlength="500" placeholder="Hoeveelheid, observaties…">${escapeHtml(initialNotes)}</textarea>
 
       <div id="dose-error" class="auth-error hidden"></div>
 
       <div class="nickname-actions">
         <button class="btn btn-outline" id="dose-cancel">Annuleren</button>
-        <button class="btn btn-primary" id="dose-save">Opslaan</button>
+        <button class="btn btn-primary" id="dose-save">${isEdit ? 'Bijwerken' : 'Opslaan'}</button>
       </div>
     </div>
   `;
@@ -794,17 +814,27 @@ function openDoseModal(childId, allergenKey, doseNumber) {
     const errorEl = overlay.querySelector('#dose-error');
 
     try {
-      const dose = await createEhDose({
-        child_id: childId,
-        allergen_key: allergenKey,
-        dose_number: doseNumber,
-        intro_date: date,
-        reaction: 'geen',
-        notes: notes || null,
-      });
-      state.doses = [...state.doses, dose];
-      close();
-      showToast('Dose geregistreerd.', 'success');
+      if (isEdit) {
+        const dose = await updateEhDose(existing.id, {
+          intro_date: date,
+          notes: notes || null,
+        });
+        state.doses = state.doses.map(d => d.id === dose.id ? dose : d);
+        close();
+        showToast('Dose bijgewerkt.', 'success');
+      } else {
+        const dose = await createEhDose({
+          child_id: childId,
+          allergen_key: allergenKey,
+          dose_number: doseNumber,
+          intro_date: date,
+          reaction: 'geen',
+          notes: notes || null,
+        });
+        state.doses = [...state.doses, dose];
+        close();
+        showToast('Dose geregistreerd.', 'success');
+      }
       const root = document.getElementById('allergenen-root');
       const child = state.children.find(c => c.id === childId);
       if (root && child) {

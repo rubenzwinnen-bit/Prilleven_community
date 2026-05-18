@@ -8,8 +8,8 @@
    severity in bestaande waarden: mild | matig | heftig.
 ============================================ */
 
-import { escapeHtml } from '../utils.js?v=2.5.6';
-import { createSymptom } from '../eersteHapjesSymptomsApi.js?v=2.5.6';
+import { escapeHtml } from '../utils.js?v=2.5.7';
+import { createSymptom, updateSymptom } from '../eersteHapjesSymptomsApi.js?v=2.5.7';
 
 const SEVERITY_OPTIONS = [
   { value: 'mild',   icon: '🟢', label: 'Mild',    hint: 'meestal verder doen' },
@@ -76,14 +76,15 @@ function chipRow(group, options, { columns = 2 } = {}) {
   `;
 }
 
-export function openSymptomLogModal({ childId, childName, introducedKeys = [] }) {
+export function openSymptomLogModal({ childId, childName, introducedKeys = [], existing = null }) {
+  const isEdit = !!existing;
   return new Promise((resolve) => {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay eh-symptom-modal-overlay';
     overlay.innerHTML = `
       <div class="modal eh-symptom-modal">
         <header class="eh-symptom-header">
-          <h2>Reactie loggen</h2>
+          <h2>${isEdit ? 'Reactie bewerken' : 'Reactie loggen'}</h2>
           <p class="eh-symptom-sub">
             Voor ${escapeHtml(childName || '')} —
             <span class="eh-symptom-disclaimer">
@@ -180,18 +181,49 @@ export function openSymptomLogModal({ childId, childName, introducedKeys = [] })
     document.body.appendChild(overlay);
 
     const state = {
-      severity: null,
-      time_after_eating: null,
-      duration: null,
-      worsened: null,
-      behavior: null,
+      severity: isEdit ? (existing.severity || null) : null,
+      time_after_eating: isEdit ? (existing.time_after_eating || null) : null,
+      duration: isEdit ? (existing.duration || null) : null,
+      worsened: isEdit ? (existing.worsened || null) : null,
+      behavior: isEdit ? (existing.behavior || null) : null,
     };
     const $ = (sel) => overlay.querySelector(sel);
     const errorEl = $('[data-error]');
     const showError = (msg) => { errorEl.textContent = msg; errorEl.classList.remove('hidden'); };
     const clearError = () => errorEl.classList.add('hidden');
 
-    $('#eh-symptom-when').value = toLocalInput(new Date());
+    if (isEdit) {
+      const sel = $('#eh-symptom-allergen');
+      if (sel && existing.linked_allergen_key) {
+        // Voeg bestaande key toe als ie niet in dropdown staat (bv. nu niet meer introduced)
+        if (!Array.from(sel.options).some(o => o.value === existing.linked_allergen_key)) {
+          const opt = document.createElement('option');
+          opt.value = existing.linked_allergen_key;
+          opt.textContent = ALLERGEN_LABELS[existing.linked_allergen_key] || existing.linked_allergen_key;
+          sel.appendChild(opt);
+        }
+        sel.value = existing.linked_allergen_key;
+      }
+      $('#eh-symptom-when').value = existing.occurred_at
+        ? toLocalInput(new Date(existing.occurred_at))
+        : toLocalInput(new Date());
+      $('#eh-symptom-notes').value = existing.notes || '';
+
+      // Voorgeselecteerde chips markeren
+      if (state.severity) {
+        const chip = overlay.querySelector(`.eh-stoplight-chip[data-value="${state.severity}"]`);
+        if (chip) chip.classList.add('selected');
+      }
+      for (const group of ['time_after_eating', 'duration', 'worsened', 'behavior']) {
+        if (!state[group]) continue;
+        const chip = overlay.querySelector(
+          `.eh-chip-row[data-group="${group}"] .eh-chip[data-value="${state[group]}"]`
+        );
+        if (chip) chip.classList.add('selected');
+      }
+    } else {
+      $('#eh-symptom-when').value = toLocalInput(new Date());
+    }
 
     // Stoplicht-chips (single-select)
     overlay.querySelector('[data-group="severity"]').addEventListener('click', (e) => {
@@ -239,19 +271,33 @@ export function openSymptomLogModal({ childId, childName, introducedKeys = [] })
       buttons.forEach(b => b.disabled = true);
 
       try {
-        const result = await createSymptom({
-          child_id:            childId,
-          symptom_type:        'anders',
-          severity:            state.severity,
-          occurred_at:         occurredAt,
-          notes:               notes || null,
-          linked_allergen_key: allergenKey,
-          time_after_eating:   state.time_after_eating,
-          duration:            state.duration,
-          worsened:            state.worsened,
-          behavior:            state.behavior,
-        });
-        close(result);
+        if (isEdit) {
+          const symptom = await updateSymptom(existing.id, {
+            severity:            state.severity,
+            occurred_at:         occurredAt,
+            notes:               notes || null,
+            linked_allergen_key: allergenKey,
+            time_after_eating:   state.time_after_eating,
+            duration:            state.duration,
+            worsened:            state.worsened,
+            behavior:            state.behavior,
+          });
+          close({ symptom, red_flag: false, updated: true });
+        } else {
+          const result = await createSymptom({
+            child_id:            childId,
+            symptom_type:        'anders',
+            severity:            state.severity,
+            occurred_at:         occurredAt,
+            notes:               notes || null,
+            linked_allergen_key: allergenKey,
+            time_after_eating:   state.time_after_eating,
+            duration:            state.duration,
+            worsened:            state.worsened,
+            behavior:            state.behavior,
+          });
+          close(result);
+        }
       } catch (err) {
         buttons.forEach(b => b.disabled = false);
         showError(err.message || 'Er ging iets mis.');

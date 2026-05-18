@@ -5351,8 +5351,9 @@ body.is-allergenen #app-nav { display: none; }
 .allergenen-dose--mild { border-left: 3px solid var(--color-warning, #e6b800); }
 .allergenen-dose--ernstig { border-left: 3px solid #d9534f; }
 
-/* Kleine icon-only verwijder-knop, helemaal rechts in de dose-rij */
-.allergenen-dose-del {
+/* Kleine icon-only bewerk-knop, helemaal rechts in de dose- of symptoom-rij */
+.allergenen-dose-edit,
+.allergenen-symptom-edit {
   justify-self: end;
   align-self: center;
   width: 26px;
@@ -5368,10 +5369,11 @@ body.is-allergenen #app-nav { display: none; }
   opacity: .55;
   transition: opacity .15s ease, background .15s ease, color .15s ease;
 }
-.allergenen-dose-del:hover {
+.allergenen-dose-edit:hover,
+.allergenen-symptom-edit:hover {
   opacity: 1;
-  background: #fdecec;
-  color: #d95553;
+  background: #eef4ee;
+  color: var(--color-primary, #5a7a5a);
 }
 
 /* Dose-modal */
@@ -6245,7 +6247,7 @@ body.is-allergenen #app-nav { display: none; }
 }
 .allergenen-symptom {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto 1fr auto;
   column-gap: .6rem;
   row-gap: .15rem;
   align-items: baseline;
