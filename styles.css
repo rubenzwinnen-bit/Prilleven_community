@@ -5800,3 +5800,194 @@ body.is-allergenen #app-nav { display: none; }
   gap: .5rem;
 }
 
+/* ============================================
+   ALLERGENEN — ONBOARDING (welkom + markeer-stap)
+   + NEXT-UP banner bovenaan de grid
+============================================ */
+.allergenen-stage {
+  margin-top: 1rem;
+}
+
+/* Welkom-kaart */
+.allergenen-welcome-card {
+  background: #fff;
+  border: 1px solid #e6e2d8;
+  border-radius: 16px;
+  padding: 1.75rem 1.5rem;
+  text-align: center;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  max-width: 620px;
+  margin: 1rem auto;
+}
+.allergenen-welcome-icon {
+  font-size: 2.4rem;
+  margin-bottom: .5rem;
+}
+.allergenen-welcome-card h3 {
+  margin: .25rem 0 .75rem;
+  color: var(--color-primary, #5e7a5b);
+}
+.allergenen-welcome-card p {
+  margin: .5rem 0;
+  color: #555;
+  line-height: 1.5;
+}
+.allergenen-welcome-card .btn {
+  margin-top: 1rem;
+}
+
+/* Markeer-stap */
+.allergenen-setup-card {
+  background: #fff;
+  border: 1px solid #e6e2d8;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  max-width: 720px;
+  margin: 1rem auto;
+}
+.allergenen-setup-card h3 {
+  margin: 0 0 .5rem;
+  color: var(--color-primary, #5e7a5b);
+}
+.allergenen-setup-card > p {
+  margin: 0 0 1rem;
+  color: #555;
+  line-height: 1.5;
+}
+.allergenen-setup-list {
+  display: grid;
+  gap: .5rem;
+  margin-bottom: 1.25rem;
+}
+.allergenen-setup-item {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: .75rem;
+  align-items: center;
+  padding: .75rem .9rem;
+  border: 1px solid #e6e2d8;
+  border-radius: 12px;
+  background: #fafaf6;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
+.allergenen-setup-item:hover {
+  background: #f3f4ec;
+  border-color: #cfd6c2;
+}
+.allergenen-setup-item input[type="checkbox"] {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--color-primary, #5e7a5b);
+}
+.allergenen-setup-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.allergenen-setup-label {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+  line-height: 1.35;
+}
+.allergenen-setup-label strong {
+  color: #333;
+  font-size: .98rem;
+}
+.allergenen-setup-label small {
+  color: #6b6b6b;
+  font-size: .82rem;
+}
+.allergenen-setup-label em {
+  color: #a07b00;
+  font-size: .78rem;
+  font-style: normal;
+}
+.allergenen-setup-item.is-locked {
+  cursor: not-allowed;
+  opacity: .55;
+}
+.allergenen-setup-item.is-locked:hover {
+  background: #fafaf6;
+  border-color: #e6e2d8;
+}
+.allergenen-setup-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+
+/* Next-up banner */
+.allergenen-nextup {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, #eef3e8 0%, #f6f8f1 100%);
+  border: 1px solid #cfd6c2;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.03);
+}
+.allergenen-nextup-main {
+  display: flex;
+  align-items: center;
+  gap: .9rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.allergenen-nextup-icon {
+  font-size: 2rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.allergenen-nextup-body {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+  min-width: 0;
+}
+.allergenen-nextup-label {
+  font-size: .75rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--color-primary, #5e7a5b);
+  font-weight: 600;
+}
+.allergenen-nextup-body strong {
+  color: #333;
+  font-size: 1rem;
+}
+.allergenen-nextup-body small {
+  color: #6b6b6b;
+  font-size: .85rem;
+  line-height: 1.35;
+}
+.allergenen-nextup .btn {
+  flex-shrink: 0;
+}
+.allergenen-nextup--done,
+.allergenen-nextup--wait {
+  display: block;
+  text-align: center;
+  background: #f6f8f1;
+  line-height: 1.5;
+  color: #444;
+}
+.allergenen-nextup--done strong {
+  color: var(--color-primary, #5e7a5b);
+}
+
+@media (max-width: 640px) {
+  .allergenen-nextup {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .allergenen-nextup .btn {
+    width: 100%;
+  }
+}
+

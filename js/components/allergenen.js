@@ -59,12 +59,35 @@ function deriveStatusContext(doses, ehState) {
     if (count >= 3) completed.push(key);
     else inProgress[key] = count;
   }
+  // pre_introduced: gemarkeerd-als-veilig vóór tracking, telt als completed
+  const preIntro = ehState?.allergen_state?.pre_introduced || [];
+  for (const key of preIntro) {
+    if (!completed.includes(key)) completed.push(key);
+    delete inProgress[key];
+  }
   return {
     completed,
     inProgress,
     knownAllergies: ehState?.allergen_state?.known_allergies || [],
+    preIntroduced: preIntro,
     paused: !!ehState?.allergen_state?.paused,
   };
+}
+
+/**
+ * Bepaal de eerstvolgende dose-suggestie.
+ * Returnt null als alles veilig of niets eligibel.
+ */
+function getNextDoseSuggestion(ctx, ageMonths) {
+  const ordered = [...ALLERGEN_FLOW].sort((a, b) => a.order - b.order);
+  for (const a of ordered) {
+    if (ctx.knownAllergies.includes(a.key)) continue;
+    if (ctx.completed.includes(a.key)) continue;
+    if (a.ageCondition.introFrom && ageMonths < a.ageCondition.introFrom) continue;
+    const count = ctx.inProgress[a.key] || 0;
+    return { allergen: a, doseNumber: count + 1 };
+  }
+  return null;
 }
 
 export function render() {
@@ -165,7 +188,7 @@ async function renderApp(root) {
   const active = state.children.find(c => c.id === state.activeId) || state.children[0];
   state.activeId = active.id;
 
-  // Eerst skeleton met switcher tonen, daarna data laden
+  // Skeleton met switcher tonen, data laden
   root.innerHTML = `
     <header class="allergenen-header">
       <h2>Allergenen introduceren</h2>
@@ -184,7 +207,7 @@ async function renderApp(root) {
     </header>
     ${renderSwitcher(state.children, active)}
     <div class="allergenen-warn-slot" id="allergenen-warn-slot"></div>
-    <div class="allergenen-grid" id="allergenen-grid">
+    <div class="allergenen-stage" id="allergenen-stage">
       <div class="empty-state"><div class="empty-state-icon">&#9203;</div><h3>Data laden…</h3></div>
     </div>
   `;
@@ -193,7 +216,133 @@ async function renderApp(root) {
 
   await loadChildData(active.id);
   renderArtsWarning(root);
-  renderGrid(root, active);
+  renderStage(root, active);
+}
+
+/**
+ * Kies welk scherm getoond wordt op basis van allergen_state.
+ */
+function renderStage(root, child) {
+  const stage = root.querySelector('#allergenen-stage');
+  if (!stage) return;
+  const allergenState = state.ehState?.allergen_state || {};
+  if (!allergenState.started) {
+    renderWelcome(stage, child);
+  } else if (!allergenState.setup_done) {
+    renderSetup(stage, child);
+  } else {
+    stage.innerHTML = `<div class="allergenen-grid" id="allergenen-grid"></div>`;
+    renderGrid(root, child);
+  }
+}
+
+/* ============================================
+   ONBOARDING — Welkomscherm
+============================================ */
+function renderWelcome(stage, child) {
+  stage.innerHTML = `
+    <div class="allergenen-welcome-card">
+      <div class="allergenen-welcome-icon">🍽️</div>
+      <h3>Klaar om allergenen te introduceren voor ${escapeHtml(child.name)}?</h3>
+      <p>
+        We begeleiden je door de 13 allergenen, in de juiste volgorde,
+        met telkens 3 doses zonder reactie om een allergeen als veilig te markeren.
+      </p>
+      <p>
+        Je kiest zelf wanneer je start, wanneer je naar het volgende allergeen
+        gaat en wanneer je een nieuwe dose registreert. Bekende allergieën uit
+        het profiel slaan we automatisch over.
+      </p>
+      <button type="button" class="btn btn-primary btn-lg" data-action="start-flow">
+        Start met introduceren
+      </button>
+    </div>
+  `;
+  stage.querySelector('[data-action="start-flow"]').addEventListener('click', async () => {
+    try {
+      const updated = await patchEhState(child.id, {
+        allergen_state: { ...(state.ehState?.allergen_state || {}), started: true },
+      });
+      state.ehState = updated;
+      const root = document.getElementById('allergenen-root');
+      if (root) renderStage(root, child);
+    } catch (err) {
+      showToast(err.message || 'Starten mislukt.', 'error');
+    }
+  });
+}
+
+/* ============================================
+   ONBOARDING — Markeer reeds geïntroduceerd
+============================================ */
+function renderSetup(stage, child) {
+  const knownAllergies = state.ehState?.allergen_state?.known_allergies || [];
+  const ageMonths = ageMonthsFromBirthdate(child.birthdate);
+  const candidates = [...ALLERGEN_FLOW]
+    .sort((a, b) => a.order - b.order)
+    .filter(a => !knownAllergies.includes(a.key));
+
+  const items = candidates.map(a => {
+    const locked = a.ageCondition.introFrom && ageMonths < a.ageCondition.introFrom;
+    return `
+      <label class="allergenen-setup-item ${locked ? 'is-locked' : ''}">
+        <input type="checkbox" data-key="${a.key}" ${locked ? 'disabled' : ''}>
+        <span class="allergenen-setup-icon">${a.icon}</span>
+        <span class="allergenen-setup-label">
+          <strong>${escapeHtml(a.label)}</strong>
+          <small>${escapeHtml(a.suggestedFood)}</small>
+          ${locked ? `<em>Vanaf ${a.ageCondition.introFrom} maanden</em>` : ''}
+        </span>
+      </label>
+    `;
+  }).join('');
+
+  stage.innerHTML = `
+    <div class="allergenen-setup-card">
+      <h3>Reeds geïntroduceerd?</h3>
+      <p>
+        Vink aan welke allergenen ${escapeHtml(child.name)} al regelmatig en
+        zonder reactie heeft gegeten. Deze slaan we over — je hoeft hier geen
+        doses meer voor te loggen.
+      </p>
+      <div class="allergenen-setup-list">
+        ${items || '<p>Geen allergenen om te markeren.</p>'}
+      </div>
+      <div class="allergenen-setup-actions">
+        <button type="button" class="btn btn-outline" data-action="setup-skip">
+          Niets aanvinken
+        </button>
+        <button type="button" class="btn btn-primary" data-action="setup-save">
+          Verder
+        </button>
+      </div>
+    </div>
+  `;
+
+  const finalize = async (preIntroduced) => {
+    try {
+      const current = state.ehState?.allergen_state || {};
+      const updated = await patchEhState(child.id, {
+        allergen_state: {
+          ...current,
+          pre_introduced: preIntroduced,
+          setup_done: true,
+        },
+      });
+      state.ehState = updated;
+      const root = document.getElementById('allergenen-root');
+      if (root) renderStage(root, child);
+    } catch (err) {
+      showToast(err.message || 'Opslaan mislukt.', 'error');
+    }
+  };
+
+  stage.querySelector('[data-action="setup-skip"]').addEventListener('click', () => finalize([]));
+  stage.querySelector('[data-action="setup-save"]').addEventListener('click', () => {
+    const checked = [...stage.querySelectorAll('input[type="checkbox"][data-key]:checked')]
+      .map(i => i.dataset.key);
+    finalize(checked);
+  });
 }
 
 function bindHeaderActions(root) {
@@ -343,12 +492,22 @@ function renderGrid(root, child) {
   const ctx = deriveStatusContext(state.doses, state.ehState);
   const eligible = getEligibleAllergens(ageMonths);
   const all = [...ALLERGEN_FLOW].sort((a, b) => a.order - b.order);
+  const nextUp = getNextDoseSuggestion(ctx, ageMonths);
 
   grid.innerHTML = `
+    ${renderNextUpBanner(nextUp, ctx)}
     <ul class="allergenen-list">
       ${all.map(a => renderAllergenItem(a, ctx, ageMonths, child)).join('')}
     </ul>
   `;
+
+  // Next-up CTA → opent dose-modal voor het juiste allergeen
+  const nextBtn = grid.querySelector('[data-action="next-dose"]');
+  if (nextBtn && nextUp) {
+    nextBtn.addEventListener('click', () => {
+      openDoseModal(child.id, nextUp.allergen.key, nextUp.doseNumber);
+    });
+  }
 
   // Klik op een item → toggle expand
   grid.querySelectorAll('.allergenen-item-head').forEach(head => {
@@ -385,6 +544,44 @@ function renderGrid(root, child) {
       }
     });
   });
+}
+
+function renderNextUpBanner(nextUp, ctx) {
+  if (!nextUp) {
+    // Alles geïntroduceerd
+    const total = ALLERGEN_FLOW.length;
+    const done = ctx.completed.length + ctx.knownAllergies.length;
+    if (done >= total) {
+      return `
+        <div class="allergenen-nextup allergenen-nextup--done">
+          🎉 <strong>Alle allergenen zijn geïntroduceerd.</strong>
+          Je hoeft niets meer te doen — bekijk de historiek in de agenda.
+        </div>
+      `;
+    }
+    return `
+      <div class="allergenen-nextup allergenen-nextup--wait">
+        ⏳ Er is op dit moment geen volgende dose beschikbaar
+        (bv. wachten op leeftijdsvoorwaarde).
+      </div>
+    `;
+  }
+  const a = nextUp.allergen;
+  return `
+    <div class="allergenen-nextup">
+      <div class="allergenen-nextup-main">
+        <span class="allergenen-nextup-icon">${a.icon}</span>
+        <div class="allergenen-nextup-body">
+          <span class="allergenen-nextup-label">Volgende stap</span>
+          <strong>${escapeHtml(a.label)} — dose ${nextUp.doseNumber}/3</strong>
+          <small>${escapeHtml(a.suggestedFood)}</small>
+        </div>
+      </div>
+      <button type="button" class="btn btn-primary" data-action="next-dose">
+        Dose ${nextUp.doseNumber} registreren
+      </button>
+    </div>
+  `;
 }
 
 function renderAllergenItem(allergen, ctx, ageMonths, child) {
