@@ -14,6 +14,20 @@ const SYMPTOM_TYPES = new Set([
 ]);
 const SEVERITIES = new Set(['mild', 'matig', 'heftig']);
 
+// Mirror van js/components/eersteHapjes-allergen-flow.js — 13 allergeen-keys.
+// 'onbekend' is een geldige sentinel-waarde wanneer de gebruiker geen
+// link kan/wil leggen, maar wel verplicht een keuze moet maken in de UI.
+const ALLERGEN_KEYS = new Set([
+  'ei-geel','ei-wit','pinda','noten','sesam','vis','schaaldieren','soja',
+  'gluten-niet-tarwe','tarwe','koemelk','honing','citrus',
+]);
+
+// Enum-velden — UI-keuzes, opgeslagen als text in DB (nullable).
+const TIME_AFTER_EATING = new Set(['direct','snel','later','veel-later','onbekend']);
+const DURATION          = new Set(['kort','paar-uur','halve-dag','dag-of-langer','nog-bezig']);
+const WORSENED          = new Set(['stabiel','langzaam-erger','snel-erger','minder']);
+const BEHAVIOR          = new Set(['normaal','onrustig','ongemakkelijk','suf']);
+
 // ============================================================
 // Red-flag-detector — mirror van js/content/eersteHapjes-symptoms.js.
 // Backend en frontend constants moeten in sync blijven (handmatig).
@@ -45,7 +59,9 @@ export function detectRedFlag(symptomType, severity) {
 const NOTES_MAX = 500;
 
 const SYMPTOM_COLS =
-  'id, child_id, user_id, occurred_at, symptom_type, severity, meal_log_id, notes, created_at, updated_at';
+  'id, child_id, user_id, occurred_at, symptom_type, severity, meal_log_id, notes, ' +
+  'linked_allergen_key, time_after_eating, duration, worsened, behavior, ' +
+  'created_at, updated_at';
 
 class HttpError extends Error {
   constructor(status, message) { super(message); this.status = status; }
@@ -83,6 +99,22 @@ function sanitizeNotes(raw) {
     throw new HttpError(422, `Notitie mag maximaal ${NOTES_MAX} tekens zijn.`);
   }
   return trimmed;
+}
+
+function pickEnum(raw, allowedSet, label) {
+  if (raw === undefined || raw === null || raw === '') return null;
+  const s = String(raw);
+  if (!allowedSet.has(s)) throw new HttpError(422, `${label} ongeldig.`);
+  return s;
+}
+
+function sanitizeLinkedAllergen(raw) {
+  if (raw === undefined || raw === null || raw === '') return null;
+  const s = String(raw);
+  if (s !== 'onbekend' && !ALLERGEN_KEYS.has(s)) {
+    throw new HttpError(422, 'Ongeldig allergeen.');
+  }
+  return s;
 }
 
 async function assertOwnsChild(userId, childId) {
@@ -143,6 +175,11 @@ export function sanitizeSymptomInput(raw) {
     severity: raw.severity,
     meal_log_id,
     notes,
+    linked_allergen_key: sanitizeLinkedAllergen(raw.linked_allergen_key),
+    time_after_eating:   pickEnum(raw.time_after_eating, TIME_AFTER_EATING, 'Tijdstip na eten'),
+    duration:            pickEnum(raw.duration,          DURATION,          'Duur'),
+    worsened:            pickEnum(raw.worsened,          WORSENED,          'Verloop'),
+    behavior:            pickEnum(raw.behavior,          BEHAVIOR,          'Gedrag'),
   };
   if (occurred_at) out.occurred_at = occurred_at;
   return out;
@@ -178,6 +215,21 @@ export function sanitizeSymptomPatch(raw) {
   }
   if (raw.notes !== undefined) {
     updates.notes = sanitizeNotes(raw.notes);
+  }
+  if (raw.linked_allergen_key !== undefined) {
+    updates.linked_allergen_key = sanitizeLinkedAllergen(raw.linked_allergen_key);
+  }
+  if (raw.time_after_eating !== undefined) {
+    updates.time_after_eating = pickEnum(raw.time_after_eating, TIME_AFTER_EATING, 'Tijdstip na eten');
+  }
+  if (raw.duration !== undefined) {
+    updates.duration = pickEnum(raw.duration, DURATION, 'Duur');
+  }
+  if (raw.worsened !== undefined) {
+    updates.worsened = pickEnum(raw.worsened, WORSENED, 'Verloop');
+  }
+  if (raw.behavior !== undefined) {
+    updates.behavior = pickEnum(raw.behavior, BEHAVIOR, 'Gedrag');
   }
 
   if (Object.keys(updates).length === 0) {

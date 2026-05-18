@@ -1,12 +1,15 @@
 /* ============================================
    EERSTE HAPJES — SYMPTOM LOG MODAL
-   Eenvoudig: stoplicht-ernst (🟢/🟠/🔴) + tijd + notitie.
+   Eenvoudig: stoplicht-ernst (🟢/🟠/🔴) + tijd + notitie + context.
+   Extra velden (allergeen-link verplicht, 4 enums optioneel):
+     - linked_allergen_key (verplicht — 'onbekend' is geldig)
+     - time_after_eating, duration, worsened, behavior (optioneel)
    Backend krijgt symptom_type='anders' (vereenvoudiging) en
    severity in bestaande waarden: mild | matig | heftig.
 ============================================ */
 
-import { escapeHtml } from '../utils.js?v=2.5.3';
-import { createSymptom } from '../eersteHapjesSymptomsApi.js?v=2.5.3';
+import { escapeHtml } from '../utils.js?v=2.5.4';
+import { createSymptom } from '../eersteHapjesSymptomsApi.js?v=2.5.4';
 
 const SEVERITY_OPTIONS = [
   { value: 'mild',   icon: '🟢', label: 'Mild',    hint: 'meestal verder doen' },
@@ -14,7 +17,66 @@ const SEVERITY_OPTIONS = [
   { value: 'heftig', icon: '🔴', label: 'Ernstig', hint: 'stoppen + medische hulp' },
 ];
 
-export function openSymptomLogModal({ childId, childName }) {
+// Labels voor allergenen-dropdown (matcht keys in eersteHapjes-allergen-flow.js).
+const ALLERGEN_LABELS = {
+  'ei-geel':            'Ei (geel)',
+  'ei-wit':             'Ei (wit)',
+  'pinda':              'Pinda',
+  'noten':              'Noten',
+  'sesam':              'Sesam',
+  'vis':                'Vis',
+  'schaaldieren':       'Schaaldieren',
+  'soja':               'Soja',
+  'gluten-niet-tarwe':  'Gluten (niet-tarwe)',
+  'tarwe':              'Tarwe',
+  'koemelk':            'Koemelk',
+  'honing':             'Honing',
+  'citrus':             'Citrus',
+};
+
+const TIME_AFTER_EATING_OPTIONS = [
+  { value: 'direct',     label: 'Direct (<15 min)' },
+  { value: 'snel',       label: 'Snel (15 min – 1 u)' },
+  { value: 'later',      label: 'Later (1 – 4 u)' },
+  { value: 'veel-later', label: 'Veel later (>4 u)' },
+  { value: 'onbekend',   label: 'Onbekend' },
+];
+
+const DURATION_OPTIONS = [
+  { value: 'kort',           label: 'Kort (<30 min)' },
+  { value: 'paar-uur',       label: 'Een paar uur' },
+  { value: 'halve-dag',      label: 'Een halve dag' },
+  { value: 'dag-of-langer',  label: 'Een dag of langer' },
+  { value: 'nog-bezig',      label: 'Nog bezig' },
+];
+
+const WORSENED_OPTIONS = [
+  { value: 'stabiel',         label: 'Bleef stabiel' },
+  { value: 'langzaam-erger',  label: 'Langzaam erger' },
+  { value: 'snel-erger',      label: 'Snel erger' },
+  { value: 'minder',          label: 'Werden minder' },
+];
+
+const BEHAVIOR_OPTIONS = [
+  { value: 'normaal',       label: 'Normaal' },
+  { value: 'onrustig',      label: 'Onrustig/huilerig' },
+  { value: 'ongemakkelijk', label: 'Erg ongemakkelijk' },
+  { value: 'suf',           label: 'Suf/lethargisch' },
+];
+
+function chipRow(group, options, { columns = 2 } = {}) {
+  return `
+    <div class="eh-chip-row" data-group="${group}" data-columns="${columns}">
+      ${options.map(o => `
+        <button type="button" class="eh-chip" data-value="${o.value}">
+          ${escapeHtml(o.label)}
+        </button>
+      `).join('')}
+    </div>
+  `;
+}
+
+export function openSymptomLogModal({ childId, childName, introducedKeys = [] }) {
   return new Promise((resolve) => {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay eh-symptom-modal-overlay';
@@ -31,6 +93,18 @@ export function openSymptomLogModal({ childId, childName }) {
         </header>
 
         <div class="eh-symptom-form">
+          <!-- Allergeen-link (verplicht, met 'Onbekend' als fallback) -->
+          <div class="eh-symptom-field">
+            <label for="eh-symptom-allergen">Welk allergeen?</label>
+            <select id="eh-symptom-allergen" class="auth-input eh-symptom-select">
+              <option value="">— kies een allergeen —</option>
+              ${introducedKeys.map(k => `
+                <option value="${k}">${escapeHtml(ALLERGEN_LABELS[k] || k)}</option>
+              `).join('')}
+              <option value="onbekend">Onbekend / niet zeker</option>
+            </select>
+          </div>
+
           <!-- Ernst (stoplicht) -->
           <div class="eh-symptom-field">
             <label>
@@ -56,6 +130,27 @@ export function openSymptomLogModal({ childId, childName }) {
             <input type="datetime-local" id="eh-symptom-when" class="auth-input">
           </div>
 
+          <!-- Optionele context-velden -->
+          <div class="eh-symptom-field">
+            <label>Hoe snel na eten? <span class="eh-symptom-optional">(optioneel)</span></label>
+            ${chipRow('time_after_eating', TIME_AFTER_EATING_OPTIONS, { columns: 2 })}
+          </div>
+
+          <div class="eh-symptom-field">
+            <label>Hoe lang duurde het? <span class="eh-symptom-optional">(optioneel)</span></label>
+            ${chipRow('duration', DURATION_OPTIONS, { columns: 2 })}
+          </div>
+
+          <div class="eh-symptom-field">
+            <label>Werden symptomen erger? <span class="eh-symptom-optional">(optioneel)</span></label>
+            ${chipRow('worsened', WORSENED_OPTIONS, { columns: 2 })}
+          </div>
+
+          <div class="eh-symptom-field">
+            <label>Hoe gedroeg kindje zich? <span class="eh-symptom-optional">(optioneel)</span></label>
+            ${chipRow('behavior', BEHAVIOR_OPTIONS, { columns: 2 })}
+          </div>
+
           <!-- Notitie -->
           <div class="eh-symptom-field">
             <label for="eh-symptom-notes">Notitie <span class="eh-symptom-optional">(optioneel)</span></label>
@@ -79,7 +174,13 @@ export function openSymptomLogModal({ childId, childName }) {
     `;
     document.body.appendChild(overlay);
 
-    const state = { severity: null };
+    const state = {
+      severity: null,
+      time_after_eating: null,
+      duration: null,
+      worsened: null,
+      behavior: null,
+    };
     const $ = (sel) => overlay.querySelector(sel);
     const errorEl = $('[data-error]');
     const showError = (msg) => { errorEl.textContent = msg; errorEl.classList.remove('hidden'); };
@@ -96,6 +197,23 @@ export function openSymptomLogModal({ childId, childName }) {
       state.severity = chip.dataset.value;
     });
 
+    // Enum chip-rijen (single-select per groep, klik-nogmaals = deselecteer)
+    overlay.querySelectorAll('.eh-chip-row').forEach(row => {
+      const group = row.dataset.group;
+      row.addEventListener('click', (e) => {
+        const chip = e.target.closest('.eh-chip');
+        if (!chip) return;
+        const wasSelected = chip.classList.contains('selected');
+        row.querySelectorAll('.eh-chip').forEach(b => b.classList.remove('selected'));
+        if (wasSelected) {
+          state[group] = null;
+        } else {
+          chip.classList.add('selected');
+          state[group] = chip.dataset.value;
+        }
+      });
+    });
+
     // Legend popup
     overlay.querySelector('[data-action="open-legend"]').addEventListener('click', () => {
       openStoplightLegend();
@@ -104,6 +222,8 @@ export function openSymptomLogModal({ childId, childName }) {
     // Save
     $('[data-action="save"]').addEventListener('click', async () => {
       clearError();
+      const allergenKey = $('#eh-symptom-allergen').value;
+      if (!allergenKey) return showError('Kies een allergeen (of "Onbekend").');
       if (!state.severity) return showError('Kies een ernst.');
 
       const occurredAt = parseLocalInput($('#eh-symptom-when').value);
@@ -115,11 +235,16 @@ export function openSymptomLogModal({ childId, childName }) {
 
       try {
         const result = await createSymptom({
-          child_id:     childId,
-          symptom_type: 'anders',
-          severity:     state.severity,
-          occurred_at:  occurredAt,
-          notes:        notes || null,
+          child_id:            childId,
+          symptom_type:        'anders',
+          severity:            state.severity,
+          occurred_at:         occurredAt,
+          notes:               notes || null,
+          linked_allergen_key: allergenKey,
+          time_after_eating:   state.time_after_eating,
+          duration:            state.duration,
+          worsened:            state.worsened,
+          behavior:            state.behavior,
         });
         close(result);
       } catch (err) {

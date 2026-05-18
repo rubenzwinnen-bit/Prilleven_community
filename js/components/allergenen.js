@@ -8,24 +8,24 @@
    automatisch als 'allergisch' getoond.
 ============================================ */
 
-import { escapeHtml, showToast, colorFromSeed, initialsFromName } from '../utils.js?v=2.5.3';
-import { getChildren } from '../childrenApi.js?v=2.5.3';
+import { escapeHtml, showToast, colorFromSeed, initialsFromName } from '../utils.js?v=2.5.4';
+import { getChildren } from '../childrenApi.js?v=2.5.4';
 import {
   loadEhState,
   patchEhState,
   loadEhDoses,
   createEhDose,
   deleteEhDose,
-} from '../eersteHapjesStateApi.js?v=2.5.3';
-import { loadSymptomsForChild } from '../eersteHapjesSymptomsApi.js?v=2.5.3';
+} from '../eersteHapjesStateApi.js?v=2.5.4';
+import { loadSymptomsForChild } from '../eersteHapjesSymptomsApi.js?v=2.5.4';
 import {
   ALLERGEN_FLOW,
   REACTION_LEVELS,
   getEligibleAllergens,
   getAllergenStatus,
-} from '../content/eersteHapjes-allergen-flow.js?v=2.5.3';
-import { openSymptomLogModal } from './symptomLogModal.js?v=2.5.3';
-import { mountAllergenenAgenda } from './allergenenAgenda.js?v=2.5.3';
+} from '../content/eersteHapjes-allergen-flow.js?v=2.5.4';
+import { openSymptomLogModal } from './symptomLogModal.js?v=2.5.4';
+import { mountAllergenenAgenda } from './allergenenAgenda.js?v=2.5.4';
 
 let state = {
   loaded: false,
@@ -349,6 +349,26 @@ function renderSetup(stage, child) {
   });
 }
 
+/**
+ * Bereken welke allergenen-keys "reeds geïntroduceerd" zijn. Union van:
+ *   (a) keys waarvan minstens 1 dose bestaat,
+ *   (b) pre_introduced (gemarkeerd als reeds-veilig vóór tracking),
+ *   (c) known_allergies (uit profiel, bekend allergisch).
+ * Gesorteerd via ALLERGEN_FLOW.order.
+ */
+function computeIntroducedKeys(doses, ehState) {
+  const set = new Set();
+  for (const d of (doses || [])) set.add(d.allergen_key);
+  for (const k of (ehState?.allergen_state?.pre_introduced || [])) set.add(k);
+  for (const k of (ehState?.allergen_state?.known_allergies || [])) set.add(k);
+  const ordered = [...ALLERGEN_FLOW].sort((a, b) => a.order - b.order);
+  const out = [];
+  for (const a of ordered) {
+    if (set.has(a.key)) out.push(a.key);
+  }
+  return out;
+}
+
 function bindHeaderActions(root) {
   root.querySelector('[data-action="open-agenda"]')?.addEventListener('click', () => {
     openAgendaModal();
@@ -356,7 +376,12 @@ function bindHeaderActions(root) {
   root.querySelector('[data-action="log-symptom"]')?.addEventListener('click', async () => {
     const active = state.children.find(c => c.id === state.activeId);
     if (!active) return;
-    const result = await openSymptomLogModal({ childId: active.id, childName: active.name });
+    const introducedKeys = computeIntroducedKeys(state.doses, state.ehState);
+    const result = await openSymptomLogModal({
+      childId: active.id,
+      childName: active.name,
+      introducedKeys,
+    });
     if (!result) return;
     state.symptoms = [result.symptom, ...state.symptoms];
     if (result.red_flag) {
