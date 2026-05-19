@@ -4,7 +4,7 @@
    Patroon identiek aan eersteHapjesStateApi.js.
 ============================================ */
 
-import { sessionRefreshIfNeeded } from './supabase.js?v=2.5.8';
+import { sessionRefreshIfNeeded } from './supabase.js?v=2.5.9';
 
 async function call(path, { method = 'GET', body = null } = {}) {
   const session = await sessionRefreshIfNeeded();

@@ -170,10 +170,14 @@ export function sanitizeStatePatch(input) {
     for (const k of preIntro) {
       if (!ALLERGEN_KEYS.has(k)) throw new HttpError(422, `Onbekende allergeen-key: ${k}`);
     }
+    const pausedStep = Number(a.paused_step);
     out.allergen_state = {
       paused: !!a.paused,
       paused_reason: a.paused_reason ? String(a.paused_reason).slice(0, 200) : null,
       paused_allergen: a.paused_allergen && ALLERGEN_KEYS.has(a.paused_allergen) ? a.paused_allergen : null,
+      paused_type: ['twijfel', 'ernstig'].includes(a.paused_type) ? a.paused_type : null,
+      paused_step: Number.isInteger(pausedStep) && pausedStep >= 0 && pausedStep <= 3 ? pausedStep : 0,
+      arts_toezicht: !!a.arts_toezicht,
       known_allergies: [...new Set(known)],
       excluded_keys: [...new Set(excluded.map(s => String(s).slice(0, 60)))],
       started: !!a.started,

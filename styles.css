@@ -6294,3 +6294,115 @@ body.is-allergenen #app-nav { display: none; }
   font-style: italic;
   line-height: 1.35;
 }
+
+/* ============================================
+   ALLERGENEN — PAUZE-FLOW (twijfel / ernstig)
+============================================ */
+.allergenen-pause-flow {
+  background: var(--color-white);
+  border: 1px solid var(--color-light);
+  border-radius: 14px;
+  padding: 2rem 1.75rem;
+  text-align: center;
+  max-width: 520px;
+  margin: 2rem auto;
+}
+.allergenen-pause-flow--ernstig {
+  border-color: var(--color-danger);
+  background: #fff5f5;
+}
+.allergenen-pause-icon {
+  display: block;
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+.allergenen-pause-flow h3 {
+  margin: 0 0 .75rem;
+  font-size: 1.2rem;
+  color: var(--color-dark);
+}
+.allergenen-pause-flow p {
+  color: var(--color-text, var(--color-dark));
+  margin: 0 0 .5rem;
+  line-height: 1.5;
+}
+.allergenen-pause-sub {
+  color: var(--color-gray);
+  font-size: .9rem;
+  margin-top: .5rem;
+}
+.allergenen-pause-actions {
+  display: flex;
+  gap: .75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 1.5rem;
+}
+
+/* ============================================
+   ALLERGENEN — ARTS-TOEZICHT BANNER
+============================================ */
+.allergenen-arts-toezicht-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  background: #fff8e1;
+  border: 1px solid #f5c842;
+  border-radius: 10px;
+  padding: .9rem 1.1rem;
+  margin-bottom: 1rem;
+}
+.allergenen-arts-toezicht-icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.allergenen-arts-toezicht-banner strong {
+  display: block;
+  margin-bottom: .2rem;
+  color: var(--color-dark);
+}
+.allergenen-arts-toezicht-banner p {
+  margin: 0;
+  font-size: .88rem;
+  color: var(--color-gray);
+}
+
+/* ============================================
+   ALLERGENEN — ITEM-HEADER WRAPPER + EXCLUDE BTN
+============================================ */
+.allergenen-item-header {
+  display: flex;
+  align-items: stretch;
+}
+.allergenen-item-header .allergenen-item-head {
+  flex: 1;
+  min-width: 0;
+}
+.allergenen-exclude-btn {
+  flex-shrink: 0;
+  padding: 0 .85rem;
+  font-size: .8rem;
+  font-family: inherit;
+  border: 0;
+  border-left: 1px solid var(--color-light);
+  background: var(--color-bg);
+  color: var(--color-gray);
+  cursor: pointer;
+  border-radius: 0 8px 0 0;
+  white-space: nowrap;
+  transition: background .15s, color .15s;
+}
+.allergenen-item.open .allergenen-exclude-btn {
+  border-radius: 0;
+}
+.allergenen-exclude-btn:hover {
+  background: var(--color-light);
+  color: var(--color-dark);
+}
+.allergenen-item--excluded {
+  opacity: .65;
+}
+.allergenen-item--excluded .allergenen-item-head {
+  background: var(--color-bg);
+}

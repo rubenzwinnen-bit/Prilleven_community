@@ -65,7 +65,8 @@ Pril Leven heeft historisch **twee** parallel-lopende auth-systemen. Begrijp het
 | `importRecipes.js` | Bulk JSON import (admin). |
 | `ingredientIcons.js` | Beheer van ingrediënt-iconen (admin). |
 | `timeline.js`, `timelinePost.js` | Community-feed pagina + losse post-detail. |
-| `chatRooms.js` | Chatruimtes-pane (rechts op landing) + room-view + topic-detail. Heeft per-room topic-cache (`pril_chatroom_v1_<slug>`, TTL 2 min) voor instant render. Set `state.activeSlug` **vóór** elke async fetch om freeze-bug bij race te vermijden. Admin kan room-intro inline bewerken via PATCH route. |
+| `chatRooms.js` | Chatruimtes-pane (rechts op landing) + room-view + topic-detail. Heeft per-room topic-cache (`pril_chatroom_v1_<slug>`, TTL 2 min) voor instant render. Set `state.activeSlug` **vóór** elke async fetch om freeze-bug bij race te vermijden. Admin kan room-intro inline bewerken via PATCH route. Rooms-lijst rendert altijd na eerste fetch (geen JSON.stringify-skip op lege array) + heeft `.rooms-empty` state. |
+| `allergenen.js` | Allergenen-introductie-tracker (binnen Eerste Hapjes). Doses + symptoom-logs met pencil-edit (modal) ipv delete. Pencil expliciet `grid-row: 1; grid-column: -1 / -2` zodat hij rechts blijft bij multi-row content. Geen agenda-knop. Bron-flow in `content/eersteHapjes-allergen-flow.js` (9 items: kippen-ei, pinda, noten, sesam, vis, schaaldieren, soja, tarwe, koemelk — allemaal `introBefore: 12`). |
 | `nicknameModal.js` | Modal om community-nickname in te stellen vóór posten. |
 | `profileModal.js` | Modal voor community-profiel (nickname + avatar). |
 

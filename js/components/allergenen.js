@@ -8,23 +8,23 @@
    automatisch als 'allergisch' getoond.
 ============================================ */
 
-import { escapeHtml, showToast, colorFromSeed, initialsFromName } from '../utils.js?v=2.5.8';
-import { getChildren } from '../childrenApi.js?v=2.5.8';
+import { escapeHtml, showToast, colorFromSeed, initialsFromName } from '../utils.js?v=2.5.9';
+import { getChildren, updateChild } from '../childrenApi.js?v=2.5.9';
 import {
   loadEhState,
   patchEhState,
   loadEhDoses,
   createEhDose,
   updateEhDose,
-} from '../eersteHapjesStateApi.js?v=2.5.8';
-import { loadSymptomsForChild } from '../eersteHapjesSymptomsApi.js?v=2.5.8';
+} from '../eersteHapjesStateApi.js?v=2.5.9';
+import { loadSymptomsForChild } from '../eersteHapjesSymptomsApi.js?v=2.5.9';
 import {
   ALLERGEN_FLOW,
   REACTION_LEVELS,
   getEligibleAllergens,
   getAllergenStatus,
-} from '../content/eersteHapjes-allergen-flow.js?v=2.5.8';
-import { openSymptomLogModal } from './symptomLogModal.js?v=2.5.8';
+} from '../content/eersteHapjes-allergen-flow.js?v=2.5.9';
+import { openSymptomLogModal } from './symptomLogModal.js?v=2.5.9';
 
 let state = {
   loaded: false,
@@ -73,6 +73,8 @@ function deriveStatusContext(doses, ehState) {
     knownAllergies: ehState?.allergen_state?.known_allergies || [],
     preIntroduced: preIntro,
     paused: !!ehState?.allergen_state?.paused,
+    excludedKeys: ehState?.allergen_state?.excluded_keys || [],
+    artsToezicht: !!ehState?.allergen_state?.arts_toezicht,
   };
 }
 
@@ -85,6 +87,7 @@ function getNextDoseSuggestion(ctx, ageMonths) {
   for (const a of ordered) {
     if (ctx.knownAllergies.includes(a.key)) continue;
     if (ctx.completed.includes(a.key)) continue;
+    if ((ctx.excludedKeys || []).includes(a.key)) continue;
     if (a.ageCondition.introFrom && ageMonths < a.ageCondition.introFrom) continue;
     const total = ctx.totalByKey[a.key] || 0;
     if (total >= 3) continue; // 3 doses geregistreerd maar niet veilig → vastgelopen, sla over
@@ -230,6 +233,8 @@ function renderStage(root, child) {
     renderWelcome(stage, child);
   } else if (!allergenState.setup_done) {
     renderSetup(stage, child);
+  } else if (allergenState.paused && (allergenState.paused_step || 0) > 0) {
+    renderPauseFlow(stage, child);
   } else {
     stage.innerHTML = `<div class="allergenen-grid" id="allergenen-grid"></div>`;
     renderGrid(root, child);
@@ -377,14 +382,219 @@ function bindHeaderActions(root) {
     });
     if (!result) return;
     state.symptoms = [result.symptom, ...state.symptoms];
-    if (result.red_flag) {
-      showToast('Symptoom geregistreerd — raadpleeg een arts.', 'warning');
+
+    const sev = result.symptom?.severity;
+    const allergenKey = result.symptom?.linked_allergen_key;
+    const currentAllergenState = state.ehState?.allergen_state || {};
+    const alreadyPaused = currentAllergenState.paused && (currentAllergenState.paused_step || 0) > 0;
+
+    if (!alreadyPaused && (sev === 'matig' || sev === 'heftig') && allergenKey && allergenKey !== 'onbekend') {
+      await triggerPauseFlow(active.id, sev === 'matig' ? 'twijfel' : 'ernstig', allergenKey, root, active);
     } else {
-      showToast('Symptoom geregistreerd.', 'success');
+      if (result.red_flag) {
+        showToast('Symptoom geregistreerd — raadpleeg een arts.', 'warning');
+      } else {
+        showToast('Symptoom geregistreerd.', 'success');
+      }
+      renderArtsWarning(root);
+      if (!alreadyPaused) renderGrid(root, active);
     }
-    renderArtsWarning(root);
-    renderGrid(root, active);
   });
+}
+
+/* ============================================
+   PAUZE-FLOW — trigger + stap-weergave
+============================================ */
+
+async function triggerPauseFlow(childId, pauseType, allergenKey, root, child) {
+  try {
+    const current = state.ehState?.allergen_state || {};
+    const updated = await patchEhState(childId, {
+      allergen_state: {
+        ...current,
+        paused: true,
+        paused_type: pauseType,
+        paused_step: 1,
+        paused_allergen: allergenKey,
+      },
+    });
+    state.ehState = updated;
+    if (root && child) {
+      renderArtsWarning(root);
+      renderStage(root, child);
+    }
+  } catch (err) {
+    showToast(err.message || 'Opslaan mislukt.', 'error');
+  }
+}
+
+function renderPauseFlow(stage, child) {
+  const allergenState = state.ehState?.allergen_state || {};
+  const pauseType = allergenState.paused_type;
+  const step = Math.min(allergenState.paused_step || 1, 3);
+  const pausedAllergenKey = allergenState.paused_allergen;
+  const allergen = ALLERGEN_FLOW.find(a => a.key === pausedAllergenKey);
+  const allergenLabel = allergen
+    ? `${allergen.icon} ${allergen.label}`
+    : (pausedAllergenKey || 'het bewuste allergeen');
+
+  let content = '';
+  if (step === 1) {
+    if (pauseType === 'twijfel') {
+      content = `
+        <div class="allergenen-pause-icon">⚠️</div>
+        <h3>Reactie met twijfel geregistreerd</h3>
+        <p>Je hebt een symptoom ingevoerd waar je twijfelde over de ernst van de reactie van je kind.
+           Ga eerst langs je arts om deze reactie te bespreken.</p>
+        <p class="allergenen-pause-sub">De introductie van allergenen is tijdelijk gepauzeerd.</p>
+        <div class="allergenen-pause-actions">
+          <button type="button" class="btn btn-primary" data-action="pause-next">Gelezen</button>
+        </div>
+      `;
+    } else {
+      content = `
+        <div class="allergenen-pause-icon">🚨</div>
+        <h3>Dringend — Stop onmiddellijk!</h3>
+        <p>Onmiddellijk stoppen met het introduceren van allergenen.
+           Contacteer je arts zo snel mogelijk. Onderzoek noodzakelijk!</p>
+        <p class="allergenen-pause-sub">De introductie van allergenen is volledig gepauzeerd.</p>
+        <div class="allergenen-pause-actions">
+          <button type="button" class="btn btn-danger" data-action="pause-next">Gelezen</button>
+        </div>
+      `;
+    }
+  } else if (step === 2) {
+    content = `
+      <div class="allergenen-pause-icon">🏥</div>
+      <h3>Arts geraadpleegd?</h3>
+      <p>Heb je een afspraak gehad bij je arts om de laatste reactie van je kindje te bespreken?</p>
+      <div class="allergenen-pause-actions">
+        <button type="button" class="btn btn-primary" data-action="pause-next">Ja</button>
+      </div>
+    `;
+  } else {
+    content = `
+      <div class="allergenen-pause-icon">❓</div>
+      <h3>Allergie bevestigen</h3>
+      <p>Is <strong>${escapeHtml(child.name)}</strong> allergisch aan
+         <strong>${escapeHtml(allergenLabel)}</strong>?</p>
+      <div class="allergenen-pause-actions">
+        <button type="button" class="btn btn-danger" data-action="pause-allergic-yes">Ja, allergisch</button>
+        <button type="button" class="btn btn-primary" data-action="pause-allergic-no">Nee</button>
+      </div>
+    `;
+  }
+
+  stage.innerHTML = `
+    <div class="allergenen-pause-flow${pauseType === 'ernstig' && step === 1 ? ' allergenen-pause-flow--ernstig' : ''}">
+      ${content}
+    </div>
+  `;
+
+  stage.querySelector('[data-action="pause-next"]')?.addEventListener('click', async () => {
+    await advancePauseStep(child, step + 1);
+  });
+  stage.querySelector('[data-action="pause-allergic-yes"]')?.addEventListener('click', async () => {
+    await handleAllergyConfirmed(child, pausedAllergenKey, pauseType);
+  });
+  stage.querySelector('[data-action="pause-allergic-no"]')?.addEventListener('click', async () => {
+    await handleAllergyDenied(child, pauseType);
+  });
+}
+
+async function advancePauseStep(child, nextStep) {
+  try {
+    const current = state.ehState?.allergen_state || {};
+    const updated = await patchEhState(child.id, {
+      allergen_state: { ...current, paused_step: nextStep },
+    });
+    state.ehState = updated;
+    const root = document.getElementById('allergenen-root');
+    if (root) renderStage(root, child);
+  } catch (err) {
+    showToast(err.message || 'Opslaan mislukt.', 'error');
+  }
+}
+
+async function handleAllergyConfirmed(child, allergenKey, pauseType) {
+  try {
+    const current = state.ehState?.allergen_state || {};
+    const newKnownAllergies = [...new Set([...(current.known_allergies || []), allergenKey].filter(Boolean))];
+    const isErnstig = pauseType === 'ernstig';
+
+    const updated = await patchEhState(child.id, {
+      allergen_state: {
+        ...current,
+        paused: false,
+        paused_type: null,
+        paused_step: 0,
+        known_allergies: newKnownAllergies,
+        arts_toezicht: isErnstig || !!current.arts_toezicht,
+      },
+    });
+    state.ehState = updated;
+
+    // Sync naar kind-profiel
+    const currentChildAllergies = state.children.find(c => c.id === child.id)?.known_allergies || [];
+    const newChildAllergies = [...new Set([...currentChildAllergies, allergenKey].filter(Boolean))];
+    try {
+      await updateChild(child.id, { known_allergies: newChildAllergies });
+      const idx = state.children.findIndex(c => c.id === child.id);
+      if (idx !== -1) state.children[idx] = { ...state.children[idx], known_allergies: newChildAllergies };
+    } catch (profileErr) {
+      console.warn('Allergie sync naar profiel mislukt:', profileErr);
+    }
+
+    const allergenObj = ALLERGEN_FLOW.find(a => a.key === allergenKey);
+    showToast(`${allergenObj?.label || allergenKey} gemarkeerd als allergie.`, 'success');
+
+    const root = document.getElementById('allergenen-root');
+    if (root) { renderArtsWarning(root); renderStage(root, child); }
+  } catch (err) {
+    showToast(err.message || 'Opslaan mislukt.', 'error');
+  }
+}
+
+async function handleAllergyDenied(child, pauseType) {
+  try {
+    const current = state.ehState?.allergen_state || {};
+    const isErnstig = pauseType === 'ernstig';
+
+    const updated = await patchEhState(child.id, {
+      allergen_state: {
+        ...current,
+        paused: false,
+        paused_type: null,
+        paused_step: 0,
+        arts_toezicht: isErnstig || !!current.arts_toezicht,
+      },
+    });
+    state.ehState = updated;
+
+    const root = document.getElementById('allergenen-root');
+    if (root) { renderArtsWarning(root); renderStage(root, child); }
+  } catch (err) {
+    showToast(err.message || 'Opslaan mislukt.', 'error');
+  }
+}
+
+async function toggleAllergenExcluded(childId, allergenKey, root, child) {
+  try {
+    const current = state.ehState?.allergen_state || {};
+    const excluded = new Set(current.excluded_keys || []);
+    if (excluded.has(allergenKey)) {
+      excluded.delete(allergenKey);
+    } else {
+      excluded.add(allergenKey);
+    }
+    const updated = await patchEhState(childId, {
+      allergen_state: { ...current, excluded_keys: [...excluded] },
+    });
+    state.ehState = updated;
+    if (root && child) renderGrid(root, child);
+  } catch (err) {
+    showToast(err.message || 'Opslaan mislukt.', 'error');
+  }
 }
 
 function shouldShowArtsWarning() {
@@ -447,17 +657,30 @@ function bindSwitcher(root) {
   });
 }
 
+function renderArtsToezichtBanner() {
+  return `
+    <div class="allergenen-arts-toezicht-banner">
+      <span class="allergenen-arts-toezicht-icon">🩺</span>
+      <div>
+        <strong>Introductie onder medisch toezicht</strong>
+        <p>Ga enkel verder met het introduceren van allergenen onder toezicht van je arts.
+           Sla allergenen over via de knop per allergeen.</p>
+      </div>
+    </div>
+  `;
+}
+
 function renderGrid(root, child) {
   const grid = document.getElementById('allergenen-grid');
   if (!grid) return;
 
   const ageMonths = ageMonthsFromBirthdate(child.birthdate);
   const ctx = deriveStatusContext(state.doses, state.ehState);
-  const eligible = getEligibleAllergens(ageMonths);
   const all = [...ALLERGEN_FLOW].sort((a, b) => a.order - b.order);
-  const nextUp = getNextDoseSuggestion(ctx, ageMonths);
+  const nextUp = ctx.paused ? null : getNextDoseSuggestion(ctx, ageMonths);
 
   grid.innerHTML = `
+    ${ctx.artsToezicht ? renderArtsToezichtBanner() : ''}
     ${renderNextUpBanner(nextUp, ctx)}
     <ul class="allergenen-list">
       ${all.map(a => renderAllergenItem(a, ctx, ageMonths, child)).join('')}
@@ -511,6 +734,14 @@ function renderGrid(root, child) {
       showToast('Symptoom bijgewerkt.', 'success');
       renderArtsWarning(root);
       renderGrid(root, child);
+    });
+  });
+
+  // Allergeen uitsluiten / opnemen (arts-toezicht modus)
+  grid.querySelectorAll('[data-action="toggle-exclude"]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await toggleAllergenExcluded(child.id, btn.dataset.key, root, child);
     });
   });
 }
@@ -609,7 +840,9 @@ function formatSymptomDateTime(iso) {
 }
 
 function renderAllergenItem(allergen, ctx, ageMonths, child) {
-  const status = getAllergenStatus(allergen.key, ctx, ageMonths);
+  const isExcluded = (ctx.excludedKeys || []).includes(allergen.key);
+  const rawStatus = getAllergenStatus(allergen.key, ctx, ageMonths);
+  const status = isExcluded && !['veilig', 'allergisch'].includes(rawStatus) ? 'excluded' : rawStatus;
   const dosesForKey = state.doses
     .filter(d => d.allergen_key === allergen.key)
     .sort((a, b) => (a.dose_number - b.dose_number));
@@ -623,20 +856,32 @@ function renderAllergenItem(allergen, ctx, ageMonths, child) {
   const statusLabel = {
     'veilig':      '✅ Veilig',
     'allergisch':  '⚠️ Allergisch',
+    'excluded':    '🚫 Overgeslagen',
     'in-progress': `🟡 ${successCount}/3`,
     'wacht':       '⚪ Wachten',
     'locked-age':  `🔒 Vanaf ${allergen.ageCondition.introFrom} mnd`,
     'paused':      '⏸️ Gepauzeerd',
   }[status];
 
+  // In arts-toezicht modus: toon exclude-toggle naast het item (niet erin — <button> in <button> is ongeldig)
+  const showExcludeBtn = ctx.artsToezicht && !['veilig', 'allergisch'].includes(rawStatus);
+  const excludeBtnLabel = isExcluded ? 'Opnemen' : 'Overslaan';
+
   return `
     <li class="allergenen-item allergenen-item--${status}" data-key="${allergen.key}">
-      <button class="allergenen-item-head" aria-expanded="false" type="button">
-        <span class="allergenen-item-icon">${allergen.icon}</span>
-        <span class="allergenen-item-label">${escapeHtml(allergen.label)}</span>
-        <span class="allergenen-item-status">${statusLabel}</span>
-        <span class="allergenen-item-caret">&#9662;</span>
-      </button>
+      <div class="allergenen-item-header">
+        <button class="allergenen-item-head" aria-expanded="false" type="button">
+          <span class="allergenen-item-icon">${allergen.icon}</span>
+          <span class="allergenen-item-label">${escapeHtml(allergen.label)}</span>
+          <span class="allergenen-item-status">${statusLabel}</span>
+          <span class="allergenen-item-caret">&#9662;</span>
+        </button>
+        ${showExcludeBtn ? `
+          <button class="allergenen-exclude-btn" data-action="toggle-exclude" data-key="${allergen.key}" type="button">
+            ${escapeHtml(excludeBtnLabel)}
+          </button>
+        ` : ''}
+      </div>
       <div class="allergenen-item-body">
         <p class="allergenen-item-suggestion">${escapeHtml(allergen.suggestedFood)}</p>
         ${allergen.note ? `<p class="allergenen-item-note">💡 ${escapeHtml(allergen.note)}</p>` : ''}
