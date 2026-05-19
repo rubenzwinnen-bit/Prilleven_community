@@ -3,13 +3,12 @@
 
 import { supabase } from './clients.mjs';
 
-// Lijst van 13 allergeen-keys (matcht js/content/eersteHapjes-allergen-flow.js).
+// Lijst van allergeen-keys (matcht js/content/eersteHapjes-allergen-flow.js).
 // Geen DB-constraint — Anneleen kan flow uitbreiden zonder migratie.
 const ALLERGEN_KEYS = new Set([
-  'ei-geel', 'ei-wit', 'pinda', 'noten', 'sesam',
+  'kippen-ei', 'pinda', 'noten', 'sesam',
   'vis', 'schaaldieren', 'soja',
-  'gluten-niet-tarwe', 'tarwe',
-  'koemelk', 'honing', 'citrus',
+  'tarwe', 'koemelk',
 ]);
 
 const REACTIONS = new Set(['geen', 'mild', 'ernstig']);

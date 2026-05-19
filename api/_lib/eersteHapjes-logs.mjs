@@ -14,12 +14,12 @@ const SYMPTOM_TYPES = new Set([
 ]);
 const SEVERITIES = new Set(['mild', 'matig', 'heftig']);
 
-// Mirror van js/components/eersteHapjes-allergen-flow.js — 13 allergeen-keys.
+// Mirror van js/content/eersteHapjes-allergen-flow.js.
 // 'onbekend' is een geldige sentinel-waarde wanneer de gebruiker geen
 // link kan/wil leggen, maar wel verplicht een keuze moet maken in de UI.
 const ALLERGEN_KEYS = new Set([
-  'ei-geel','ei-wit','pinda','noten','sesam','vis','schaaldieren','soja',
-  'gluten-niet-tarwe','tarwe','koemelk','honing','citrus',
+  'kippen-ei','pinda','noten','sesam','vis','schaaldieren','soja',
+  'tarwe','koemelk',
 ]);
 
 // Enum-velden — UI-keuzes, opgeslagen als text in DB (nullable).

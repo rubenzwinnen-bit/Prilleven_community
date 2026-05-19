@@ -8,8 +8,8 @@
    severity in bestaande waarden: mild | matig | heftig.
 ============================================ */
 
-import { escapeHtml } from '../utils.js?v=2.5.7';
-import { createSymptom, updateSymptom } from '../eersteHapjesSymptomsApi.js?v=2.5.7';
+import { escapeHtml } from '../utils.js?v=2.5.8';
+import { createSymptom, updateSymptom } from '../eersteHapjesSymptomsApi.js?v=2.5.8';
 
 const SEVERITY_OPTIONS = [
   { value: 'mild',   icon: '🟢', label: 'Mild',    hint: 'meestal verder doen' },
@@ -19,19 +19,15 @@ const SEVERITY_OPTIONS = [
 
 // Labels voor allergenen-dropdown (matcht keys in eersteHapjes-allergen-flow.js).
 const ALLERGEN_LABELS = {
-  'ei-geel':            'Ei (geel)',
-  'ei-wit':             'Ei (wit)',
-  'pinda':              'Pinda',
-  'noten':              'Noten',
-  'sesam':              'Sesam',
-  'vis':                'Vis',
-  'schaaldieren':       'Schaaldieren',
-  'soja':               'Soja',
-  'gluten-niet-tarwe':  'Gluten (niet-tarwe)',
-  'tarwe':              'Tarwe',
-  'koemelk':            'Koemelk',
-  'honing':             'Honing',
-  'citrus':             'Citrus',
+  'kippen-ei':    'Kippenei',
+  'pinda':        'Pinda',
+  'noten':        'Noten',
+  'sesam':        'Sesam',
+  'vis':          'Vis',
+  'schaaldieren': 'Schaaldieren',
+  'soja':         'Soja',
+  'tarwe':        'Tarwe',
+  'koemelk':      'Koemelk',
 };
 
 const TIME_AFTER_EATING_OPTIONS = [

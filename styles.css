@@ -4306,7 +4306,7 @@ body.is-allergenen #app-nav { display: none; }
 }
 
 .rooms-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .35rem; }
-.rooms-loading, .rooms-error { padding: .5rem .25rem; color: var(--color-gray); font-size: .85rem; }
+.rooms-loading, .rooms-empty, .rooms-error { padding: .5rem .25rem; color: var(--color-gray); font-size: .85rem; }
 .rooms-error { color: #c0392b; }
 
 .rooms-list-item { margin: 0; }
@@ -5354,6 +5354,8 @@ body.is-allergenen #app-nav { display: none; }
 /* Kleine icon-only bewerk-knop, helemaal rechts in de dose- of symptoom-rij */
 .allergenen-dose-edit,
 .allergenen-symptom-edit {
+  grid-row: 1;
+  grid-column: -1 / -2;
   justify-self: end;
   align-self: center;
   width: 26px;

@@ -5,11 +5,11 @@
    Gebruikt /api/chat-rooms.
 ============================================ */
 
-import * as Store from '../store.js?v=2.5.7';
-import * as Api from '../chatRoomsApi.js?v=2.5.7';
-import { formatRelativeTime } from '../utils.js?v=2.5.7';
-import { renderAvatar, renderAuthorMeta } from '../profileRender.js?v=2.5.7';
-import { sessionGet } from '../supabase.js?v=2.5.7';
+import * as Store from '../store.js?v=2.5.8';
+import * as Api from '../chatRoomsApi.js?v=2.5.8';
+import { formatRelativeTime } from '../utils.js?v=2.5.8';
+import { renderAvatar, renderAuthorMeta } from '../profileRender.js?v=2.5.8';
+import { sessionGet } from '../supabase.js?v=2.5.8';
 
 // Edit-window verwijderd: eigen items zijn altijd bewerkbaar.
 
@@ -617,6 +617,10 @@ function writeRoomsCache(rooms) {
 function renderRoomsList(rooms) {
   const list = document.getElementById('rooms-list');
   if (!list) return;
+  if (!rooms || rooms.length === 0) {
+    list.innerHTML = `<li class="rooms-empty">Nog geen chatruimtes.</li>`;
+    return;
+  }
   list.innerHTML = rooms.map(r => `
     <li class="rooms-list-item" data-slug="${escapeHtml(r.slug)}">
       <button class="rooms-list-btn" type="button">
@@ -644,23 +648,27 @@ export async function init() {
 
   // 1. Toon direct uit cache (instant) als die er is.
   const cached = readRoomsCache();
+  let renderedFromCache = false;
   if (cached && cached.length) {
     state.rooms = cached;
     renderRoomsList(cached);
+    renderedFromCache = true;
   }
 
   // 2. Refresh in background.
   const { ok, data, error } = await Api.listRooms();
   if (!ok) {
-    if (!cached || !cached.length) {
+    if (!renderedFromCache) {
       list.innerHTML = `<li class="rooms-error">${escapeHtml(error || 'Kon rooms niet laden.')}</li>`;
     }
     return;
   }
   const fresh = data.rooms || [];
   writeRoomsCache(fresh);
-  // Alleen herrenderen als de data echt veranderd is — anders flikkering vermijden.
-  if (JSON.stringify(state.rooms) !== JSON.stringify(fresh)) {
+  // Render altijd na de eerste fetch (haalt "Laden…" placeholder weg, ook bij empty list).
+  // Bij identieke data + reeds gerenderd uit cache: skip om flikkering te vermijden.
+  const same = JSON.stringify(state.rooms) === JSON.stringify(fresh);
+  if (!same || !renderedFromCache) {
     state.rooms = fresh;
     renderRoomsList(fresh);
   }

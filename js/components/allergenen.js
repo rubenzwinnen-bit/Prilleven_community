@@ -8,24 +8,23 @@
    automatisch als 'allergisch' getoond.
 ============================================ */
 
-import { escapeHtml, showToast, colorFromSeed, initialsFromName } from '../utils.js?v=2.5.7';
-import { getChildren } from '../childrenApi.js?v=2.5.7';
+import { escapeHtml, showToast, colorFromSeed, initialsFromName } from '../utils.js?v=2.5.8';
+import { getChildren } from '../childrenApi.js?v=2.5.8';
 import {
   loadEhState,
   patchEhState,
   loadEhDoses,
   createEhDose,
   updateEhDose,
-} from '../eersteHapjesStateApi.js?v=2.5.7';
-import { loadSymptomsForChild } from '../eersteHapjesSymptomsApi.js?v=2.5.7';
+} from '../eersteHapjesStateApi.js?v=2.5.8';
+import { loadSymptomsForChild } from '../eersteHapjesSymptomsApi.js?v=2.5.8';
 import {
   ALLERGEN_FLOW,
   REACTION_LEVELS,
   getEligibleAllergens,
   getAllergenStatus,
-} from '../content/eersteHapjes-allergen-flow.js?v=2.5.7';
-import { openSymptomLogModal } from './symptomLogModal.js?v=2.5.7';
-import { mountAllergenenAgenda } from './allergenenAgenda.js?v=2.5.7';
+} from '../content/eersteHapjes-allergen-flow.js?v=2.5.8';
+import { openSymptomLogModal } from './symptomLogModal.js?v=2.5.8';
 
 let state = {
   loaded: false,
@@ -201,9 +200,6 @@ async function renderApp(root) {
         Bekende allergieën uit het profiel zijn automatisch gemarkeerd.
       </p>
       <div class="allergenen-header-actions">
-        <button type="button" class="btn btn-outline btn-sm" data-action="open-agenda">
-          📅 Open agenda
-        </button>
         <button type="button" class="btn btn-outline btn-sm" data-action="log-symptom">
           ➕ Symptoom loggen
         </button>
@@ -370,9 +366,6 @@ function computeIntroducedKeys(doses, ehState) {
 }
 
 function bindHeaderActions(root) {
-  root.querySelector('[data-action="open-agenda"]')?.addEventListener('click', () => {
-    openAgendaModal();
-  });
   root.querySelector('[data-action="log-symptom"]')?.addEventListener('click', async () => {
     const active = state.children.find(c => c.id === state.activeId);
     if (!active) return;
@@ -422,65 +415,6 @@ function renderArtsWarning(root) {
       kinderarts of Kind &amp; Gezin.
     </div>
   `;
-}
-
-async function openAgendaModal() {
-  // Verzamel data per kindje (cache voor actief kind staat al in state).
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay agenda-overlay';
-  overlay.innerHTML = `
-    <div class="modal agenda-modal">
-      <header class="agenda-modal-header">
-        <h2>Agenda — introducties &amp; symptomen</h2>
-        <button class="btn btn-outline btn-sm" data-action="close">Sluiten</button>
-      </header>
-      <div class="agenda-modal-body" id="agenda-modal-body">
-        <div class="empty-state"><div class="empty-state-icon">&#9203;</div><h3>Data laden…</h3></div>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(overlay);
-
-  const close = () => overlay.remove();
-  overlay.querySelector('[data-action="close"]').addEventListener('click', close);
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
-  document.addEventListener('keydown', function escHandler(e) {
-    if (e.key === 'Escape' && document.body.contains(overlay)) {
-      document.removeEventListener('keydown', escHandler);
-      close();
-    }
-  });
-
-  // Laad per kindje state + doses + symptomen.
-  const dataByChild = {};
-  await Promise.all(state.children.map(async (c) => {
-    if (c.id === state.activeId) {
-      dataByChild[c.id] = {
-        ehState: state.ehState,
-        doses: state.doses,
-        symptoms: state.symptoms,
-      };
-      return;
-    }
-    try {
-      const [s, d, sy] = await Promise.all([
-        loadEhState(c.id),
-        loadEhDoses(c.id),
-        loadSymptomsForChild(c.id).catch(() => []),
-      ]);
-      dataByChild[c.id] = { ehState: s, doses: d, symptoms: sy || [] };
-    } catch {
-      dataByChild[c.id] = { ehState: null, doses: [], symptoms: [] };
-    }
-  }));
-
-  const body = overlay.querySelector('#agenda-modal-body');
-  body.innerHTML = '';
-  mountAllergenenAgenda(body, {
-    children: state.children,
-    dataByChild,
-    activeIds: [state.activeId],
-  });
 }
 
 function renderSwitcher(children, active) {
@@ -732,8 +666,8 @@ function renderAllergenItem(allergen, ctx, ageMonths, child) {
                 <li class="allergenen-dose allergenen-dose--${d.reaction}">
                   <span class="allergenen-dose-num">Dose ${d.dose_number}</span>
                   <span class="allergenen-dose-date">${escapeHtml(d.intro_date)}</span>
-                  ${d.notes ? `<span class="allergenen-dose-notes">${escapeHtml(d.notes)}</span>` : ''}
                   <button class="allergenen-dose-edit" data-action="edit-dose" data-id="${d.id}" title="Bewerken" aria-label="Dose bewerken">&#9998;</button>
+                  ${d.notes ? `<span class="allergenen-dose-notes">${escapeHtml(d.notes)}</span>` : ''}
                 </li>
               `).join('')}
             </ul>
@@ -751,13 +685,13 @@ function renderAllergenItem(allergen, ctx, ageMonths, child) {
                 <li class="allergenen-symptom allergenen-symptom--${s.severity}">
                   <span class="allergenen-symptom-severity">${sev.icon} ${escapeHtml(sev.label)}</span>
                   <span class="allergenen-symptom-date">${escapeHtml(formatSymptomDateTime(s.occurred_at))}</span>
+                  <button class="allergenen-symptom-edit" data-action="edit-symptom" data-id="${s.id}" title="Bewerken" aria-label="Symptoom bewerken">&#9998;</button>
                   ${chips.length ? `
                     <span class="allergenen-symptom-details">
                       ${chips.map(c => `<span class="allergenen-symptom-chip">${escapeHtml(c)}</span>`).join('')}
                     </span>
                   ` : ''}
                   ${s.notes ? `<span class="allergenen-symptom-notes">${escapeHtml(s.notes)}</span>` : ''}
-                  <button class="allergenen-symptom-edit" data-action="edit-symptom" data-id="${s.id}" title="Bewerken" aria-label="Symptoom bewerken">&#9998;</button>
                 </li>
                 `;
               }).join('')}
