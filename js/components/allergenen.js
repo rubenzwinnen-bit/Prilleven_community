@@ -889,6 +889,7 @@ function renderAllergenItem(allergen, ctx, ageMonths, child) {
         ` : ''}
       </div>
       <div class="allergenen-item-body">
+        <div class="allergenen-item-body-inner">
         <p class="allergenen-item-suggestion">${escapeHtml(allergen.suggestedFood)}</p>
         ${allergen.note ? `<p class="allergenen-item-note">💡 ${escapeHtml(allergen.note)}</p>` : ''}
         ${allergen.alternative ? `<p class="allergenen-item-alt">↔️ ${escapeHtml(allergen.alternative)}</p>` : ''}
@@ -949,6 +950,7 @@ function renderAllergenItem(allergen, ctx, ageMonths, child) {
             </ul>
           </div>
         ` : ''}
+        </div>
       </div>
     </li>
   `;

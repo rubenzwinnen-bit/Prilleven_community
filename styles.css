@@ -5263,12 +5263,21 @@ body.is-allergenen #app-nav { display: none; }
   transform: rotate(180deg);
 }
 .allergenen-item-body {
-  display: none;
-  padding: 0 1rem 1rem 1rem;
-  border-top: 1px solid var(--color-bg);
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows .35s ease;
+  border-top: 1px solid transparent;
+}
+.allergenen-item-body > .allergenen-item-body-inner {
+  overflow: hidden;
+  min-height: 0;
 }
 .allergenen-item.open .allergenen-item-body {
-  display: block;
+  grid-template-rows: 1fr;
+  border-top-color: var(--color-bg);
+}
+.allergenen-item.open .allergenen-item-body-inner {
+  padding: 0 1rem 1rem 1rem;
 }
 .allergenen-item-suggestion {
   margin: .75rem 0 .5rem 0;
@@ -6482,11 +6491,31 @@ body.is-allergenen #app-nav { display: none; }
 ============================================ */
 .allergenen-item-header {
   overflow: hidden;
+  position: relative;
 }
 .allergenen-item[data-key] .allergenen-item-header {
   background-repeat: no-repeat;
   background-position: center;
   background-size: cover;
+}
+/* Groene overlay als pseudo-element zodat de opacity smooth kan transitie-en */
+.allergenen-item[data-key] .allergenen-item-header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(238,243,232,.5);
+  opacity: 1;
+  transition: opacity .45s ease;
+  pointer-events: none;
+  z-index: 0;
+}
+.allergenen-item.open[data-key] .allergenen-item-header::before {
+  opacity: 0;
+}
+.allergenen-item[data-key] .allergenen-item-head,
+.allergenen-item[data-key] .allergenen-exclude-btn {
+  position: relative;
+  z-index: 1;
 }
 .allergenen-item[data-key] .allergenen-item-label {
   background: rgba(255,255,255,.9);
@@ -6514,64 +6543,15 @@ body.is-allergenen #app-nav { display: none; }
   justify-content: center;
   box-shadow: 0 1px 2px rgba(0,0,0,.05);
 }
-/* Open: foto 100% zichtbaar (overlay weg) */
-.allergenen-item.open[data-key] .allergenen-item-header {
-  background-image: none;
-}
-.allergenen-item.open[data-key="kippen-ei"] .allergenen-item-header { background-image: url('/fotos/allergheen-fotos/kip-ei.jpg'); }
-.allergenen-item.open[data-key="pinda"] .allergenen-item-header { background-image: url('/fotos/allergheen-fotos/Pinda.jpg'); }
-.allergenen-item.open[data-key="noten"] .allergenen-item-header { background-image: url('/fotos/allergheen-fotos/noten.jpg'); }
-.allergenen-item.open[data-key="sesam"] .allergenen-item-header { background-image: url('/fotos/allergheen-fotos/sesam.jpg'); }
-.allergenen-item.open[data-key="vis"] .allergenen-item-header { background-image: url('/fotos/allergheen-fotos/Vis.jpg'); }
-.allergenen-item.open[data-key="schaaldieren"] .allergenen-item-header { background-image: url('/fotos/allergheen-fotos/schaaldieren.jpg'); }
-.allergenen-item.open[data-key="soja"] .allergenen-item-header { background-image: url('/fotos/allergheen-fotos/Soja.jpg'); }
-.allergenen-item.open[data-key="tarwe"] .allergenen-item-header { background-image: url('/fotos/allergheen-fotos/Tarwe.jpg'); }
-.allergenen-item.open[data-key="koemelk"] .allergenen-item-header { background-image: url('/fotos/allergheen-fotos/Koemelk.jpg'); }
-.allergenen-item[data-key="kippen-ei"] .allergenen-item-header {
-  background-image:
-    linear-gradient(rgba(238,243,232,.5), rgba(238,243,232,.5)),
-    url('/fotos/allergheen-fotos/kip-ei.jpg');
-}
-.allergenen-item[data-key="pinda"] .allergenen-item-header {
-  background-image:
-    linear-gradient(rgba(238,243,232,.5), rgba(238,243,232,.5)),
-    url('/fotos/allergheen-fotos/Pinda.jpg');
-}
-.allergenen-item[data-key="noten"] .allergenen-item-header {
-  background-image:
-    linear-gradient(rgba(238,243,232,.5), rgba(238,243,232,.5)),
-    url('/fotos/allergheen-fotos/noten.jpg');
-}
-.allergenen-item[data-key="sesam"] .allergenen-item-header {
-  background-image:
-    linear-gradient(rgba(238,243,232,.5), rgba(238,243,232,.5)),
-    url('/fotos/allergheen-fotos/sesam.jpg');
-}
-.allergenen-item[data-key="vis"] .allergenen-item-header {
-  background-image:
-    linear-gradient(rgba(238,243,232,.5), rgba(238,243,232,.5)),
-    url('/fotos/allergheen-fotos/Vis.jpg');
-}
-.allergenen-item[data-key="schaaldieren"] .allergenen-item-header {
-  background-image:
-    linear-gradient(rgba(238,243,232,.5), rgba(238,243,232,.5)),
-    url('/fotos/allergheen-fotos/schaaldieren.jpg');
-}
-.allergenen-item[data-key="soja"] .allergenen-item-header {
-  background-image:
-    linear-gradient(rgba(238,243,232,.5), rgba(238,243,232,.5)),
-    url('/fotos/allergheen-fotos/Soja.jpg');
-}
-.allergenen-item[data-key="tarwe"] .allergenen-item-header {
-  background-image:
-    linear-gradient(rgba(238,243,232,.5), rgba(238,243,232,.5)),
-    url('/fotos/allergheen-fotos/Tarwe.jpg');
-}
-.allergenen-item[data-key="koemelk"] .allergenen-item-header {
-  background-image:
-    linear-gradient(rgba(238,243,232,.5), rgba(238,243,232,.5)),
-    url('/fotos/allergheen-fotos/Koemelk.jpg');
-}
+.allergenen-item[data-key="kippen-ei"] .allergenen-item-header { background-image: url('/fotos/allergheen-fotos/kip-ei.jpg'); }
+.allergenen-item[data-key="pinda"] .allergenen-item-header { background-image: url('/fotos/allergheen-fotos/Pinda.jpg'); }
+.allergenen-item[data-key="noten"] .allergenen-item-header { background-image: url('/fotos/allergheen-fotos/noten.jpg'); }
+.allergenen-item[data-key="sesam"] .allergenen-item-header { background-image: url('/fotos/allergheen-fotos/sesam.jpg'); }
+.allergenen-item[data-key="vis"] .allergenen-item-header { background-image: url('/fotos/allergheen-fotos/Vis.jpg'); }
+.allergenen-item[data-key="schaaldieren"] .allergenen-item-header { background-image: url('/fotos/allergheen-fotos/schaaldieren.jpg'); }
+.allergenen-item[data-key="soja"] .allergenen-item-header { background-image: url('/fotos/allergheen-fotos/Soja.jpg'); }
+.allergenen-item[data-key="tarwe"] .allergenen-item-header { background-image: url('/fotos/allergheen-fotos/Tarwe.jpg'); }
+.allergenen-item[data-key="koemelk"] .allergenen-item-header { background-image: url('/fotos/allergheen-fotos/Koemelk.jpg'); }
 
 /* ============================================
    ALLERGENEN — VOLGENDE-STAP BANNER — FOTO PER ALLERGEEN
