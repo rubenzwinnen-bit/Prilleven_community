@@ -292,7 +292,6 @@ function renderSetup(stage, child) {
     return `
       <label class="allergenen-setup-item ${locked ? 'is-locked' : ''}" data-key="${a.key}">
         <input type="checkbox" data-key="${a.key}" ${locked ? 'disabled' : ''}>
-        <div class="allergenen-setup-thumb"></div>
         <span class="allergenen-setup-label">
           <strong>${escapeHtml(a.label)}</strong>
           <small>${escapeHtml(a.suggestedFood)}</small>

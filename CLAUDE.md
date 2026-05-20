@@ -200,6 +200,7 @@ Op Vercel zelf staan deze al ingesteld via project settings.
 - **Admin-detectie** heeft een fallback (zie commit `845bd27`); breek deze niet.
 - **App-breedte** wordt globaal geclampt door `#app-content { max-width: var(--max-width) /* 1140px */ }`. De landing-page (3-koloms hub) overschrijft dat via `#app-content:has(.home-hub--tri) { max-width: none }` en `body.is-hub .header-inner { max-width: none }`. Gebruik dezelfde `body.is-hub` of `:has()`-hook als je later andere pagina's de volle browserbreedte wilt geven.
 - **Chatruimtes** (`/api/chat-rooms/*`) lopen via 1 catch-all rewrite, vergelijkbaar met community. Routing zit in `api/chat-rooms.mjs::matchRoute()`.
+- **`eerste_hapjes_allergen_doses`** heeft UNIQUE `(child_id, allergen_key, dose_number)` + CHECK `dose_number BETWEEN 1 AND 3`. Bij bulk-rename/merge van allergen-keys (bv. `ei-geel`+`ei-wit` → `kippen-ei`) eerst constraint droppen, dedup-delete uitvoeren, dan constraint herstellen — een tijdelijke `dose_number`-offset is onmogelijk.
 
 ---
 

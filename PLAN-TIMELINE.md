@@ -423,3 +423,33 @@ Nieuwe sectie na bestaande gegevens-sectie:
 
 ### Niet vergeten
 - CLAUDE.md-updates: root (width-clamp + chat-rooms catch-all), `api/` (chat-rooms.mjs endpoint), `js/` (chatRoomsApi + chatRooms.js + profileRender). Allemaal beknopt — één regel of bullet.
+
+---
+
+## 2026-05-19 — Allergenen-flow opschoning + chatruimtes landing-fix (branch `uitwerken-profiel`, 2.5.8)
+
+**Context**: Vervolg op `d147956` (pencil-edit voor doses/symptomen). Vier kleine UX-issues weggewerkt + de allergen-flow definitief vereenvoudigd.
+
+### Vandaag afgerond
+- ✅ **Pencil-positie consistent rechts**: in `allergenen.js` HTML-volgorde aangepast (pencil vóór notes/details) + in `styles.css` expliciete `grid-row: 1; grid-column: -1 / -2` op `.allergenen-dose-edit` en `.allergenen-symptom-edit`. Lost de "pencil onderaan bij notes"-bug op.
+- ✅ **Agenda-knop verwijderd** uit allergenen-header. `js/components/allergenenAgenda.js` gedropt, `mountAllergenenAgenda`-import + `open-agenda`-handler + `openAgendaModal()` weg.
+- ✅ **Allergen-lijst opgeschoond** in `js/content/eersteHapjes-allergen-flow.js`:
+  - `ei-geel` + `ei-wit` → één `kippen-ei`
+  - `citrus`, `gluten-niet-tarwe`, `honing` geschrapt
+  - `koemelk` nu `introBefore: 12` (altijd actief), geen `introFrom` meer
+  - Nieuwe flow telt 9 items.
+  - Bijbehorende `ALLERGEN_KEYS` Sets in `api/_lib/eersteHapjes-state.mjs` en `api/_lib/eersteHapjes-logs.mjs` mee bijgewerkt, plus `ALLERGEN_LABELS` in `js/components/symptomLogModal.js`.
+- ✅ **Chatruimtes landing "Laden..."-freeze**: in `js/components/chatRooms.js` empty-state branch in `renderRoomsList()` + `renderedFromCache`-flag in `init()` zodat de placeholder ook bij lege fetch verdwijnt. CSS class `.rooms-empty` toegevoegd.
+- ✅ **Cache-buster** bumped 2.5.7 → 2.5.8 in alle HTML/JS-bestanden.
+- ✅ **Commit & push** als `44e7555` op `uitwerken-profiel`. Vercel preview-deploy actief.
+
+### Beslissingen
+- **Bulk-merge `ei-geel` + `ei-wit` → `kippen-ei`** via SQL-migratie: UNIQUE constraint `(child_id, allergen_key, dose_number)` tijdelijk droppen, oude allergens deleten, hernoemen, dedupen (oudste rij behouden per `(child_id, dose_number)`), constraint herstellen. Een `dose_number`-offset truc kan niet door CHECK `BETWEEN 1 AND 3`.
+- `eerste_hapjes_state.allergen_state` (jsonb) niet automatisch opschonen — frontend leest defensief (`?.includes(...)`), oude keys zijn no-ops in de nieuwe flow.
+- Constraint-detail toegevoegd aan root CLAUDE.md (valkuilen-sectie) zodat toekomstige bulk-key-merges niet opnieuw vastlopen.
+
+### Open / nog te doen
+- ⬜ **SQL-migratie nog uitvoeren** in Supabase Dashboard (`uitwerken-profiel`). Anders blijven `ei-geel`/`ei-wit`/`citrus`/`gluten-niet-tarwe`/`honing` rijen rondzwerven in `eerste_hapjes_allergen_doses` en matchen ze niet meer met de nieuwe flow-keys.
+- ⬜ Visuele check op preview-URL (pencil-positie bij dose+notes, lege chatruimtes-pane, allergen-lijst-render).
+- ⬜ Eventueel `eerste_hapjes_state.allergen_state` jsonb opschonen als legacy keys later toch gaan irriteren (apart UPDATE-script).
+- ⬜ Branch `uitwerken-profiel` later mergen naar `main` als de hele profiel-uitbouw klaar is.
