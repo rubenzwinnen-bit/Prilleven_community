@@ -49,7 +49,7 @@ export function render() {
       title: 'Learnings',
       desc: 'Documenten, blogs en videos om door te lezen of bekijken.',
       href: '#/learnings',
-      accent: 'sage-deep',
+      accent: 'terracotta',
       hoverImg: '/fotos/learnings.png',
     },
     {
@@ -57,8 +57,9 @@ export function render() {
       title: 'Allergenen introduceren',
       desc: 'Volg de 13 standaard-allergenen per kindje — 3 doses per allergeen.',
       href: '#/allergenen',
-      accent: 'terracotta',
-      hoverImg: '/fotos/landing-eerste-hapjes.png',
+      accent: 'terracotta-light',
+      badge: 'BETA',
+      hoverImg: '/fotos/Introduceren-allargenen.png',
     },
   ];
 
@@ -77,7 +78,7 @@ export function render() {
     <a class="home-tile home-tile--${t.accent}" href="${t.href}">
       ${t.hoverImg ? `<img class="home-tile-hover-img" src="${t.hoverImg}" alt="" loading="lazy" />` : ''}
       <div class="home-tile-body">
-        <h3 class="home-tile-title">${t.title}</h3>
+        <h3 class="home-tile-title">${t.title}${t.badge ? ` <span class="home-tile-badge">${t.badge}</span>` : ''}</h3>
         <p class="home-tile-desc">${t.desc}</p>
       </div>
       <div class="home-tile-arrow">→</div>

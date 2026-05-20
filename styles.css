@@ -4214,6 +4214,31 @@ body.is-allergenen #app-nav { display: none; }
 .home-tile--sage-deep .home-tile-desc { color: rgba(255,255,255,0.92); }
 .home-tile--sage-deep .home-tile-arrow { color: #fff; }
 
+/* Home-tile lichte terracotta variant (voor allergenen-tegel) */
+.home-tile--terracotta-light {
+  background: #e6b89c;
+  border-color: #e6b89c;
+}
+.home-tile--terracotta-light:hover {
+  background: #d9a583;
+  border-color: #d9a583;
+}
+
+/* BETA-badge in tegel-titel */
+.home-tile-badge {
+  display: inline-block;
+  background: rgba(255,255,255,.92);
+  color: #b46c40;
+  font-size: .62rem;
+  font-weight: 800;
+  letter-spacing: .8px;
+  padding: .12rem .42rem;
+  border-radius: 999px;
+  vertical-align: middle;
+  margin-left: .35rem;
+  box-shadow: 0 1px 2px rgba(0,0,0,.08);
+}
+
 /* ============================================
    CHATROOMS — 3-koloms layout + rooms-nav + room/topic-view
    Desktop: Functies (links) | Timeline of Room (midden) | Rooms (rechts)
