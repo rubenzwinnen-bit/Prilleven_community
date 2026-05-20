@@ -5,11 +5,11 @@
    Gebruikt /api/chat-rooms.
 ============================================ */
 
-import * as Store from '../store.js?v=2.5.9';
-import * as Api from '../chatRoomsApi.js?v=2.5.9';
-import { formatRelativeTime } from '../utils.js?v=2.5.9';
-import { renderAvatar, renderAuthorMeta } from '../profileRender.js?v=2.5.9';
-import { sessionGet } from '../supabase.js?v=2.5.9';
+import * as Store from '../store.js?v=2.5.10';
+import * as Api from '../chatRoomsApi.js?v=2.5.10';
+import { formatRelativeTime } from '../utils.js?v=2.5.10';
+import { renderAvatar, renderAuthorMeta } from '../profileRender.js?v=2.5.10';
+import { sessionGet } from '../supabase.js?v=2.5.10';
 
 // Edit-window verwijderd: eigen items zijn altijd bewerkbaar.
 

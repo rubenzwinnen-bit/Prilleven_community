@@ -8,7 +8,7 @@
    omdat dit een lokale voorkeur is.
 ============================================ */
 
-import { supabaseFetch, supabaseStorageDelete } from './supabase.js?v=2.5.9';
+import { supabaseFetch, supabaseStorageDelete } from './supabase.js?v=2.5.10';
 
 /* ============================================
    IN-MEMORY CACHE LAAG
@@ -126,7 +126,7 @@ export async function refreshAdminStatus() {
     return false;
   }
   try {
-    const { fetchSubscriptionStatus } = await import('./supabase.js?v=2.5.9');
+    const { fetchSubscriptionStatus } = await import('./supabase.js?v=2.5.10');
     const status = await fetchSubscriptionStatus(user);
     const v = !!status?.is_admin;
     _adminCache = { email: user, value: v, loaded: true };

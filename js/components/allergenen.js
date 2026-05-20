@@ -8,23 +8,23 @@
    automatisch als 'allergisch' getoond.
 ============================================ */
 
-import { escapeHtml, showToast, colorFromSeed, initialsFromName } from '../utils.js?v=2.5.9';
-import { getChildren, updateChild } from '../childrenApi.js?v=2.5.9';
+import { escapeHtml, showToast, colorFromSeed, initialsFromName } from '../utils.js?v=2.5.10';
+import { getChildren, updateChild } from '../childrenApi.js?v=2.5.10';
 import {
   loadEhState,
   patchEhState,
   loadEhDoses,
   createEhDose,
   updateEhDose,
-} from '../eersteHapjesStateApi.js?v=2.5.9';
-import { loadSymptomsForChild } from '../eersteHapjesSymptomsApi.js?v=2.5.9';
+} from '../eersteHapjesStateApi.js?v=2.5.10';
+import { loadSymptomsForChild } from '../eersteHapjesSymptomsApi.js?v=2.5.10';
 import {
   ALLERGEN_FLOW,
   REACTION_LEVELS,
   getEligibleAllergens,
   getAllergenStatus,
-} from '../content/eersteHapjes-allergen-flow.js?v=2.5.9';
-import { openSymptomLogModal } from './symptomLogModal.js?v=2.5.9';
+} from '../content/eersteHapjes-allergen-flow.js?v=2.5.10';
+import { openSymptomLogModal } from './symptomLogModal.js?v=2.5.10';
 
 let state = {
   loaded: false,
@@ -871,7 +871,6 @@ function renderAllergenItem(allergen, ctx, ageMonths, child) {
     <li class="allergenen-item allergenen-item--${status}" data-key="${allergen.key}">
       <div class="allergenen-item-header">
         <button class="allergenen-item-head" aria-expanded="false" type="button">
-          <span class="allergenen-item-icon">${allergen.icon}</span>
           <span class="allergenen-item-label">${escapeHtml(allergen.label)}</span>
           <span class="allergenen-item-status">${statusLabel}</span>
           <span class="allergenen-item-caret">&#9662;</span>
