@@ -5918,10 +5918,22 @@ body.is-allergenen #app-nav { display: none; }
   height: 1.1rem;
   accent-color: var(--color-primary, #5e7a5b);
 }
-.allergenen-setup-icon {
-  font-size: 1.5rem;
-  line-height: 1;
+.allergenen-setup-thumb {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  background: #e6e2d8 no-repeat center / cover;
+  flex-shrink: 0;
 }
+.allergenen-setup-item[data-key="kippen-ei"] .allergenen-setup-thumb { background-image: url('/fotos/allergheen-fotos/kip-ei.jpg'); }
+.allergenen-setup-item[data-key="pinda"] .allergenen-setup-thumb { background-image: url('/fotos/allergheen-fotos/Pinda.jpg'); }
+.allergenen-setup-item[data-key="noten"] .allergenen-setup-thumb { background-image: url('/fotos/allergheen-fotos/noten.jpg'); }
+.allergenen-setup-item[data-key="sesam"] .allergenen-setup-thumb { background-image: url('/fotos/allergheen-fotos/sesam.jpg'); }
+.allergenen-setup-item[data-key="vis"] .allergenen-setup-thumb { background-image: url('/fotos/allergheen-fotos/Vis.jpg'); }
+.allergenen-setup-item[data-key="schaaldieren"] .allergenen-setup-thumb { background-image: url('/fotos/allergheen-fotos/schaaldieren.jpg'); }
+.allergenen-setup-item[data-key="soja"] .allergenen-setup-thumb { background-image: url('/fotos/allergheen-fotos/Soja.jpg'); }
+.allergenen-setup-item[data-key="tarwe"] .allergenen-setup-thumb { background-image: url('/fotos/allergheen-fotos/Tarwe.jpg'); }
+.allergenen-setup-item[data-key="koemelk"] .allergenen-setup-thumb { background-image: url('/fotos/allergheen-fotos/Koemelk.jpg'); }
 .allergenen-setup-label {
   display: flex;
   flex-direction: column;
@@ -6413,7 +6425,7 @@ body.is-allergenen #app-nav { display: none; }
 .allergenen-item[data-key] .allergenen-item-header {
   background-repeat: no-repeat;
   background-position: right center;
-  background-size: auto 100%;
+  background-size: cover;
 }
 .allergenen-item[data-key="kippen-ei"] .allergenen-item-header {
   background-image:
@@ -6458,5 +6470,59 @@ body.is-allergenen #app-nav { display: none; }
 .allergenen-item[data-key="koemelk"] .allergenen-item-header {
   background-image:
     linear-gradient(to right, var(--color-white) 50%, rgba(255,255,255,.82) 68%, rgba(255,255,255,.35) 100%),
+    url('/fotos/allergheen-fotos/Koemelk.jpg');
+}
+
+/* ============================================
+   ALLERGENEN — VOLGENDE-STAP BANNER — FOTO PER ALLERGEEN
+============================================ */
+.allergenen-nextup[data-key] {
+  background-repeat: no-repeat;
+  background-position: right center;
+  background-size: cover;
+}
+.allergenen-nextup[data-key="kippen-ei"] {
+  background-image:
+    linear-gradient(to right, #eef3e8 40%, rgba(238,243,232,.85) 65%, rgba(238,243,232,.4) 100%),
+    url('/fotos/allergheen-fotos/kip-ei.jpg');
+}
+.allergenen-nextup[data-key="pinda"] {
+  background-image:
+    linear-gradient(to right, #eef3e8 40%, rgba(238,243,232,.85) 65%, rgba(238,243,232,.4) 100%),
+    url('/fotos/allergheen-fotos/Pinda.jpg');
+}
+.allergenen-nextup[data-key="noten"] {
+  background-image:
+    linear-gradient(to right, #eef3e8 40%, rgba(238,243,232,.85) 65%, rgba(238,243,232,.4) 100%),
+    url('/fotos/allergheen-fotos/noten.jpg');
+}
+.allergenen-nextup[data-key="sesam"] {
+  background-image:
+    linear-gradient(to right, #eef3e8 40%, rgba(238,243,232,.85) 65%, rgba(238,243,232,.4) 100%),
+    url('/fotos/allergheen-fotos/sesam.jpg');
+}
+.allergenen-nextup[data-key="vis"] {
+  background-image:
+    linear-gradient(to right, #eef3e8 40%, rgba(238,243,232,.85) 65%, rgba(238,243,232,.4) 100%),
+    url('/fotos/allergheen-fotos/Vis.jpg');
+}
+.allergenen-nextup[data-key="schaaldieren"] {
+  background-image:
+    linear-gradient(to right, #eef3e8 40%, rgba(238,243,232,.85) 65%, rgba(238,243,232,.4) 100%),
+    url('/fotos/allergheen-fotos/schaaldieren.jpg');
+}
+.allergenen-nextup[data-key="soja"] {
+  background-image:
+    linear-gradient(to right, #eef3e8 40%, rgba(238,243,232,.85) 65%, rgba(238,243,232,.4) 100%),
+    url('/fotos/allergheen-fotos/Soja.jpg');
+}
+.allergenen-nextup[data-key="tarwe"] {
+  background-image:
+    linear-gradient(to right, #eef3e8 40%, rgba(238,243,232,.85) 65%, rgba(238,243,232,.4) 100%),
+    url('/fotos/allergheen-fotos/Tarwe.jpg');
+}
+.allergenen-nextup[data-key="koemelk"] {
+  background-image:
+    linear-gradient(to right, #eef3e8 40%, rgba(238,243,232,.85) 65%, rgba(238,243,232,.4) 100%),
     url('/fotos/allergheen-fotos/Koemelk.jpg');
 }

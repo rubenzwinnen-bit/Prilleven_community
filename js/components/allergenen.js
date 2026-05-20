@@ -290,9 +290,9 @@ function renderSetup(stage, child) {
   const items = candidates.map(a => {
     const locked = a.ageCondition.introFrom && ageMonths < a.ageCondition.introFrom;
     return `
-      <label class="allergenen-setup-item ${locked ? 'is-locked' : ''}">
+      <label class="allergenen-setup-item ${locked ? 'is-locked' : ''}" data-key="${a.key}">
         <input type="checkbox" data-key="${a.key}" ${locked ? 'disabled' : ''}>
-        <span class="allergenen-setup-icon">${a.icon}</span>
+        <div class="allergenen-setup-thumb"></div>
         <span class="allergenen-setup-label">
           <strong>${escapeHtml(a.label)}</strong>
           <small>${escapeHtml(a.suggestedFood)}</small>
@@ -768,9 +768,8 @@ function renderNextUpBanner(nextUp, ctx) {
   }
   const a = nextUp.allergen;
   return `
-    <div class="allergenen-nextup">
+    <div class="allergenen-nextup" data-key="${a.key}">
       <div class="allergenen-nextup-main">
-        <span class="allergenen-nextup-icon">${a.icon}</span>
         <div class="allergenen-nextup-body">
           <span class="allergenen-nextup-label">Volgende stap</span>
           <strong>${escapeHtml(a.label)} — dose ${nextUp.doseNumber}/3</strong>
