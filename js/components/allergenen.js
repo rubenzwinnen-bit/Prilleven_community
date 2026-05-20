@@ -694,11 +694,20 @@ function renderGrid(root, child) {
     });
   }
 
-  // Klik op een item → toggle expand
+  // Klik op een item → toggle expand (accordeon: max 1 tegelijk open)
   grid.querySelectorAll('.allergenen-item-head').forEach(head => {
     head.addEventListener('click', () => {
       const item = head.closest('.allergenen-item');
-      const isOpen = item.classList.toggle('open');
+      const wasOpen = item.classList.contains('open');
+      grid.querySelectorAll('.allergenen-item.open').forEach(other => {
+        if (other !== item) {
+          other.classList.remove('open');
+          const otherHead = other.querySelector('.allergenen-item-head');
+          if (otherHead) otherHead.setAttribute('aria-expanded', 'false');
+        }
+      });
+      const isOpen = !wasOpen;
+      item.classList.toggle('open', isOpen);
       head.setAttribute('aria-expanded', String(isOpen));
     });
   });

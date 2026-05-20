@@ -6464,7 +6464,12 @@ body.is-allergenen #app-nav { display: none; }
   background-size: cover;
 }
 .allergenen-item[data-key] .allergenen-item-label {
-  text-shadow: 0 0 6px rgba(255,255,255,.9), 0 1px 2px rgba(255,255,255,.7);
+  background: rgba(255,255,255,.9);
+  padding: .3rem .75rem;
+  border-radius: 999px;
+  color: var(--color-dark);
+  box-shadow: 0 1px 2px rgba(0,0,0,.05);
+  justify-self: start;
 }
 .allergenen-item[data-key] .allergenen-item-status {
   background: rgba(255,255,255,.85);
@@ -6475,8 +6480,28 @@ body.is-allergenen #app-nav { display: none; }
   box-shadow: 0 1px 2px rgba(0,0,0,.05);
 }
 .allergenen-item[data-key] .allergenen-item-caret {
-  text-shadow: 0 0 4px rgba(255,255,255,.9);
+  background: rgba(255,255,255,.85);
+  border-radius: 50%;
+  width: 1.25rem;
+  height: 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 2px rgba(0,0,0,.05);
 }
+/* Open: foto 100% zichtbaar (overlay weg) */
+.allergenen-item.open[data-key] .allergenen-item-header {
+  background-image: none;
+}
+.allergenen-item.open[data-key="kippen-ei"] .allergenen-item-header { background-image: url('/fotos/allergheen-fotos/kip-ei.jpg'); }
+.allergenen-item.open[data-key="pinda"] .allergenen-item-header { background-image: url('/fotos/allergheen-fotos/Pinda.jpg'); }
+.allergenen-item.open[data-key="noten"] .allergenen-item-header { background-image: url('/fotos/allergheen-fotos/noten.jpg'); }
+.allergenen-item.open[data-key="sesam"] .allergenen-item-header { background-image: url('/fotos/allergheen-fotos/sesam.jpg'); }
+.allergenen-item.open[data-key="vis"] .allergenen-item-header { background-image: url('/fotos/allergheen-fotos/Vis.jpg'); }
+.allergenen-item.open[data-key="schaaldieren"] .allergenen-item-header { background-image: url('/fotos/allergheen-fotos/schaaldieren.jpg'); }
+.allergenen-item.open[data-key="soja"] .allergenen-item-header { background-image: url('/fotos/allergheen-fotos/Soja.jpg'); }
+.allergenen-item.open[data-key="tarwe"] .allergenen-item-header { background-image: url('/fotos/allergheen-fotos/Tarwe.jpg'); }
+.allergenen-item.open[data-key="koemelk"] .allergenen-item-header { background-image: url('/fotos/allergheen-fotos/Koemelk.jpg'); }
 .allergenen-item[data-key="kippen-ei"] .allergenen-item-header {
   background-image:
     linear-gradient(rgba(238,243,232,.5), rgba(238,243,232,.5)),
