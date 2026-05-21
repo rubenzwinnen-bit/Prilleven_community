@@ -5151,6 +5151,34 @@ body.is-allergenen #app-nav { display: none; }
   line-height: 1.5;
   font-size: .95rem;
 }
+.allergenen-hoeveelheden {
+  margin: 1rem 0 0 0;
+  padding: .85rem 1rem;
+  background: var(--color-white);
+  border: 1px solid var(--color-gray-light);
+  border-radius: 12px;
+}
+.allergenen-hoeveelheden-title {
+  margin: 0 0 .4rem 0;
+  font-size: .95rem;
+  font-weight: 600;
+  color: var(--color-dark);
+}
+.allergenen-hoeveelheden-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  list-style: disc;
+  color: var(--color-dark);
+}
+.allergenen-hoeveelheden-list li {
+  margin: .15rem 0;
+  line-height: 1.45;
+  font-size: .92rem;
+}
+.allergenen-hoeveelheden-list strong {
+  color: var(--color-dark);
+  font-weight: 600;
+}
 
 .allergenen-welcome {
   max-width: 480px;
@@ -5291,6 +5319,29 @@ body.is-allergenen #app-nav { display: none; }
   font-size: .9rem;
   color: var(--color-dark-light);
   line-height: 1.45;
+}
+.allergenen-item-content-section {
+  margin: .9rem 0 0 0;
+}
+.allergenen-item-content-section:first-child {
+  margin-top: .75rem;
+}
+.allergenen-item-content-title {
+  margin: 0 0 .4rem 0;
+  font-size: .95rem;
+  font-weight: 600;
+  color: var(--color-dark);
+}
+.allergenen-item-content-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  list-style: disc;
+  color: var(--color-dark);
+}
+.allergenen-item-content-list li {
+  margin: .2rem 0;
+  line-height: 1.45;
+  font-size: .92rem;
 }
 
 /* Statusvarianten */

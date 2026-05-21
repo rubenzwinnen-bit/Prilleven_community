@@ -202,6 +202,14 @@ async function renderApp(root) {
         Volg de 13 allergenen — telkens 3 doses met een rustpauze van minstens 2 dagen ertussen.
         Bekende allergieën uit het profiel zijn automatisch gemarkeerd.
       </p>
+      <div class="allergenen-hoeveelheden">
+        <h3 class="allergenen-hoeveelheden-title">Hoeveelheden</h3>
+        <ul class="allergenen-hoeveelheden-list">
+          <li><strong>Introductie 1:</strong> starten met ¼ koffielepel</li>
+          <li><strong>Introductie 2:</strong> ½ koffielepel</li>
+          <li><strong>Introductie 3:</strong> volledige koffielepel</li>
+        </ul>
+      </div>
       <div class="allergenen-header-actions">
         <button type="button" class="btn btn-outline btn-sm" data-action="log-symptom">
           ➕ Symptoom loggen
@@ -890,9 +898,22 @@ function renderAllergenItem(allergen, ctx, ageMonths, child) {
       </div>
       <div class="allergenen-item-body">
         <div class="allergenen-item-body-inner">
-        <p class="allergenen-item-suggestion">${escapeHtml(allergen.suggestedFood)}</p>
-        ${allergen.note ? `<p class="allergenen-item-note">💡 ${escapeHtml(allergen.note)}</p>` : ''}
-        ${allergen.alternative ? `<p class="allergenen-item-alt">↔️ ${escapeHtml(allergen.alternative)}</p>` : ''}
+        ${allergen.content?.puree?.length ? `
+          <div class="allergenen-item-content-section">
+            <h4 class="allergenen-item-content-title">Gepureerde voeding</h4>
+            <ul class="allergenen-item-content-list">
+              ${allergen.content.puree.map(tip => `<li>${escapeHtml(tip)}</li>`).join('')}
+            </ul>
+          </div>
+        ` : ''}
+        ${allergen.content?.pieces?.length ? `
+          <div class="allergenen-item-content-section">
+            <h4 class="allergenen-item-content-title">Stukjes</h4>
+            <ul class="allergenen-item-content-list">
+              ${allergen.content.pieces.map(tip => `<li>${escapeHtml(tip)}</li>`).join('')}
+            </ul>
+          </div>
+        ` : ''}
 
         ${status === 'allergisch' ? `
           <div class="allergenen-allergic-box">
