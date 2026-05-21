@@ -217,7 +217,10 @@ async function renderApp(root) {
       </div>
     </header>
     ${renderSwitcher(state.children, active)}
-    <div class="allergenen-warn-slot" id="allergenen-warn-slot"></div>
+    <div class="allergenen-top">
+      <div class="allergenen-nextup-slot" id="allergenen-nextup-slot"></div>
+      <div class="allergenen-warn-slot" id="allergenen-warn-slot"></div>
+    </div>
     <div class="allergenen-stage" id="allergenen-stage">
       <div class="empty-state"><div class="empty-state-icon">&#9203;</div><h3>Data laden…</h3></div>
     </div>
@@ -236,6 +239,9 @@ async function renderApp(root) {
 function renderStage(root, child) {
   const stage = root.querySelector('#allergenen-stage');
   if (!stage) return;
+  // Reset nextup-slot — wordt opnieuw gevuld door renderGrid wanneer relevant
+  const nextupSlot = root.querySelector('#allergenen-nextup-slot');
+  if (nextupSlot) nextupSlot.innerHTML = '';
   const allergenState = state.ehState?.allergen_state || {};
   if (!allergenState.started) {
     renderWelcome(stage, child);
@@ -617,16 +623,22 @@ function shouldShowArtsWarning() {
   return recentErnstigeDose || recentHeftigSymptom;
 }
 
-function renderArtsWarning(root) {
+function renderArtsWarning(root, opts = {}) {
   const slot = root.querySelector('#allergenen-warn-slot');
   if (!slot) return;
-  if (!shouldShowArtsWarning()) { slot.innerHTML = ''; return; }
-  slot.innerHTML = `
-    <div class="allergenen-arts-warn">
-      <strong>⚠️ Er is recent een ernstige reactie of heftig symptoom gelogd voor je kindje.</strong>
-      Pril Leven geeft geen medisch advies, neem contact op met je huisarts, kinderarts of kinderdiëtiste voor verdere begeleiding.
-    </div>
-  `;
+  const parts = [];
+  if (shouldShowArtsWarning()) {
+    parts.push(`
+      <div class="allergenen-arts-warn">
+        <strong>⚠️ Er is recent een ernstige reactie of heftig symptoom gelogd voor je kindje.</strong>
+        Pril Leven geeft geen medisch advies, neem contact op met je huisarts, kinderarts of kinderdiëtiste voor verdere begeleiding.
+      </div>
+    `);
+  }
+  if (opts.showArtsToezicht) {
+    parts.push(renderArtsToezichtBanner());
+  }
+  slot.innerHTML = parts.join('');
 }
 
 function renderSwitcher(children, active) {
@@ -681,21 +693,24 @@ function renderGrid(root, child) {
   const all = [...ALLERGEN_FLOW].sort((a, b) => a.order - b.order);
   const nextUp = ctx.paused ? null : getNextDoseSuggestion(ctx, ageMonths);
 
+  // Render warn-slot (arts-warning + arts-toezicht) en nextup-slot apart van de grid
+  renderArtsWarning(root, { showArtsToezicht: ctx.artsToezicht });
+  const nextupSlot = root.querySelector('#allergenen-nextup-slot');
+  if (nextupSlot) {
+    nextupSlot.innerHTML = renderNextUpBanner(nextUp, ctx);
+    const nextBtn = nextupSlot.querySelector('[data-action="next-dose"]');
+    if (nextBtn && nextUp) {
+      nextBtn.addEventListener('click', () => {
+        openDoseModal(child.id, nextUp.allergen.key, nextUp.doseNumber);
+      });
+    }
+  }
+
   grid.innerHTML = `
-    ${ctx.artsToezicht ? renderArtsToezichtBanner() : ''}
-    ${renderNextUpBanner(nextUp, ctx)}
     <ul class="allergenen-list">
       ${all.map(a => renderAllergenItem(a, ctx, ageMonths, child)).join('')}
     </ul>
   `;
-
-  // Next-up CTA → opent dose-modal voor het juiste allergeen
-  const nextBtn = grid.querySelector('[data-action="next-dose"]');
-  if (nextBtn && nextUp) {
-    nextBtn.addEventListener('click', () => {
-      openDoseModal(child.id, nextUp.allergen.key, nextUp.doseNumber);
-    });
-  }
 
   // Klik op een item → toggle expand (accordeon: max 1 tegelijk open)
   grid.querySelectorAll('.allergenen-item-head').forEach(head => {
@@ -784,7 +799,6 @@ function renderNextUpBanner(nextUp, ctx) {
         <div class="allergenen-nextup-body">
           <span class="allergenen-nextup-label">Volgende stap</span>
           <strong>${escapeHtml(a.label)} — introductie ${nextUp.doseNumber}/3</strong>
-          <small>${escapeHtml(a.suggestedFood)}</small>
         </div>
       </div>
       <button type="button" class="btn btn-primary" data-action="next-dose">

@@ -5539,7 +5539,40 @@ body.is-allergenen #app-nav { display: none; }
   flex-wrap: wrap;
   margin-top: .75rem;
 }
+/* Top-row: 2 koloms (nextup links, waarschuwingen rechts) */
+.allergenen-top {
+  display: flex;
+  gap: 1rem;
+  align-items: stretch;
+  margin: 1rem 0;
+}
+.allergenen-top:empty { display: none; }
+.allergenen-nextup-slot,
+.allergenen-warn-slot {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.allergenen-nextup-slot:empty,
 .allergenen-warn-slot:empty { display: none; }
+/* Banners in top-row: vullen hun slot, geen eigen verticale margin meer */
+.allergenen-top .allergenen-nextup,
+.allergenen-top .allergenen-arts-warn,
+.allergenen-top .allergenen-arts-toezicht-banner {
+  margin: 0;
+  flex: 1 1 auto;
+}
+.allergenen-top .allergenen-arts-warn + .allergenen-arts-toezicht-banner,
+.allergenen-top .allergenen-arts-toezicht-banner + .allergenen-arts-warn {
+  margin-top: .75rem;
+}
+@media (max-width: 720px) {
+  .allergenen-top {
+    flex-direction: column;
+  }
+}
+
 .allergenen-arts-warn {
   margin: 1rem 0;
   padding: .9rem 1rem;
