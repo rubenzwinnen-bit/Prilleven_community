@@ -217,10 +217,6 @@ async function renderApp(root) {
       </div>
     </header>
     ${renderSwitcher(state.children, active)}
-    <div class="allergenen-top">
-      <div class="allergenen-nextup-slot" id="allergenen-nextup-slot"></div>
-      <div class="allergenen-warn-slot" id="allergenen-warn-slot"></div>
-    </div>
     <div class="allergenen-stage" id="allergenen-stage">
       <div class="empty-state"><div class="empty-state-icon">&#9203;</div><h3>Data laden…</h3></div>
     </div>
@@ -239,9 +235,6 @@ async function renderApp(root) {
 function renderStage(root, child) {
   const stage = root.querySelector('#allergenen-stage');
   if (!stage) return;
-  // Reset nextup-slot — wordt opnieuw gevuld door renderGrid wanneer relevant
-  const nextupSlot = root.querySelector('#allergenen-nextup-slot');
-  if (nextupSlot) nextupSlot.innerHTML = '';
   const allergenState = state.ehState?.allergen_state || {};
   if (!allergenState.started) {
     renderWelcome(stage, child);
@@ -250,7 +243,13 @@ function renderStage(root, child) {
   } else if (allergenState.paused && (allergenState.paused_step || 0) > 0) {
     renderPauseFlow(stage, child);
   } else {
-    stage.innerHTML = `<div class="allergenen-grid" id="allergenen-grid"></div>`;
+    stage.innerHTML = `
+      <div class="allergenen-columns">
+        <div class="allergenen-nextup-slot" id="allergenen-nextup-slot"></div>
+        <div class="allergenen-grid" id="allergenen-grid"></div>
+        <div class="allergenen-warn-slot" id="allergenen-warn-slot"></div>
+      </div>
+    `;
     renderGrid(root, child);
   }
 }
