@@ -55,7 +55,7 @@ export function render() {
     {
       id: 'allergenen',
       title: 'Allergenen introduceren',
-      desc: 'Volg de 13 standaard-allergenen per kindje — 3 doses per allergeen.',
+      desc: 'Volg de 9 standaard-allergenen per kindje — 3 introducties per allergeen.',
       href: '#/allergenen',
       accent: 'terracotta-light',
       badge: 'BETA',

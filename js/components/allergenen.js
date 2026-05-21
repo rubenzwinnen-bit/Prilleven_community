@@ -199,7 +199,7 @@ async function renderApp(root) {
     <header class="allergenen-header">
       <h2>Allergenen introduceren</h2>
       <p class="allergenen-intro">
-        Volg de 13 allergenen — telkens 3 doses met een rustpauze van minstens 2 dagen ertussen.
+        Volg de 9 allergenen, telkens 3 introducties met een rustpauze van minstens 2 dagen ertussen.
         Bekende allergieën uit het profiel zijn automatisch gemarkeerd.
       </p>
       <div class="allergenen-hoeveelheden">
@@ -258,12 +258,12 @@ function renderWelcome(stage, child) {
       <div class="allergenen-welcome-icon">🍽️</div>
       <h3>Klaar om allergenen te introduceren voor ${escapeHtml(child.name)}?</h3>
       <p>
-        We begeleiden je door de 13 allergenen, in de juiste volgorde,
-        met telkens 3 doses zonder reactie om een allergeen als veilig te markeren.
+        We begeleiden je door de 9 allergenen, in de juiste volgorde,
+        met telkens 3 introducties zonder reactie om een allergeen als veilig te markeren.
       </p>
       <p>
         Je kiest zelf wanneer je start, wanneer je naar het volgende allergeen
-        gaat en wanneer je een nieuwe dose registreert. Bekende allergieën uit
+        gaat en wanneer je een nieuwe introductie registreert. Bekende allergieën uit
         het profiel slaan we automatisch over.
       </p>
       <button type="button" class="btn btn-primary btn-lg" data-action="start-flow">
@@ -315,7 +315,7 @@ function renderSetup(stage, child) {
       <p>
         Vink aan welke allergenen ${escapeHtml(child.name)} al regelmatig en
         zonder reactie heeft gegeten. Deze slaan we over — je hoeft hier geen
-        doses meer voor te loggen.
+        introducties meer voor te loggen.
       </p>
       <div class="allergenen-setup-list">
         ${items || '<p>Geen allergenen om te markeren.</p>'}
@@ -460,10 +460,8 @@ function renderPauseFlow(stage, child) {
       `;
     } else {
       content = `
-        <div class="allergenen-pause-icon">🚨</div>
-        <h3>Dringend — Stop onmiddellijk!</h3>
-        <p>Onmiddellijk stoppen met het introduceren van allergenen.
-           Contacteer je arts zo snel mogelijk. Onderzoek noodzakelijk!</p>
+        <h3>Allergeen (tijdelijk) niet meer aanbieden</h3>
+        <p>Contacteer je pediater of kinderdiëtiste voor een plan van aanpak.</p>
         <p class="allergenen-pause-sub">De introductie van allergenen is volledig gepauzeerd.</p>
         <div class="allergenen-pause-actions">
           <button type="button" class="btn btn-danger" data-action="pause-next">Gelezen</button>
@@ -626,10 +624,8 @@ function renderArtsWarning(root) {
   if (!shouldShowArtsWarning()) { slot.innerHTML = ''; return; }
   slot.innerHTML = `
     <div class="allergenen-arts-warn">
-      <strong>⚠️ Raadpleeg een arts.</strong>
-      Er is recent een ernstige reactie of heftig symptoom gelogd voor dit kindje.
-      Pril Leven geeft geen medisch advies — neem contact op met je huisarts,
-      kinderarts of Kind &amp; Gezin.
+      <strong>⚠️ Er is recent een ernstige reactie of heftig symptoom gelogd voor je kindje.</strong>
+      Pril Leven geeft geen medisch advies, neem contact op met je huisarts, kinderarts of kinderdiëtiste voor verdere begeleiding.
     </div>
   `;
 }
@@ -777,7 +773,7 @@ function renderNextUpBanner(nextUp, ctx) {
     }
     return `
       <div class="allergenen-nextup allergenen-nextup--wait">
-        ⏳ Er is op dit moment geen volgende dose beschikbaar
+        ⏳ Er is op dit moment geen volgende introductie beschikbaar
         (bv. wachten op leeftijdsvoorwaarde).
       </div>
     `;
@@ -788,12 +784,12 @@ function renderNextUpBanner(nextUp, ctx) {
       <div class="allergenen-nextup-main">
         <div class="allergenen-nextup-body">
           <span class="allergenen-nextup-label">Volgende stap</span>
-          <strong>${escapeHtml(a.label)} — dose ${nextUp.doseNumber}/3</strong>
+          <strong>${escapeHtml(a.label)} — introductie ${nextUp.doseNumber}/3</strong>
           <small>${escapeHtml(a.suggestedFood)}</small>
         </div>
       </div>
       <button type="button" class="btn btn-primary" data-action="next-dose">
-        Dose ${nextUp.doseNumber} registreren
+        Introductie ${nextUp.doseNumber} registreren
       </button>
     </div>
   `;
@@ -925,7 +921,7 @@ function renderAllergenItem(allergen, ctx, ageMonths, child) {
         ${stuck ? `
           <div class="allergenen-stuck-box">
             Er was een reactie tijdens de 3 introducties — dit allergeen heeft
-            geen 3× <em>geen reactie</em>. Verwijder een dose en log opnieuw na
+            geen 3× <em>geen reactie</em>. Verwijder een introductie en log opnieuw na
             een rustperiode, of markeer dit allergeen als allergie in
             <a href="#/profiel">Mijn profiel</a>.
           </div>
@@ -933,13 +929,13 @@ function renderAllergenItem(allergen, ctx, ageMonths, child) {
 
         ${dosesForKey.length > 0 ? `
           <div class="allergenen-doses">
-            <h4>Geregistreerde doses</h4>
+            <h4>Geregistreerde introducties</h4>
             <ul class="allergenen-dose-list">
               ${dosesForKey.map(d => `
                 <li class="allergenen-dose allergenen-dose--${d.reaction}">
-                  <span class="allergenen-dose-num">Dose ${d.dose_number}</span>
+                  <span class="allergenen-dose-num">Introductie ${d.dose_number}</span>
                   <span class="allergenen-dose-date">${escapeHtml(d.intro_date)}</span>
-                  <button class="allergenen-dose-edit" data-action="edit-dose" data-id="${d.id}" title="Bewerken" aria-label="Dose bewerken">&#9998;</button>
+                  <button class="allergenen-dose-edit" data-action="edit-dose" data-id="${d.id}" title="Bewerken" aria-label="Introductie bewerken">&#9998;</button>
                   ${d.notes ? `<span class="allergenen-dose-notes">${escapeHtml(d.notes)}</span>` : ''}
                 </li>
               `).join('')}
@@ -988,7 +984,7 @@ function openDoseModal(childId, allergenKey, doseNumber, { existing = null } = {
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
     <div class="modal allergenen-dose-modal">
-      <h3>${escapeHtml(allergen?.label || allergenKey)} — dose ${doseNumber}${isEdit ? ' (bewerken)' : ''}</h3>
+      <h3>${escapeHtml(allergen?.label || allergenKey)} — introductie ${doseNumber}${isEdit ? ' (bewerken)' : ''}</h3>
       <p class="allergenen-dose-modal-sub">${escapeHtml(allergen?.suggestedFood || '')}</p>
 
       <label for="dose-date">Datum</label>
@@ -1029,7 +1025,7 @@ function openDoseModal(childId, allergenKey, doseNumber, { existing = null } = {
         });
         state.doses = state.doses.map(d => d.id === dose.id ? dose : d);
         close();
-        showToast('Dose bijgewerkt.', 'success');
+        showToast('Introductie bijgewerkt.', 'success');
       } else {
         const dose = await createEhDose({
           child_id: childId,
@@ -1041,7 +1037,7 @@ function openDoseModal(childId, allergenKey, doseNumber, { existing = null } = {
         });
         state.doses = [...state.doses, dose];
         close();
-        showToast('Dose geregistreerd.', 'success');
+        showToast('Introductie geregistreerd.', 'success');
       }
       const root = document.getElementById('allergenen-root');
       const child = state.children.find(c => c.id === childId);

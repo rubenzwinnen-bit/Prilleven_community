@@ -102,7 +102,7 @@ export function openSymptomLogModal({ childId, childName, introducedKeys = [], e
             ${introducedKeys.length === 0 ? `
               <p class="eh-symptom-empty-hint">
                 Er zijn nog geen allergenen geïntroduceerd voor dit kindje.
-                Log eerst een dose vóór je een symptoom registreert.
+                Log eerst een introductie vóór je een symptoom registreert.
               </p>
             ` : ''}
           </div>
