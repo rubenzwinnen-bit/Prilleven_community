@@ -302,7 +302,6 @@ function renderSetup(stage, child) {
         <input type="checkbox" data-key="${a.key}" ${locked ? 'disabled' : ''}>
         <span class="allergenen-setup-label">
           <strong>${escapeHtml(a.label)}</strong>
-          <small>${escapeHtml(a.suggestedFood)}</small>
           ${locked ? `<em>Vanaf ${a.ageCondition.introFrom} maanden</em>` : ''}
         </span>
       </label>
@@ -973,12 +972,19 @@ function renderAllergenItem(allergen, ctx, ageMonths, child) {
   `;
 }
 
+const DOSE_AMOUNT_TEXT = {
+  1: 'Hoeveelheid: starten met ¼ koffielepel',
+  2: 'Hoeveelheid: ½ koffielepel',
+  3: 'Hoeveelheid: volledige koffielepel',
+};
+
 function openDoseModal(childId, allergenKey, doseNumber, { existing = null } = {}) {
   const isEdit = !!existing;
   const allergen = ALLERGEN_FLOW.find(a => a.key === allergenKey);
   const today = new Date().toISOString().slice(0, 10);
   const initialDate = isEdit ? (existing.intro_date || today) : today;
   const initialNotes = isEdit ? (existing.notes || '') : '';
+  const amountText = DOSE_AMOUNT_TEXT[doseNumber] || '';
 
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
@@ -986,6 +992,7 @@ function openDoseModal(childId, allergenKey, doseNumber, { existing = null } = {
     <div class="modal allergenen-dose-modal">
       <h3>${escapeHtml(allergen?.label || allergenKey)} — introductie ${doseNumber}${isEdit ? ' (bewerken)' : ''}</h3>
       <p class="allergenen-dose-modal-sub">${escapeHtml(allergen?.suggestedFood || '')}</p>
+      ${amountText ? `<p class="allergenen-dose-modal-amount">${escapeHtml(amountText)}</p>` : ''}
 
       <label for="dose-date">Datum</label>
       <input type="date" id="dose-date" value="${escapeHtml(initialDate)}" max="${today}">

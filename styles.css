@@ -5482,6 +5482,17 @@ body.is-allergenen #app-nav { display: none; }
   color: var(--color-dark-light);
   line-height: 1.4;
 }
+.allergenen-dose-modal-amount {
+  margin: 0 0 .75rem 0;
+  padding: .55rem .8rem;
+  background: var(--color-white);
+  border: 1px solid var(--color-gray-light);
+  border-radius: 10px;
+  font-size: .92rem;
+  font-weight: 600;
+  color: var(--color-dark);
+  line-height: 1.4;
+}
 .allergenen-dose-modal label {
   font-weight: 600;
   font-size: .9rem;
