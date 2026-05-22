@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=2.7.0" />
+  <link rel="stylesheet" href="/styles.css?v=2.7.1" />
 
   <style>
     html, body { height: 100%; }
@@ -705,11 +705,8 @@
         <div class="conv-empty">Nog geen gesprekken.</div>
       </div>
       <div class="sidebar-bottom">
-        <button class="btn-profile" id="btn-memory" type="button" style="margin-bottom:.4rem;">
+        <button class="btn-profile" id="btn-memory" type="button">
           <span>🧠</span> <span>Mijn geheugen</span>
-        </button>
-        <button class="btn-profile" id="btn-profile" type="button">
-          <span>⚙️</span> <span>Mijn profiel</span>
         </button>
       </div>
     </aside>
@@ -762,47 +759,6 @@
     </main>
   </div>
 
-  <!-- Instellingen-modal -->
-  <div class="modal-backdrop" id="profile-modal">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="profile-title">
-      <h2 id="profile-title">Instellingen</h2>
-      <p class="lead">HapjesHeld gebruikt automatisch je gezinsprofiel (kinderen, allergieën, dieet) van je hoofdprofiel. Pas dit aan via <a href="/profiel" style="color:var(--color-primary);text-decoration:underline;">je profiel</a>.</p>
-
-      <label class="field">E-mailadres</label>
-      <div id="pf-email" class="pf-email-readonly"></div>
-
-      <div class="memory-toggle">
-        <input type="checkbox" id="pf-memory" checked />
-        <label for="pf-memory">
-          <strong>Bewaar mijn gesprekken</strong> zodat HapjesHeld me beter leert kennen over tijd.
-          Uitschakelen betekent: elke vraag start met een schone lei, geen geschiedenis, geen geheugen.
-        </label>
-      </div>
-
-      <!-- GDPR actions -->
-      <details style="margin-top:1.25rem; font-size:.85rem;" open>
-        <summary style="cursor:pointer; color:var(--color-dark-light); font-weight:500;">Privacy & data-beheer</summary>
-        <div style="margin-top:.75rem; padding:.75rem; background:var(--color-bg); border-radius:var(--radius-md);">
-          <p style="color:var(--color-dark-light); font-size:.85rem; margin-bottom:.75rem; line-height:1.5;">
-            Je hebt het recht om al je data te downloaden of volledig te wissen.
-            Gesprekken, profiel en geheugen worden standaard 2 jaar bewaard na het einde van je lidmaatschap.
-          </p>
-          <button class="btn-cancel" type="button" id="pf-export" style="margin-right:.5rem; margin-bottom:.5rem;">
-            ⬇️ Download mijn data
-          </button>
-          <button class="btn-cancel" type="button" id="pf-delete" style="color:var(--color-danger); border-color:var(--color-danger); margin-bottom:.5rem;">
-            🗑 Verwijder mijn account
-          </button>
-        </div>
-      </details>
-
-      <div class="modal-actions">
-        <button class="btn-cancel" type="button" id="pf-cancel">Sluiten</button>
-        <button class="btn-save" type="button" id="pf-save">Opslaan</button>
-      </div>
-    </div>
-  </div>
-
   <!-- Geheugen-modal -->
   <div class="modal-backdrop" id="memory-modal">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mem-title">
@@ -818,9 +774,9 @@
     </div>
   </div>
 
-  <script src="/js/chat.js?v=2.7.0" type="module"></script>
+  <script src="/js/chat.js?v=2.7.1" type="module"></script>
   <script type="module">
-    import { mountHeaderAvatar, attachLogoutHandler } from '/js/headerAvatarStandalone.js?v=2.7.0';
+    import { mountHeaderAvatar, attachLogoutHandler } from '/js/headerAvatarStandalone.js?v=2.7.1';
     document.addEventListener('DOMContentLoaded', () => {
       mountHeaderAvatar(document.getElementById('header-avatar-mount'));
       attachLogoutHandler(document.getElementById('header-logout-btn-standalone'));

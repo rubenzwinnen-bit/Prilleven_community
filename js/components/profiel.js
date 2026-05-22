@@ -4,13 +4,13 @@
    Route: #/profiel
 ============================================ */
 
-import * as Store from '../store.js?v=2.6.3';
-import { sessionGet } from '../supabase.js?v=2.6.3';
-import { escapeHtml, showToast, processImageForUpload, initialsFromName, colorFromSeed } from '../utils.js?v=2.6.3';
-import * as Api from '../childrenApi.js?v=2.6.3';
-import * as FamilyApi from '../familyApi.js?v=2.6.3';
-import * as CommunityApi from '../communityApi.js?v=2.6.3';
-import { ALLERGEN_FLOW } from '../content/eersteHapjes-allergen-flow.js?v=2.6.3';
+import * as Store from '../store.js?v=2.7.1';
+import { sessionGet, sessionRefreshIfNeeded, sessionClear } from '../supabase.js?v=2.7.1';
+import { escapeHtml, showToast, processImageForUpload, initialsFromName, colorFromSeed } from '../utils.js?v=2.7.1';
+import * as Api from '../childrenApi.js?v=2.7.1';
+import * as FamilyApi from '../familyApi.js?v=2.7.1';
+import * as CommunityApi from '../communityApi.js?v=2.7.1';
+import { ALLERGEN_FLOW } from '../content/eersteHapjes-allergen-flow.js?v=2.7.1';
 
 /* ----------------------------------------
    ALLERGEENLIJST (13 standaard-allergenen, identiek aan tracker)
@@ -69,10 +69,11 @@ export async function init() {
   const container = document.querySelector('.profiel-page-inner');
   if (!container) return;
 
-  const [childrenRes, familyRes, profileRes] = await Promise.all([
+  const [childrenRes, familyRes, profileRes, chatProfileRes] = await Promise.all([
     Api.getChildren(),
     FamilyApi.getFamilyDiet(),
     CommunityApi.getMyProfile(),
+    fetchChatProfile(),
   ]);
   if (!childrenRes.ok) {
     container.innerHTML = `<p class="profiel-error">${escapeHtml(childrenRes.error || 'Kon profiel niet laden.')}</p>`;
@@ -84,17 +85,37 @@ export async function init() {
     childrenRes.data.children || [],
     familyRes.ok ? (familyRes.data.family_diet || []) : [],
     profileRes.ok ? (profileRes.data?.profile || null) : null,
+    chatProfileRes,
   );
+}
+
+/* ----------------------------------------
+   CHAT-PROFIEL (memory_enabled flag) ophalen via /api/profile
+---------------------------------------- */
+async function fetchChatProfile() {
+  try {
+    const session = await sessionRefreshIfNeeded();
+    if (!session) return null;
+    const res = await fetch('/api/profile', {
+      headers: { Authorization: 'Bearer ' + session.access_token },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.profile || null;
+  } catch {
+    return null;
+  }
 }
 
 /* ----------------------------------------
    PAGINA OPBOUWEN
 ---------------------------------------- */
-function renderPage(container, children, familyDiet, profile) {
+function renderPage(container, children, familyDiet, profile, chatProfile) {
   const email = Store.getCurrentUser() || '';
   const userId = sessionGet()?.user_id || '';
   const nickname = profile?.nickname || '';
   const avatarUrl = profile?.avatar_url || null;
+  const memoryEnabled = chatProfile?.memory_enabled !== false; // default true
 
   container.innerHTML = `
     <div class="profiel-header">
@@ -177,10 +198,40 @@ function renderPage(container, children, familyDiet, profile) {
       </div>
       <div id="profiel-diet-status" class="profiel-diet-status"></div>
     </section>
+
+    <section class="profiel-section" id="profiel-instellingen-section">
+      <div class="profiel-section-head">
+        <h2 class="profiel-section-title">Voorkeuren & privacy</h2>
+      </div>
+
+      <div class="profiel-memory-toggle">
+        <label class="profiel-memory-label">
+          <input type="checkbox" id="profiel-memory" ${memoryEnabled ? 'checked' : ''}>
+          <span>
+            <strong>Bewaar mijn gesprekken</strong> zodat HapjesHeld me beter leert kennen over tijd.
+            Uitschakelen betekent: elke vraag start met een schone lei, geen geschiedenis, geen geheugen.
+          </span>
+        </label>
+        <div id="profiel-memory-status" class="profiel-diet-status"></div>
+      </div>
+
+      <div class="profiel-privacy-block">
+        <h3 class="profiel-privacy-title">Privacy & data-beheer</h3>
+        <p class="profiel-section-sub">
+          Je hebt het recht om al je data te downloaden of volledig te wissen.
+          Gesprekken, profiel en geheugen worden standaard 2 jaar bewaard na het einde van je lidmaatschap.
+        </p>
+        <div class="profiel-privacy-actions">
+          <button class="btn btn-outline btn-sm" id="profiel-export" type="button">⬇️ Download mijn data</button>
+          <button class="btn btn-outline btn-sm btn-danger" id="profiel-delete" type="button">🗑 Verwijder mijn account</button>
+        </div>
+      </div>
+    </section>
   `;
 
   bindPageEvents(container, children);
   bindNicknameSection(container, profile);
+  bindInstellingenSection(container);
 }
 
 /* ----------------------------------------
@@ -496,6 +547,133 @@ function bindNicknameSection(container, initialProfile) {
 }
 
 /* ----------------------------------------
+   VOORKEUREN & PRIVACY — memory-toggle + GDPR
+---------------------------------------- */
+function bindInstellingenSection(container) {
+  const memCheckbox = container.querySelector('#profiel-memory');
+  const memStatus   = container.querySelector('#profiel-memory-status');
+  const exportBtn   = container.querySelector('#profiel-export');
+  const deleteBtn   = container.querySelector('#profiel-delete');
+
+  const setMemStatus = (msg, level = '') => {
+    if (!memStatus) return;
+    memStatus.textContent = msg || '';
+    memStatus.className = 'profiel-diet-status' + (level ? ' is-' + level : '');
+  };
+
+  let memSaveTimer = null;
+  let memSaveInFlight = false;
+
+  const saveMemory = async () => {
+    if (memSaveInFlight) return;
+    memSaveInFlight = true;
+    setMemStatus('Opslaan…');
+    try {
+      const session = await sessionRefreshIfNeeded();
+      if (!session) { setMemStatus('Niet ingelogd.', 'error'); return; }
+      const res = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: {
+          'Authorization': 'Bearer ' + session.access_token,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ memory_enabled: memCheckbox.checked }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setMemStatus(data.error || 'Opslaan mislukt.', 'error');
+        return;
+      }
+      setMemStatus('Opgeslagen', 'success');
+      setTimeout(() => setMemStatus(''), 1800);
+    } catch (err) {
+      setMemStatus(err.message || 'Opslaan mislukt.', 'error');
+    } finally {
+      memSaveInFlight = false;
+    }
+  };
+
+  memCheckbox?.addEventListener('change', () => {
+    if (memSaveTimer) clearTimeout(memSaveTimer);
+    memSaveTimer = setTimeout(saveMemory, 300);
+  });
+
+  exportBtn?.addEventListener('click', async () => {
+    exportBtn.disabled = true;
+    const original = exportBtn.textContent;
+    exportBtn.textContent = 'Downloaden…';
+    try {
+      const session = await sessionRefreshIfNeeded();
+      if (!session) { window.location.href = '/'; return; }
+      const res = await fetch('/api/me', {
+        method: 'GET',
+        headers: { Authorization: 'Bearer ' + session.access_token },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Download mislukt.');
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pril-leven-export-${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      showToast(err.message || 'Download mislukt.', 'error');
+    } finally {
+      exportBtn.disabled = false;
+      exportBtn.textContent = original;
+    }
+  });
+
+  deleteBtn?.addEventListener('click', async () => {
+    const confirm1 = confirm(
+      'Ben je zeker dat je je account wilt verwijderen?\n\n' +
+      'Dit wist ONMIDDELLIJK en PERMANENT:\n' +
+      '• Je profiel (kinderen, dieet, allergieën)\n' +
+      '• Al je gesprekken met HapjesHeld\n' +
+      '• Het persoonlijke geheugen\n' +
+      '• Je login-account\n\n' +
+      'Dit kan niet ongedaan gemaakt worden.'
+    );
+    if (!confirm1) return;
+    const confirm2 = prompt('Typ "VERWIJDER" in hoofdletters om te bevestigen:');
+    if (confirm2 !== 'VERWIJDER') {
+      alert('Verwijdering geannuleerd.');
+      return;
+    }
+
+    deleteBtn.disabled = true;
+    const original = deleteBtn.textContent;
+    deleteBtn.textContent = 'Verwijderen…';
+    try {
+      const session = await sessionRefreshIfNeeded();
+      if (!session) { window.location.href = '/'; return; }
+      const res = await fetch('/api/me', {
+        method: 'DELETE',
+        headers: { Authorization: 'Bearer ' + session.access_token },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok && res.status !== 207) {
+        throw new Error(data.error || 'Verwijderen mislukt.');
+      }
+      sessionClear();
+      localStorage.removeItem('receptenboek_user');
+      alert(data.message || 'Je data is verwijderd. Je wordt uitgelogd.');
+      window.location.href = '/';
+    } catch (err) {
+      alert(err.message);
+      deleteBtn.disabled = false;
+      deleteBtn.textContent = original;
+    }
+  });
+}
+
+/* ----------------------------------------
    FORMULIER HELPERS
 ---------------------------------------- */
 
@@ -602,16 +780,18 @@ function bindFormEvents(formWrap, kind, container) {
       return;
     }
 
-    const [fresh, family, prof] = await Promise.all([
+    const [fresh, family, prof, chatProf] = await Promise.all([
       Api.getChildren(),
       FamilyApi.getFamilyDiet(),
       CommunityApi.getMyProfile(),
+      fetchChatProfile(),
     ]);
     if (fresh.ok) renderPage(
       container,
       fresh.data.children || [],
       family.ok ? (family.data.family_diet || []) : [],
       prof.ok ? (prof.data?.profile || null) : null,
+      chatProf,
     );
     showToast(kind ? 'Profiel bijgewerkt.' : 'Kind toegevoegd.', 'success');
   });
@@ -642,16 +822,18 @@ async function confirmDelete(kind, container) {
   if (!confirm(`Wil je "${kind.name}" verwijderen? Dit is niet ongedaan te maken.`)) return;
   const { ok, error } = await Api.archiveChild(kind.id);
   if (!ok) { showToast(error || 'Verwijderen mislukt.', 'error'); return; }
-  const [fresh, family, prof] = await Promise.all([
+  const [fresh, family, prof, chatProf] = await Promise.all([
     Api.getChildren(),
     FamilyApi.getFamilyDiet(),
     CommunityApi.getMyProfile(),
+    fetchChatProfile(),
   ]);
   if (fresh.ok) renderPage(
     container,
     fresh.data.children || [],
     family.ok ? (family.data.family_diet || []) : [],
     prof.ok ? (prof.data?.profile || null) : null,
+    chatProf,
   );
   showToast(`${kind.name} verwijderd.`, 'success');
 }
