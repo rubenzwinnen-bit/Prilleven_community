@@ -1,7 +1,7 @@
 // Chat frontend met sidebar-gebaseerde conversatie-management.
 // Vereist een geldige Supabase sessie (gezet door de hoofdsite-login).
 
-import { sessionGet, sessionRefreshIfNeeded, sessionClear } from './supabase.js?v=2.7.0';
+import { sessionGet, sessionRefreshIfNeeded, sessionClear } from './supabase.js?v=2.8.0';
 
 // ---------- DOM refs ----------
 const form = document.getElementById('form');
@@ -14,7 +14,6 @@ const btnNewChat = document.getElementById('btn-new-chat');
 const hamburger = document.getElementById('toggle-sidebar');
 const sidebar = document.getElementById('sidebar');
 const sidebarBackdrop = document.getElementById('sidebar-backdrop');
-const btnProfile = document.getElementById('btn-profile');
 const btnMemory = document.getElementById('btn-memory');
 
 // Memory-modal refs
@@ -22,13 +21,6 @@ const memoryModal = document.getElementById('memory-modal');
 const memList = document.getElementById('mem-list');
 const memClearAll = document.getElementById('mem-clear-all');
 const memClose = document.getElementById('mem-close');
-
-// Profiel-modal refs (instellingen: alleen memory + GDPR + email-read-only)
-const profileModal = document.getElementById('profile-modal');
-const pfEmail = document.getElementById('pf-email');
-const pfMemory = document.getElementById('pf-memory');
-const pfSave = document.getElementById('pf-save');
-const pfCancel = document.getElementById('pf-cancel');
 
 // ---------- State ----------
 let currentConversationId = null;
@@ -325,54 +317,16 @@ async function selectConversation(id) {
   }
 }
 
-// ---------- Instellingen-modal ----------
-// Het profiel (kinderen, dieet, allergieën) wordt beheerd op /profiel.
-// Deze modal toont enkel: email (read-only), memory-toggle en GDPR-acties.
-let currentProfile = null;
-
-function openProfileModal() {
-  if (pfEmail) {
-    pfEmail.textContent = currentSessionEmail || '—';
-  }
-  pfMemory.checked = currentProfile?.memory_enabled !== false;
-  profileModal.classList.add('visible');
-}
-
-function closeProfileModal() {
-  profileModal.classList.remove('visible');
-}
-
-async function saveProfile() {
-  pfSave.disabled = true;
-  pfSave.textContent = 'Opslaan…';
-  try {
-    const res = await authedFetch('/api/profile', {
-      method: 'PUT',
-      body: JSON.stringify({ memory_enabled: pfMemory.checked }),
-    });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || 'Opslaan mislukt.');
-    }
-    const data = await res.json();
-    currentProfile = data.profile;
-    closeProfileModal();
-  } catch (err) {
-    alert(err.message);
-  } finally {
-    pfSave.disabled = false;
-    pfSave.textContent = 'Opslaan';
-  }
-}
-
+// ---------- Profiel-data ----------
+// Het profiel (kinderen, dieet, allergieën, memory-toggle, GDPR) wordt beheerd op /profiel.
+// Hier laden we /api/profile enkel nog om de quota-bar te voeden via data.usage.
 async function loadProfile() {
   try {
     const res = await authedFetch('/api/profile');
     if (!res.ok) return null;
     const data = await res.json();
-    currentProfile = data.profile;
     if (data.usage) updateQuotaBar(data.usage);
-    return currentProfile;
+    return data.profile || null;
   } catch (err) {
     console.error('loadProfile:', err);
     return null;
@@ -423,91 +377,6 @@ function updateQuotaBar(usage) {
       : 'Typ je vraag... (max 500 tekens)';
   }
 }
-
-// Event handlers profile modal (instellingen)
-pfCancel.addEventListener('click', closeProfileModal);
-pfSave.addEventListener('click', saveProfile);
-btnProfile.addEventListener('click', openProfileModal);
-profileModal.addEventListener('click', (e) => {
-  if (e.target === profileModal) closeProfileModal();
-});
-
-// ---------- GDPR: data-export + account-verwijdering ----------
-const pfExport = document.getElementById('pf-export');
-const pfDelete = document.getElementById('pf-delete');
-
-pfExport?.addEventListener('click', async () => {
-  pfExport.disabled = true;
-  const original = pfExport.textContent;
-  pfExport.textContent = 'Downloaden…';
-  try {
-    const session = await sessionRefreshIfNeeded();
-    if (!session) { window.location.href = '/'; return; }
-    const res = await fetch('/api/me', {
-      method: 'GET',
-      headers: { Authorization: 'Bearer ' + session.access_token },
-    });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || 'Download mislukt.');
-    }
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `pril-leven-export-${Date.now()}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  } catch (err) {
-    alert(err.message);
-  } finally {
-    pfExport.disabled = false;
-    pfExport.textContent = original;
-  }
-});
-
-pfDelete?.addEventListener('click', async () => {
-  const confirm1 = confirm(
-    'Ben je zeker dat je je account wilt verwijderen?\n\n' +
-    'Dit wist ONMIDDELLIJK en PERMANENT:\n' +
-    '• Je profiel (kinderen, dieet, allergieën)\n' +
-    '• Al je gesprekken met HapjesHeld\n' +
-    '• Het persoonlijke geheugen\n' +
-    '• Je login-account\n\n' +
-    'Dit kan niet ongedaan gemaakt worden.'
-  );
-  if (!confirm1) return;
-  const confirm2 = prompt('Typ "VERWIJDER" in hoofdletters om te bevestigen:');
-  if (confirm2 !== 'VERWIJDER') {
-    alert('Verwijdering geannuleerd.');
-    return;
-  }
-
-  pfDelete.disabled = true;
-  pfDelete.textContent = 'Verwijderen…';
-  try {
-    const session = await sessionRefreshIfNeeded();
-    if (!session) { window.location.href = '/'; return; }
-    const res = await fetch('/api/me', {
-      method: 'DELETE',
-      headers: { Authorization: 'Bearer ' + session.access_token },
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok && res.status !== 207) {
-      throw new Error(data.error || 'Verwijderen mislukt.');
-    }
-    sessionClear();
-    localStorage.removeItem('receptenboek_user');
-    alert(data.message || 'Je data is verwijderd. Je wordt uitgelogd.');
-    window.location.href = '/';
-  } catch (err) {
-    alert(err.message);
-    pfDelete.disabled = false;
-    pfDelete.textContent = '🗑 Verwijder mijn account';
-  }
-});
 
 // ---------- Memory modal ----------
 function relTime(iso) {
