@@ -1,4 +1,5 @@
--- Profiel-opschoning: dieet verplaatsen naar algemeen profiel + kind-data migreren.
+-- Profiel-opschoning: dieet verplaatsen naar algemeen profiel + kind-data migreren
+-- + overbodige kopie-kolommen droppen op chat_user_profiles.
 --
 -- Wijzigingen:
 --  1. ADD COLUMN community_profiles.family_diet text[]
@@ -6,13 +7,12 @@
 --     maar zonder rijen in public.children → kopieer naar children-tabel.
 --  3. Data-migratie: voor users met diet in chat_user_profiles EN een bestaand
 --     community_profile → zet community_profiles.family_diet.
+--  4. DROP COLUMN op chat_user_profiles: display_name, children, diet, allergies,
+--     notes. Tabel houdt enkel nog memory_enabled (+ user_id, timestamps).
 --
 -- NIET in deze migratie (bewust):
 --  - texture_preference en has_eczema op children blijven staan (data behouden,
 --    enkel uit UI verwijderd).
---  - chat_user_profiles.{display_name,children,diet,allergies,notes} blijven
---    staan zodat we niets onverwacht weggooien als de migratie iets mist.
---    Deze kolommen worden NIET meer geschreven of gelezen door de app.
 
 BEGIN;
 
@@ -70,8 +70,10 @@ WHERE jsonb_typeof(cup.children) = 'array'
 
 -- 3) Dieet migreren -------------------------------------------------------
 -- Alleen waar al een community_profile bestaat (nickname NOT NULL).
--- De 5 overige users zonder community_profile behouden hun diet-data in
--- chat_user_profiles.diet en kunnen die later opnieuw kiezen.
+-- 5 users zonder community_profile verliezen hun diet-voorkeur door de drop
+-- in stap 4. De UI toonde die data al niet meer (RAG-modal is weg, /profiel
+-- leest van community_profiles), dus functioneel verlies = 0. Ze kunnen
+-- opnieuw kiezen zodra ze een nickname instellen.
 UPDATE public.community_profiles cp
    SET family_diet = (
          SELECT COALESCE(
@@ -91,5 +93,16 @@ UPDATE public.community_profiles cp
  WHERE cup.user_id = cp.user_id
    AND cup.diet IS NOT NULL
    AND array_length(cup.diet, 1) > 0;
+
+-- 4) Overbodige kolommen droppen op chat_user_profiles --------------------
+-- Na de migratie zit alle relevante data in public.children en
+-- community_profiles.family_diet. De RAG-bot leest enkel nog memory_enabled
+-- uit deze tabel.
+ALTER TABLE public.chat_user_profiles
+  DROP COLUMN IF EXISTS display_name,
+  DROP COLUMN IF EXISTS children,
+  DROP COLUMN IF EXISTS diet,
+  DROP COLUMN IF EXISTS allergies,
+  DROP COLUMN IF EXISTS notes;
 
 COMMIT;
