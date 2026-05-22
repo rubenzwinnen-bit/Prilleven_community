@@ -4807,6 +4807,76 @@ body.is-allergenen #app-nav { display: none; }
   align-items: center;
 }
 
+/* ---- Inline nickname + avatar (vervangt popup) ---- */
+.profiel-nickname-inline {
+  padding: 1rem 0 .25rem;
+}
+.profiel-nickname-inline .profiel-section-sub {
+  margin: 0 0 .85rem 0;
+}
+.profiel-nickname-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+.profiel-nickname-row .profile-avatar-preview {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--color-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.profiel-nickname-row .profile-avatar-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.profiel-nickname-fields {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+}
+.profiel-nickname-fields .profiel-form-label {
+  font-size: .85rem;
+  color: var(--color-gray);
+}
+.profiel-nickname-fields .nickname-rules {
+  font-size: .8rem;
+  color: var(--color-gray);
+  margin-top: -.15rem;
+}
+.profiel-nickname-fields .profiel-avatar-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-top: .25rem;
+}
+.profiel-nickname-actions {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  margin-top: .85rem;
+}
+
+@media (max-width: 600px) {
+  .profiel-nickname-row {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .profiel-nickname-fields {
+    width: 100%;
+  }
+  .profiel-nickname-fields .profiel-avatar-buttons {
+    justify-content: center;
+  }
+}
+
 /* ---- Lege toestand ---- */
 .profiel-empty {
   color: var(--color-gray);

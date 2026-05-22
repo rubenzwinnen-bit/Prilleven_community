@@ -4,13 +4,13 @@
    Route: #/profiel
 ============================================ */
 
-import * as Store from '../store.js?v=2.6.2';
-import { sessionGet } from '../supabase.js?v=2.6.2';
-import { escapeHtml, showToast } from '../utils.js?v=2.6.2';
-import * as Api from '../childrenApi.js?v=2.6.2';
-import * as FamilyApi from '../familyApi.js?v=2.6.2';
-import { openProfileModal } from './profileModal.js?v=2.6.2';
-import { ALLERGEN_FLOW } from '../content/eersteHapjes-allergen-flow.js?v=2.6.2';
+import * as Store from '../store.js?v=2.6.3';
+import { sessionGet } from '../supabase.js?v=2.6.3';
+import { escapeHtml, showToast, processImageForUpload, initialsFromName, colorFromSeed } from '../utils.js?v=2.6.3';
+import * as Api from '../childrenApi.js?v=2.6.3';
+import * as FamilyApi from '../familyApi.js?v=2.6.3';
+import * as CommunityApi from '../communityApi.js?v=2.6.3';
+import { ALLERGEN_FLOW } from '../content/eersteHapjes-allergen-flow.js?v=2.6.3';
 
 /* ----------------------------------------
    ALLERGEENLIJST (13 standaard-allergenen, identiek aan tracker)
@@ -69,23 +69,32 @@ export async function init() {
   const container = document.querySelector('.profiel-page-inner');
   if (!container) return;
 
-  const [childrenRes, familyRes] = await Promise.all([
+  const [childrenRes, familyRes, profileRes] = await Promise.all([
     Api.getChildren(),
     FamilyApi.getFamilyDiet(),
+    CommunityApi.getMyProfile(),
   ]);
   if (!childrenRes.ok) {
     container.innerHTML = `<p class="profiel-error">${escapeHtml(childrenRes.error || 'Kon profiel niet laden.')}</p>`;
     return;
   }
 
-  renderPage(container, childrenRes.data.children || [], familyRes.ok ? (familyRes.data.family_diet || []) : []);
+  renderPage(
+    container,
+    childrenRes.data.children || [],
+    familyRes.ok ? (familyRes.data.family_diet || []) : [],
+    profileRes.ok ? (profileRes.data?.profile || null) : null,
+  );
 }
 
 /* ----------------------------------------
    PAGINA OPBOUWEN
 ---------------------------------------- */
-function renderPage(container, children, familyDiet) {
+function renderPage(container, children, familyDiet, profile) {
   const email = Store.getCurrentUser() || '';
+  const userId = sessionGet()?.user_id || '';
+  const nickname = profile?.nickname || '';
+  const avatarUrl = profile?.avatar_url || null;
 
   container.innerHTML = `
     <div class="profiel-header">
@@ -100,11 +109,44 @@ function renderPage(container, children, familyDiet) {
         <span class="profiel-account-label">E-mailadres</span>
         <span class="profiel-account-value">${escapeHtml(email)}</span>
       </div>
-      <div class="profiel-account-row">
-        <span class="profiel-account-label">Community nickname</span>
-        <span class="profiel-account-value profiel-account-value--action">
-          <button class="btn btn-outline btn-sm" id="profiel-edit-nickname-btn">Nickname &amp; foto wijzigen</button>
-        </span>
+
+      <div class="profiel-nickname-inline" id="profiel-nickname-inline">
+        <p class="profiel-section-sub">Andere ouders zien je nickname en eventuele foto bij je posts. Je e-mailadres blijft altijd verborgen.</p>
+
+        <div class="profiel-nickname-row">
+          <div class="profile-avatar-preview" id="profiel-avatar-preview">
+            ${avatarUrl
+              ? `<img src="${escapeHtml(avatarUrl)}" alt="Profielfoto">`
+              : `<span class="tl-avatar profile-avatar-placeholder" style="background:${colorFromSeed(userId)};">${escapeHtml(initialsFromName(nickname) || '?')}</span>`}
+          </div>
+          <div class="profiel-nickname-fields">
+            <label for="profiel-nickname-input" class="profiel-form-label">Community nickname</label>
+            <input
+              type="text"
+              id="profiel-nickname-input"
+              class="auth-input"
+              placeholder="Nickname (bv. Sarah_M)"
+              maxlength="30"
+              autocomplete="off"
+              value="${escapeHtml(nickname)}"
+            >
+            <div class="nickname-rules">2–30 tekens · letters, cijfers, spaties, _ en -</div>
+            <div class="profiel-avatar-buttons">
+              <button type="button" class="btn btn-outline btn-sm" id="profiel-photo-btn">
+                ${avatarUrl ? 'Foto wijzigen' : 'Foto kiezen'}
+              </button>
+              <button type="button" class="btn btn-outline btn-sm" id="profiel-photo-remove" ${avatarUrl ? '' : 'style="display:none;"'}>Foto verwijderen</button>
+              <input type="file" id="profiel-photo-input" accept="image/*" class="visually-hidden">
+            </div>
+          </div>
+        </div>
+
+        <div id="profiel-nickname-error" class="auth-error hidden"></div>
+
+        <div class="profiel-nickname-actions">
+          <button class="btn btn-primary btn-sm" id="profiel-nickname-save">Opslaan</button>
+          <span id="profiel-nickname-status" class="profiel-diet-status"></span>
+        </div>
       </div>
     </section>
 
@@ -138,6 +180,7 @@ function renderPage(container, children, familyDiet) {
   `;
 
   bindPageEvents(container, children);
+  bindNicknameSection(container, profile);
 }
 
 /* ----------------------------------------
@@ -273,14 +316,6 @@ function renderKindForm(kind = null) {
    EVENT HANDLERS
 ---------------------------------------- */
 function bindPageEvents(container, children) {
-  document.getElementById('profiel-edit-nickname-btn')?.addEventListener('click', async () => {
-    const updated = await openProfileModal();
-    if (updated) {
-      document.dispatchEvent(new CustomEvent('community:profile-updated', { detail: updated }));
-      showToast('Profiel bijgewerkt.', 'success');
-    }
-  });
-
   // Kind toevoegen → form onderaan de lijst
   document.getElementById('profiel-add-kind-btn')?.addEventListener('click', () => {
     closeInlineForm();
@@ -346,6 +381,117 @@ function bindDietChipEvents(container) {
     e.target.closest('.profiel-diet-chip')?.classList.toggle('is-checked', e.target.checked);
     if (pendingTimer) clearTimeout(pendingTimer);
     pendingTimer = setTimeout(saveDiet, 400); // debounce: één call per "burst"
+  });
+}
+
+/* ----------------------------------------
+   NICKNAME & AVATAR — inline onder Account
+---------------------------------------- */
+function bindNicknameSection(container, initialProfile) {
+  const section     = container.querySelector('#profiel-nickname-inline');
+  if (!section) return;
+
+  const userId      = sessionGet()?.user_id || '';
+  const input       = section.querySelector('#profiel-nickname-input');
+  const errorEl     = section.querySelector('#profiel-nickname-error');
+  const statusEl    = section.querySelector('#profiel-nickname-status');
+  const saveBtn     = section.querySelector('#profiel-nickname-save');
+  const photoBtn    = section.querySelector('#profiel-photo-btn');
+  const photoInput  = section.querySelector('#profiel-photo-input');
+  const photoRemove = section.querySelector('#profiel-photo-remove');
+  const previewEl   = section.querySelector('#profiel-avatar-preview');
+
+  let pendingAvatar = null;  // { blob, previewUrl }
+  let removeAvatar  = false;
+  let currentAvatarUrl = initialProfile?.avatar_url || null;
+
+  const setStatus = (msg, level = '') => {
+    if (!statusEl) return;
+    statusEl.textContent = msg || '';
+    statusEl.className = 'profiel-diet-status' + (level ? ' is-' + level : '');
+  };
+  const showError = (msg) => {
+    errorEl.textContent = msg;
+    errorEl.classList.remove('hidden');
+    saveBtn.disabled = false;
+  };
+  const clearError = () => {
+    errorEl.textContent = '';
+    errorEl.classList.add('hidden');
+  };
+
+  photoBtn?.addEventListener('click', () => photoInput?.click());
+
+  photoInput?.addEventListener('change', async () => {
+    const file = photoInput.files?.[0];
+    if (!file) return;
+    photoBtn.disabled = true;
+    try {
+      const { blob } = await processImageForUpload(file);
+      if (pendingAvatar?.previewUrl) URL.revokeObjectURL(pendingAvatar.previewUrl);
+      const previewUrl = URL.createObjectURL(blob);
+      pendingAvatar = { blob, previewUrl };
+      removeAvatar = false;
+      previewEl.innerHTML = `<img src="${previewUrl}" alt="Profielfoto">`;
+      photoBtn.textContent = 'Foto wijzigen';
+      photoRemove.style.display = '';
+    } catch (err) {
+      showToast(err.message || 'Kon foto niet verwerken.', 'error');
+    } finally {
+      photoBtn.disabled = false;
+    }
+  });
+
+  photoRemove?.addEventListener('click', () => {
+    if (pendingAvatar?.previewUrl) URL.revokeObjectURL(pendingAvatar.previewUrl);
+    pendingAvatar = null;
+    removeAvatar = true;
+    currentAvatarUrl = null;
+    previewEl.innerHTML = `<span class="tl-avatar profile-avatar-placeholder" style="background:${colorFromSeed(userId)};">${escapeHtml(initialsFromName(input.value) || '?')}</span>`;
+    photoBtn.textContent = 'Foto kiezen';
+    photoRemove.style.display = 'none';
+  });
+
+  saveBtn?.addEventListener('click', async () => {
+    clearError();
+    const newNick = input.value.trim();
+    if (!newNick) { showError('Vul een nickname in.'); return; }
+
+    saveBtn.disabled = true;
+    setStatus('Opslaan…');
+
+    try {
+      let avatarPathUpdate = undefined;
+      if (pendingAvatar?.blob) {
+        const urlRes = await CommunityApi.getAvatarUploadUrl();
+        if (!urlRes.ok) { showError(urlRes.error || 'Kon upload-URL niet ophalen.'); setStatus(''); return; }
+        const upRes = await CommunityApi.uploadToStorage(urlRes.data.uploadUrl, pendingAvatar.blob);
+        if (!upRes.ok) { showError(upRes.error || 'Foto-upload mislukt.'); setStatus(''); return; }
+        avatarPathUpdate = urlRes.data.path;
+      } else if (removeAvatar) {
+        avatarPathUpdate = null;
+      }
+
+      const updates = { nickname: newNick };
+      if (avatarPathUpdate !== undefined) updates.avatar_path = avatarPathUpdate;
+
+      const { ok, data, error } = await CommunityApi.updateMyProfile(updates);
+      if (!ok) { showError(error || 'Er ging iets mis.'); setStatus(''); return; }
+
+      // Reset pending state met fresh data
+      if (pendingAvatar?.previewUrl) URL.revokeObjectURL(pendingAvatar.previewUrl);
+      pendingAvatar = null;
+      removeAvatar = false;
+      currentAvatarUrl = data.profile?.avatar_url || null;
+
+      setStatus('Opgeslagen', 'success');
+      setTimeout(() => setStatus(''), 1800);
+      saveBtn.disabled = false;
+      document.dispatchEvent(new CustomEvent('community:profile-updated', { detail: data.profile }));
+    } catch (err) {
+      showError(err.message || 'Er ging iets mis.');
+      setStatus('');
+    }
   });
 }
 
@@ -456,8 +602,17 @@ function bindFormEvents(formWrap, kind, container) {
       return;
     }
 
-    const [fresh, family] = await Promise.all([Api.getChildren(), FamilyApi.getFamilyDiet()]);
-    if (fresh.ok) renderPage(container, fresh.data.children || [], family.ok ? (family.data.family_diet || []) : []);
+    const [fresh, family, prof] = await Promise.all([
+      Api.getChildren(),
+      FamilyApi.getFamilyDiet(),
+      CommunityApi.getMyProfile(),
+    ]);
+    if (fresh.ok) renderPage(
+      container,
+      fresh.data.children || [],
+      family.ok ? (family.data.family_diet || []) : [],
+      prof.ok ? (prof.data?.profile || null) : null,
+    );
     showToast(kind ? 'Profiel bijgewerkt.' : 'Kind toegevoegd.', 'success');
   });
 }
@@ -487,8 +642,17 @@ async function confirmDelete(kind, container) {
   if (!confirm(`Wil je "${kind.name}" verwijderen? Dit is niet ongedaan te maken.`)) return;
   const { ok, error } = await Api.archiveChild(kind.id);
   if (!ok) { showToast(error || 'Verwijderen mislukt.', 'error'); return; }
-  const [fresh, family] = await Promise.all([Api.getChildren(), FamilyApi.getFamilyDiet()]);
-  if (fresh.ok) renderPage(container, fresh.data.children || [], family.ok ? (family.data.family_diet || []) : []);
+  const [fresh, family, prof] = await Promise.all([
+    Api.getChildren(),
+    FamilyApi.getFamilyDiet(),
+    CommunityApi.getMyProfile(),
+  ]);
+  if (fresh.ok) renderPage(
+    container,
+    fresh.data.children || [],
+    family.ok ? (family.data.family_diet || []) : [],
+    prof.ok ? (prof.data?.profile || null) : null,
+  );
   showToast(`${kind.name} verwijderd.`, 'success');
 }
 

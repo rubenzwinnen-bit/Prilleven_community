@@ -1,7 +1,7 @@
 // Chat frontend met sidebar-gebaseerde conversatie-management.
 // Vereist een geldige Supabase sessie (gezet door de hoofdsite-login).
 
-import { sessionGet, sessionRefreshIfNeeded, sessionClear } from './supabase.js?v=2.6.2';
+import { sessionGet, sessionRefreshIfNeeded, sessionClear } from './supabase.js?v=2.6.4';
 
 // ---------- DOM refs ----------
 const form = document.getElementById('form');
@@ -11,7 +11,6 @@ const sendBtn = document.getElementById('send');
 const counter = document.getElementById('count');
 const convList = document.getElementById('conv-list');
 const btnNewChat = document.getElementById('btn-new-chat');
-const headerEmail = document.getElementById('header-user-email');
 const hamburger = document.getElementById('toggle-sidebar');
 const sidebar = document.getElementById('sidebar');
 const sidebarBackdrop = document.getElementById('sidebar-backdrop');
@@ -818,10 +817,6 @@ async function init() {
     return;
   }
   currentSessionEmail = session.email || null;
-  if (headerEmail && session.email) {
-    headerEmail.textContent = session.email;
-    headerEmail.classList.add('visible');
-  }
 
   try {
     // Parallel: profiel + conversaties laden

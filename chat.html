@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=2.6.2" />
+  <link rel="stylesheet" href="/styles.css?v=2.6.4" />
 
   <style>
     html, body { height: 100%; }
@@ -19,71 +19,10 @@
       flex-direction: column;
     }
 
-    .chat-header {
-      background: var(--color-white);
-      color: var(--color-dark);
-      padding: 0.5rem 1.5rem;
-      z-index: 100;
-      border-bottom: 1px solid var(--color-light);
-      flex-shrink: 0;
-    }
-    .chat-header-inner {
-      max-width: 1400px;
-      margin: 0 auto;
-      display: flex;
-      align-items: center;
-      gap: .75rem;
-    }
-    .chat-header a.brand {
-      color: var(--color-secondary-dark);
-      font-weight: 700;
-      font-size: 1.4rem;
-      display: inline-flex;
-      align-items: center;
-      gap: .75rem;
-      text-decoration: none;
-    }
-    .chat-header a.brand:hover { opacity: 0.8; }
-    .chat-header .brand-logo {
-      height: 64px;
-      width: auto;
-      display: block;
-    }
-    .chat-header .beta {
-      background: var(--color-light);
-      color: var(--color-dark-light);
-      padding: .15rem .6rem;
-      border-radius: 999px;
-      font-size: .7rem;
-      font-weight: 600;
-      letter-spacing: .03em;
-      text-transform: uppercase;
-    }
-    .chat-header .back {
-      margin-left: auto;
-      color: var(--color-dark);
-      opacity: 1;
-      font-size: .95rem;
-      font-weight: 500;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: var(--color-light);
-      text-decoration: none;
-      transition: var(--transition);
-    }
-    .chat-header .back:hover { background: var(--color-secondary-dark); color: var(--color-white); }
-    .chat-header .user-email {
-      color: var(--color-dark-light);
-      opacity: .9;
-      font-size: .85rem;
-      margin-left: 1rem;
-      display: none;
-    }
-    .chat-header .user-email.visible { display: inline; }
+    /* Header gebruikt SPA-stijl via #app-header in styles.css */
+    #app-header { flex-shrink: 0; }
+    #app-header .header-inner { max-width: 1400px; }
+    #app-header .header-left { display: flex; align-items: center; gap: .75rem; }
 
     /* Layout: sidebar + main chat */
     .app-grid {
@@ -727,29 +666,30 @@
         margin-right: .25rem;
         background: transparent;
         border: 0;
-        color: var(--color-white);
+        color: var(--color-dark);
         font-size: 1.3rem;
         cursor: pointer;
       }
-      .chat-header .user-email { display: none !important; }
     }
   </style>
 </head>
 <body>
-  <header class="chat-header">
-    <div class="chat-header-inner">
-      <button class="hamburger" id="toggle-sidebar" aria-label="Menu">☰</button>
-      <a class="brand" href="/">
-        <img src="/pril-leven-logo.png" alt="" class="brand-logo" />
-        <span>Community Pril Leven</span>
-      </a>
-      <span class="beta">AI · beta</span>
-      <span class="user-email" id="header-user-email"></span>
-      <a class="back" href="/" title="Naar het hub" aria-label="Naar het hub">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1V9.5Z"/></svg>
-      </a>
-      <span id="header-avatar-mount" class="header-avatar-mount"></span>
-      <button type="button" class="btn-logout" id="header-logout-btn-standalone" title="Uitloggen">Uitloggen</button>
+  <header id="app-header">
+    <div class="header-inner">
+      <div class="header-left">
+        <button class="hamburger" id="toggle-sidebar" aria-label="Menu">☰</button>
+        <a class="header-title" href="/" title="Naar het hub">
+          <img src="/pril-leven-logo.png" alt="" class="header-logo" />
+          <span>Community Pril leven</span>
+        </a>
+      </div>
+      <div class="header-user">
+        <a href="/" class="header-home-btn" title="Naar het hub" aria-label="Naar het hub">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1V9.5Z"/></svg>
+        </a>
+        <span id="header-avatar-mount" class="header-avatar-mount"></span>
+        <button type="button" class="btn-logout" id="header-logout-btn-standalone" title="Uitloggen">Uitloggen</button>
+      </div>
     </div>
   </header>
 
@@ -878,12 +818,10 @@
     </div>
   </div>
 
-  <script src="/js/chat.js?v=2.6.2" type="module"></script>
+  <script src="/js/chat.js?v=2.6.4" type="module"></script>
   <script type="module">
-    import { mountHeaderAvatar, attachLogoutHandler } from '/js/headerAvatarStandalone.js?v=2.6.2';
+    import { mountHeaderAvatar, attachLogoutHandler } from '/js/headerAvatarStandalone.js?v=2.6.4';
     document.addEventListener('DOMContentLoaded', () => {
-      // Verberg de oude email-span — vervangen door avatar-pill
-      document.getElementById('header-user-email')?.remove();
       mountHeaderAvatar(document.getElementById('header-avatar-mount'));
       attachLogoutHandler(document.getElementById('header-logout-btn-standalone'));
     });
