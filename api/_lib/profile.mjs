@@ -1,92 +1,67 @@
-// Helpers rond chat_user_profiles.
+// Helpers rond gebruikersprofiel-context voor de RAG-bot.
+//
+// Sinds de profiel-opschoning halen we de context NIET meer uit
+// chat_user_profiles.{children,diet,notes}, maar uit:
+//   - public.children          (niet-gearchiveerde kinderen)
+//   - community_profiles       (nickname + family_diet)
+//   - chat_user_profiles       (alleen nog voor memory_enabled-vlag)
 
 import { supabase } from './clients.mjs';
 
-const ALLOWED_DIET = new Set([
-  'vegetarisch', 'veganistisch', 'glutenvrij', 'lactosevrij',
-  'halal', 'kosher', 'pescotarisch', 'geen-varken', 'geen-rund',
-]);
-
-/** Laad het profiel van een user of null als niet aanwezig. */
+/**
+ * Laad alle profiel-context voor één user.
+ * Returnt altijd een object (nooit null) zodat de caller eenvoudig kan blijven.
+ */
 export async function loadUserProfile(userId) {
-  const { data, error } = await supabase
-    .from('chat_user_profiles')
-    .select('*')
-    .eq('user_id', userId)
-    .maybeSingle();
-  if (error) throw new Error('Profile load: ' + error.message);
-  return data;
-}
+  const [chatRow, communityRow, childrenRows] = await Promise.all([
+    supabase
+      .from('chat_user_profiles')
+      .select('memory_enabled')
+      .eq('user_id', userId)
+      .maybeSingle(),
+    supabase
+      .from('community_profiles')
+      .select('nickname, family_diet')
+      .eq('user_id', userId)
+      .maybeSingle(),
+    supabase
+      .from('children')
+      .select('name, birthdate, known_allergies, previous_reactions, notes')
+      .eq('user_id', userId)
+      .is('archived_at', null)
+      .order('created_at', { ascending: true }),
+  ]);
 
-/** Valideer & sanitize input voor PUT /api/profile. */
-export function sanitizeProfileInput(input) {
-  const out = {
-    display_name: null,
-    children: [],
-    diet: [],
-    allergies: [],
-    notes: null,
-    memory_enabled: true,
+  if (chatRow.error)      throw new Error('Profile (chat): ' + chatRow.error.message);
+  if (communityRow.error) throw new Error('Profile (community): ' + communityRow.error.message);
+  if (childrenRows.error) throw new Error('Profile (children): ' + childrenRows.error.message);
+
+  return {
+    memory_enabled: chatRow.data?.memory_enabled !== false, // default true
+    display_name: communityRow.data?.nickname || null,
+    diet: communityRow.data?.family_diet || [],
+    children: (childrenRows.data || []).map(c => ({
+      name: c.name,
+      birthdate: c.birthdate,
+      // Map known_allergies+previous_reactions+notes naar wat de prompt nodig heeft.
+      allergies: Array.isArray(c.known_allergies) ? c.known_allergies : [],
+      previous_reactions: c.previous_reactions || null,
+      notes: c.notes || null,
+    })),
   };
-
-  if (typeof input?.display_name === 'string') {
-    out.display_name = input.display_name.trim().slice(0, 80) || null;
-  }
-
-  if (Array.isArray(input?.children)) {
-    out.children = input.children
-      .filter(c => c && typeof c === 'object')
-      .slice(0, 10) // max 10 kinderen
-      .map(c => {
-        const name = typeof c.name === 'string' ? c.name.trim().slice(0, 50) : '';
-        const birthdate = typeof c.birthdate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(c.birthdate) ? c.birthdate : null;
-        const notes = typeof c.notes === 'string' ? c.notes.trim().slice(0, 200) : null;
-        const allergies = Array.isArray(c.allergies)
-          ? c.allergies
-              .map(v => typeof v === 'string' ? v.toLowerCase().trim().slice(0, 30) : '')
-              .filter(Boolean)
-              .slice(0, 20)
-          : [];
-        if (!name && !birthdate) return null;
-        return { name, birthdate, notes, allergies };
-      })
-      .filter(Boolean);
-  }
-
-  if (Array.isArray(input?.diet)) {
-    out.diet = input.diet
-      .map(v => typeof v === 'string' ? v.toLowerCase().trim() : '')
-      .filter(v => ALLOWED_DIET.has(v))
-      .slice(0, 10);
-  }
-
-  if (Array.isArray(input?.allergies)) {
-    out.allergies = input.allergies
-      .map(v => typeof v === 'string' ? v.toLowerCase().trim().slice(0, 30) : '')
-      .filter(Boolean)
-      .slice(0, 30);
-  }
-
-  if (typeof input?.notes === 'string') {
-    out.notes = input.notes.trim().slice(0, 500) || null;
-  }
-
-  if (typeof input?.memory_enabled === 'boolean') {
-    out.memory_enabled = input.memory_enabled;
-  }
-
-  return out;
 }
 
-/** Upsert het profiel voor deze user. */
-export async function upsertUserProfile(userId, profile) {
-  const row = { user_id: userId, ...profile };
+/** Zet/onset memory_enabled in chat_user_profiles. */
+export async function setMemoryEnabled(userId, enabled) {
   const { data, error } = await supabase
     .from('chat_user_profiles')
-    .upsert(row, { onConflict: 'user_id' })
-    .select('*')
+    .upsert(
+      { user_id: userId, memory_enabled: !!enabled },
+      { onConflict: 'user_id' }
+    )
+    .select('memory_enabled')
     .single();
-  if (error) throw new Error('Profile upsert: ' + error.message);
+  if (error) throw new Error('Memory toggle: ' + error.message);
   return data;
 }
 
@@ -117,6 +92,7 @@ export function formatProfileForPrompt(profile) {
         if (Array.isArray(c.allergies) && c.allergies.length > 0) {
           pieces.push(`allergie voor ${c.allergies.join('/')}`);
         }
+        if (c.previous_reactions) pieces.push(`eerdere reacties: ${c.previous_reactions}`);
         if (c.notes) pieces.push(`"${c.notes}"`);
         return pieces.length ? pieces.join(', ') : null;
       })
@@ -127,9 +103,6 @@ export function formatProfileForPrompt(profile) {
   }
   if (Array.isArray(profile.diet) && profile.diet.length > 0) {
     lines.push(`Dieet in het gezin: ${profile.diet.join(', ')}.`);
-  }
-  if (profile.notes) {
-    lines.push(`Notities van de ouder: ${profile.notes}`);
   }
 
   if (lines.length === 0) return null;

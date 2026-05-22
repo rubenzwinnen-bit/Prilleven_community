@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=2.6.1" />
+  <link rel="stylesheet" href="/styles.css?v=2.6.2" />
 
   <style>
     html, body { height: 100%; }
@@ -822,35 +822,14 @@
     </main>
   </div>
 
-  <!-- Profiel-modal -->
+  <!-- Instellingen-modal -->
   <div class="modal-backdrop" id="profile-modal">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="profile-title">
-      <h2 id="profile-title">Even kennismaken</h2>
-      <p class="lead">Voor ik echt persoonlijk kan helpen, vertel me kort over je gezin. Je kan dit later altijd wijzigen.</p>
+      <h2 id="profile-title">Instellingen</h2>
+      <p class="lead">HapjesHeld gebruikt automatisch je gezinsprofiel (kinderen, allergieën, dieet) van je hoofdprofiel. Pas dit aan via <a href="/profiel" style="color:var(--color-primary);text-decoration:underline;">je profiel</a>.</p>
 
-      <label class="field" for="pf-name">Je naam (optioneel)</label>
-      <input type="text" id="pf-name" maxlength="80" placeholder="bv. Sarah" />
-
-      <label class="field">Kind(eren)</label>
-      <p class="lead" style="margin-top:-.2rem;margin-bottom:.75rem;font-size:.8rem;">Per kind kan je allergieën en notities invullen.</p>
-      <div id="pf-children"></div>
-      <button class="btn-add-child" type="button" id="pf-add-child">＋ Kind toevoegen</button>
-
-      <label class="field">Dieet in het gezin</label>
-      <div class="checkbox-group" id="pf-diet">
-        <label data-v="vegetarisch"><input type="checkbox" value="vegetarisch" /> Vegetarisch</label>
-        <label data-v="veganistisch"><input type="checkbox" value="veganistisch" /> Veganistisch</label>
-        <label data-v="glutenvrij"><input type="checkbox" value="glutenvrij" /> Glutenvrij</label>
-        <label data-v="lactosevrij"><input type="checkbox" value="lactosevrij" /> Lactosevrij</label>
-        <label data-v="pescotarisch"><input type="checkbox" value="pescotarisch" /> Pescotarisch</label>
-        <label data-v="halal"><input type="checkbox" value="halal" /> Halal</label>
-        <label data-v="kosher"><input type="checkbox" value="kosher" /> Kosher</label>
-        <label data-v="geen-varken"><input type="checkbox" value="geen-varken" /> Geen varken</label>
-        <label data-v="geen-rund"><input type="checkbox" value="geen-rund" /> Geen rund</label>
-      </div>
-
-      <label class="field" for="pf-notes">Opmerkingen voor HapjesHeld (optioneel)</label>
-      <textarea id="pf-notes" maxlength="500" placeholder="bv. We proberen voorzichtig nieuwe smaken te introduceren..."></textarea>
+      <label class="field">E-mailadres</label>
+      <div id="pf-email" class="pf-email-readonly"></div>
 
       <div class="memory-toggle">
         <input type="checkbox" id="pf-memory" checked />
@@ -861,7 +840,7 @@
       </div>
 
       <!-- GDPR actions -->
-      <details style="margin-top:1.25rem; font-size:.85rem;">
+      <details style="margin-top:1.25rem; font-size:.85rem;" open>
         <summary style="cursor:pointer; color:var(--color-dark-light); font-weight:500;">Privacy & data-beheer</summary>
         <div style="margin-top:.75rem; padding:.75rem; background:var(--color-bg); border-radius:var(--radius-md);">
           <p style="color:var(--color-dark-light); font-size:.85rem; margin-bottom:.75rem; line-height:1.5;">
@@ -878,7 +857,7 @@
       </details>
 
       <div class="modal-actions">
-        <button class="btn-cancel" type="button" id="pf-cancel">Later</button>
+        <button class="btn-cancel" type="button" id="pf-cancel">Sluiten</button>
         <button class="btn-save" type="button" id="pf-save">Opslaan</button>
       </div>
     </div>
@@ -899,9 +878,9 @@
     </div>
   </div>
 
-  <script src="/js/chat.js?v=2.6.1" type="module"></script>
+  <script src="/js/chat.js?v=2.6.2" type="module"></script>
   <script type="module">
-    import { mountHeaderAvatar, attachLogoutHandler } from '/js/headerAvatarStandalone.js?v=2.6.1';
+    import { mountHeaderAvatar, attachLogoutHandler } from '/js/headerAvatarStandalone.js?v=2.6.2';
     document.addEventListener('DOMContentLoaded', () => {
       // Verberg de oude email-span — vervangen door avatar-pill
       document.getElementById('header-user-email')?.remove();
