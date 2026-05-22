@@ -198,7 +198,7 @@ function renderKindCard(kind) {
 
   const introduced = Array.isArray(kind.introduced_allergens) && kind.introduced_allergens.length > 0
     ? kind.introduced_allergens.map(a => `<span class="profiel-tag profiel-tag--intro">${escapeHtml(a)}</span>`).join('')
-    : '<span class="profiel-empty-inline">Nog geen via HapjesHeld</span>';
+    : '<span class="profiel-empty-inline">Nog geen geïntroduceerd</span>';
 
   return `
     <div class="profiel-kind-card" data-id="${escapeHtml(kind.id)}">
@@ -218,7 +218,7 @@ function renderKindCard(kind) {
           <div class="profiel-tags">${allergies}</div>
         </div>
         <div class="profiel-kind-detail-row">
-          <span class="profiel-kind-detail-label">Geïntroduceerd via HapjesHeld</span>
+          <span class="profiel-kind-detail-label">Reeds geïntroduceerde allergenen</span>
           <div class="profiel-tags">${introduced}</div>
         </div>
         ${kind.previous_reactions ? `

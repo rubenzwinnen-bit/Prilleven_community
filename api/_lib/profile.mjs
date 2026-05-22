@@ -26,7 +26,7 @@ export async function loadUserProfile(userId) {
       .maybeSingle(),
     supabase
       .from('children')
-      .select('name, birthdate, known_allergies, previous_reactions, notes')
+      .select('id, name, birthdate, known_allergies, previous_reactions, notes')
       .eq('user_id', userId)
       .is('archived_at', null)
       .order('created_at', { ascending: true }),
@@ -36,17 +36,35 @@ export async function loadUserProfile(userId) {
   if (communityRow.error) throw new Error('Profile (community): ' + communityRow.error.message);
   if (childrenRows.error) throw new Error('Profile (children): ' + childrenRows.error.message);
 
+  // Reeds geïntroduceerde allergenen per kind, uit "Allergenen introduceren".
+  // Bron: eerste_hapjes_allergen_doses (zelfde tabel die profiel-UI gebruikt).
+  let introMap = {};
+  const children = childrenRows.data || [];
+  if (children.length > 0) {
+    const childIds = children.map(c => c.id);
+    const { data: doses, error: doseErr } = await supabase
+      .from('eerste_hapjes_allergen_doses')
+      .select('child_id, allergen_key')
+      .in('child_id', childIds);
+    if (doseErr) throw new Error('Profile (doses): ' + doseErr.message);
+    for (const d of (doses || [])) {
+      if (!introMap[d.child_id]) introMap[d.child_id] = new Set();
+      introMap[d.child_id].add(d.allergen_key);
+    }
+  }
+
   return {
     memory_enabled: chatRow.data?.memory_enabled !== false, // default true
     display_name: communityRow.data?.nickname || null,
     diet: communityRow.data?.family_diet || [],
-    children: (childrenRows.data || []).map(c => ({
+    children: children.map(c => ({
       name: c.name,
       birthdate: c.birthdate,
       // Map known_allergies+previous_reactions+notes naar wat de prompt nodig heeft.
       allergies: Array.isArray(c.known_allergies) ? c.known_allergies : [],
       previous_reactions: c.previous_reactions || null,
       notes: c.notes || null,
+      introduced_allergens: introMap[c.id] ? [...introMap[c.id]].sort() : [],
     })),
   };
 }
@@ -91,6 +109,9 @@ export function formatProfileForPrompt(profile) {
         if (age !== null) pieces.push(age < 24 ? `${age} maanden` : `${Math.floor(age / 12)} jaar`);
         if (Array.isArray(c.allergies) && c.allergies.length > 0) {
           pieces.push(`allergie voor ${c.allergies.join('/')}`);
+        }
+        if (Array.isArray(c.introduced_allergens) && c.introduced_allergens.length > 0) {
+          pieces.push(`reeds geïntroduceerde allergenen: ${c.introduced_allergens.join(', ')}`);
         }
         if (c.previous_reactions) pieces.push(`eerdere reacties: ${c.previous_reactions}`);
         if (c.notes) pieces.push(`"${c.notes}"`);
