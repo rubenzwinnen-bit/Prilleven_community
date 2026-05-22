@@ -62,7 +62,11 @@ WHERE jsonb_typeof(cup.children) = 'array'
        AND c.archived_at IS NULL
   )
   -- birthdate is verplicht in /profiel UI; skip JSON-rijen zonder geldige datum
-  AND elem->>'birthdate' ~ '^\d{4}-\d{2}-\d{2}$';
+  AND elem->>'birthdate' ~ '^\d{4}-\d{2}-\d{2}$'
+  -- children_birthdate_check eist: tussen vandaag en 10 jaar terug.
+  -- JSON-data bevat soms typfouten (bv. 2925-03-21) → skippen ipv migratie laten falen.
+  AND (elem->>'birthdate')::date <= CURRENT_DATE
+  AND (elem->>'birthdate')::date >= (CURRENT_DATE - INTERVAL '10 years');
 
 -- 3) Dieet migreren -------------------------------------------------------
 -- Alleen waar al een community_profile bestaat (nickname NOT NULL).
