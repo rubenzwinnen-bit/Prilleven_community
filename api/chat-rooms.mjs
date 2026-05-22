@@ -173,11 +173,37 @@ function sanitizeReplyInput(body) {
 async function loadRoomBySlug(slug) {
   const { data, error } = await supabase
     .from('chat_rooms')
-    .select('id, slug, title, description, sort_order, is_active')
+    .select('id, slug, title, description, sort_order, is_active, admin_intro_message, admin_intro_user_id, admin_intro_updated_at')
     .eq('slug', slug)
     .maybeSingle();
   if (error) throw error;
   return data || null;
+}
+
+async function buildAdminIntro(room) {
+  if (!room || !room.admin_intro_message || !room.admin_intro_user_id) return null;
+  const profile = await loadCommunityProfile(room.admin_intro_user_id);
+  const withAvatar = await attachAvatarUrl({
+    user_id: room.admin_intro_user_id,
+    nickname: profile?.nickname || null,
+    avatar_path: profile?.avatar_path || null,
+  });
+  const withFlag = await attachAdminFlag(withAvatar);
+  return {
+    message: room.admin_intro_message,
+    updated_at: room.admin_intro_updated_at,
+    user_id: room.admin_intro_user_id,
+    nickname: withFlag.nickname,
+    avatar_path: withFlag.avatar_path,
+    avatar_url: withFlag.avatar_url,
+    author_is_admin: withFlag.author_is_admin,
+  };
+}
+
+function stripAdminIntroFields(room) {
+  if (!room) return room;
+  const { admin_intro_message, admin_intro_user_id, admin_intro_updated_at, ...rest } = room;
+  return rest;
 }
 
 async function loadTopicsForRoom(roomId) {
@@ -265,10 +291,14 @@ export default async function handler(req, res) {
       if (!isSlug(params.slug)) return json(res, 400, { error: 'Ongeldige slug.' });
       const room = await loadRoomBySlug(params.slug);
       if (!room || !room.is_active) return json(res, 404, { error: 'Room niet gevonden.' });
+      const adminIntro = await buildAdminIntro(room);
       const topics = await loadTopicsForRoom(room.id);
       const signed = await attachAvatarUrls(topics);
       const withFlags = await attachAdminFlags(signed);
-      return json(res, 200, { room, topics: withFlags });
+      return json(res, 200, {
+        room: { ...stripAdminIntroFields(room), admin_intro: adminIntro },
+        topics: withFlags,
+      });
     }
 
     /* ----- room edit (admin: title/description) ----- */
@@ -300,16 +330,41 @@ export default async function handler(req, res) {
         if (d && findBlockedWord(d)) return json(res, 422, { error: 'Beschrijving bevat ongepaste taal.' });
         updates.description = d || null;
       }
+
+      // admin_intro_message: string = zetten/updaten, null/lege string = verwijderen
+      if ('admin_intro_message' in body) {
+        const raw = body.admin_intro_message;
+        if (raw === null || (typeof raw === 'string' && raw.trim() === '')) {
+          updates.admin_intro_message    = null;
+          updates.admin_intro_user_id    = null;
+          updates.admin_intro_updated_at = null;
+        } else if (typeof raw === 'string') {
+          const msg = raw.trim();
+          if (msg.length < 1 || msg.length > 4000) {
+            return json(res, 422, { error: 'Welkomsbericht moet 1-4000 tekens zijn.' });
+          }
+          if (findBlockedWord(msg)) {
+            return json(res, 422, { error: 'Welkomsbericht bevat ongepaste taal.' });
+          }
+          updates.admin_intro_message    = msg;
+          updates.admin_intro_user_id    = auth.userId;
+          updates.admin_intro_updated_at = new Date().toISOString();
+        } else {
+          return json(res, 422, { error: 'Ongeldig welkomsbericht.' });
+        }
+      }
+
       if (Object.keys(updates).length === 0) return json(res, 422, { error: 'Geen wijzigingen.' });
 
       const { data, error } = await supabase
         .from('chat_rooms')
         .update(updates)
         .eq('id', room.id)
-        .select('id, slug, title, description, sort_order, is_active')
+        .select('id, slug, title, description, sort_order, is_active, admin_intro_message, admin_intro_user_id, admin_intro_updated_at')
         .single();
       if (error) throw error;
-      return json(res, 200, { room: data });
+      const adminIntro = await buildAdminIntro(data);
+      return json(res, 200, { room: { ...stripAdminIntroFields(data), admin_intro: adminIntro } });
     }
 
     /* ----- topic create ----- */

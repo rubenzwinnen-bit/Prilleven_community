@@ -5539,7 +5539,70 @@ body.is-allergenen #app-nav { display: none; }
   flex-wrap: wrap;
   margin-top: .75rem;
 }
+/* 3-koloms layout: links (volgende stap) | midden (allergenen behoudt huidige breedte) | rechts (waarschuwingen)
+   De wrapper breekt uit de #app-content max-width zodat de side-koloms tegen de viewport-rand zitten. */
+.allergenen-columns {
+  width: 100vw;
+  max-width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  box-sizing: border-box;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr) 280px;
+  gap: 1.5rem;
+  align-items: start;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+.allergenen-nextup-slot,
+.allergenen-warn-slot {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+}
+/* Midden behoudt huidige content-breedte (1140px) en blijft gecentreerd binnen z'n grid-track */
+.allergenen-columns > .allergenen-grid {
+  width: 100%;
+  max-width: var(--max-width, 1140px);
+  justify-self: center;
+  min-width: 0;
+}
+.allergenen-nextup-slot:empty,
 .allergenen-warn-slot:empty { display: none; }
+/* Banners in side-koloms: vullen hun slot, geen eigen verticale margin meer */
+.allergenen-columns .allergenen-nextup,
+.allergenen-columns .allergenen-arts-warn,
+.allergenen-columns .allergenen-arts-toezicht-banner {
+  margin: 0;
+}
+/* Nextup-banner in smalle linker-kolom: verticaal stapelen (label boven, knop onder) */
+.allergenen-columns .allergenen-nextup {
+  flex-direction: column;
+  align-items: stretch;
+  gap: .75rem;
+}
+.allergenen-columns .allergenen-nextup .btn {
+  width: 100%;
+}
+/* Op smallere viewports: stapelen — wrapper terug binnen de container */
+@media (max-width: 1024px) {
+  .allergenen-columns {
+    width: auto;
+    max-width: none;
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: 0;
+    padding-right: 0;
+    grid-template-columns: 1fr;
+  }
+  .allergenen-columns > .allergenen-grid {
+    max-width: none;
+  }
+}
+
 .allergenen-arts-warn {
   margin: 1rem 0;
   padding: .9rem 1rem;
@@ -6668,4 +6731,94 @@ body.is-allergenen #app-nav { display: none; }
   background-image:
     linear-gradient(to right, #eef3e8 40%, rgba(238,243,232,.85) 65%, rgba(238,243,232,.4) 100%),
     url('/fotos/allergheen-fotos/Koemelk.jpg');
+}
+
+/* ============================================================
+   Admin-intro / welkomsbericht in chatruimte
+   1 bericht per room, in chat-message-stijl bovenaan getoond.
+   Avatar + nickname + Admin-badge + datum staan samen in de
+   header bovenin het bericht-vak (zoals normale chat-berichten).
+============================================================ */
+.admin-intro {
+  margin: 0 0 1rem;
+  padding: .75rem .9rem;
+  background: #f8fbf8;
+  border: 1px solid var(--color-gray-light, #e5e5e5);
+  border-radius: var(--radius-md);
+}
+.admin-intro--empty {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  display: flex;
+  justify-content: flex-start;
+}
+.admin-intro-head {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin-bottom: .5rem;
+  font-size: .82rem;
+}
+.admin-intro-author {
+  font-weight: 700;
+  color: var(--color-secondary-dark);
+}
+.admin-intro-date {
+  color: var(--color-gray);
+  font-size: .78rem;
+  margin-left: auto;
+}
+.admin-intro-body {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-size: .95rem;
+  color: var(--color-dark);
+  line-height: 1.5;
+  margin: 0;
+}
+.admin-intro-actions {
+  display: flex;
+  gap: .35rem;
+  margin-top: .5rem;
+  justify-content: flex-end;
+}
+.admin-intro-edit-btn,
+.admin-intro-del-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm, 6px);
+  padding: .2rem .55rem;
+  font-size: .75rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--color-gray);
+  font-family: inherit;
+}
+.admin-intro-edit-btn:hover {
+  background: #f3f9f3;
+  border-color: var(--color-primary);
+  color: var(--color-primary-dark, var(--color-secondary-dark));
+}
+.admin-intro-del-btn:hover {
+  background: #fcebea;
+  border-color: #c0392b;
+  color: #c0392b;
+}
+
+/* Edit-form gebruikt zelfde card-stijl als read-mode (.admin-intro). */
+.admin-intro-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+.admin-intro-textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 6rem;
+}
+.admin-intro-edit-actions {
+  display: flex;
+  gap: .4rem;
+  justify-content: flex-end;
 }
