@@ -1,15 +1,16 @@
 /* ============================================
    PROFIEL COMPONENT
-   Profielpagina: account-info + kinderen beheren.
+   Profielpagina: account-info + kinderen + dieet in het gezin.
    Route: #/profiel
 ============================================ */
 
-import * as Store from '../store.js?v=2.5.10';
-import { sessionGet } from '../supabase.js?v=2.5.10';
-import { escapeHtml, showToast } from '../utils.js?v=2.5.10';
-import * as Api from '../childrenApi.js?v=2.5.10';
-import { openProfileModal } from './profileModal.js?v=2.5.10';
-import { ALLERGEN_FLOW } from '../content/eersteHapjes-allergen-flow.js?v=2.5.10';
+import * as Store from '../store.js?v=2.6.3';
+import { sessionGet } from '../supabase.js?v=2.6.3';
+import { escapeHtml, showToast, processImageForUpload, initialsFromName, colorFromSeed } from '../utils.js?v=2.6.3';
+import * as Api from '../childrenApi.js?v=2.6.3';
+import * as FamilyApi from '../familyApi.js?v=2.6.3';
+import * as CommunityApi from '../communityApi.js?v=2.6.3';
+import { ALLERGEN_FLOW } from '../content/eersteHapjes-allergen-flow.js?v=2.6.3';
 
 /* ----------------------------------------
    ALLERGEENLIJST (13 standaard-allergenen, identiek aan tracker)
@@ -18,6 +19,21 @@ import { ALLERGEN_FLOW } from '../content/eersteHapjes-allergen-flow.js?v=2.5.10
 const ALLERGEN_OPTIONS = [...ALLERGEN_FLOW]
   .sort((a, b) => a.order - b.order)
   .map(a => ({ key: a.key, label: a.label }));
+
+/* ----------------------------------------
+   DIEET-OPTIES (zelfde set als ALLOWED_DIET op de server)
+---------------------------------------- */
+const DIET_OPTIONS = [
+  { key: 'vegetarisch',  label: 'Vegetarisch' },
+  { key: 'veganistisch', label: 'Veganistisch' },
+  { key: 'glutenvrij',   label: 'Glutenvrij' },
+  { key: 'lactosevrij',  label: 'Lactosevrij' },
+  { key: 'pescotarisch', label: 'Pescotarisch' },
+  { key: 'halal',        label: 'Halal' },
+  { key: 'kosher',       label: 'Kosher' },
+  { key: 'geen-varken',  label: 'Geen varken' },
+  { key: 'geen-rund',    label: 'Geen rund' },
+];
 
 /* ----------------------------------------
    LEEFTIJD BEREKENEN
@@ -32,12 +48,6 @@ function calcAge(birthdate) {
   const years = Math.floor(months / 12);
   return `${years} jaar`;
 }
-
-const TEXTURE_LABEL = {
-  puree: 'Puree',
-  stukjes: 'Stukjes / BLW',
-  combi: 'Combinatie',
-};
 
 /* ----------------------------------------
    RENDER SHELL
@@ -59,20 +69,32 @@ export async function init() {
   const container = document.querySelector('.profiel-page-inner');
   if (!container) return;
 
-  const { ok, data, error } = await Api.getChildren();
-  if (!ok) {
-    container.innerHTML = `<p class="profiel-error">${escapeHtml(error || 'Kon profiel niet laden.')}</p>`;
+  const [childrenRes, familyRes, profileRes] = await Promise.all([
+    Api.getChildren(),
+    FamilyApi.getFamilyDiet(),
+    CommunityApi.getMyProfile(),
+  ]);
+  if (!childrenRes.ok) {
+    container.innerHTML = `<p class="profiel-error">${escapeHtml(childrenRes.error || 'Kon profiel niet laden.')}</p>`;
     return;
   }
 
-  renderPage(container, data.children || []);
+  renderPage(
+    container,
+    childrenRes.data.children || [],
+    familyRes.ok ? (familyRes.data.family_diet || []) : [],
+    profileRes.ok ? (profileRes.data?.profile || null) : null,
+  );
 }
 
 /* ----------------------------------------
    PAGINA OPBOUWEN
 ---------------------------------------- */
-function renderPage(container, children) {
+function renderPage(container, children, familyDiet, profile) {
   const email = Store.getCurrentUser() || '';
+  const userId = sessionGet()?.user_id || '';
+  const nickname = profile?.nickname || '';
+  const avatarUrl = profile?.avatar_url || null;
 
   container.innerHTML = `
     <div class="profiel-header">
@@ -87,11 +109,44 @@ function renderPage(container, children) {
         <span class="profiel-account-label">E-mailadres</span>
         <span class="profiel-account-value">${escapeHtml(email)}</span>
       </div>
-      <div class="profiel-account-row">
-        <span class="profiel-account-label">Community nickname</span>
-        <span class="profiel-account-value profiel-account-value--action">
-          <button class="btn btn-outline btn-sm" id="profiel-edit-nickname-btn">Nickname &amp; foto wijzigen</button>
-        </span>
+
+      <div class="profiel-nickname-inline" id="profiel-nickname-inline">
+        <p class="profiel-section-sub">Andere ouders zien je nickname en eventuele foto bij je posts. Je e-mailadres blijft altijd verborgen.</p>
+
+        <div class="profiel-nickname-row">
+          <div class="profile-avatar-preview" id="profiel-avatar-preview">
+            ${avatarUrl
+              ? `<img src="${escapeHtml(avatarUrl)}" alt="Profielfoto">`
+              : `<span class="tl-avatar profile-avatar-placeholder" style="background:${colorFromSeed(userId)};">${escapeHtml(initialsFromName(nickname) || '?')}</span>`}
+          </div>
+          <div class="profiel-nickname-fields">
+            <label for="profiel-nickname-input" class="profiel-form-label">Community nickname</label>
+            <input
+              type="text"
+              id="profiel-nickname-input"
+              class="auth-input"
+              placeholder="Nickname (bv. Sarah_M)"
+              maxlength="30"
+              autocomplete="off"
+              value="${escapeHtml(nickname)}"
+            >
+            <div class="nickname-rules">2–30 tekens · letters, cijfers, spaties, _ en -</div>
+            <div class="profiel-avatar-buttons">
+              <button type="button" class="btn btn-outline btn-sm" id="profiel-photo-btn">
+                ${avatarUrl ? 'Foto wijzigen' : 'Foto kiezen'}
+              </button>
+              <button type="button" class="btn btn-outline btn-sm" id="profiel-photo-remove" ${avatarUrl ? '' : 'style="display:none;"'}>Foto verwijderen</button>
+              <input type="file" id="profiel-photo-input" accept="image/*" class="visually-hidden">
+            </div>
+          </div>
+        </div>
+
+        <div id="profiel-nickname-error" class="auth-error hidden"></div>
+
+        <div class="profiel-nickname-actions">
+          <button class="btn btn-primary btn-sm" id="profiel-nickname-save">Opslaan</button>
+          <span id="profiel-nickname-status" class="profiel-diet-status"></span>
+        </div>
       </div>
     </section>
 
@@ -106,18 +161,33 @@ function renderPage(container, children) {
           : children.map(c => renderKindCard(c)).join('')}
       </div>
     </section>
+
+    <section class="profiel-section" id="profiel-dieet-section">
+      <div class="profiel-section-head">
+        <h2 class="profiel-section-title">Dieet in het gezin</h2>
+      </div>
+      <p class="profiel-section-sub">Selecteer wat van toepassing is op jullie gezin.</p>
+      <div class="profiel-diet-grid" id="profiel-diet-grid">
+        ${DIET_OPTIONS.map(opt => `
+          <label class="profiel-diet-chip${familyDiet.includes(opt.key) ? ' is-checked' : ''}">
+            <input type="checkbox" value="${opt.key}" ${familyDiet.includes(opt.key) ? 'checked' : ''}>
+            <span>${escapeHtml(opt.label)}</span>
+          </label>
+        `).join('')}
+      </div>
+      <div id="profiel-diet-status" class="profiel-diet-status"></div>
+    </section>
   `;
 
   bindPageEvents(container, children);
+  bindNicknameSection(container, profile);
 }
 
 /* ----------------------------------------
-   KINDKAART HTML
+   KINDKAART HTML (geen voedingsstijl/eczeem meer)
 ---------------------------------------- */
 function renderKindCard(kind) {
   const age = calcAge(kind.birthdate);
-  const texture = kind.texture_preference ? TEXTURE_LABEL[kind.texture_preference] : null;
-  const eczema = kind.has_eczema ? 'Ja' : 'Nee';
 
   const allergies = Array.isArray(kind.known_allergies) && kind.known_allergies.length > 0
     ? kind.known_allergies.map(a => {
@@ -128,7 +198,7 @@ function renderKindCard(kind) {
 
   const introduced = Array.isArray(kind.introduced_allergens) && kind.introduced_allergens.length > 0
     ? kind.introduced_allergens.map(a => `<span class="profiel-tag profiel-tag--intro">${escapeHtml(a)}</span>`).join('')
-    : '<span class="profiel-empty-inline">Nog geen via HapjesHeld</span>';
+    : '<span class="profiel-empty-inline">Nog geen geïntroduceerd</span>';
 
   return `
     <div class="profiel-kind-card" data-id="${escapeHtml(kind.id)}">
@@ -136,7 +206,6 @@ function renderKindCard(kind) {
         <div class="profiel-kind-info">
           <span class="profiel-kind-naam">${escapeHtml(kind.name || '—')}</span>
           ${age ? `<span class="profiel-kind-leeftijd">${age}</span>` : ''}
-          ${texture ? `<span class="profiel-kind-texture">${escapeHtml(texture)}</span>` : ''}
         </div>
         <div class="profiel-kind-actions">
           <button class="btn btn-outline btn-sm kind-edit-btn" data-id="${escapeHtml(kind.id)}">Bewerken</button>
@@ -145,15 +214,11 @@ function renderKindCard(kind) {
       </div>
       <div class="profiel-kind-details">
         <div class="profiel-kind-detail-row">
-          <span class="profiel-kind-detail-label">Eczeem</span>
-          <span class="profiel-kind-detail-val">${eczema}</span>
-        </div>
-        <div class="profiel-kind-detail-row">
           <span class="profiel-kind-detail-label">Bekende allergieën</span>
           <div class="profiel-tags">${allergies}</div>
         </div>
         <div class="profiel-kind-detail-row">
-          <span class="profiel-kind-detail-label">Geïntroduceerd via HapjesHeld</span>
+          <span class="profiel-kind-detail-label">Reeds geïntroduceerde allergenen</span>
           <div class="profiel-tags">${introduced}</div>
         </div>
         ${kind.previous_reactions ? `
@@ -172,7 +237,7 @@ function renderKindCard(kind) {
 }
 
 /* ----------------------------------------
-   KIND FORMULIER HTML
+   KIND FORMULIER HTML (geen voedingsstijl/eczeem meer)
 ---------------------------------------- */
 function renderKindForm(kind = null) {
   const isEdit = !!kind;
@@ -196,31 +261,6 @@ function renderKindForm(kind = null) {
           max="${new Date().toISOString().slice(0, 10)}"
           min="${new Date(Date.now() - 10 * 365.25 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)}"
           value="${escapeHtml(v.birthdate || '')}">
-      </div>
-
-      <div class="profiel-form-row">
-        <span class="profiel-form-label">Voedingsstijl</span>
-        <div class="profiel-radio-group">
-          ${[['puree', 'Puree'], ['stukjes', 'Stukjes / BLW'], ['combi', 'Combinatie']].map(([val, label]) => `
-            <label class="profiel-radio-label">
-              <input type="radio" name="pkf-texture" value="${val}"
-                ${v.texture_preference === val ? 'checked' : ''}>
-              ${label}
-            </label>
-          `).join('')}
-        </div>
-      </div>
-
-      <div class="profiel-form-row">
-        <span class="profiel-form-label">Eczeem aanwezig?</span>
-        <div class="profiel-radio-group">
-          <label class="profiel-radio-label">
-            <input type="radio" name="pkf-eczema" value="ja" ${v.has_eczema ? 'checked' : ''}> Ja
-          </label>
-          <label class="profiel-radio-label">
-            <input type="radio" name="pkf-eczema" value="nee" ${!v.has_eczema ? 'checked' : ''}> Nee
-          </label>
-        </div>
       </div>
 
       <div class="profiel-form-row">
@@ -276,17 +316,8 @@ function renderKindForm(kind = null) {
    EVENT HANDLERS
 ---------------------------------------- */
 function bindPageEvents(container, children) {
-  document.getElementById('profiel-edit-nickname-btn')?.addEventListener('click', async () => {
-    const updated = await openProfileModal();
-    if (updated) {
-      document.dispatchEvent(new CustomEvent('community:profile-updated', { detail: updated }));
-      showToast('Profiel bijgewerkt.', 'success');
-    }
-  });
-
   // Kind toevoegen → form onderaan de lijst
   document.getElementById('profiel-add-kind-btn')?.addEventListener('click', () => {
-    // Sluit eventueel open bewerkformulier
     closeInlineForm();
     openAddForm(container);
   });
@@ -308,36 +339,174 @@ function bindPageEvents(container, children) {
       if (kind) confirmDelete(kind, container);
     }
   });
+
+  // Dieet-chips: bij elke verandering meteen opslaan (autosave)
+  bindDietChipEvents(container);
+}
+
+/* ----------------------------------------
+   DIEET-CHIPS — autosave
+---------------------------------------- */
+function bindDietChipEvents(container) {
+  const grid = container.querySelector('#profiel-diet-grid');
+  const status = container.querySelector('#profiel-diet-status');
+  if (!grid) return;
+
+  let pendingTimer = null;
+  let saveInFlight = false;
+
+  const setStatus = (msg, level = '') => {
+    if (!status) return;
+    status.textContent = msg || '';
+    status.className = 'profiel-diet-status' + (level ? ' is-' + level : '');
+  };
+
+  const saveDiet = async () => {
+    if (saveInFlight) return;
+    saveInFlight = true;
+    const selected = [...grid.querySelectorAll('input[type=checkbox]:checked')].map(i => i.value);
+    setStatus('Opslaan…');
+    const res = await FamilyApi.setFamilyDiet(selected);
+    saveInFlight = false;
+    if (!res.ok) {
+      setStatus(res.error || 'Opslaan mislukt.', 'error');
+      return;
+    }
+    setStatus('Opgeslagen', 'success');
+    setTimeout(() => setStatus(''), 1800);
+  };
+
+  grid.addEventListener('change', (e) => {
+    if (!e.target.matches('input[type=checkbox]')) return;
+    e.target.closest('.profiel-diet-chip')?.classList.toggle('is-checked', e.target.checked);
+    if (pendingTimer) clearTimeout(pendingTimer);
+    pendingTimer = setTimeout(saveDiet, 400); // debounce: één call per "burst"
+  });
+}
+
+/* ----------------------------------------
+   NICKNAME & AVATAR — inline onder Account
+---------------------------------------- */
+function bindNicknameSection(container, initialProfile) {
+  const section     = container.querySelector('#profiel-nickname-inline');
+  if (!section) return;
+
+  const userId      = sessionGet()?.user_id || '';
+  const input       = section.querySelector('#profiel-nickname-input');
+  const errorEl     = section.querySelector('#profiel-nickname-error');
+  const statusEl    = section.querySelector('#profiel-nickname-status');
+  const saveBtn     = section.querySelector('#profiel-nickname-save');
+  const photoBtn    = section.querySelector('#profiel-photo-btn');
+  const photoInput  = section.querySelector('#profiel-photo-input');
+  const photoRemove = section.querySelector('#profiel-photo-remove');
+  const previewEl   = section.querySelector('#profiel-avatar-preview');
+
+  let pendingAvatar = null;  // { blob, previewUrl }
+  let removeAvatar  = false;
+  let currentAvatarUrl = initialProfile?.avatar_url || null;
+
+  const setStatus = (msg, level = '') => {
+    if (!statusEl) return;
+    statusEl.textContent = msg || '';
+    statusEl.className = 'profiel-diet-status' + (level ? ' is-' + level : '');
+  };
+  const showError = (msg) => {
+    errorEl.textContent = msg;
+    errorEl.classList.remove('hidden');
+    saveBtn.disabled = false;
+  };
+  const clearError = () => {
+    errorEl.textContent = '';
+    errorEl.classList.add('hidden');
+  };
+
+  photoBtn?.addEventListener('click', () => photoInput?.click());
+
+  photoInput?.addEventListener('change', async () => {
+    const file = photoInput.files?.[0];
+    if (!file) return;
+    photoBtn.disabled = true;
+    try {
+      const { blob } = await processImageForUpload(file);
+      if (pendingAvatar?.previewUrl) URL.revokeObjectURL(pendingAvatar.previewUrl);
+      const previewUrl = URL.createObjectURL(blob);
+      pendingAvatar = { blob, previewUrl };
+      removeAvatar = false;
+      previewEl.innerHTML = `<img src="${previewUrl}" alt="Profielfoto">`;
+      photoBtn.textContent = 'Foto wijzigen';
+      photoRemove.style.display = '';
+    } catch (err) {
+      showToast(err.message || 'Kon foto niet verwerken.', 'error');
+    } finally {
+      photoBtn.disabled = false;
+    }
+  });
+
+  photoRemove?.addEventListener('click', () => {
+    if (pendingAvatar?.previewUrl) URL.revokeObjectURL(pendingAvatar.previewUrl);
+    pendingAvatar = null;
+    removeAvatar = true;
+    currentAvatarUrl = null;
+    previewEl.innerHTML = `<span class="tl-avatar profile-avatar-placeholder" style="background:${colorFromSeed(userId)};">${escapeHtml(initialsFromName(input.value) || '?')}</span>`;
+    photoBtn.textContent = 'Foto kiezen';
+    photoRemove.style.display = 'none';
+  });
+
+  saveBtn?.addEventListener('click', async () => {
+    clearError();
+    const newNick = input.value.trim();
+    if (!newNick) { showError('Vul een nickname in.'); return; }
+
+    saveBtn.disabled = true;
+    setStatus('Opslaan…');
+
+    try {
+      let avatarPathUpdate = undefined;
+      if (pendingAvatar?.blob) {
+        const urlRes = await CommunityApi.getAvatarUploadUrl();
+        if (!urlRes.ok) { showError(urlRes.error || 'Kon upload-URL niet ophalen.'); setStatus(''); return; }
+        const upRes = await CommunityApi.uploadToStorage(urlRes.data.uploadUrl, pendingAvatar.blob);
+        if (!upRes.ok) { showError(upRes.error || 'Foto-upload mislukt.'); setStatus(''); return; }
+        avatarPathUpdate = urlRes.data.path;
+      } else if (removeAvatar) {
+        avatarPathUpdate = null;
+      }
+
+      const updates = { nickname: newNick };
+      if (avatarPathUpdate !== undefined) updates.avatar_path = avatarPathUpdate;
+
+      const { ok, data, error } = await CommunityApi.updateMyProfile(updates);
+      if (!ok) { showError(error || 'Er ging iets mis.'); setStatus(''); return; }
+
+      // Reset pending state met fresh data
+      if (pendingAvatar?.previewUrl) URL.revokeObjectURL(pendingAvatar.previewUrl);
+      pendingAvatar = null;
+      removeAvatar = false;
+      currentAvatarUrl = data.profile?.avatar_url || null;
+
+      setStatus('Opgeslagen', 'success');
+      setTimeout(() => setStatus(''), 1800);
+      saveBtn.disabled = false;
+      document.dispatchEvent(new CustomEvent('community:profile-updated', { detail: data.profile }));
+    } catch (err) {
+      showError(err.message || 'Er ging iets mis.');
+      setStatus('');
+    }
+  });
 }
 
 /* ----------------------------------------
    FORMULIER HELPERS
 ---------------------------------------- */
 
-// Sluit inline formulier als dat open staat (in een kaart)
 function closeInlineForm() {
   const existing = document.getElementById('profiel-kind-form');
   if (!existing) return;
   const wrap = existing.closest('.profiel-kind-card[data-editing]');
-  if (wrap) {
-    const kindId = wrap.dataset.id;
-    // We herstellen via een herlaad — simpelste aanpak
-    wrap.removeAttribute('data-editing');
-  }
+  if (wrap) wrap.removeAttribute('data-editing');
 }
 
-// Bewerken: vervang de kaart door het formulier IN PLACE
 function openEditForm(kind, container) {
-  // Sluit andere open formulieren
-  const existingForm = document.getElementById('profiel-kind-form');
-  if (existingForm) {
-    const oldCard = existingForm.closest('.profiel-kind-card');
-    if (oldCard && oldCard.dataset.id !== kind.id) {
-      // Andere kaart was open — herstel die eerst (simpel: herlaad pagina-sectie)
-      // We laten het voor nu gewoon vervangen
-    }
-  }
-  // Sluit ook "toevoegen"-formulier
   const addWrap = document.getElementById('profiel-add-form-wrap');
   if (addWrap) addWrap.remove();
 
@@ -351,12 +520,10 @@ function openEditForm(kind, container) {
   bindFormEvents(card, kind, container);
 }
 
-// Toevoegen: voeg een nieuwe formulier-kaart toe onderaan de lijst
 function openAddForm(container) {
   const list = document.getElementById('profiel-kinderen-list');
   if (!list) return;
 
-  // Verwijder al bestaand toevoegformulier
   const existing = document.getElementById('profiel-add-form-wrap');
   if (existing) existing.remove();
 
@@ -370,13 +537,11 @@ function openAddForm(container) {
   bindFormEvents(wrap, null, container);
 }
 
-// Bindt alle events in een formulier (werkt voor zowel kaart-in-place als nieuw)
 function bindFormEvents(formWrap, kind, container) {
   const errorEl = formWrap.querySelector('#pkf-error');
   const saveBtn = formWrap.querySelector('#pkf-save-btn');
   const cancelBtn = formWrap.querySelector('#pkf-cancel-btn');
 
-  // Allergieën dropdown
   const trigger = formWrap.querySelector('#pkf-allergen-trigger');
   const panel = formWrap.querySelector('#pkf-allergen-panel');
   const label = formWrap.querySelector('#pkf-allergen-label');
@@ -389,7 +554,6 @@ function bindFormEvents(formWrap, kind, container) {
     trigger.setAttribute('aria-expanded', String(!isOpen));
   });
 
-  // Sluit panel bij klik buiten
   document.addEventListener('click', function closePanel(e) {
     if (!formWrap.contains(e.target)) {
       panel?.classList.add('hidden');
@@ -398,13 +562,11 @@ function bindFormEvents(formWrap, kind, container) {
     }
   });
 
-  // Update label + tags bij elke checkbox-wijziging
   panel?.addEventListener('change', () => updateAllergenDisplay(panel, label, selectedTagsEl));
 
   cancelBtn?.addEventListener('click', async () => {
     if (kind) {
-      // Herstel de originele kaart
-      const card = formWrap; // formWrap IS de kaart bij edit
+      const card = formWrap;
       card.removeAttribute('data-editing');
       card.innerHTML = renderKindCard(kind);
     } else {
@@ -417,8 +579,6 @@ function bindFormEvents(formWrap, kind, container) {
 
     const name = formWrap.querySelector('#pkf-name').value.trim();
     const birthdate = formWrap.querySelector('#pkf-birthdate').value;
-    const texture = formWrap.querySelector('input[name="pkf-texture"]:checked')?.value || null;
-    const hasEczema = formWrap.querySelector('input[name="pkf-eczema"]:checked')?.value === 'ja';
     const known_allergies = getSelectedAllergens(panel);
     const previous_reactions = formWrap.querySelector('#pkf-reactions').value.trim() || null;
     const notes = formWrap.querySelector('#pkf-notes').value.trim() || null;
@@ -429,7 +589,7 @@ function bindFormEvents(formWrap, kind, container) {
     saveBtn.disabled = true;
     saveBtn.textContent = 'Opslaan…';
 
-    const payload = { name, birthdate, texture_preference: texture, has_eczema: hasEczema, known_allergies, previous_reactions, notes };
+    const payload = { name, birthdate, known_allergies, previous_reactions, notes };
 
     const result = kind
       ? await Api.updateChild(kind.id, payload)
@@ -442,8 +602,17 @@ function bindFormEvents(formWrap, kind, container) {
       return;
     }
 
-    const fresh = await Api.getChildren();
-    if (fresh.ok) renderPage(container, fresh.data.children || []);
+    const [fresh, family, prof] = await Promise.all([
+      Api.getChildren(),
+      FamilyApi.getFamilyDiet(),
+      CommunityApi.getMyProfile(),
+    ]);
+    if (fresh.ok) renderPage(
+      container,
+      fresh.data.children || [],
+      family.ok ? (family.data.family_diet || []) : [],
+      prof.ok ? (prof.data?.profile || null) : null,
+    );
     showToast(kind ? 'Profiel bijgewerkt.' : 'Kind toegevoegd.', 'success');
   });
 }
@@ -473,8 +642,17 @@ async function confirmDelete(kind, container) {
   if (!confirm(`Wil je "${kind.name}" verwijderen? Dit is niet ongedaan te maken.`)) return;
   const { ok, error } = await Api.archiveChild(kind.id);
   if (!ok) { showToast(error || 'Verwijderen mislukt.', 'error'); return; }
-  const fresh = await Api.getChildren();
-  if (fresh.ok) renderPage(container, fresh.data.children || []);
+  const [fresh, family, prof] = await Promise.all([
+    Api.getChildren(),
+    FamilyApi.getFamilyDiet(),
+    CommunityApi.getMyProfile(),
+  ]);
+  if (fresh.ok) renderPage(
+    container,
+    fresh.data.children || [],
+    family.ok ? (family.data.family_diet || []) : [],
+    prof.ok ? (prof.data?.profile || null) : null,
+  );
   showToast(`${kind.name} verwijderd.`, 'success');
 }
 

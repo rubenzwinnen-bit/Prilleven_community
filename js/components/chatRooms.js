@@ -25,6 +25,7 @@ const state = {
   editingTopicId: null,  // inline edit-modus topic
   editingReplyId: null,  // inline edit-modus reply
   editingRoomIntro: false, // admin bewerkt room-intro
+  editingAdminIntro: false, // admin bewerkt admin-welkomsbericht
 };
 
 /* ---------------- Utils ---------------- */
@@ -101,6 +102,67 @@ function renderRoomHeader(room, admin) {
   `;
 }
 
+function renderAdminIntro(room, admin) {
+  const intro = room?.admin_intro || null;
+  const has = !!(intro && intro.message);
+
+  // Edit-modus (alleen voor admin)
+  if (state.editingAdminIntro && admin) {
+    return `
+      <article class="admin-intro admin-intro--editing">
+        <form class="admin-intro-edit-form" id="admin-intro-edit-form">
+          <textarea class="chatroom-textarea admin-intro-textarea"
+                    id="admin-intro-edit-body"
+                    rows="6" maxlength="4000"
+                    placeholder="Schrijf een welkomsbericht voor deze chatruimte…"
+                    required>${escapeHtml(has ? intro.message : '')}</textarea>
+          <div class="admin-intro-edit-actions">
+            <button class="btn btn-secondary" type="button" data-action="cancel-admin-intro-edit">Annuleer</button>
+            <button class="btn btn-primary" type="submit">Opslaan</button>
+          </div>
+        </form>
+      </article>
+    `;
+  }
+
+  if (!has) {
+    if (!admin) return '';
+    return `
+      <article class="admin-intro admin-intro--empty">
+        <button class="btn btn-secondary" type="button" data-action="edit-admin-intro">
+          Plaats welkomsbericht
+        </button>
+      </article>
+    `;
+  }
+
+  const author = {
+    user_id: intro.user_id,
+    nickname: intro.nickname,
+    avatar_path: intro.avatar_path,
+    avatar_url: intro.avatar_url,
+  };
+  const dateText = intro.updated_at ? formatRelativeTime(intro.updated_at) : '';
+
+  return `
+    <article class="admin-intro">
+      <header class="admin-intro-head">
+        ${avatarFor(author, 'tl-avatar-sm')}
+        <span class="admin-intro-author">${escapeHtml(intro.nickname || 'Onbekend')}</span>
+        ${intro.author_is_admin ? '<span class="tl-admin-badge" title="Administrator">Admin</span>' : ''}
+        ${dateText ? `<span class="admin-intro-date">${dateText}</span>` : ''}
+      </header>
+      <p class="admin-intro-body">${escapeHtml(intro.message)}</p>
+      ${admin ? `
+        <div class="admin-intro-actions">
+          <button class="admin-intro-edit-btn" data-action="edit-admin-intro" type="button">Bewerken</button>
+          <button class="admin-intro-del-btn" data-action="delete-admin-intro" type="button">Verwijder</button>
+        </div>
+      ` : ''}
+    </article>
+  `;
+}
+
 function renderRoomView() {
   const room = state.currentRoom;
   if (!room) return `<div class="chatroom-empty">Room niet gevonden.</div>`;
@@ -132,6 +194,7 @@ function renderRoomView() {
   return `
     <div class="chatroom-view" data-room-slug="${escapeHtml(room.slug)}">
       ${renderRoomHeader(room, admin)}
+      ${renderAdminIntro(room, admin)}
       <form class="chatroom-new-topic" id="chatroom-new-topic">
         <input class="chatroom-input" id="chatroom-new-title" type="text"
                placeholder="Titel van je onderwerp" maxlength="120" required />
@@ -292,6 +355,7 @@ function showTimeline() {
   state.editingTopicId = null;
   state.editingReplyId = null;
   state.editingRoomIntro = false;
+  state.editingAdminIntro = false;
   // Reset actieve room highlight in nav
   document.querySelectorAll('.rooms-list-item').forEach(el => el.classList.remove('is-active'));
 }
@@ -336,6 +400,7 @@ async function openRoom(slug) {
   state.editingTopicId = null;
   state.editingReplyId = null;
   state.editingRoomIntro = false;
+  state.editingAdminIntro = false;
 
   // 1. Toon direct uit cache als die er is.
   const cached = readRoomCache(slug);
@@ -450,6 +515,45 @@ function bindRoomViewHandlers() {
     state.rooms = state.rooms.map(r => r.id === state.currentRoom.id ? { ...r, ...data.room } : r);
     writeRoomsCache(state.rooms);
     renderRoomsList(state.rooms);
+    showChatroom(renderRoomView());
+    bindRoomViewHandlers();
+  });
+
+  /* --- Admin: welkomsbericht (admin_intro) --- */
+  document.querySelector('[data-action="edit-admin-intro"]')?.addEventListener('click', () => {
+    state.editingAdminIntro = true;
+    showChatroom(renderRoomView());
+    bindRoomViewHandlers();
+    document.getElementById('admin-intro-edit-body')?.focus();
+  });
+  document.querySelector('[data-action="cancel-admin-intro-edit"]')?.addEventListener('click', () => {
+    state.editingAdminIntro = false;
+    showChatroom(renderRoomView());
+    bindRoomViewHandlers();
+  });
+  document.querySelector('[data-action="delete-admin-intro"]')?.addEventListener('click', async () => {
+    if (!state.currentRoom) return;
+    if (!confirm('Welkomsbericht verwijderen?')) return;
+    const { ok, data, error } = await Api.editRoom(state.currentRoom.slug, { admin_intro_message: null });
+    if (!ok) { alert(error || 'Verwijderen mislukt.'); return; }
+    state.currentRoom = { ...state.currentRoom, ...data.room };
+    writeRoomCache(state.currentRoom.slug, state.currentRoom, state.topics || []);
+    showChatroom(renderRoomView());
+    bindRoomViewHandlers();
+  });
+  const adminIntroForm = document.getElementById('admin-intro-edit-form');
+  adminIntroForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('admin-intro-edit-body')?.value.trim();
+    if (!msg || !state.currentRoom) return;
+    const submitBtn = adminIntroForm.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
+    const { ok, data, error } = await Api.editRoom(state.currentRoom.slug, { admin_intro_message: msg });
+    if (submitBtn) submitBtn.disabled = false;
+    if (!ok) { alert(error || 'Plaatsen mislukt.'); return; }
+    state.currentRoom = { ...state.currentRoom, ...data.room };
+    state.editingAdminIntro = false;
+    writeRoomCache(state.currentRoom.slug, state.currentRoom, state.topics || []);
     showChatroom(renderRoomView());
     bindRoomViewHandlers();
   });

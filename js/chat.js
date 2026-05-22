@@ -1,7 +1,7 @@
 // Chat frontend met sidebar-gebaseerde conversatie-management.
 // Vereist een geldige Supabase sessie (gezet door de hoofdsite-login).
 
-import { sessionGet, sessionRefreshIfNeeded, sessionClear } from './supabase.js?v=2.5.10';
+import { sessionGet, sessionRefreshIfNeeded, sessionClear } from './supabase.js?v=2.7.0';
 
 // ---------- DOM refs ----------
 const form = document.getElementById('form');
@@ -11,7 +11,6 @@ const sendBtn = document.getElementById('send');
 const counter = document.getElementById('count');
 const convList = document.getElementById('conv-list');
 const btnNewChat = document.getElementById('btn-new-chat');
-const headerEmail = document.getElementById('header-user-email');
 const hamburger = document.getElementById('toggle-sidebar');
 const sidebar = document.getElementById('sidebar');
 const sidebarBackdrop = document.getElementById('sidebar-backdrop');
@@ -24,13 +23,9 @@ const memList = document.getElementById('mem-list');
 const memClearAll = document.getElementById('mem-clear-all');
 const memClose = document.getElementById('mem-close');
 
-// Profiel-modal refs
+// Profiel-modal refs (instellingen: alleen memory + GDPR + email-read-only)
 const profileModal = document.getElementById('profile-modal');
-const pfName = document.getElementById('pf-name');
-const pfChildren = document.getElementById('pf-children');
-const pfAddChild = document.getElementById('pf-add-child');
-const pfDiet = document.getElementById('pf-diet');
-const pfNotes = document.getElementById('pf-notes');
+const pfEmail = document.getElementById('pf-email');
 const pfMemory = document.getElementById('pf-memory');
 const pfSave = document.getElementById('pf-save');
 const pfCancel = document.getElementById('pf-cancel');
@@ -38,6 +33,7 @@ const pfCancel = document.getElementById('pf-cancel');
 // ---------- State ----------
 let currentConversationId = null;
 let conversations = []; // {id, title, updated_at}
+let currentSessionEmail = null;
 
 // ---------- Utilities ----------
 function stripMarkdown(text) {
@@ -329,42 +325,16 @@ async function selectConversation(id) {
   }
 }
 
-// ---------- Profile modal ----------
+// ---------- Instellingen-modal ----------
+// Het profiel (kinderen, dieet, allergieën) wordt beheerd op /profiel.
+// Deze modal toont enkel: email (read-only), memory-toggle en GDPR-acties.
 let currentProfile = null;
 
-function renderChildRow(child = {}, index = 0) {
-  const row = document.createElement('div');
-  row.className = 'child-row';
-  const allergiesStr = Array.isArray(child.allergies) ? child.allergies.join(', ') : '';
-  row.innerHTML = `
-    <div class="row-top">
-      <input type="text" class="pf-child-name" placeholder="Naam (bv. Lou)" maxlength="50" value="${(child.name || '').replace(/"/g, '&quot;')}" />
-      <input type="date" class="pf-child-birth" value="${child.birthdate || ''}" />
-    </div>
-    <input type="text" class="pf-child-allergies" maxlength="300" placeholder="Allergieën (komma-gescheiden, bv. pinda, melk)" value="${allergiesStr.replace(/"/g, '&quot;')}" style="margin-top:.5rem;" />
-    <textarea class="pf-child-notes" maxlength="200" placeholder="Notities over dit kind (bv. eczeem, weigert groene groenten)">${(child.notes || '')}</textarea>
-    <button class="btn-remove" type="button">× verwijderen</button>
-  `;
-  row.querySelector('.btn-remove').addEventListener('click', () => row.remove());
-  return row;
-}
-
 function openProfileModal() {
-  // Reset fields
-  pfName.value = currentProfile?.display_name || '';
-  pfChildren.innerHTML = '';
-  const children = currentProfile?.children?.length ? currentProfile.children : [{}];
-  for (const c of children) pfChildren.appendChild(renderChildRow(c));
-  // Dieet checkboxes
-  const dietSet = new Set(currentProfile?.diet || []);
-  pfDiet.querySelectorAll('label').forEach(l => {
-    const input = l.querySelector('input');
-    input.checked = dietSet.has(input.value);
-    l.classList.toggle('checked', input.checked);
-  });
-  pfNotes.value = currentProfile?.notes || '';
+  if (pfEmail) {
+    pfEmail.textContent = currentSessionEmail || '—';
+  }
   pfMemory.checked = currentProfile?.memory_enabled !== false;
-
   profileModal.classList.add('visible');
 }
 
@@ -372,36 +342,13 @@ function closeProfileModal() {
   profileModal.classList.remove('visible');
 }
 
-function collectProfileFromModal() {
-  const children = Array.from(pfChildren.querySelectorAll('.child-row')).map(row => ({
-    name: row.querySelector('.pf-child-name').value.trim(),
-    birthdate: row.querySelector('.pf-child-birth').value || null,
-    notes: row.querySelector('.pf-child-notes').value.trim(),
-    allergies: row.querySelector('.pf-child-allergies').value
-      .split(',')
-      .map(s => s.trim().toLowerCase())
-      .filter(Boolean),
-  })).filter(c => c.name || c.birthdate);
-
-  const diet = Array.from(pfDiet.querySelectorAll('input:checked')).map(i => i.value);
-
-  return {
-    display_name: pfName.value.trim(),
-    children,
-    diet,
-    notes: pfNotes.value.trim(),
-    memory_enabled: pfMemory.checked,
-  };
-}
-
 async function saveProfile() {
-  const body = collectProfileFromModal();
   pfSave.disabled = true;
   pfSave.textContent = 'Opslaan…';
   try {
     const res = await authedFetch('/api/profile', {
       method: 'PUT',
-      body: JSON.stringify(body),
+      body: JSON.stringify({ memory_enabled: pfMemory.checked }),
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
@@ -477,17 +424,9 @@ function updateQuotaBar(usage) {
   }
 }
 
-// Event handlers profile modal
-pfAddChild.addEventListener('click', () => {
-  pfChildren.appendChild(renderChildRow());
-});
+// Event handlers profile modal (instellingen)
 pfCancel.addEventListener('click', closeProfileModal);
 pfSave.addEventListener('click', saveProfile);
-pfDiet.addEventListener('change', (e) => {
-  if (e.target.matches('input[type="checkbox"]')) {
-    e.target.closest('label').classList.toggle('checked', e.target.checked);
-  }
-});
 btnProfile.addEventListener('click', openProfileModal);
 profileModal.addEventListener('click', (e) => {
   if (e.target === profileModal) closeProfileModal();
@@ -877,10 +816,7 @@ async function init() {
     window.location.href = '/';
     return;
   }
-  if (headerEmail && session.email) {
-    headerEmail.textContent = session.email;
-    headerEmail.classList.add('visible');
-  }
+  currentSessionEmail = session.email || null;
 
   try {
     // Parallel: profiel + conversaties laden
@@ -890,11 +826,6 @@ async function init() {
       await loadConversation(conversations[0].id);
     } else {
       showWelcome();
-    }
-
-    // Eerste bezoek zonder profiel → modal
-    if (!currentProfile) {
-      openProfileModal();
     }
   } catch (err) {
     console.error('Init error:', err);

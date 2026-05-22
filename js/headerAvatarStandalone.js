@@ -9,7 +9,6 @@
 import { sessionGet, sessionClear, invalidateSubscriptionCache } from './supabase.js?v=2.5.10';
 import { initialsFromName, colorFromSeed, escapeHtml } from './utils.js?v=2.5.10';
 import * as Api from './communityApi.js?v=2.5.10';
-import { openProfileModal } from './components/profileModal.js?v=2.5.10';
 
 /**
  * Hang een logout-handler aan een button. Werkt voor de standalone
@@ -77,9 +76,9 @@ export function mountHeaderAvatar(container, { showName = true } = {}) {
   `;
 
   const btn = container.querySelector('[data-role="standalone-avatar"]');
-  btn.addEventListener('click', async () => {
-    const updated = await openProfileModal();
-    if (updated) refresh(updated);
+  btn.addEventListener('click', () => {
+    // Standalone-pagina's (chat.html, admin-chat.html) → naar de SPA-profielpagina
+    window.location.href = '/#/profiel';
   });
 
   // Eerste fetch om DB-avatar/nickname meteen te tonen
