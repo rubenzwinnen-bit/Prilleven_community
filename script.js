@@ -24,9 +24,9 @@ import {
   invalidateSubscriptionCache,
 } from './js/supabase.js?v=2.5.8';
 import * as Router from './js/router.js?v=2.5.8';
-import * as Header from './js/components/header.js?v=2.5.8';
+import * as Header from './js/components/header.js?v=2.9.0';
 import * as Nav from './js/components/nav.js?v=2.5.8';
-import * as Home from './js/components/home.js?v=2.5.8';
+import * as Home from './js/components/home.js?v=2.9.0';
 import * as RecipeList from './js/components/recipeList.js?v=2.5.8';
 import * as RecipeDetail from './js/components/recipeDetail.js?v=2.5.8';
 import * as ImportRecipes from './js/components/importRecipes.js?v=2.5.8';

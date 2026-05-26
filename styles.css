@@ -135,6 +135,23 @@ h3 { font-size: 1.15rem; }
   color: var(--color-white);
 }
 
+/* Bell knop in header */
+.header-bell {
+  position: relative;
+  flex-shrink: 0;
+}
+.header-bell-btn.tl-bell-btn {
+  background: var(--color-light);
+  border: none;
+  color: var(--color-secondary-dark);
+  width: 36px;
+  height: 36px;
+}
+.header-bell-btn.tl-bell-btn:hover {
+  background: var(--color-secondary-dark);
+  color: var(--color-white);
+}
+
 .header-user {
   display: flex;
   align-items: center;
@@ -3448,7 +3465,7 @@ body.is-allergenen #app-nav { display: none; }
   position: absolute;
   top: -4px;
   right: -4px;
-  background: var(--color-primary);
+  background: #e53935;
   color: var(--color-white);
   font-size: 0.65rem;
   font-weight: 700;
