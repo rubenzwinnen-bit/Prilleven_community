@@ -12,7 +12,7 @@ create table if not exists public.chat_room_followers (
 );
 alter table public.chat_room_followers enable row level security;
 
-create policy if not exists "own room follows"
+create policy "own room follows"
   on public.chat_room_followers
   for all
   using (auth.uid() = user_id)
@@ -31,7 +31,7 @@ create table if not exists public.chat_topic_followers (
 );
 alter table public.chat_topic_followers enable row level security;
 
-create policy if not exists "own topic follows"
+create policy "own topic follows"
   on public.chat_topic_followers
   for all
   using (auth.uid() = user_id)

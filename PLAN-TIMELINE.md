@@ -453,3 +453,39 @@ Nieuwe sectie na bestaande gegevens-sectie:
 - ⬜ Visuele check op preview-URL (pencil-positie bij dose+notes, lege chatruimtes-pane, allergen-lijst-render).
 - ⬜ Eventueel `eerste_hapjes_state.allergen_state` jsonb opschonen als legacy keys later toch gaan irriteren (apart UPDATE-script).
 - ⬜ Branch `uitwerken-profiel` later mergen naar `main` als de hele profiel-uitbouw klaar is.
+
+---
+
+## 2026-05-26 — Profiel-refactor V2.7.0 + V2.8.0 (branches `ragbot-via-profiel` & `profiel-update` → main)
+
+**Context**: Twee opeenvolgende productie-releases die het profiel als centrale plek positioneren. V2.7.0 unificeerde de headers en bracht nickname/avatar inline op `/profiel`. V2.8.0 verplaatste de laatste resten van de oude "Instellingen"-modal (memory-toggle + GDPR) naar `/profiel` en sloopte de modal in HapjesHeld 2.0 volledig.
+
+### Vandaag afgerond — V2.7.0 (branch `ragbot-via-profiel`, merge `710c226`)
+- ✅ **Nickname & avatar inline** op `/profiel` onder "Account" (popup weg). Live preview via blob-URL + `processImageForUpload` (EXIF-strip + resize) blijven behouden.
+- ✅ **Headers van `chat.html` + `admin-chat.html`** gerefactord naar het SPA-header-patroon (`header-inner > header-title + header-user`). Inline `.chat-header*` / `.admin-header*` CSS-blokken + BETA/Admin-badges + user-email verwijderd. Hamburger blijft in `.header-left` (alleen mobiele-app gebruikt hem).
+- ✅ **Avatar in chat/admin-header** navigeert naar `/#/profiel` (was: profile-modal openen). `openProfileModal`-import uit `headerAvatarStandalone.js` weg.
+- ✅ **Reeds geïntroduceerde allergenen** op profiel-kindkaart (label was "Geïntroduceerd via HapjesHeld" — feitelijk fout). Data komt uit `eerste_hapjes_allergen_doses` (zelfde tabel als "Allergenen introduceren"-feature).
+- ✅ **RAG-bot krijgt `introduced_allergens` mee**: `api/_lib/profile.mjs` doet 4e parallel-query op `eerste_hapjes_allergen_doses`, bouwt `introMap` per kind, en `formatProfileForPrompt()` zet `reeds geïntroduceerde allergenen: …` in de profile-summary.
+- ✅ **Cache-buster** 2.6.3 → 2.7.0 over alle HTML/JS.
+
+### Vandaag afgerond — V2.8.0 (branch `profiel-update`, merge `376cbae`)
+- ✅ **"Voorkeuren & privacy"-sectie onderaan `/profiel`**: memory-toggle met 300ms-debounce autosave (`PUT /api/profile`) + Download data (`GET /api/me`) + Verwijder account (`DELETE /api/me` met dubbele bevestiging: `confirm()` + typ "VERWIJDER").
+- ✅ **"Mijn profiel"-knop + `#profile-modal`** verwijderd uit `chat.html`. `#memory-modal` blijft. Inline `.memory-toggle` + `.pf-email-readonly` CSS in chat.html nu dood; niet aangeraakt (geen impact, opruimen kan later).
+- ✅ **`js/chat.js` opgeschoond**: DOM-refs (`btnProfile`, `profileModal`, `pfEmail`, `pfMemory`, `pfSave`, `pfCancel`), `openProfileModal`/`closeProfileModal`/`saveProfile` functies, profile-modal event-handlers, en GDPR-handlers (`pfExport`, `pfDelete`) allemaal weg. `loadProfile()` blijft enkel voor de quota-bar (verbruikt `data.usage`).
+- ✅ **`js/components/profiel.js`** uitgebreid: interne `fetchChatProfile()` haalt `chat_user_profiles.memory_enabled` via `/api/profile` GET, `bindInstellingenSection()` regelt autosave/export/delete. Alle 3 plekken die `renderPage()` aanroepen (init + na kind-save + na kind-delete) parallel uitgebreid met `fetchChatProfile()`.
+- ✅ **Styling**: `.profiel-memory-toggle`, `.profiel-memory-label`, `.profiel-privacy-block`, `.profiel-privacy-title`, `.profiel-privacy-actions` toegevoegd aan `styles.css`.
+- ✅ **Cache-buster** 2.7.0 → 2.7.1 → 2.8.0 (productie-bump op merge).
+
+### Beslissingen
+- **Memory-toggle = autosave (300ms debounce)** ipv "Opslaan"-knop. Past bij dieet-chips-patroon op dezelfde pagina.
+- **GDPR-acties blijven `confirm()` + `prompt("VERWIJDER")`** in plaats van een custom modal — dubbele bevestiging via browser-native dialogen is bewust kort en hard om per-ongeluk-klikken te voorkomen, en consistent met de oude flow.
+- **`loadProfile()` in chat.js NIET verwijderen** ondanks dat het modaal weg is. Het is dual-purpose: profile *en* `usage`-data voor de quota-bar. `currentProfile`-state is wel weg.
+- **`fetchChatProfile()` lokaal in profiel.js** ipv toevoegen aan `communityApi.js` — `/api/profile` is geen community-endpoint, en de enige caller is profiel.js. Geen abstractie voor 1 call.
+
+### Niet vergeten
+- Inline CSS-resten `.memory-toggle` en `.pf-email-readonly` in `chat.html` zijn nu dode classes — eventueel weghalen bij een toekomstige opschoning van chat.html inline-styles.
+- `js/CLAUDE.md` bijgewerkt: chat.js-rol (modal weg) + nieuwe `profiel.js`-rij in components-tabel.
+
+### Open / nog te doen
+- ⬜ Productie-rooktest na deploy van `376cbae`: memory-toggle autosave, download data, account-verwijdering (test-account), avatar-klik in chat/admin-header → /#/profiel.
+- ⬜ Branch `uitwerken-profiel` (uit eerdere sessie) staat nog open met SQL-migratie-todo voor `kippen-ei` / dedup. Apart afhandelen.

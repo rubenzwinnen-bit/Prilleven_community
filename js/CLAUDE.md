@@ -44,7 +44,7 @@ Pril Leven heeft historisch **twee** parallel-lopende auth-systemen. Begrijp het
 | `supabase.js` | Supabase REST + Storage + Auth helpers. Hardcoded `SUPABASE_URL` + `SUPABASE_ANON_KEY` (publiek = OK). Bevat: `supabaseFetch`, storage helpers (`supabaseStorageUpload`, `uploadIngredientIcon`, …), auth (`authSignUp`, `authSignIn`, `authResetPassword`, `authUpdatePassword`, `markUserRegistered`, `checkAllowedUser`, `checkCanSignUp`), sessie (`sessionGet/Set/Clear/RefreshIfNeeded`), subscription-status fetcher. |
 | `router.js` | Hash-gebaseerde SPA-router. `on(path, handler)`, `navigate(path)`, `init()`, `getCurrentPath()`, `hasHistory()`. Bewaart scroll-positie in `sessionStorage` per pad. |
 | `utils.js` | Helpers: `showToast`, `confirm`, `promptInput`, datum-formatters, sterren-render, `escapeHtml`, `nl2br`, `formatRelativeTime`, `colorFromSeed`, `initialsFromName`, `processImageForUpload` (EXIF strip + resize naar max 1920px JPEG q=0.85). Constanten: `ALLERGENS`, `MEAL_MOMENTS`, `SCHEDULE_SLOTS`, `WEEKDAYS`. |
-| `chat.js` | Logic voor `chat.html` — chat-interface met sidebar (conversations), profile-modal, memory-modal. |
+| `chat.js` | Logic voor `chat.html` — chat-interface met sidebar (conversations) + memory-modal. Profile-modal is verwijderd (V2.8.0); memory-toggle + GDPR staan nu op `/profiel`. `loadProfile()` blijft voor de quota-bar (consumeert `data.usage` uit `/api/profile`). |
 | `admin-chat.js` | Logic voor `admin-chat.html` — admin dashboard tabs (overview, users, queries, conversations, fallbacks). |
 | `communityApi.js` | Wrapper rond `/api/community/*`. Doet `sessionRefreshIfNeeded()` vóór elke call, returnt `{ ok, status, data, error }`. Exporteert: `getMyProfile`, `setMyNickname`, `updateMyProfile`, `getAvatarUploadUrl`, `getPosts`, `createPost`, `votePoll`, `getUploadUrl`, `uploadToStorage`, replies, likes, edit/delete, `reportTarget`, admin (`togglePin`, `listReports`, `resolveReport`), notifications. |
 | `chatRoomsApi.js` | Wrapper rond `/api/chat-rooms/*`. Zelfde patroon als `communityApi.js`. Exporteert: `listRooms`, `getRoom`, `editRoom` (admin), topics + replies CRUD, `pinTopic` (admin). |
@@ -69,6 +69,7 @@ Pril Leven heeft historisch **twee** parallel-lopende auth-systemen. Begrijp het
 | `allergenen.js` | Allergenen-introductie-tracker (binnen Eerste Hapjes). Doses + symptoom-logs met pencil-edit (modal) ipv delete. Pencil expliciet `grid-row: 1; grid-column: -1 / -2` zodat hij rechts blijft bij multi-row content. Geen agenda-knop. Bron-flow in `content/eersteHapjes-allergen-flow.js` (9 items: kippen-ei, pinda, noten, sesam, vis, schaaldieren, soja, tarwe, koemelk — allemaal `introBefore: 12`). |
 | `nicknameModal.js` | Modal om community-nickname in te stellen vóór posten. |
 | `profileModal.js` | Modal voor community-profiel (nickname + avatar). |
+| `profiel.js` | `/profiel`-pagina: Account (email + inline nickname/avatar), Kinderen, Dieet in het gezin, en sinds V2.8.0 **Voorkeuren & privacy** (memory-toggle autosave naar `PUT /api/profile` + GDPR download/delete via `/api/me`). Haalt `chat_user_profiles` op via interne `fetchChatProfile()`. |
 
 ---
 
