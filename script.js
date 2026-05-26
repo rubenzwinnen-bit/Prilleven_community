@@ -39,6 +39,7 @@ import * as LearningsLibrary from './js/components/learningsLibrary.js?v=2.5.8';
 import * as LearningsDetail from './js/components/learningsDetail.js?v=2.5.8';
 import * as Profiel from './js/components/profiel.js?v=2.5.8';
 import * as Allergenen from './js/components/allergenen.js?v=2.5.8';
+import * as AdminDashboard from './js/components/adminDashboard.js?v=2.9.0';
 
 /* ============================================
    RECOVERY TOKEN DETECTIE
@@ -623,6 +624,11 @@ function setupApp() {
   /* --- Allergenen introduceren --- */
   Router.on('allergenen', async () => {
     await renderPage(Allergenen.render(), Allergenen.init);
+  });
+
+  /* --- Admin dashboard --- */
+  Router.on('admin-dashboard', async () => {
+    await renderPage(AdminDashboard.render(), AdminDashboard.init);
   });
 
   /* --- 404 pagina --- */

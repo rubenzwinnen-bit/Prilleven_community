@@ -23,29 +23,34 @@ function isAdminUser() {
 const MAX_BODY = 4000;
 
 export function render() {
+  const admin = Store.isAdmin();
   return `
     <section class="tl-wrap" id="tl-wrap">
       <div class="tl-main">
+        <div class="tl-top-bar">
+          <div class="tl-bell" data-role="bell">
+            <button type="button" class="tl-bell-btn" id="tl-bell-btn" aria-label="Notificaties" aria-expanded="false">
+              <span class="tl-bell-icon">🔔</span>
+              <span class="tl-bell-badge hidden" id="tl-bell-badge">0</span>
+            </button>
+            <div class="tl-bell-dropdown hidden" id="tl-bell-dropdown" data-role="bell-dropdown">
+              <div class="tl-bell-head">
+                <strong>Notificaties</strong>
+                <button type="button" class="tl-bell-mark-read" id="tl-bell-mark-read">Markeer gelezen</button>
+              </div>
+              <div class="tl-bell-list" id="tl-bell-list">
+                <div class="tl-empty">Laden…</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        ${admin ? `
         <div class="tl-composer" id="tl-composer">
           <div class="tl-composer-head">
             <span class="tl-composer-title">Wat speelt er bij jou?</span>
             <div class="tl-composer-head-right">
               <span class="tl-composer-nick" id="tl-composer-nick"></span>
-              <div class="tl-bell" data-role="bell">
-                <button type="button" class="tl-bell-btn" id="tl-bell-btn" aria-label="Notificaties" aria-expanded="false">
-                  <span class="tl-bell-icon">🔔</span>
-                  <span class="tl-bell-badge hidden" id="tl-bell-badge">0</span>
-                </button>
-                <div class="tl-bell-dropdown hidden" id="tl-bell-dropdown" data-role="bell-dropdown">
-                  <div class="tl-bell-head">
-                    <strong>Notificaties</strong>
-                    <button type="button" class="tl-bell-mark-read" id="tl-bell-mark-read">Markeer gelezen</button>
-                  </div>
-                  <div class="tl-bell-list" id="tl-bell-list">
-                    <div class="tl-empty">Laden…</div>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
           <textarea
@@ -90,12 +95,6 @@ export function render() {
           </div>
           <div id="tl-composer-error" class="auth-error hidden"></div>
         </div>
-
-        ${Store.isAdmin() ? `
-          <div class="tl-admin-bar">
-            <span class="tl-admin-label">🛡 Admin</span>
-            <button type="button" class="btn btn-outline btn-sm" id="tl-admin-reports">Reports queue</button>
-          </div>
         ` : ''}
 
         <div class="tl-feed" id="tl-feed">
@@ -110,234 +109,225 @@ export async function init() {
   const root      = document.getElementById('tl-wrap');
   if (!root) return;
 
-  const composer  = document.getElementById('tl-composer');
-  const bodyEl    = document.getElementById('tl-composer-body');
-  const counter   = document.getElementById('tl-counter');
-  const errorEl   = document.getElementById('tl-composer-error');
-  const submitBtn = document.getElementById('tl-submit');
-  const editNick  = document.getElementById('tl-edit-nick');
-  const nickEl    = document.getElementById('tl-composer-nick');
   const feedEl    = document.getElementById('tl-feed');
-  const photoBtn    = document.getElementById('tl-photo-btn');
-  const photoInput  = document.getElementById('tl-photo-input');
-  const photoPrev   = document.getElementById('tl-photo-preview');
-  const photoPrevImg= document.getElementById('tl-photo-preview-img');
-  const photoRemove = document.getElementById('tl-photo-remove');
 
-  // State voor de huidig geselecteerde (en al EXIF-gestripte) afbeelding.
-  let pendingImage = null; // { blob, previewUrl }
+  /* ----- Composer (alleen voor admins) ----- */
+  const bodyEl    = document.getElementById('tl-composer-body');
+  if (bodyEl) {
+    const counter   = document.getElementById('tl-counter');
+    const errorEl   = document.getElementById('tl-composer-error');
+    const submitBtn = document.getElementById('tl-submit');
+    const editNick  = document.getElementById('tl-edit-nick');
+    const nickEl    = document.getElementById('tl-composer-nick');
+    const photoBtn    = document.getElementById('tl-photo-btn');
+    const photoInput  = document.getElementById('tl-photo-input');
+    const photoPrev   = document.getElementById('tl-photo-preview');
+    const photoPrevImg= document.getElementById('tl-photo-preview-img');
+    const photoRemove = document.getElementById('tl-photo-remove');
 
-  const clearPhoto = () => {
-    if (pendingImage?.previewUrl) URL.revokeObjectURL(pendingImage.previewUrl);
-    pendingImage = null;
-    photoInput.value = '';
-    photoPrev.classList.add('hidden');
-    photoPrevImg.removeAttribute('src');
-  };
+    let pendingImage = null;
 
-  photoBtn?.addEventListener('click', () => photoInput.click());
-  photoRemove?.addEventListener('click', clearPhoto);
-
-  /* ----- Poll builder ----- */
-  const pollToggle    = document.getElementById('tl-poll-toggle');
-  const pollBuilder   = document.getElementById('tl-poll-builder');
-  const pollRemove    = document.getElementById('tl-poll-remove');
-  const pollQuestion  = document.getElementById('tl-poll-question');
-  const pollOptionsEl = document.getElementById('tl-poll-options');
-  const pollAddBtn    = document.getElementById('tl-poll-add-option');
-
-  const updatePollAddBtn = () => {
-    const count = pollOptionsEl.querySelectorAll('.tl-poll-option').length;
-    pollAddBtn.disabled = count >= 4;
-  };
-
-  const addPollOption = () => {
-    const count = pollOptionsEl.querySelectorAll('.tl-poll-option').length;
-    if (count >= 4) return;
-    const inp = document.createElement('input');
-    inp.type = 'text';
-    inp.className = 'tl-poll-input tl-poll-option';
-    inp.placeholder = `Optie ${count + 1}`;
-    inp.maxLength = 80;
-    pollOptionsEl.appendChild(inp);
-    inp.focus();
-    updatePollAddBtn();
-  };
-
-  const clearPoll = () => {
-    pollBuilder.classList.add('hidden');
-    pollQuestion.value = '';
-    pollOptionsEl.innerHTML = `
-      <input type="text" class="tl-poll-input tl-poll-option" placeholder="Optie 1" maxlength="80">
-      <input type="text" class="tl-poll-input tl-poll-option" placeholder="Optie 2" maxlength="80">
-    `;
-    const multiCb = document.getElementById('tl-poll-allow-multi');
-    if (multiCb) multiCb.checked = false;
-    updatePollAddBtn();
-  };
-
-  const isPollOpen = () => !pollBuilder.classList.contains('hidden');
-
-  const collectPoll = () => {
-    if (!isPollOpen()) return null;
-    const question = pollQuestion.value.trim();
-    const options = Array.from(pollOptionsEl.querySelectorAll('.tl-poll-option'))
-      .map(i => i.value.trim())
-      .filter(Boolean);
-    const allow_multi = !!document.getElementById('tl-poll-allow-multi')?.checked;
-    if (!question || options.length < 2) {
-      throw new Error('Vul de poll-vraag en minstens 2 opties in.');
-    }
-    return { question, options, allow_multi };
-  };
-
-  pollToggle?.addEventListener('click', () => {
-    if (isPollOpen()) {
-      clearPoll();
-    } else {
-      pollBuilder.classList.remove('hidden');
-      setTimeout(() => pollQuestion.focus(), 0);
-    }
-  });
-  pollRemove?.addEventListener('click', clearPoll);
-  pollAddBtn?.addEventListener('click', addPollOption);
-
-  photoInput?.addEventListener('change', async () => {
-    const file = photoInput.files?.[0];
-    if (!file) return;
-    photoBtn.disabled = true;
-    try {
-      const { blob } = await processImageForUpload(file);
+    const clearPhoto = () => {
       if (pendingImage?.previewUrl) URL.revokeObjectURL(pendingImage.previewUrl);
-      const previewUrl = URL.createObjectURL(blob);
-      pendingImage = { blob, previewUrl };
-      photoPrevImg.src = previewUrl;
-      photoPrev.classList.remove('hidden');
-    } catch (err) {
-      showToast(err.message || 'Kon foto niet verwerken.', 'error');
-      clearPhoto();
-    } finally {
-      photoBtn.disabled = false;
-    }
-  });
+      pendingImage = null;
+      photoInput.value = '';
+      photoPrev.classList.add('hidden');
+      photoPrevImg.removeAttribute('src');
+    };
 
-  /* ----- Nickname display ----- */
-  const refreshNickDisplay = async () => {
-    const { ok, data } = await Api.getMyProfile();
-    const nick = ok ? data?.profile?.nickname : null;
-    nickEl.textContent = nick ? 'als ' + nick : 'nickname instellen bij eerste post';
-    editNick.style.display = nick ? '' : 'none';
-  };
-  refreshNickDisplay();
+    photoBtn?.addEventListener('click', () => photoInput.click());
+    photoRemove?.addEventListener('click', clearPhoto);
 
-  /* ----- Composer interacties ----- */
-  bodyEl.addEventListener('input', () => {
-    counter.textContent = `${bodyEl.value.length} / ${MAX_BODY}`;
-    errorEl.classList.add('hidden');
-  });
+    /* ----- Poll builder ----- */
+    const pollToggle    = document.getElementById('tl-poll-toggle');
+    const pollBuilder   = document.getElementById('tl-poll-builder');
+    const pollRemove    = document.getElementById('tl-poll-remove');
+    const pollQuestion  = document.getElementById('tl-poll-question');
+    const pollOptionsEl = document.getElementById('tl-poll-options');
+    const pollAddBtn    = document.getElementById('tl-poll-add-option');
 
-  editNick.addEventListener('click', async () => {
-    const updated = await openProfileModal();
-    if (updated) {
-      invalidateNicknameCache();
-      await refreshNickDisplay();
-      document.dispatchEvent(new CustomEvent('community:profile-updated', { detail: updated }));
-      showToast('Profiel bijgewerkt');
-    }
-  });
+    const updatePollAddBtn = () => {
+      const count = pollOptionsEl.querySelectorAll('.tl-poll-option').length;
+      pollAddBtn.disabled = count >= 4;
+    };
 
-  // Luister naar profile-updates vanuit de header (avatar/nickname wijziging)
-  document.addEventListener('community:profile-updated', () => {
-    invalidateNicknameCache();
-    refreshNickDisplay();
-  });
+    const addPollOption = () => {
+      const count = pollOptionsEl.querySelectorAll('.tl-poll-option').length;
+      if (count >= 4) return;
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.className = 'tl-poll-input tl-poll-option';
+      inp.placeholder = `Optie ${count + 1}`;
+      inp.maxLength = 80;
+      pollOptionsEl.appendChild(inp);
+      inp.focus();
+      updatePollAddBtn();
+    };
 
-  const setError = (msg) => {
-    errorEl.textContent = msg;
-    errorEl.classList.remove('hidden');
-  };
+    const clearPoll = () => {
+      pollBuilder.classList.add('hidden');
+      pollQuestion.value = '';
+      pollOptionsEl.innerHTML = `
+        <input type="text" class="tl-poll-input tl-poll-option" placeholder="Optie 1" maxlength="80">
+        <input type="text" class="tl-poll-input tl-poll-option" placeholder="Optie 2" maxlength="80">
+      `;
+      const multiCb = document.getElementById('tl-poll-allow-multi');
+      if (multiCb) multiCb.checked = false;
+      updatePollAddBtn();
+    };
 
-  submitBtn.addEventListener('click', async () => {
-    const text = bodyEl.value.trim();
-    if (!text) {
-      setError('Je bericht is leeg.');
-      return;
-    }
+    const isPollOpen = () => !pollBuilder.classList.contains('hidden');
 
-    submitBtn.disabled = true;
-    const original = submitBtn.textContent;
-    submitBtn.textContent = 'Plaatsen…';
-    errorEl.classList.add('hidden');
-
-    try {
-      // Zorg dat we een nickname hebben
-      const nick = await ensureNickname();
-      if (!nick) {
-        setError('Je hebt een nickname nodig om te kunnen posten.');
-        return;
+    const collectPoll = () => {
+      if (!isPollOpen()) return null;
+      const question = pollQuestion.value.trim();
+      const options = Array.from(pollOptionsEl.querySelectorAll('.tl-poll-option'))
+        .map(i => i.value.trim())
+        .filter(Boolean);
+      const allow_multi = !!document.getElementById('tl-poll-allow-multi')?.checked;
+      if (!question || options.length < 2) {
+        throw new Error('Vul de poll-vraag en minstens 2 opties in.');
       }
+      return { question, options, allow_multi };
+    };
 
-      // Verzamel poll-data (throwt bij ongeldig)
-      let pollData = null;
+    pollToggle?.addEventListener('click', () => {
+      if (isPollOpen()) {
+        clearPoll();
+      } else {
+        pollBuilder.classList.remove('hidden');
+        setTimeout(() => pollQuestion.focus(), 0);
+      }
+    });
+    pollRemove?.addEventListener('click', clearPoll);
+    pollAddBtn?.addEventListener('click', addPollOption);
+
+    photoInput?.addEventListener('change', async () => {
+      const file = photoInput.files?.[0];
+      if (!file) return;
+      photoBtn.disabled = true;
       try {
-        pollData = collectPoll();
+        const { blob } = await processImageForUpload(file);
+        if (pendingImage?.previewUrl) URL.revokeObjectURL(pendingImage.previewUrl);
+        const previewUrl = URL.createObjectURL(blob);
+        pendingImage = { blob, previewUrl };
+        photoPrevImg.src = previewUrl;
+        photoPrev.classList.remove('hidden');
       } catch (err) {
-        setError(err.message);
+        showToast(err.message || 'Kon foto niet verwerken.', 'error');
+        clearPhoto();
+      } finally {
+        photoBtn.disabled = false;
+      }
+    });
+
+    /* ----- Nickname display ----- */
+    const refreshNickDisplay = async () => {
+      const { ok, data } = await Api.getMyProfile();
+      const nick = ok ? data?.profile?.nickname : null;
+      nickEl.textContent = nick ? 'als ' + nick : 'nickname instellen bij eerste post';
+      editNick.style.display = nick ? '' : 'none';
+    };
+    refreshNickDisplay();
+
+    bodyEl.addEventListener('input', () => {
+      counter.textContent = `${bodyEl.value.length} / ${MAX_BODY}`;
+      errorEl.classList.add('hidden');
+    });
+
+    editNick.addEventListener('click', async () => {
+      const updated = await openProfileModal();
+      if (updated) {
+        invalidateNicknameCache();
+        await refreshNickDisplay();
+        document.dispatchEvent(new CustomEvent('community:profile-updated', { detail: updated }));
+        showToast('Profiel bijgewerkt');
+      }
+    });
+
+    document.addEventListener('community:profile-updated', () => {
+      invalidateNicknameCache();
+      refreshNickDisplay();
+    });
+
+    const setError = (msg) => {
+      errorEl.textContent = msg;
+      errorEl.classList.remove('hidden');
+    };
+
+    submitBtn.addEventListener('click', async () => {
+      const text = bodyEl.value.trim();
+      if (!text) {
+        setError('Je bericht is leeg.');
         return;
       }
 
-      // Upload eerst de foto (indien aanwezig) → krijg image_path
-      let image_path = null;
-      if (pendingImage?.blob) {
-        submitBtn.textContent = 'Foto uploaden…';
-        const urlRes = await Api.getUploadUrl();
-        if (!urlRes.ok) {
-          setError(urlRes.error || 'Kon upload-URL niet ophalen.');
-          return;
-        }
-        const upRes = await Api.uploadToStorage(urlRes.data.uploadUrl, pendingImage.blob);
-        if (!upRes.ok) {
-          setError(upRes.error || 'Foto-upload mislukt.');
-          return;
-        }
-        image_path = urlRes.data.path;
-      }
-
+      submitBtn.disabled = true;
+      const original = submitBtn.textContent;
       submitBtn.textContent = 'Plaatsen…';
-      const { ok, data, error, status } = await Api.createPost({ body: text, category: 'algemeen', image_path, poll: pollData });
-      if (!ok) {
-        // Sommige fouten verdienen een specifieke melding
-        if (status === 412) {
-          setError('Stel eerst je nickname in.');
-        } else {
-          setError(error || 'Kon bericht niet plaatsen.');
+      errorEl.classList.add('hidden');
+
+      try {
+        const nick = await ensureNickname();
+        if (!nick) {
+          setError('Je hebt een nickname nodig om te kunnen posten.');
+          return;
         }
-        return;
+
+        let pollData = null;
+        try {
+          pollData = collectPoll();
+        } catch (err) {
+          setError(err.message);
+          return;
+        }
+
+        let image_path = null;
+        if (pendingImage?.blob) {
+          submitBtn.textContent = 'Foto uploaden…';
+          const urlRes = await Api.getUploadUrl();
+          if (!urlRes.ok) {
+            setError(urlRes.error || 'Kon upload-URL niet ophalen.');
+            return;
+          }
+          const upRes = await Api.uploadToStorage(urlRes.data.uploadUrl, pendingImage.blob);
+          if (!upRes.ok) {
+            setError(upRes.error || 'Foto-upload mislukt.');
+            return;
+          }
+          image_path = urlRes.data.path;
+        }
+
+        submitBtn.textContent = 'Plaatsen…';
+        const { ok, data, error, status } = await Api.createPost({ body: text, category: 'algemeen', image_path, poll: pollData });
+        if (!ok) {
+          if (status === 412) {
+            setError('Stel eerst je nickname in.');
+          } else {
+            setError(error || 'Kon bericht niet plaatsen.');
+          }
+          return;
+        }
+
+        bodyEl.value = '';
+        counter.textContent = `0 / ${MAX_BODY}`;
+        clearPhoto();
+        clearPoll();
+        prependPost(data.post);
+        const newCard = document.querySelector(
+          `.tl-post[data-post-id="${CSS.escape(data.post.id)}"]`
+        );
+        newCard?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        showToast('Geplaatst');
+        await refreshNickDisplay();
+      } catch (err) {
+        setError(err.message || 'Er ging iets mis.');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = original;
       }
-
-      bodyEl.value = '';
-      counter.textContent = `0 / ${MAX_BODY}`;
-      clearPhoto();
-      clearPoll();
-      prependPost(data.post);
-      // Op mobile staat de feed onder de composer + filterbar — scroll
-      // de nieuwe post in beeld zodat user feedback krijgt.
-      const newCard = document.querySelector(
-        `.tl-post[data-post-id="${CSS.escape(data.post.id)}"]`
-      );
-      newCard?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      showToast('Geplaatst');
-      await refreshNickDisplay();
-    } catch (err) {
-      setError(err.message || 'Er ging iets mis.');
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.textContent = original;
-    }
-  });
-
-  /* ----- Admin-balk ----- */
-  document.getElementById('tl-admin-reports')?.addEventListener('click', openReportsQueue);
+    });
+  } // einde admin-only composer
 
   /* ----- Notificatie-bell ----- */
   initBell();
@@ -469,84 +459,6 @@ async function handleAdminDeleteReply(card, replyEl) {
   showToast('Verwijderd');
 }
 
-/* ----- Admin: reports queue (modal) ----- */
-async function openReportsQueue() {
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay';
-  overlay.innerHTML = `
-    <div class="modal tl-reports-modal">
-      <div class="tl-reports-head">
-        <h2>Reports queue</h2>
-        <button type="button" class="tl-photo-remove" data-action="reports-close">×</button>
-      </div>
-      <div class="tl-reports-list" data-role="reports-list">
-        <div class="tl-empty">Laden…</div>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(overlay);
-  const close = () => overlay.remove();
-  overlay.querySelector('[data-action="reports-close"]').addEventListener('click', close);
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
-
-  const list = overlay.querySelector('[data-role="reports-list"]');
-  await refreshReportsQueue(list);
-
-  // Delegation voor resolve / delete-resolve binnen de modal
-  list.addEventListener('click', async (e) => {
-    const btn = e.target.closest('[data-action]');
-    if (!btn) return;
-    const reportEl = btn.closest('.tl-report-row');
-    if (!reportEl) return;
-    const reportId = reportEl.dataset.reportId;
-
-    if (btn.dataset.action === 'report-dismiss') {
-      btn.disabled = true;
-      const { ok, error } = await Api.resolveReport(reportId);
-      if (!ok) { btn.disabled = false; showToast(error || 'Mislukt', 'error'); return; }
-      reportEl.remove();
-      showToast('Melding gesloten');
-      ensureEmptyState(list);
-    } else if (btn.dataset.action === 'report-delete') {
-      const ok = await confirmDialog('Verwijder dit bericht én sluit de melding?');
-      if (!ok) return;
-      btn.disabled = true;
-      const { ok: success, error } = await Api.resolveReport(reportId, { delete_target: true });
-      if (!success) { btn.disabled = false; showToast(error || 'Mislukt', 'error'); return; }
-      // Verwijder ook uit feed als zichtbaar
-      const targetType = reportEl.dataset.targetType;
-      const targetId = reportEl.dataset.targetId;
-      if (targetType === 'post') {
-        document.querySelector(`.tl-post[data-post-id="${CSS.escape(targetId)}"]`)?.remove();
-      } else if (targetType === 'reply') {
-        document.querySelector(`.tl-reply[data-reply-id="${CSS.escape(targetId)}"]`)?.remove();
-      }
-      reportEl.remove();
-      showToast('Verwijderd en gesloten');
-      ensureEmptyState(list);
-    }
-  });
-}
-
-async function refreshReportsQueue(list) {
-  const { ok, data, error } = await Api.listReports();
-  if (!ok) {
-    list.innerHTML = `<div class="tl-empty tl-error">Kon reports niet laden: ${escapeHtml(error)}</div>`;
-    return;
-  }
-  const reports = data.reports || [];
-  if (reports.length === 0) {
-    list.innerHTML = `<div class="tl-empty">Geen openstaande meldingen 🎉</div>`;
-    return;
-  }
-  list.innerHTML = reports.map(renderReportRow).join('');
-}
-
-function ensureEmptyState(list) {
-  if (!list.querySelector('.tl-report-row')) {
-    list.innerHTML = `<div class="tl-empty">Geen openstaande meldingen 🎉</div>`;
-  }
-}
 
 /* ============================================
    Notificatie-bell + polling
@@ -727,30 +639,6 @@ function renderNotifRow(n) {
   `;
 }
 
-function renderReportRow(rep) {
-  const t = rep.target;
-  const targetBody = t?.body ? nl2br(escapeHtml(t.body.slice(0, 240))) + (t.body.length > 240 ? '…' : '') : '<em>(verwijderd)</em>';
-  const targetMeta = t
-    ? `${escapeHtml(t.nickname || '(naamloos)')} · ${escapeHtml(formatRelativeTime(t.created_at))}`
-    : '<em>doel bestaat niet meer</em>';
-  return `
-    <article class="tl-report-row" data-report-id="${escapeHtml(rep.id)}" data-target-type="${escapeHtml(rep.target_type)}" data-target-id="${escapeHtml(rep.target_id)}">
-      <div class="tl-report-meta">
-        <span class="tl-report-type">${rep.target_type === 'post' ? '📄 Post' : '💬 Reactie'}</span>
-        <span class="tl-time">${escapeHtml(formatRelativeTime(rep.created_at))}</span>
-      </div>
-      <div class="tl-report-target">
-        <div class="tl-report-target-meta">${targetMeta}</div>
-        <div class="tl-report-target-body">${targetBody}</div>
-      </div>
-      ${rep.reason ? `<div class="tl-report-reason"><strong>Reden:</strong> ${escapeHtml(rep.reason)}</div>` : ''}
-      <div class="tl-report-actions">
-        <button type="button" class="btn btn-outline btn-sm" data-action="report-dismiss">Niets doen</button>
-        <button type="button" class="btn btn-danger btn-sm" data-action="report-delete">Verwijder bericht</button>
-      </div>
-    </article>
-  `;
-}
 
 /* ----- Menu (popover) ----- */
 function handleToggleMenu(btn) {

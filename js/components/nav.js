@@ -24,6 +24,7 @@ const NAV_ITEMS = [
    menu voor admin-gebruikers.
 ---------------------------------------- */
 const ADMIN_ITEMS = [
+  { path: 'admin-dashboard', label: 'Admin dashboard' },
   { path: 'import', label: 'Recepten importeren' },
   { path: 'ingredient-icons', label: 'Iconen importeren' }
 ];
