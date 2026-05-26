@@ -4,14 +4,14 @@
    Stap 4: voegt like + replies toe via event-delegation.
 ============================================ */
 
-import { showToast, escapeHtml, processImageForUpload, confirm as confirmDialog, nl2br, formatRelativeTime } from '../utils.js?v=2.5.10';
-import * as Api from '../communityApi.js?v=2.5.10';
-import { sessionGet } from '../supabase.js?v=2.5.10';
-import * as Store from '../store.js?v=2.5.10';
+import { showToast, escapeHtml, processImageForUpload, confirm as confirmDialog, nl2br, formatRelativeTime } from '../utils.js?v=2.9.0';
+import * as Api from '../communityApi.js?v=2.9.0';
+import { sessionGet } from '../supabase.js?v=2.9.0';
+import * as Store from '../store.js?v=2.9.0';
 import { ensureNickname, getCachedNickname, invalidateNicknameCache }
-  from './nicknameModal.js?v=2.5.10';
-import { openProfileModal } from './profileModal.js?v=2.5.10';
-import { renderPostCard, renderReplyRow, renderPoll } from './timelinePost.js?v=2.5.10';
+  from './nicknameModal.js?v=2.9.0';
+import { openProfileModal } from './profileModal.js?v=2.9.0';
+import { renderPostCard, renderReplyRow, renderPoll, renderChatroomTopicCard } from './timelinePost.js?v=2.9.0';
 
 function currentUserId() {
   return sessionGet()?.user_id || null;
@@ -397,6 +397,15 @@ async function onFeedClick(e) {
     await handleAdminDeleteReply(card, btn.closest('.tl-reply'));
   } else if (action === 'like-reply') {
     await handleReplyLikeToggle(btn.closest('.tl-reply'), btn);
+  } else if (action === 'open-chatroom-topic') {
+    // Navigeer naar topic in chatruimte (via custom event → chatRooms.js luistert)
+    const topicId  = btn.dataset.topicId;
+    const roomSlug = btn.dataset.roomSlug;
+    document.dispatchEvent(new CustomEvent('chatroom:open-topic', { detail: { topicId, roomSlug } }));
+  } else if (action === 'open-chatroom-source') {
+    // Klik op de badge → navigeer naar de room zelf
+    const roomSlug = btn.dataset.roomSlug;
+    if (roomSlug) document.dispatchEvent(new CustomEvent('chatroom:open-room', { detail: { roomSlug } }));
   }
 }
 
@@ -1096,7 +1105,11 @@ async function loadAndRenderFeed(feedEl) {
     feedEl.innerHTML = `<div class="tl-empty">Nog geen berichten — wees de eerste!</div>`;
     return;
   }
-  feedEl.innerHTML = posts.map(p => renderPostCard(p, currentUserId(), isAdminUser())).join('');
+  feedEl.innerHTML = posts.map(p =>
+    p.source_type === 'chatroom'
+      ? renderChatroomTopicCard(p)
+      : renderPostCard(p, currentUserId(), isAdminUser())
+  ).join('');
 }
 
 function prependPost(post) {

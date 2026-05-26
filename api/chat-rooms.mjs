@@ -5,16 +5,23 @@
 //   /api/chat-rooms/(.*) → /api/chat-rooms
 //
 // Routes (intern):
-//   GET    /api/chat-rooms                         → lijst actieve rooms
-//   GET    /api/chat-rooms/:slug                   → room + topics
+//   GET    /api/chat-rooms                         → lijst actieve rooms (+ follow-status)
+//   GET    /api/chat-rooms/unread                  → ongelezen tellingen per gevolgde room/topic
+//   GET    /api/chat-rooms/:slug                   → room + topics (+ is_followed)
 //   PATCH  /api/chat-rooms/:slug                   → admin: room title/description aanpassen
+//   POST   /api/chat-rooms/:slug/follow            → chatruimte volgen
+//   DELETE /api/chat-rooms/:slug/follow            → chatruimte ontvolgen
+//   POST   /api/chat-rooms/:slug/read              → last_read_at bijwerken (badges resetten)
 //   POST   /api/chat-rooms/:slug/topics            → topic aanmaken
-//   GET    /api/chat-rooms/topics/:id              → topic + replies
-//   PATCH  /api/chat-rooms/topics/:id              → eigen topic editten (15min)
+//   GET    /api/chat-rooms/topics/:id              → topic + replies (+ is_followed)
+//   PATCH  /api/chat-rooms/topics/:id              → eigen topic editten
 //   DELETE /api/chat-rooms/topics/:id              → eigen of admin verwijderen
 //   POST   /api/chat-rooms/topics/:id/pin          → admin pin toggle
+//   POST   /api/chat-rooms/topics/:id/follow       → topic volgen
+//   DELETE /api/chat-rooms/topics/:id/follow       → topic ontvolgen
+//   POST   /api/chat-rooms/topics/:id/read         → last_read_at bijwerken voor topic
 //   POST   /api/chat-rooms/topics/:id/replies      → reply aanmaken
-//   PATCH  /api/chat-rooms/replies/:id             → eigen reply editten (15min)
+//   PATCH  /api/chat-rooms/replies/:id             → eigen reply editten
 //   DELETE /api/chat-rooms/replies/:id             → eigen of admin verwijderen
 
 import { requireAuth, requireAdmin, AuthError } from './_lib/auth.mjs';
@@ -95,13 +102,21 @@ function matchRoute(req) {
   // / (lijst rooms)
   if (seg.length === 0 && m === 'GET') return { route: 'rooms.list' };
 
-  // /:slug   en  /:slug/topics
+  // /unread
+  if (seg.length === 1 && seg[0] === 'unread' && m === 'GET') return { route: 'unread.get' };
+
+  // /:slug   en  /:slug/topics  +  /:slug/follow  +  /:slug/read
   if (seg.length === 1) {
     if (m === 'GET')   return { route: 'room.get',  params: { slug: seg[0] } };
     if (m === 'PATCH') return { route: 'room.edit', params: { slug: seg[0] } };
   }
-  if (seg.length === 2 && seg[1] === 'topics') {
-    if (m === 'POST') return { route: 'topic.create', params: { slug: seg[0] } };
+  if (seg.length === 2) {
+    if (seg[1] === 'topics' && m === 'POST') return { route: 'topic.create', params: { slug: seg[0] } };
+    if (seg[1] === 'follow') {
+      if (m === 'POST')   return { route: 'room.follow',   params: { slug: seg[0] } };
+      if (m === 'DELETE') return { route: 'room.unfollow', params: { slug: seg[0] } };
+    }
+    if (seg[1] === 'read' && m === 'POST') return { route: 'room.read', params: { slug: seg[0] } };
   }
 
   // /topics/:id
@@ -111,12 +126,15 @@ function matchRoute(req) {
     if (m === 'DELETE') return { route: 'topic.delete', params: { id: seg[1] } };
   }
 
-  // /topics/:id/pin   en   /topics/:id/replies
+  // /topics/:id/pin  /topics/:id/replies  /topics/:id/follow  /topics/:id/read
   if (seg.length === 3 && seg[0] === 'topics') {
-    if (seg[2] === 'pin' && m === 'POST') return { route: 'topic.pin', params: { id: seg[1] } };
-    if (seg[2] === 'replies') {
-      if (m === 'POST') return { route: 'reply.create', params: { id: seg[1] } };
+    if (seg[2] === 'pin' && m === 'POST')     return { route: 'topic.pin',      params: { id: seg[1] } };
+    if (seg[2] === 'replies' && m === 'POST') return { route: 'reply.create',   params: { id: seg[1] } };
+    if (seg[2] === 'follow') {
+      if (m === 'POST')   return { route: 'topic.follow',   params: { id: seg[1] } };
+      if (m === 'DELETE') return { route: 'topic.unfollow', params: { id: seg[1] } };
     }
+    if (seg[2] === 'read' && m === 'POST') return { route: 'topic.read', params: { id: seg[1] } };
   }
 
   // /replies/:id
@@ -277,26 +295,117 @@ export default async function handler(req, res) {
 
     /* ----- rooms ----- */
     if (route === 'rooms.list') {
-      const { data, error } = await supabase
-        .from('chat_rooms')
-        .select('id, slug, title, description, sort_order')
-        .eq('is_active', true)
-        .order('sort_order', { ascending: true })
-        .order('created_at', { ascending: true });
+      const [{ data, error }, { data: followData }] = await Promise.all([
+        supabase
+          .from('chat_rooms')
+          .select('id, slug, title, description, sort_order')
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true })
+          .order('created_at', { ascending: true }),
+        supabase
+          .from('chat_room_followers')
+          .select('room_id, followed_at, last_read_at')
+          .eq('user_id', auth.userId),
+      ]);
       if (error) throw error;
-      return json(res, 200, { rooms: data || [] });
+      const followMap = new Map((followData || []).map(f => [f.room_id, f]));
+      const rooms = (data || []).map(room => {
+        const follow = followMap.get(room.id);
+        return { ...room, is_followed: !!follow };
+      });
+      return json(res, 200, { rooms });
+    }
+
+    if (route === 'unread.get') {
+      const [{ data: roomFollows }, { data: topicFollows }] = await Promise.all([
+        supabase
+          .from('chat_room_followers')
+          .select('room_id, followed_at, last_read_at')
+          .eq('user_id', auth.userId),
+        supabase
+          .from('chat_topic_followers')
+          .select('topic_id, followed_at, last_read_at')
+          .eq('user_id', auth.userId),
+      ]);
+      // Unread topics per gevolgde room
+      const roomUnread = {};
+      await Promise.all((roomFollows || []).map(async follow => {
+        const since = follow.last_read_at || follow.followed_at;
+        const { count } = await supabase
+          .from('chat_topics')
+          .select('*', { count: 'exact', head: true })
+          .eq('room_id', follow.room_id)
+          .gt('created_at', since);
+        if (count > 0) roomUnread[follow.room_id] = count;
+      }));
+      // Unread replies per gevolgd topic
+      const topicUnread = {};
+      await Promise.all((topicFollows || []).map(async follow => {
+        const since = follow.last_read_at || follow.followed_at;
+        const { count } = await supabase
+          .from('chat_replies')
+          .select('*', { count: 'exact', head: true })
+          .eq('topic_id', follow.topic_id)
+          .gt('created_at', since);
+        if (count > 0) topicUnread[follow.topic_id] = count;
+      }));
+      return json(res, 200, { rooms: roomUnread, topics: topicUnread });
+    }
+
+    if (route === 'room.follow') {
+      if (!isSlug(params.slug)) return json(res, 400, { error: 'Ongeldige slug.' });
+      const room = await loadRoomBySlug(params.slug);
+      if (!room || !room.is_active) return json(res, 404, { error: 'Room niet gevonden.' });
+      const { error } = await supabase
+        .from('chat_room_followers')
+        .upsert({ user_id: auth.userId, room_id: room.id }, { onConflict: 'user_id,room_id' });
+      if (error) throw error;
+      return json(res, 200, { ok: true });
+    }
+
+    if (route === 'room.unfollow') {
+      if (!isSlug(params.slug)) return json(res, 400, { error: 'Ongeldige slug.' });
+      const room = await loadRoomBySlug(params.slug);
+      if (!room) return json(res, 404, { error: 'Room niet gevonden.' });
+      const { error } = await supabase
+        .from('chat_room_followers')
+        .delete()
+        .eq('user_id', auth.userId)
+        .eq('room_id', room.id);
+      if (error) throw error;
+      return json(res, 200, { ok: true });
+    }
+
+    if (route === 'room.read') {
+      if (!isSlug(params.slug)) return json(res, 400, { error: 'Ongeldige slug.' });
+      const room = await loadRoomBySlug(params.slug);
+      if (!room) return json(res, 404, { error: 'Room niet gevonden.' });
+      await supabase
+        .from('chat_room_followers')
+        .update({ last_read_at: new Date().toISOString() })
+        .eq('user_id', auth.userId)
+        .eq('room_id', room.id);
+      return json(res, 200, { ok: true });
     }
 
     if (route === 'room.get') {
       if (!isSlug(params.slug)) return json(res, 400, { error: 'Ongeldige slug.' });
       const room = await loadRoomBySlug(params.slug);
       if (!room || !room.is_active) return json(res, 404, { error: 'Room niet gevonden.' });
-      const adminIntro = await buildAdminIntro(room);
-      const topics = await loadTopicsForRoom(room.id);
-      const signed = await attachAvatarUrls(topics);
+      const [adminIntro, topicsRaw, { data: followRow }] = await Promise.all([
+        buildAdminIntro(room),
+        loadTopicsForRoom(room.id),
+        supabase
+          .from('chat_room_followers')
+          .select('followed_at')
+          .eq('user_id', auth.userId)
+          .eq('room_id', room.id)
+          .maybeSingle(),
+      ]);
+      const signed = await attachAvatarUrls(topicsRaw);
       const withFlags = await attachAdminFlags(signed);
       return json(res, 200, {
-        room: { ...stripAdminIntroFields(room), admin_intro: adminIntro },
+        room: { ...stripAdminIntroFields(room), admin_intro: adminIntro, is_followed: !!followRow },
         topics: withFlags,
       });
     }
@@ -412,10 +521,51 @@ export default async function handler(req, res) {
       if (!isUuid(params.id)) return json(res, 400, { error: 'Ongeldige topic-id.' });
       const topic = await loadTopicById(params.id);
       if (!topic) return json(res, 404, { error: 'Topic niet gevonden.' });
-      const topicSigned = await attachAdminFlag(await attachAvatarUrl(topic));
-      const repliesRaw = await loadRepliesForTopic(topic.id);
+      const [topicSigned, repliesRaw, { data: topicFollow }] = await Promise.all([
+        attachAdminFlag(await attachAvatarUrl(topic)),
+        loadRepliesForTopic(topic.id),
+        supabase
+          .from('chat_topic_followers')
+          .select('followed_at')
+          .eq('user_id', auth.userId)
+          .eq('topic_id', params.id)
+          .maybeSingle(),
+      ]);
       const replies = await attachAdminFlags(repliesRaw);
-      return json(res, 200, { topic: topicSigned, replies });
+      return json(res, 200, { topic: { ...topicSigned, is_followed: !!topicFollow }, replies });
+    }
+
+    /* ----- topic follow / unfollow / read ----- */
+    if (route === 'topic.follow') {
+      if (!isUuid(params.id)) return json(res, 400, { error: 'Ongeldige topic-id.' });
+      const topic = await loadTopicById(params.id);
+      if (!topic) return json(res, 404, { error: 'Topic niet gevonden.' });
+      const { error } = await supabase
+        .from('chat_topic_followers')
+        .upsert({ user_id: auth.userId, topic_id: params.id }, { onConflict: 'user_id,topic_id' });
+      if (error) throw error;
+      return json(res, 200, { ok: true });
+    }
+
+    if (route === 'topic.unfollow') {
+      if (!isUuid(params.id)) return json(res, 400, { error: 'Ongeldige topic-id.' });
+      const { error } = await supabase
+        .from('chat_topic_followers')
+        .delete()
+        .eq('user_id', auth.userId)
+        .eq('topic_id', params.id);
+      if (error) throw error;
+      return json(res, 200, { ok: true });
+    }
+
+    if (route === 'topic.read') {
+      if (!isUuid(params.id)) return json(res, 400, { error: 'Ongeldige topic-id.' });
+      await supabase
+        .from('chat_topic_followers')
+        .update({ last_read_at: new Date().toISOString() })
+        .eq('user_id', auth.userId)
+        .eq('topic_id', params.id);
+      return json(res, 200, { ok: true });
     }
 
     /* ----- topic edit ----- */

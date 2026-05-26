@@ -5,11 +5,11 @@
    Gebruikt /api/chat-rooms.
 ============================================ */
 
-import * as Store from '../store.js?v=2.5.10';
-import * as Api from '../chatRoomsApi.js?v=2.5.10';
-import { formatRelativeTime } from '../utils.js?v=2.5.10';
-import { renderAvatar, renderAuthorMeta } from '../profileRender.js?v=2.5.10';
-import { sessionGet } from '../supabase.js?v=2.5.10';
+import * as Store from '../store.js?v=2.9.0';
+import * as Api from '../chatRoomsApi.js?v=2.9.0';
+import { formatRelativeTime } from '../utils.js?v=2.9.0';
+import { renderAvatar, renderAuthorMeta } from '../profileRender.js?v=2.9.0';
+import { sessionGet } from '../supabase.js?v=2.9.0';
 
 // Edit-window verwijderd: eigen items zijn altijd bewerkbaar.
 
@@ -26,6 +26,9 @@ const state = {
   editingReplyId: null,  // inline edit-modus reply
   editingRoomIntro: false, // admin bewerkt room-intro
   editingAdminIntro: false, // admin bewerkt admin-welkomsbericht
+  // Volgen
+  unreadRooms: {},   // { room_id: count }
+  unreadTopics: {},  // { topic_id: count }
 };
 
 /* ---------------- Utils ---------------- */
@@ -90,12 +93,19 @@ function renderRoomHeader(room, admin) {
       </header>
     `;
   }
+  const isFollowed = !!room.is_followed;
   return `
     <header class="chatroom-header">
       <div class="chatroom-header-top">
         <button class="chatroom-back" id="chatroom-back" type="button" aria-label="Terug naar rooms">←</button>
         <h2 class="chatroom-title">${escapeHtml(room.title)}</h2>
-        ${admin ? `<button class="chatroom-intro-edit-btn" data-action="edit-intro" type="button" title="Intro bewerken">Bewerken</button>` : ''}
+        <div class="chatroom-header-actions">
+          <button class="follow-btn${isFollowed ? ' is-followed' : ''}" id="room-follow-btn" type="button"
+                  data-slug="${escapeHtml(room.slug)}" data-followed="${isFollowed}">
+            ${isFollowed ? 'Gevolgd ✓' : '+ Volg'}
+          </button>
+          ${admin ? `<button class="chatroom-intro-edit-btn" data-action="edit-intro" type="button" title="Intro bewerken">Bewerken</button>` : ''}
+        </div>
       </div>
       ${room.description ? `<p class="chatroom-desc">${escapeHtml(room.description)}</p>` : ''}
     </header>
@@ -292,6 +302,9 @@ function renderTopicView() {
     ? `<div class="chatroom-empty">Nog geen reacties — wees de eerste!</div>`
     : state.replies.map(r => renderReplyCard(r, me, admin)).join('');
 
+  const isTopicFollowed = !!t.is_followed;
+  // Unread badge voor gevolgde topic
+  const topicUnread = state.unreadTopics[t.id] || 0;
   return `
     <div class="topic-view" data-topic-id="${t.id}">
       <header class="topic-detail-header">
@@ -301,6 +314,11 @@ function renderTopicView() {
           <h2 class="topic-detail-title">${escapeHtml(t.title)}</h2>
         </div>
         <div class="topic-detail-actions">
+          <button class="follow-btn follow-btn--sm${isTopicFollowed ? ' is-followed' : ''}" id="topic-follow-btn" type="button"
+                  data-topic-id="${t.id}" data-followed="${isTopicFollowed}">
+            ${isTopicFollowed ? 'Gevolgd ✓' : '+ Volg'}
+          </button>
+          ${isTopicFollowed && topicUnread > 0 ? `<span class="rooms-badge rooms-badge--inline">${topicUnread > 99 ? '99+' : topicUnread}</span>` : ''}
           ${admin ? `<button class="topic-pin-btn" id="topic-pin-btn" type="button">${t.is_pinned ? 'Unpin' : 'Pin'}</button>` : ''}
           ${canDeleteTopic ? `<button class="topic-del-btn" id="topic-del-btn" type="button">Verwijder</button>` : ''}
         </div>
@@ -427,6 +445,8 @@ async function openRoom(slug) {
   }
   // Sla nieuwste versie op.
   writeRoomCache(slug, data.room, data.topics || []);
+  // Badge resetten voor deze room (fire-and-forget)
+  if (data.room?.is_followed) Api.markRoomRead(slug);
 
   // Alleen herrenderen als er echt iets veranderd is (of als er nog geen cache was).
   if (cached) {
@@ -455,6 +475,8 @@ async function openTopic(id) {
   state.replies = data.replies || [];
   state.editingTopicId = null;
   state.editingReplyId = null;
+  // Badge resetten voor dit topic (fire-and-forget)
+  if (data.topic?.is_followed) Api.markTopicRead(id);
   if (state.currentTopic?.room_id && !state.currentRoom) {
     const found = state.rooms.find(r => r.id === state.currentTopic.room_id);
     if (found) state.currentRoom = found;
@@ -558,6 +580,27 @@ function bindRoomViewHandlers() {
     bindRoomViewHandlers();
   });
 
+  /* --- Follow / Ontvolg chatruimte --- */
+  const followBtn = document.getElementById('room-follow-btn');
+  followBtn?.addEventListener('click', async () => {
+    const slug = followBtn.dataset.slug;
+    const isFollowed = followBtn.dataset.followed === 'true';
+    followBtn.disabled = true;
+    const { ok, error } = isFollowed ? await Api.unfollowRoom(slug) : await Api.followRoom(slug);
+    followBtn.disabled = false;
+    if (!ok) { alert(error || 'Actie mislukt.'); return; }
+    const nowFollowed = !isFollowed;
+    followBtn.dataset.followed = String(nowFollowed);
+    followBtn.textContent = nowFollowed ? 'Gevolgd ✓' : '+ Volg';
+    followBtn.classList.toggle('is-followed', nowFollowed);
+    // State + rooms-list bijwerken
+    if (state.currentRoom) state.currentRoom.is_followed = nowFollowed;
+    state.rooms = state.rooms.map(r =>
+      r.slug === slug ? { ...r, is_followed: nowFollowed } : r
+    );
+    renderRoomsList(state.rooms);
+  });
+
   const form = document.getElementById('chatroom-new-topic');
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -590,6 +633,22 @@ function bindTopicViewHandlers() {
   back?.addEventListener('click', () => {
     if (state.activeSlug) openRoom(state.activeSlug);
     else showTimeline();
+  });
+
+  /* --- Follow / Ontvolg topic --- */
+  const topicFollowBtn = document.getElementById('topic-follow-btn');
+  topicFollowBtn?.addEventListener('click', async () => {
+    const id = topicFollowBtn.dataset.topicId;
+    const isFollowed = topicFollowBtn.dataset.followed === 'true';
+    topicFollowBtn.disabled = true;
+    const { ok, error } = isFollowed ? await Api.unfollowTopic(id) : await Api.followTopic(id);
+    topicFollowBtn.disabled = false;
+    if (!ok) { alert(error || 'Actie mislukt.'); return; }
+    const nowFollowed = !isFollowed;
+    topicFollowBtn.dataset.followed = String(nowFollowed);
+    topicFollowBtn.textContent = nowFollowed ? 'Gevolgd ✓' : '+ Volg';
+    topicFollowBtn.classList.toggle('is-followed', nowFollowed);
+    if (state.currentTopic) state.currentTopic.is_followed = nowFollowed;
   });
 
   const pinBtn = document.getElementById('topic-pin-btn');
@@ -725,14 +784,21 @@ function renderRoomsList(rooms) {
     list.innerHTML = `<li class="rooms-empty">Nog geen chatruimtes.</li>`;
     return;
   }
-  list.innerHTML = rooms.map(r => `
-    <li class="rooms-list-item" data-slug="${escapeHtml(r.slug)}">
-      <button class="rooms-list-btn" type="button">
-        <span class="rooms-list-title">${escapeHtml(r.title)}</span>
-        ${r.description ? `<span class="rooms-list-desc">${escapeHtml(r.description)}</span>` : ''}
-      </button>
-    </li>
-  `).join('');
+  list.innerHTML = rooms.map(r => {
+    const unread = state.unreadRooms[r.id] || 0;
+    const badgeHtml = unread > 0
+      ? `<span class="rooms-badge" aria-label="${unread} ongelezen">${unread > 99 ? '99+' : unread}</span>`
+      : (r.is_followed ? `<span class="rooms-followed-dot" title="Gevolgd"></span>` : '');
+    return `
+      <li class="rooms-list-item${r.is_followed ? ' is-followed' : ''}" data-slug="${escapeHtml(r.slug)}" data-room-id="${escapeHtml(r.id)}">
+        <button class="rooms-list-btn" type="button">
+          <span class="rooms-list-title">${escapeHtml(r.title)}</span>
+          ${r.description ? `<span class="rooms-list-desc">${escapeHtml(r.description)}</span>` : ''}
+        </button>
+        ${badgeHtml}
+      </li>
+    `;
+  }).join('');
   list.querySelectorAll('.rooms-list-item').forEach(li => {
     li.addEventListener('click', () => {
       const slug = li.dataset.slug;
@@ -742,10 +808,30 @@ function renderRoomsList(rooms) {
   if (state.activeSlug) highlightActiveRoom(state.activeSlug);
 }
 
+/* ---------------- Unread polling ---------------- */
+async function refreshUnread() {
+  const { ok, data } = await Api.getUnread();
+  if (!ok || !data) return;
+  state.unreadRooms  = data.rooms  || {};
+  state.unreadTopics = data.topics || {};
+  renderRoomsList(state.rooms);
+}
+
 /* ---------------- Public init (nav) ---------------- */
 export async function init() {
   const navBtn = document.getElementById('rooms-back-timeline');
   navBtn?.addEventListener('click', () => showTimeline());
+
+  // Luister naar events vanuit de tijdlijn (chatroom-kaarten klikken)
+  document.addEventListener('chatroom:open-topic', (e) => {
+    const { topicId, roomSlug } = e.detail || {};
+    if (roomSlug) state.activeSlug = roomSlug; // pre-set zodat back-knop werkt
+    if (topicId) openTopic(topicId);
+  });
+  document.addEventListener('chatroom:open-room', (e) => {
+    const { roomSlug } = e.detail || {};
+    if (roomSlug) openRoom(roomSlug);
+  });
 
   const list = document.getElementById('rooms-list');
   if (!list) return;
@@ -759,21 +845,34 @@ export async function init() {
     renderedFromCache = true;
   }
 
-  // 2. Refresh in background.
-  const { ok, data, error } = await Api.listRooms();
-  if (!ok) {
+  // 2. Refresh rooms + unread parallel.
+  const [roomsResult, unreadResult] = await Promise.all([
+    Api.listRooms(),
+    Api.getUnread(),
+  ]);
+
+  if (unreadResult.ok && unreadResult.data) {
+    state.unreadRooms  = unreadResult.data.rooms  || {};
+    state.unreadTopics = unreadResult.data.topics || {};
+  }
+
+  if (!roomsResult.ok) {
     if (!renderedFromCache) {
-      list.innerHTML = `<li class="rooms-error">${escapeHtml(error || 'Kon rooms niet laden.')}</li>`;
+      list.innerHTML = `<li class="rooms-error">${escapeHtml(roomsResult.error || 'Kon rooms niet laden.')}</li>`;
     }
     return;
   }
-  const fresh = data.rooms || [];
+  const fresh = roomsResult.data.rooms || [];
   writeRoomsCache(fresh);
-  // Render altijd na de eerste fetch (haalt "Laden…" placeholder weg, ook bij empty list).
-  // Bij identieke data + reeds gerenderd uit cache: skip om flikkering te vermijden.
   const same = JSON.stringify(state.rooms) === JSON.stringify(fresh);
   if (!same || !renderedFromCache) {
     state.rooms = fresh;
     renderRoomsList(fresh);
   }
+
+  // 3. Unread elke 60s verversen (zelfde patroon als notification bell).
+  setInterval(refreshUnread, 60_000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') refreshUnread();
+  });
 }
