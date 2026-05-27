@@ -520,9 +520,9 @@ Nieuwe sectie na bestaande gegevens-sectie:
 
 ---
 
-## 2026-05-27 — V3.0.0 Release — Webplatform voltooid, start mobiele app
+## 2026-05-27 — V3.0.0 Release — Webplatform mijlpaal
 
-**Context**: Officiële afsluiting van het web-platform als v3.0.0. Alle kernfunctionaliteit is live. Volgende fase = implementatie van alle features in de mobiele app (React Native / Expo of vergelijkbaar). De web-app blijft productie-waardig draaien en wordt parallel onderhouden.
+**Context**: Officiële mijlpaal v3.0.0 voor het web-platform. Alle kernfunctionaliteit is live. De mobiele app bestaat al (parallel gebouwd naast de website vanaf V1) en wordt nu naar hetzelfde niveau gebracht als de web-app. Verdere web-uitbouw wordt hervat zodra de mobiele app gelijkwaardig is.
 
 ### Volledig overzicht V1 → V2 → V3
 
@@ -600,17 +600,16 @@ Twee grote uitbreidingen bovenop het receptenboek.
 - **Vercel project**: `pril_leven_community` (team: `prilleven-community`)
 - **Actieve branches**: `main` = productie. Branch `uitwerken-profiel` heeft nog open SQL-todo (`kippen-ei` dedup).
 
-### Volgende fase — V3.x Mobiele app
-Alle bovenstaande features worden overgezet naar de mobiele app. De web-app blijft actief als referentie-implementatie en productie-platform.
+### Volgende fase — Mobiele app naar niveau van web-app
+De mobiele app bestaat al (gebouwd parallel aan de website vanaf V1). De volgende stap is de mobiele app uitbouwen tot hetzelfde niveau als de web-app v3.0.0. Verdere web-uitbouw (V3.x) wordt hervat zodra dat bereikt is.
 
-**Prioriteitsvolgorde voor mobiel (te verfijnen):**
-1. Auth (login/logout, session-handling in app)
-2. Weekschema + recepten (kernfunctie)
-3. HapjesHeld 2.0 chat
-4. Community tijdlijn (lezen + reageren)
-5. Allergenen-flow
-6. Chatruimtes
-7. Notificaties (push i.p.v. polling)
+**Features die nog naar mobiel moeten (prioriteitsvolgorde, te verfijnen):**
+1. HapjesHeld 2.0 RAG-chat
+2. Community tijdlijn (posts, replies, likes, polls, foto's, notificaties)
+3. Allergenen-introductieflow
+4. Chatruimtes
+5. Profiel (nickname/avatar, memory-toggle, GDPR)
+6. Push-notificaties (vervangt polling)
 
 ### Nog open op web vóór V3.1
 - ⬜ SQL-migratie `kippen-ei`/dedup uitvoeren (branch `uitwerken-profiel`).
