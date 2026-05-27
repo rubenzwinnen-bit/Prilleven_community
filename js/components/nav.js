@@ -24,6 +24,7 @@ const NAV_ITEMS = [
    menu voor admin-gebruikers.
 ---------------------------------------- */
 const ADMIN_ITEMS = [
+  { href: '/admin-chat.html', label: 'Admin dashboard' },
   { path: 'import', label: 'Recepten importeren' },
   { path: 'ingredient-icons', label: 'Iconen importeren' }
 ];
@@ -46,8 +47,11 @@ export function render() {
   /* Admin dropdown (alleen voor admins) */
   let adminDropdown = '';
   if (admin) {
-    const adminIsActive = ADMIN_ITEMS.some(item => current === item.path);
+    const adminIsActive = ADMIN_ITEMS.some(item => item.path && current === item.path);
     const dropdownLinks = ADMIN_ITEMS.map(item => {
+      if (item.href) {
+        return `<a class="nav-dropdown-link" href="${item.href}">${item.label}</a>`;
+      }
       const isActive = current === item.path;
       return `<a class="nav-dropdown-link ${isActive ? 'active' : ''}" data-path="${item.path}">${item.label}</a>`;
     }).join('');

@@ -5,7 +5,7 @@
    Geeft altijd { ok, status, data, error } terug.
 ============================================ */
 
-import { sessionRefreshIfNeeded } from './supabase.js?v=2.5.10';
+import { sessionRefreshIfNeeded } from './supabase.js?v=2.9.0';
 
 async function call(path, { method = 'GET', body = null } = {}) {
   const session = await sessionRefreshIfNeeded();
@@ -63,3 +63,16 @@ export const editReply   = (id, body) =>
   call('/replies/' + encodeURIComponent(id), { method: 'PATCH', body: { body } });
 export const deleteReply = (id) =>
   call('/replies/' + encodeURIComponent(id), { method: 'DELETE' });
+
+/* ----- Volgen (rooms) ----- */
+export const followRoom   = (slug) => call('/' + encodeURIComponent(slug) + '/follow', { method: 'POST' });
+export const unfollowRoom = (slug) => call('/' + encodeURIComponent(slug) + '/follow', { method: 'DELETE' });
+export const markRoomRead = (slug) => call('/' + encodeURIComponent(slug) + '/read',   { method: 'POST' });
+
+/* ----- Volgen (topics) ----- */
+export const followTopic   = (id) => call('/topics/' + encodeURIComponent(id) + '/follow', { method: 'POST' });
+export const unfollowTopic = (id) => call('/topics/' + encodeURIComponent(id) + '/follow', { method: 'DELETE' });
+export const markTopicRead = (id) => call('/topics/' + encodeURIComponent(id) + '/read',   { method: 'POST' });
+
+/* ----- Ongelezen tellingen ----- */
+export const getUnread = () => call('/unread');

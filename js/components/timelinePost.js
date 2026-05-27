@@ -6,8 +6,8 @@
 import {
   escapeHtml,
   nl2br,
-} from '../utils.js?v=2.5.10';
-import { renderAvatar, renderAuthorMeta } from '../profileRender.js?v=2.5.10';
+} from '../utils.js?v=2.9.0';
+import { renderAvatar, renderAuthorMeta } from '../profileRender.js?v=2.9.0';
 
 /* Categorie-labels (zelfde lijst als in api/_lib/community.mjs ALLOWED_CATEGORIES). */
 export const CATEGORIES = [
@@ -227,5 +227,38 @@ function renderMenu({ isOwn, canEdit, type, isAdminUser = false, isPinned = fals
       <button type="button" class="tl-menu-toggle" data-action="toggle-menu" aria-label="Acties" aria-expanded="false">⋯</button>
       <div class="tl-menu-dropdown hidden" data-role="menu-dropdown">${items.join('')}</div>
     </div>
+  `;
+}
+
+/**
+ * Rendert een chatruimte-topic als kaart in de tijdlijn.
+ * topic moet bevatten: id, title, body, nickname, avatar_url, avatar_path,
+ *   replies_count, created_at, source_room_title, source_room_slug, author_is_admin.
+ */
+export function renderChatroomTopicCard(topic) {
+  const replies  = Number(topic.replies_count || 0);
+  const snippet  = (topic.body || '').length > 200
+    ? escapeHtml(topic.body.slice(0, 200)) + '…'
+    : escapeHtml(topic.body || '');
+
+  return `
+    <article class="tl-post tl-post--chatroom" data-chatroom-topic-id="${escapeHtml(topic.id)}" data-room-slug="${escapeHtml(topic.source_room_slug || '')}">
+      <button class="tl-chatroom-source" type="button" data-action="open-chatroom-source" data-room-slug="${escapeHtml(topic.source_room_slug || '')}">
+        💬 Chatruimte: ${escapeHtml(topic.source_room_title || 'Onbekend')} →
+      </button>
+      <header class="tl-post-head">
+        ${renderAvatar(topic, 'tl-avatar')}
+        <div class="tl-post-meta">
+          ${renderAuthorMeta(topic)}
+        </div>
+      </header>
+      <div class="tl-chatroom-topic-title">${escapeHtml(topic.title || '')}</div>
+      <div class="tl-post-body">${snippet}</div>
+      <footer class="tl-chatroom-footer">
+        <button class="tl-chatroom-open-btn" type="button" data-action="open-chatroom-topic" data-topic-id="${escapeHtml(topic.id)}" data-room-slug="${escapeHtml(topic.source_room_slug || '')}">
+          💬 ${replies === 1 ? '1 reactie' : replies + ' reacties'} &nbsp;→ Open discussie
+        </button>
+      </footer>
+    </article>
   `;
 }

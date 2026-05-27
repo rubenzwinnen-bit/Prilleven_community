@@ -16,6 +16,7 @@
 //   POST   /api/community/upload-url
 
 import { requireAuth, requireAdmin, AuthError } from './_lib/auth.mjs';
+import { supabase } from './_lib/clients.mjs';
 import {
   loadCommunityProfile,
   validateNickname,
@@ -54,6 +55,90 @@ import {
   markAllNotificationsRead,
 } from './_lib/community.mjs';
 import { findBlockedWord } from './_lib/moderation.mjs';
+
+/**
+ * Laad topics van gevolgde chatruimtes + direct gevolgde topics voor de tijdlijn.
+ * Returned items krijgen source_type: 'chatroom' zodat de frontend ze anders kan renderen.
+ */
+async function loadFollowedChatroomTopics(userId, { before = null, limit = 20 } = {}) {
+  // Haal gevolgde rooms + gevolgde topics op
+  const [{ data: roomFollows }, { data: topicFollows }] = await Promise.all([
+    supabase
+      .from('chat_room_followers')
+      .select('room_id, followed_at')
+      .eq('user_id', userId),
+    supabase
+      .from('chat_topic_followers')
+      .select('topic_id, followed_at')
+      .eq('user_id', userId),
+  ]);
+
+  const followedRoomIds  = (roomFollows  || []).map(f => f.room_id);
+  const followedTopicIds = (topicFollows || []).map(f => f.topic_id);
+  if (followedRoomIds.length === 0 && followedTopicIds.length === 0) return [];
+
+  // Haal topics op uit gevolgde rooms
+  let roomTopics = [];
+  if (followedRoomIds.length > 0) {
+    let q = supabase
+      .from('chat_topics_view')
+      .select('id, room_id, user_id, title, body, is_pinned, replies_count, last_reply_at, created_at, edited_at, nickname, avatar_path')
+      .in('room_id', followedRoomIds)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (before) q = q.lt('created_at', before);
+    const { data } = await q;
+    roomTopics = data || [];
+  }
+
+  // Haal direct gevolgde topics op (altijd tonen, dus zonder `before`-filter)
+  let directTopics = [];
+  if (followedTopicIds.length > 0) {
+    const { data } = await supabase
+      .from('chat_topics_view')
+      .select('id, room_id, user_id, title, body, is_pinned, replies_count, last_reply_at, created_at, edited_at, nickname, avatar_path')
+      .in('id', followedTopicIds)
+      .order('created_at', { ascending: false });
+    directTopics = data || [];
+  }
+
+  // Merge, dedupliceer (topic kan zowel direct als via room gevolgd zijn)
+  const seen = new Set();
+  const allTopics = [];
+  for (const t of [...roomTopics, ...directTopics]) {
+    if (seen.has(t.id)) continue;
+    seen.add(t.id);
+    allTopics.push(t);
+  }
+
+  // Voeg room-info toe (title + slug) voor de tijdlijn-badge
+  const roomIds = [...new Set(allTopics.map(t => t.room_id).filter(Boolean))];
+  let roomMap = new Map();
+  if (roomIds.length > 0) {
+    const { data: rooms } = await supabase
+      .from('chat_rooms')
+      .select('id, slug, title')
+      .in('id', roomIds);
+    roomMap = new Map((rooms || []).map(r => [r.id, r]));
+  }
+
+  return allTopics.map(t => {
+    const room = roomMap.get(t.room_id) || {};
+    return {
+      ...t,
+      source_type: 'chatroom',
+      source_room_title: room.title || null,
+      source_room_slug:  room.slug  || null,
+      // Velden die community-posts ook hebben (voor uniforme sort/render)
+      is_pinned: t.is_pinned || false,
+      liked_by_me: false,
+      image_path: null,
+      image_url: null,
+      has_poll: false,
+      poll: null,
+    };
+  });
+}
 
 function json(res, status, body) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -282,29 +367,51 @@ export default async function handler(req, res) {
       const category = url.searchParams.get('category');
       const before   = url.searchParams.get('before');
       const limit    = url.searchParams.get('limit');
-      const posts = await loadPosts({ category, before, limit });
-      const postIds = posts.map(p => p.id);
-      const pollIds = posts.filter(p => p.has_poll).map(p => p.id);
-      const authorIds = posts.map(p => p.user_id);
-      const allPaths = [
+      const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 50);
+
+      // Haal community-posts en gevolgde chatroom-topics parallel op
+      const [posts, chatroomItems] = await Promise.all([
+        loadPosts({ category, before, limit }),
+        loadFollowedChatroomTopics(auth.userId, { before, limit: safeLimit }),
+      ]);
+
+      // Enrich community posts
+      const postIds   = posts.map(p => p.id);
+      const pollIds   = posts.filter(p => p.has_poll).map(p => p.id);
+      const authorIds = [...new Set([...posts.map(p => p.user_id), ...chatroomItems.map(t => t.user_id)])];
+      const allPaths  = [
         ...posts.map(p => p.image_path).filter(Boolean),
         ...posts.map(p => p.avatar_path).filter(Boolean),
+        ...chatroomItems.map(t => t.avatar_path).filter(Boolean),
       ];
       const [likedSet, signedMap, pollMap, adminSet] = await Promise.all([
         loadMyLikesForPosts(auth.userId, postIds),
-        signImageUrls(allPaths),
-        loadPollsForPosts(auth.userId, pollIds),
-        loadAdminUserIds(authorIds),
+        allPaths.length ? signImageUrls(allPaths) : Promise.resolve(new Map()),
+        pollIds.length  ? loadPollsForPosts(auth.userId, pollIds) : Promise.resolve(new Map()),
+        authorIds.length ? loadAdminUserIds(authorIds) : Promise.resolve(new Set()),
       ]);
-      const enriched = posts.map(p => ({
+      const enrichedPosts = posts.map(p => ({
         ...p,
+        source_type: 'community',
         liked_by_me: likedSet.has(p.id),
         image_url:  p.image_path  ? (signedMap.get(p.image_path)  || null) : null,
         avatar_url: p.avatar_path ? (signedMap.get(p.avatar_path) || null) : null,
         poll: p.has_poll ? (pollMap.get(p.id) || null) : null,
         author_is_admin: adminSet.has(p.user_id),
       }));
-      return json(res, 200, { posts: enriched });
+      const enrichedChatroom = chatroomItems.map(t => ({
+        ...t,
+        avatar_url: t.avatar_path ? (signedMap.get(t.avatar_path) || null) : null,
+        author_is_admin: adminSet.has(t.user_id),
+      }));
+
+      // Meng en sorteer op created_at desc; pinned community-posts staan altijd bovenaan
+      const pinnedPosts    = enrichedPosts.filter(p => p.is_pinned);
+      const nonPinnedPosts = enrichedPosts.filter(p => !p.is_pinned);
+      const mixed = [...nonPinnedPosts, ...enrichedChatroom]
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, safeLimit);
+      return json(res, 200, { posts: [...pinnedPosts, ...mixed] });
     }
     if (route === 'posts.create') {
       const body = parseBody(req);

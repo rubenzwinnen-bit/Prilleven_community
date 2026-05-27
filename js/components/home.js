@@ -7,7 +7,7 @@
 
 import * as Store from '../store.js?v=2.5.10';
 import * as Router from '../router.js?v=2.5.10';
-import * as Timeline from './timeline.js?v=2.5.10';
+import * as Timeline from './timeline.js?v=2.9.0';
 import * as ChatRooms from './chatRooms.js?v=2.5.10';
 
 const ACTIVE_PANE_KEY = 'home:active-pane';
