@@ -687,6 +687,7 @@
         <a href="/" class="header-home-btn" title="Naar het hub" aria-label="Naar het hub">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1V9.5Z"/></svg>
         </a>
+        <span id="header-bell-mount"></span>
         <span id="header-avatar-mount" class="header-avatar-mount"></span>
         <button type="button" class="btn-logout" id="header-logout-btn-standalone" title="Uitloggen">Uitloggen</button>
       </div>
@@ -777,7 +778,9 @@
   <script src="/js/chat.js?v=2.9.0" type="module"></script>
   <script type="module">
     import { mountHeaderAvatar, attachLogoutHandler } from '/js/headerAvatarStandalone.js?v=2.9.0';
+    import { mountHeaderBell } from '/js/headerBellStandalone.js?v=2.9.0';
     document.addEventListener('DOMContentLoaded', () => {
+      mountHeaderBell(document.getElementById('header-bell-mount'));
       mountHeaderAvatar(document.getElementById('header-avatar-mount'));
       attachLogoutHandler(document.getElementById('header-logout-btn-standalone'));
     });
