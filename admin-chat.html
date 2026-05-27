@@ -344,6 +344,7 @@
         <button class="admin-tab" data-tab="queries">Recente vragen</button>
         <button class="admin-tab" data-tab="fallbacks">Fallbacks</button>
         <button class="admin-tab" data-tab="events">Abonnement-events</button>
+        <button class="admin-tab" data-tab="chat">Chat</button>
       </div>
 
       <!-- Overview -->
@@ -400,6 +401,19 @@
           </div>
           <div class="panel-body">
             <div id="events-table" class="loading">Laden…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chat — reports queue -->
+      <div id="tab-chat" class="tab-content">
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Reports queue</h3>
+            <button type="button" id="chat-reports-refresh" style="margin-left:auto;padding:.35rem .85rem;background:transparent;border:1px solid var(--color-gray-light);border-radius:var(--radius-md);font-family:inherit;font-size:.85rem;cursor:pointer;color:var(--color-dark-light);">Vernieuwen</button>
+          </div>
+          <div class="panel-body">
+            <div id="chat-reports-list" class="loading">Laden…</div>
           </div>
         </div>
       </div>

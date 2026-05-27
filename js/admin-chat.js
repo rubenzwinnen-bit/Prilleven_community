@@ -1,7 +1,7 @@
 // Admin dashboard — laadt stats uit /api/admin/* endpoints.
 // Toegang: vereist een ingelogde user met is_admin = true.
 
-import { sessionGet, sessionRefreshIfNeeded, sessionClear, fetchSubscriptionStatus } from './supabase.js?v=2.5.10';
+import { sessionGet, sessionRefreshIfNeeded, sessionClear, fetchSubscriptionStatus } from './supabase.js?v=2.9.0';
 
 const gate = document.getElementById('gate');
 const dashboard = document.getElementById('dashboard');
@@ -34,6 +34,24 @@ async function authedFetch(path) {
     throw new Error(data.error || `${res.status}`);
   }
   return res.json();
+}
+
+async function authedPost(path, body) {
+  const session = await sessionRefreshIfNeeded();
+  if (!session) throw new Error('Geen sessie');
+  const res = await fetch(path, {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer ' + session.access_token,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || `${res.status}`);
+  }
+  return res.json().catch(() => ({}));
 }
 
 // ---------- Formatters ----------
@@ -496,6 +514,96 @@ async function loadEvents() {
   }
 }
 
+// ---------- Chat — reports queue ----------
+let chatReportsLoaded = false;
+
+async function loadChatReports() {
+  const list = document.getElementById('chat-reports-list');
+  if (!list) return;
+  list.innerHTML = '<div class="loading">Laden…</div>';
+  try {
+    const data = await authedFetch('/api/community/admin/reports');
+    const reports = data.reports || [];
+    if (reports.length === 0) {
+      list.innerHTML = '<div class="empty">Geen openstaande meldingen 🎉</div>';
+      return;
+    }
+    list.innerHTML = reports.map(renderReportRow).join('');
+  } catch (err) {
+    list.innerHTML = '<div class="error-box">Kon reports niet laden: ' + esc(err.message) + '</div>';
+  }
+}
+
+function renderReportRow(rep) {
+  const t = rep.target;
+  const targetBody = t?.body
+    ? esc(t.body.slice(0, 240)).replace(/\n/g, '<br>') + (t.body.length > 240 ? '…' : '')
+    : '<em>(verwijderd)</em>';
+  const targetMeta = t
+    ? `${esc(t.nickname || '(naamloos)')} · ${fmtRelTime(t.created_at)}`
+    : '<em>doel bestaat niet meer</em>';
+  const repId = esc(rep.id);
+  return `
+    <article class="tl-report-row" data-report-id="${repId}">
+      <div class="tl-report-meta">
+        <span class="tl-report-type">${rep.target_type === 'post' ? '📄 Post' : '💬 Reactie'}</span>
+        <span class="tl-time">${fmtRelTime(rep.created_at)}</span>
+      </div>
+      <div class="tl-report-target">
+        <div class="tl-report-target-meta">${targetMeta}</div>
+        <div class="tl-report-target-body">${targetBody}</div>
+      </div>
+      ${rep.reason ? `<div class="tl-report-reason"><strong>Reden:</strong> ${esc(rep.reason)}</div>` : ''}
+      <div class="tl-report-actions">
+        <button type="button" class="btn btn-outline btn-sm" data-action="report-dismiss">Niets doen</button>
+        <button type="button" class="btn btn-danger btn-sm" data-action="report-delete">Verwijder bericht</button>
+      </div>
+    </article>
+  `;
+}
+
+function initChatTab() {
+  const list = document.getElementById('chat-reports-list');
+  if (!list) return;
+
+  document.getElementById('chat-reports-refresh')?.addEventListener('click', () => loadChatReports());
+
+  list.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const row = btn.closest('[data-report-id]');
+    if (!row) return;
+    const reportId = row.dataset.reportId;
+
+    if (btn.dataset.action === 'report-dismiss') {
+      btn.disabled = true;
+      try {
+        await authedPost(`/api/community/admin/reports/${encodeURIComponent(reportId)}/resolve`, { delete_target: false });
+        row.remove();
+        if (!list.querySelector('[data-report-id]')) {
+          list.innerHTML = '<div class="empty">Geen openstaande meldingen 🎉</div>';
+        }
+      } catch (err) {
+        btn.disabled = false;
+        alert('Mislukt: ' + err.message);
+      }
+    } else if (btn.dataset.action === 'report-delete') {
+      if (!window.confirm('Verwijder dit bericht én sluit de melding?')) return;
+      btn.disabled = true;
+      try {
+        await authedPost(`/api/community/admin/reports/${encodeURIComponent(reportId)}/resolve`, { delete_target: true });
+        row.remove();
+        if (!list.querySelector('[data-report-id]')) {
+          list.innerHTML = '<div class="empty">Geen openstaande meldingen 🎉</div>';
+        }
+      } catch (err) {
+        btn.disabled = false;
+        alert('Mislukt: ' + err.message);
+      }
+    }
+  });
+}
+
 // ---------- Tab switching ----------
 tabs.forEach(tab => {
   tab.addEventListener('click', () => {
@@ -503,6 +611,10 @@ tabs.forEach(tab => {
     tab.classList.add('active');
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+    if (tab.dataset.tab === 'chat' && !chatReportsLoaded) {
+      chatReportsLoaded = true;
+      loadChatReports();
+    }
   });
 });
 
@@ -519,6 +631,8 @@ async function init() {
   if (!ok) return;
   gate.style.display = 'none';
   dashboard.style.display = '';
+
+  initChatTab();
 
   await Promise.all([
     loadGlobalStats(),
