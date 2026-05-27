@@ -489,3 +489,131 @@ Nieuwe sectie na bestaande gegevens-sectie:
 ### Open / nog te doen
 - ⬜ Productie-rooktest na deploy van `376cbae`: memory-toggle autosave, download data, account-verwijdering (test-account), avatar-klik in chat/admin-header → /#/profiel.
 - ⬜ Branch `uitwerken-profiel` (uit eerdere sessie) staat nog open met SQL-migratie-todo voor `kippen-ei` / dedup. Apart afhandelen.
+
+---
+
+## 2026-05-27 — Tijdlijn-optimalisaties V2.9.0 (branch `tijdlijn-optimalisatie` → main)
+
+**Context**: Afrondingssprint voor de web-app vóór de overstap naar mobiele app-ontwikkeling. Vier gerichte verbeteringen aan de community-tijdlijn en admin-tools.
+
+### Vandaag afgerond (merge `b31ac4b`)
+
+- ✅ **SQL-fix chatruimtes volgen**: `CREATE POLICY IF NOT EXISTS` niet geldig in PG15 — `IF NOT EXISTS` verwijderd uit beide policies (`chat_room_followers`, `chat_topic_followers`). Migratie `2026-05-26-chat-follow.sql` nu correct.
+- ✅ **Chatruimtes volgen** in tijdlijn: nieuwe tabellen `chat_room_followers` + `chat_topic_followers` (PK `user_id/room_id` resp. `user_id/topic_id`, `last_read_at` kolom). Tijdlijn toont updates van gevolgde rooms/topics.
+- ✅ **Composer admin-only**: textarea + foto-knop + poll-knop + "Plaats"-knop verborgen voor gewone gebruikers. Alleen admins kunnen nog posten op de tijdlijn.
+- ✅ **Notificatiebel verplaatst naar app-header**: SVG-belicoon in salie-groen (`--color-secondary-dark`) met rood badge (`#e53935`). Polling 60s + visibilitychange. Werkt op alle pagina's.
+  - `header.js` bevat nu alle bell-logica (`initBell`, `startBellPolling`, `refreshBellCount`, `setBellBadge`, `refreshBellList`, `navigateToPost`, `renderNotifRow`).
+  - `headerBellStandalone.js` — nieuwe module voor pagina's buiten de SPA (`chat.html`). Exporteert `mountHeaderBell(container)`.
+  - `chat.html` krijgt `<span id="header-bell-mount">` + import van `mountHeaderBell`.
+- ✅ **Reports queue** uit tijdlijn → nieuw **"Chat"-tabblad** in `admin-chat.html`:
+  - Lazy-load bij eerste klik op tab.
+  - "Niets doen" (sluit melding) + "Verwijder bericht" (verwijdert content + sluit melding) met `window.confirm()`.
+  - Vernieuwen-knop.
+  - `authedPost()` helper toegevoegd aan `js/admin-chat.js`.
+- ✅ **Nav admin-dropdown**: "Admin dashboard" linkt nu direct naar `/admin-chat.html` (was: dode SPA-hash-route `#/admin-dashboard`). `adminDashboard.js` verwijderd.
+- ✅ **Cache-buster** 2.8.0 → 2.9.0.
+
+### Beslissingen
+- **Composer verbergen** i.p.v. blokkeren via API: snelste UX, API heeft al auth-check voor admin-acties.
+- **Bell in `header.js`** (SPA) + aparte `headerBellStandalone.js` (non-SPA): zelfde HTML/logica, maar standalone-versie navigeert bij notificatieklik naar `window.location.href = '/'` (volledige navigatie naar SPA) i.p.v. in-page hash-routing.
+- **Lazy-load reports in admin-chat**: past bij het patroon van de andere tabs (data pas laden wanneer nodig), vermijdt onnodige API-call bij elke pageload voor zelden bezochte tab.
+
+---
+
+## 2026-05-27 — V3.0.0 Release — Webplatform voltooid, start mobiele app
+
+**Context**: Officiële afsluiting van het web-platform als v3.0.0. Alle kernfunctionaliteit is live. Volgende fase = implementatie van alle features in de mobiele app (React Native / Expo of vergelijkbaar). De web-app blijft productie-waardig draaien en wordt parallel onderhouden.
+
+### Volledig overzicht V1 → V2 → V3
+
+#### V1.0.0 — Weekschema & Receptenboek (april 2026)
+Kern van de app: het originele recepten- en weekschema-platform.
+- Receptenbeheer: CRUD, bulk-import via CSV/JSON, ingrediënt-iconen.
+- Weekschema-generator met AI (Anthropic Claude).
+- Boodschappenlijst met porties.
+- Favorieten en opgeslagen schema's.
+- Admin-systeem + gebruikersauthenticatie (email/wachtwoord, Supabase Auth).
+- Wachtwoord-reset via Resend.
+- Betalingsintegratie: Plug&Pay webhook → `allowed_users` + `subscriptions`.
+
+#### V2.0.0 — HapjesHeld 2.0 RAG-chat + Community platform (april 2026)
+Twee grote uitbreidingen bovenop het receptenboek.
+
+**HapjesHeld 2.0 (RAG-chatbot)**
+- AI-chatbot met Retrieval-Augmented Generation (Anthropic Claude + Voyage AI embeddings).
+- Kennisbank van Pril Leven-content als vectorbasis.
+- Gespreksgeheugen per gebruiker (`memory_enabled`-toggle).
+- Quota-tracking (tokens in/uit, kosten per gebruiker).
+- Admin-dashboard (`/admin-chat.html`): globale stats, gebruikersoverzicht, recente vragen, fallback-antwoorden, abonnement-events.
+
+**Community tijdlijn**
+- Posts (tekst + 1 foto, EXIF-strip client-side, max 5MB).
+- Categorieën: `vraag`, `tip`, `mijlpaal`, `voeding`, `slapen`, `algemeen` + filterbalk.
+- Replies (1 niveau).
+- Likes (teller, geen ledenlijst).
+- Pinned posts (admin, max 5).
+- Polls: 2–4 opties, 1 stem per user, sluit na 7 dagen. Multi-vote + unvote later toegevoegd.
+- Moderatie: woord-blacklist (server-side, `api/_lib/moderation.mjs`) + rapporteer-knop → reports queue.
+- In-app notificaties: badge + dropdown, polling 60s, "reply op je post" + "like".
+- Nickname verplicht bij eerste actie; email nooit zichtbaar voor andere users.
+- Admin kan posten pinnen via tijdlijn.
+
+#### V2.5.x — Allergenen-introductieflow (mei 2026)
+- Eerste hapjes: stap-voor-stap introductie van 9 allergenen (kippen-ei, pinda, noten, vis, schaaldieren, koemelk, tarwe, soja, sesam).
+- Doses/introducties bijhouden (max 3 per allergeen).
+- Symptomen loggen via stoplicht (mild / twijfel / ernstig).
+- Pauze-flow bij twijfel/ernstige reactie + arts-toezicht modus.
+- Foto's per introductie.
+- Setup-tegels met foto-achtergrond; accordeon-UI met smooth fade.
+
+#### V2.6.x — Chatruimtes (mei 2026)
+- Categorische chat rooms: Melk & voeding, Eerste hapjes, Allergieën, Feedback.
+- Topics per room met replies (1 niveau).
+- Admin-intro per ruimte met avatar in het eerste bericht.
+- Admin kan room-intro live bewerken (`PATCH /api/chat-rooms/:slug`).
+- Per-room topic-cache (TTL 2 min) voor instant rendering bij terug-navigatie.
+- Landing-page volledige browserbreedte via `:has()`-hook + `body.is-hub`.
+
+#### V2.7.0 — Profiel geunificeerd (mei 2026)
+- Nickname & avatar inline bewerken op `/profiel` (geen aparte popup meer).
+- Headers van `chat.html` + `admin-chat.html` gerefactord naar SPA-header-patroon.
+- Avatar navigeert naar `/#/profiel` op alle pagina's.
+- RAG-bot krijgt geïntroduceerde allergenen mee in de profiel-context.
+
+#### V2.8.0 — Privacy & geheugen naar /profiel (mei 2026)
+- Memory-toggle (autosave 300ms debounce) op `/profiel`.
+- Download persoonlijke data (`GET /api/me`).
+- Account verwijderen (dubbele bevestiging: `confirm()` + typ "VERWIJDER").
+- Profiel-modal in `chat.html` volledig verwijderd.
+
+#### V2.9.0 — Tijdlijn-optimalisaties + admin-tools (mei 2026)
+- Composer tijdlijn admin-only (gewone gebruikers kunnen niet meer posten).
+- Notificatiebel naar app-header (SVG groen, rood badge, alle pagina's).
+- Reports queue als "Chat"-tabblad in `/admin-chat.html` (lazy-load).
+- Chatruimtes volgen: rooms + topics opvolgen in de tijdlijn.
+- Nav admin-dropdown linkt direct naar `/admin-chat.html`.
+
+### Huidige productie-staat (V3.0.0)
+- **URL**: https://community-web.prilleven.be
+- **Cache-buster**: `?v=2.9.0`
+- **Supabase project**: `ynrdoxukevhzupjvcjuw`
+- **Vercel project**: `pril_leven_community` (team: `prilleven-community`)
+- **Actieve branches**: `main` = productie. Branch `uitwerken-profiel` heeft nog open SQL-todo (`kippen-ei` dedup).
+
+### Volgende fase — V3.x Mobiele app
+Alle bovenstaande features worden overgezet naar de mobiele app. De web-app blijft actief als referentie-implementatie en productie-platform.
+
+**Prioriteitsvolgorde voor mobiel (te verfijnen):**
+1. Auth (login/logout, session-handling in app)
+2. Weekschema + recepten (kernfunctie)
+3. HapjesHeld 2.0 chat
+4. Community tijdlijn (lezen + reageren)
+5. Allergenen-flow
+6. Chatruimtes
+7. Notificaties (push i.p.v. polling)
+
+### Nog open op web vóór V3.1
+- ⬜ SQL-migratie `kippen-ei`/dedup uitvoeren (branch `uitwerken-profiel`).
+- ⬜ Inline CSS-resten `.memory-toggle` + `.pf-email-readonly` in `chat.html` opruimen.
+- ⬜ Vercel Company Name corrigeren naar `Anneleen Plettinx`.
+- ⬜ Vercel Observability Plus overwegen uit te zetten (ongebruikt, extra kosten).
