@@ -7,6 +7,7 @@
 //   - chat_user_profiles       (alleen nog voor memory_enabled-vlag)
 
 import { supabase } from './clients.mjs';
+import { ALLERGEN_KEYS_LIST } from './eersteHapjes-state.mjs';
 
 /**
  * Laad alle profiel-context voor één user.
@@ -36,20 +37,34 @@ export async function loadUserProfile(userId) {
   if (communityRow.error) throw new Error('Profile (community): ' + communityRow.error.message);
   if (childrenRows.error) throw new Error('Profile (children): ' + childrenRows.error.message);
 
-  // Reeds geïntroduceerde allergenen per kind, uit "Allergenen introduceren".
-  // Bron: eerste_hapjes_allergen_doses (zelfde tabel die profiel-UI gebruikt).
-  let introMap = {};
+  // Allergeen-context per kind, parity met website computeIntroducedKeys():
+  //   geïntroduceerd = union(doses, pre_introduced, known_allergies)
+  //   nog niet       = de 9 hoofdallergenen MIN geïntroduceerd MIN overgeslagen (arts-toezicht)
+  // Bronnen: eerste_hapjes_allergen_doses (doses) + eerste_hapjes_state.allergen_state.
+  let introMap = {};   // child_id → Set van keys met ≥1 dose
+  let stateMap = {};   // child_id → allergen_state-object
   const children = childrenRows.data || [];
   if (children.length > 0) {
     const childIds = children.map(c => c.id);
-    const { data: doses, error: doseErr } = await supabase
-      .from('eerste_hapjes_allergen_doses')
-      .select('child_id, allergen_key')
-      .in('child_id', childIds);
-    if (doseErr) throw new Error('Profile (doses): ' + doseErr.message);
-    for (const d of (doses || [])) {
+    const [doseRes, stateRes] = await Promise.all([
+      supabase
+        .from('eerste_hapjes_allergen_doses')
+        .select('child_id, allergen_key')
+        .in('child_id', childIds),
+      supabase
+        .from('eerste_hapjes_state')
+        .select('child_id, allergen_state')
+        .eq('user_id', userId)
+        .in('child_id', childIds),
+    ]);
+    if (doseRes.error)  throw new Error('Profile (doses): ' + doseRes.error.message);
+    if (stateRes.error) throw new Error('Profile (state): ' + stateRes.error.message);
+    for (const d of (doseRes.data || [])) {
       if (!introMap[d.child_id]) introMap[d.child_id] = new Set();
       introMap[d.child_id].add(d.allergen_key);
+    }
+    for (const s of (stateRes.data || [])) {
+      stateMap[s.child_id] = s.allergen_state || {};
     }
   }
 
@@ -57,15 +72,37 @@ export async function loadUserProfile(userId) {
     memory_enabled: chatRow.data?.memory_enabled !== false, // default true
     display_name: communityRow.data?.nickname || null,
     diet: communityRow.data?.family_diet || [],
-    children: children.map(c => ({
-      name: c.name,
-      birthdate: c.birthdate,
-      // Map known_allergies+previous_reactions+notes naar wat de prompt nodig heeft.
-      allergies: Array.isArray(c.known_allergies) ? c.known_allergies : [],
-      previous_reactions: c.previous_reactions || null,
-      notes: c.notes || null,
-      introduced_allergens: introMap[c.id] ? [...introMap[c.id]].sort() : [],
-    })),
+    children: children.map(c => {
+      const astate = stateMap[c.id] || {};
+      const childKnown = Array.isArray(c.known_allergies) ? c.known_allergies : [];
+      // Union van alle "reeds geïntroduceerd/bekend"-bronnen.
+      const introducedSet = new Set([
+        ...(introMap[c.id] || []),
+        ...(Array.isArray(astate.pre_introduced) ? astate.pre_introduced : []),
+        ...(Array.isArray(astate.known_allergies) ? astate.known_allergies : []),
+        ...childKnown,
+      ]);
+      const excludedSet = new Set(
+        Array.isArray(astate.excluded_keys) ? astate.excluded_keys : []
+      );
+      const introduced = ALLERGEN_KEYS_LIST.filter(k => introducedSet.has(k));
+      // "Nog niet geïntroduceerd" is enkel relevant zodra het kind aan vaste voeding
+      // kan beginnen (~4 maanden). Daaronder of zonder geboortedatum: leeg laten,
+      // anders zou de bot bij een pasgeborene 9 allergenen gaan opsommen.
+      const age = ageMonths(c.birthdate);
+      const notIntroduced = (age !== null && age >= 4)
+        ? ALLERGEN_KEYS_LIST.filter(k => !introducedSet.has(k) && !excludedSet.has(k))
+        : [];
+      return {
+        name: c.name,
+        birthdate: c.birthdate,
+        allergies: childKnown,
+        previous_reactions: c.previous_reactions || null,
+        notes: c.notes || null,
+        introduced_allergens: introduced,
+        not_introduced_allergens: notIntroduced,
+      };
+    }),
   };
 }
 
@@ -112,6 +149,9 @@ export function formatProfileForPrompt(profile) {
         }
         if (Array.isArray(c.introduced_allergens) && c.introduced_allergens.length > 0) {
           pieces.push(`reeds geïntroduceerde allergenen: ${c.introduced_allergens.join(', ')}`);
+        }
+        if (Array.isArray(c.not_introduced_allergens) && c.not_introduced_allergens.length > 0) {
+          pieces.push(`nog niet geïntroduceerde allergenen: ${c.not_introduced_allergens.join(', ')}`);
         }
         if (c.previous_reactions) pieces.push(`eerdere reacties: ${c.previous_reactions}`);
         if (c.notes) pieces.push(`"${c.notes}"`);
