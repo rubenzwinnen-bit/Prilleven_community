@@ -227,11 +227,70 @@ function renderPage(container, children, familyDiet, profile, chatProfile) {
         </div>
       </div>
     </section>
+
+    <section class="profiel-section" id="profiel-blocked-section">
+      <div class="profiel-section-head">
+        <h2 class="profiel-section-title">Geblokkeerde gebruikers</h2>
+      </div>
+      <p class="profiel-section-sub">
+        Je ziet geen berichten of reacties meer van mensen die je blokkeert.
+        Zij worden hier niet van op de hoogte gebracht. Je kan een blokkade altijd opheffen.
+      </p>
+      <div id="profiel-blocked-list" class="profiel-blocked-list">
+        <div class="profiel-loading">Laden…</div>
+      </div>
+    </section>
   `;
 
   bindPageEvents(container, children);
   bindNicknameSection(container, profile);
   bindInstellingenSection(container);
+  bindBlockedSection(container);
+}
+
+/* ----------------------------------------
+   GEBLOKKEERDE GEBRUIKERS (App Store Guideline 1.2)
+---------------------------------------- */
+async function bindBlockedSection(container) {
+  const listEl = container.querySelector('#profiel-blocked-list');
+  if (!listEl) return;
+
+  async function reload() {
+    const { ok, data, error } = await CommunityApi.listBlocks();
+    if (!ok) {
+      listEl.innerHTML = `<p class="profiel-empty-inline">${escapeHtml(error || 'Kon lijst niet laden.')}</p>`;
+      return;
+    }
+    const blocks = data?.blocks || [];
+    if (blocks.length === 0) {
+      listEl.innerHTML = `<p class="profiel-empty-inline">Je hebt niemand geblokkeerd.</p>`;
+      return;
+    }
+    listEl.innerHTML = blocks.map(b => `
+      <div class="profiel-blocked-row" data-blocked-id="${escapeHtml(b.blocked_id)}">
+        <span class="profiel-blocked-nick">${escapeHtml(b.nickname || 'Onbekende gebruiker')}</span>
+        <button class="btn btn-outline btn-sm" type="button" data-action="unblock" data-blocked-id="${escapeHtml(b.blocked_id)}">Deblokkeren</button>
+      </div>
+    `).join('');
+  }
+
+  listEl.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-action="unblock"]');
+    if (!btn) return;
+    const id = btn.dataset.blockedId;
+    if (!id) return;
+    btn.disabled = true;
+    const { ok, error } = await CommunityApi.unblockUser(id);
+    if (!ok) {
+      btn.disabled = false;
+      showToast(error || 'Kon niet deblokkeren', 'error');
+      return;
+    }
+    showToast('Gebruiker gedeblokkeerd.');
+    await reload();
+  });
+
+  reload();
 }
 
 /* ----------------------------------------

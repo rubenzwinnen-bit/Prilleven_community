@@ -23,12 +23,15 @@
 //   POST   /api/chat-rooms/topics/:id/replies      → reply aanmaken
 //   PATCH  /api/chat-rooms/replies/:id             → eigen reply editten
 //   DELETE /api/chat-rooms/replies/:id             → eigen of admin verwijderen
+//   POST   /api/chat-rooms/report                  → topic/reply rapporteren
+//   GET    /api/chat-rooms/admin/reports           → admin: open reports
+//   POST   /api/chat-rooms/admin/reports/:id/resolve → admin: report sluiten (+ delete)
 
 import { requireAuth, requireAdmin, AuthError } from './_lib/auth.mjs';
 import { supabase } from './_lib/clients.mjs';
 import { findBlockedWord } from './_lib/moderation.mjs';
 import { getAccessStatus } from './_lib/subscription.mjs';
-import { signImageUrls, loadAdminUserIds } from './_lib/community.mjs';
+import { signImageUrls, loadAdminUserIds, loadBlockedUserIds } from './_lib/community.mjs';
 
 async function attachAvatarUrls(rows) {
   if (!rows || rows.length === 0) return [];
@@ -141,6 +144,20 @@ function matchRoute(req) {
   if (seg.length === 2 && seg[0] === 'replies') {
     if (m === 'PATCH')  return { route: 'reply.edit',   params: { id: seg[1] } };
     if (m === 'DELETE') return { route: 'reply.delete', params: { id: seg[1] } };
+  }
+
+  // /report
+  if (seg.length === 1 && seg[0] === 'report' && m === 'POST') {
+    return { route: 'report.create' };
+  }
+
+  // /admin/reports               (GET lijst)
+  // /admin/reports/:id/resolve   (POST sluiten)
+  if (seg[0] === 'admin' && seg[1] === 'reports') {
+    if (seg.length === 2 && m === 'GET') return { route: 'admin.reports.list' };
+    if (seg.length === 4 && seg[3] === 'resolve' && m === 'POST') {
+      return { route: 'admin.reports.resolve', params: { id: seg[2] } };
+    }
   }
 
   return null;
@@ -272,6 +289,95 @@ async function loadRepliesForTopic(topicId) {
   return attachAvatarUrls(enriched);
 }
 
+/* ---------------- Reports (Guideline 1.2) ---------------- */
+
+/** Maak een report aan voor een chat-topic of -reply. */
+async function createChatReport(userId, { target_type, target_id, reason }) {
+  if (!['topic', 'reply'].includes(target_type)) {
+    throw Object.assign(new Error('Ongeldig target_type.'), { status: 422 });
+  }
+  if (!isUuid(target_id)) {
+    throw Object.assign(new Error('Ongeldige target_id.'), { status: 422 });
+  }
+  const cleanReason = typeof reason === 'string' ? reason.trim().slice(0, 500) : null;
+  const { error } = await supabase
+    .from('chat_reports')
+    .insert({ target_type, target_id, reporter_id: userId, reason: cleanReason || null });
+  if (error) throw new Error('Chat report insert: ' + error.message);
+  return { ok: true };
+}
+
+/** Lijst open reports met gekoppelde target-content (admin-queue). */
+async function adminListChatReports({ limit = 50 } = {}) {
+  const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200);
+  const { data: reports, error } = await supabase
+    .from('chat_reports')
+    .select('id, target_type, target_id, reporter_id, reason, created_at')
+    .is('resolved_at', null)
+    .order('created_at', { ascending: false })
+    .limit(safeLimit);
+  if (error) throw new Error('Chat reports list: ' + error.message);
+
+  const topicIds = [...new Set(reports.filter(r => r.target_type === 'topic').map(r => r.target_id))];
+  const replyIds = [...new Set(reports.filter(r => r.target_type === 'reply').map(r => r.target_id))];
+  const [topicsRes, repliesRes] = await Promise.all([
+    topicIds.length
+      ? supabase.from('chat_topics').select('id, body, title, user_id, created_at').in('id', topicIds)
+      : Promise.resolve({ data: [] }),
+    replyIds.length
+      ? supabase.from('chat_replies').select('id, body, user_id, created_at').in('id', replyIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+  const topicMap = new Map((topicsRes.data || []).map(t => [t.id, t]));
+  const replyMap = new Map((repliesRes.data || []).map(r => [r.id, r]));
+
+  return reports.map(r => ({
+    id: r.id,
+    target_type: r.target_type,
+    target_id: r.target_id,
+    reason: r.reason,
+    created_at: r.created_at,
+    target: r.target_type === 'topic'
+      ? (topicMap.get(r.target_id) || null)
+      : (replyMap.get(r.target_id) || null),
+  }));
+}
+
+/** Markeer alle reports voor één target als opgelost. */
+async function resolveChatReportsForTarget(targetType, targetId) {
+  const { error } = await supabase
+    .from('chat_reports')
+    .update({ resolved_at: new Date().toISOString() })
+    .eq('target_type', targetType)
+    .eq('target_id', targetId)
+    .is('resolved_at', null);
+  if (error) throw new Error('Resolve chat target: ' + error.message);
+}
+
+/** Resolve één report; optioneel het target verwijderen. */
+async function resolveChatReport(reportId, { deleteTarget = false } = {}) {
+  if (deleteTarget) {
+    const { data: rep, error } = await supabase
+      .from('chat_reports')
+      .select('target_type, target_id')
+      .eq('id', reportId)
+      .maybeSingle();
+    if (error) throw new Error('Chat report fetch: ' + error.message);
+    if (!rep) throw Object.assign(new Error('Report bestaat niet.'), { status: 404 });
+    const table = rep.target_type === 'topic' ? 'chat_topics' : 'chat_replies';
+    const { error: delErr } = await supabase.from(table).delete().eq('id', rep.target_id);
+    if (delErr) throw new Error('Chat target delete: ' + delErr.message);
+    await resolveChatReportsForTarget(rep.target_type, rep.target_id);
+    return { ok: true };
+  }
+  const { error } = await supabase
+    .from('chat_reports')
+    .update({ resolved_at: new Date().toISOString() })
+    .eq('id', reportId);
+  if (error) throw new Error('Resolve chat report: ' + error.message);
+  return { ok: true };
+}
+
 /* ---------------- Handler ---------------- */
 
 export default async function handler(req, res) {
@@ -392,7 +498,7 @@ export default async function handler(req, res) {
       if (!isSlug(params.slug)) return json(res, 400, { error: 'Ongeldige slug.' });
       const room = await loadRoomBySlug(params.slug);
       if (!room || !room.is_active) return json(res, 404, { error: 'Room niet gevonden.' });
-      const [adminIntro, topicsRaw, { data: followRow }] = await Promise.all([
+      const [adminIntro, topicsRaw, { data: followRow }, blockedIds] = await Promise.all([
         buildAdminIntro(room),
         loadTopicsForRoom(room.id),
         supabase
@@ -401,8 +507,11 @@ export default async function handler(req, res) {
           .eq('user_id', auth.userId)
           .eq('room_id', room.id)
           .maybeSingle(),
+        loadBlockedUserIds(auth.userId),
       ]);
-      const signed = await attachAvatarUrls(topicsRaw);
+      // Verberg topics van geblokkeerde gebruikers (eenrichtings-block)
+      const topicsFiltered = topicsRaw.filter(t => !blockedIds.has(t.user_id));
+      const signed = await attachAvatarUrls(topicsFiltered);
       const withFlags = await attachAdminFlags(signed);
       return json(res, 200, {
         room: { ...stripAdminIntroFields(room), admin_intro: adminIntro, is_followed: !!followRow },
@@ -521,7 +630,7 @@ export default async function handler(req, res) {
       if (!isUuid(params.id)) return json(res, 400, { error: 'Ongeldige topic-id.' });
       const topic = await loadTopicById(params.id);
       if (!topic) return json(res, 404, { error: 'Topic niet gevonden.' });
-      const [topicSigned, repliesRaw, { data: topicFollow }] = await Promise.all([
+      const [topicSigned, repliesRaw, { data: topicFollow }, blockedIds] = await Promise.all([
         attachAdminFlag(await attachAvatarUrl(topic)),
         loadRepliesForTopic(topic.id),
         supabase
@@ -530,8 +639,11 @@ export default async function handler(req, res) {
           .eq('user_id', auth.userId)
           .eq('topic_id', params.id)
           .maybeSingle(),
+        loadBlockedUserIds(auth.userId),
       ]);
-      const replies = await attachAdminFlags(repliesRaw);
+      // Verberg reacties van geblokkeerde gebruikers (eenrichtings-block)
+      const repliesFiltered = repliesRaw.filter(r => !blockedIds.has(r.user_id));
+      const replies = await attachAdminFlags(repliesFiltered);
       return json(res, 200, { topic: { ...topicSigned, is_followed: !!topicFollow }, replies });
     }
 
@@ -746,6 +858,45 @@ export default async function handler(req, res) {
       const { error } = await supabase.from('chat_replies').delete().eq('id', params.id);
       if (error) throw error;
       return json(res, 200, { ok: true });
+    }
+
+    /* ----- report ----- */
+    if (route === 'report.create') {
+      const body = parseBody(req);
+      if (body === null) return json(res, 400, { error: 'Ongeldige JSON.' });
+      try {
+        await createChatReport(auth.userId, {
+          target_type: body.target_type,
+          target_id:   body.target_id,
+          reason:      body.reason,
+        });
+        return json(res, 201, { ok: true });
+      } catch (err) {
+        return json(res, err.status || 500, { error: err.message });
+      }
+    }
+
+    /* ----- ADMIN reports ----- */
+    if (route === 'admin.reports.list' || route === 'admin.reports.resolve') {
+      try { await requireAdmin(req); }
+      catch (e) {
+        if (e instanceof AuthError) return json(res, e.status, { error: e.message });
+        throw e;
+      }
+      if (route === 'admin.reports.list') {
+        const reports = await adminListChatReports();
+        return json(res, 200, { reports });
+      }
+      if (route === 'admin.reports.resolve') {
+        if (!isUuid(params.id)) return json(res, 400, { error: 'Ongeldige report-id.' });
+        const body = parseBody(req) || {};
+        try {
+          await resolveChatReport(params.id, { deleteTarget: body.delete_target === true });
+          return json(res, 200, { ok: true });
+        } catch (err) {
+          return json(res, err.status || 500, { error: err.message });
+        }
+      }
     }
 
     return json(res, 404, { error: 'Endpoint niet gevonden.' });

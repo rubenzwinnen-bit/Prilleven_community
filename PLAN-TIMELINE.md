@@ -604,12 +604,14 @@ Twee grote uitbreidingen bovenop het receptenboek.
 De mobiele app bestaat al (gebouwd parallel aan de website vanaf V1). De volgende stap is de mobiele app uitbouwen tot hetzelfde niveau als de web-app v3.0.0. Verdere web-uitbouw (V3.x) wordt hervat zodra dat bereikt is.
 
 **Features die nog naar mobiel moeten (prioriteitsvolgorde, te verfijnen):**
-1. HapjesHeld 2.0 RAG-chat
-2. Community tijdlijn (posts, replies, likes, polls, foto's, notificaties)
-3. Allergenen-introductieflow
-4. Chatruimtes
-5. Profiel (nickname/avatar, memory-toggle, GDPR)
-6. Push-notificaties (vervangt polling)
+1. ✅ HapjesHeld 2.0 RAG-chat (mobile v2.0.0)
+2. 🟡 Community tijdlijn — MVP live in mobile v2.10.0 (footer-tabs + tekst-feed lezen/liken/reageren + admin-composer via `services/community.ts` + `TimelineScreen`). Open: foto's, polls, reply-likes, edit/delete, rapporteren, notificaties, categorie-filter.
+3. ✅ Allergenen-introductieflow (mobile v2.5.0–v2.9.1, feature-compleet t.o.v. web)
+4. 🟡 Chatruimtes — placeholder-scherm in mobile v2.10.0; rooms→topics→replies nog te bouwen.
+5. ✅ Profiel (nickname/avatar, memory-toggle, GDPR) — mobile v2.0.3–v2.5.0
+6. ⬜ Push-notificaties (vervangt polling)
+
+**Mobile-notitie 2026-05-29**: Community-tijdlijn MVP + footer-navigatie (3 tabs) toegevoegd aan de mobiele app. De landing kreeg een bottom-tab navigator (`LandingTabs`): **Functies** (bestaande tegels) / **Tijdlijn** (community-feed, admin-only posten zoals web) / **Chatruimtes** (placeholder "binnenkort"). Posting is admin-only; MVP is tekst-only (geen foto's/polls). Zie mobile `CLAUDE.md` §3/§4.2/§5/§6/§11/§14.
 
 ### Nog open op web vóór V3.1
 - ⬜ SQL-migratie `kippen-ei`/dedup uitvoeren (branch `uitwerken-profiel`).
