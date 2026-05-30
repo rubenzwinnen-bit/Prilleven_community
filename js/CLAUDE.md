@@ -45,18 +45,19 @@ Pril Leven heeft historisch **twee** parallel-lopende auth-systemen. Begrijp het
 | `router.js` | Hash-gebaseerde SPA-router. `on(path, handler)`, `navigate(path)`, `init()`, `getCurrentPath()`, `hasHistory()`. Bewaart scroll-positie in `sessionStorage` per pad. |
 | `utils.js` | Helpers: `showToast`, `confirm`, `promptInput`, datum-formatters, sterren-render, `escapeHtml`, `nl2br`, `formatRelativeTime`, `colorFromSeed`, `initialsFromName`, `processImageForUpload` (EXIF strip + resize naar max 1920px JPEG q=0.85). Constanten: `ALLERGENS`, `MEAL_MOMENTS`, `SCHEDULE_SLOTS`, `WEEKDAYS`. |
 | `chat.js` | Logic voor `chat.html` — chat-interface met sidebar (conversations) + memory-modal. Profile-modal is verwijderd (V2.8.0); memory-toggle + GDPR staan nu op `/profiel`. `loadProfile()` blijft voor de quota-bar (consumeert `data.usage` uit `/api/profile`). |
-| `admin-chat.js` | Logic voor `admin-chat.html` — admin dashboard tabs (overview, users, queries, conversations, fallbacks). |
+| `admin-chat.js` | Logic voor `admin-chat.html` — admin dashboard tabs (overview, users, queries, fallbacks, events, chat). Bevat `authedFetch` (GET) + `authedPost` (POST) helpers. Chat-tab laadt lazy de reports queue via `loadChatReports()` + `initChatTab()` (event delegation op `#chat-reports-list`). |
 | `communityApi.js` | Wrapper rond `/api/community/*`. Doet `sessionRefreshIfNeeded()` vóór elke call, returnt `{ ok, status, data, error }`. Exporteert: `getMyProfile`, `setMyNickname`, `updateMyProfile`, `getAvatarUploadUrl`, `getPosts`, `createPost`, `votePoll`, `getUploadUrl`, `uploadToStorage`, replies, likes, edit/delete, `reportTarget`, admin (`togglePin`, `listReports`, `resolveReport`), notifications. |
 | `chatRoomsApi.js` | Wrapper rond `/api/chat-rooms/*`. Zelfde patroon als `communityApi.js`. Exporteert: `listRooms`, `getRoom`, `editRoom` (admin), topics + replies CRUD, `pinTopic` (admin). |
 | `profileRender.js` | Gedeelde helper om community-avatar + nickname-blok te renderen (gebruikt door timeline + chatrooms). |
 | `headerAvatarStandalone.js` | Klein avatar-component voor losse pagina's (`chat.html`, `admin-chat.html`) zonder de volledige header. |
+| `headerBellStandalone.js` | Notificatie-bel voor losse pagina's buiten de SPA (`chat.html`). Exporteert `mountHeaderBell(container)`. Gebruikt `window.location.href = '/'` voor navigatie (geen hash-router). Polling 60s + visibilitychange. |
 | `components/` | Pagina/feature-componenten. |
 
 ### `components/` map
 | Component | Doel |
 |---|---|
-| `header.js` | Header met logo + avatar-pill + uitlogknop. Cachet community-profiel in `localStorage['community.profile.cache.v1']` om email-flicker bij navigatie te vermijden. |
-| `nav.js` | Hoofdnavigatie. |
+| `header.js` | Header met logo + avatar-pill + uitlogknop + notificatie-bel. Cachet community-profiel in `localStorage['community.profile.cache.v1']` om email-flicker bij navigatie te vermijden. Bel-logica (polling, badge, dropdown) zit inline in dit component; losse pagina's gebruiken `headerBellStandalone.js`. |
+| `nav.js` | Hoofdnavigatie. ADMIN_ITEMS ondersteunt zowel `path` (hash-route via Router) als `href` (externe/standalone link, bv. `/admin-chat.html`). |
 | `home.js` | Landingspagina (hub). |
 | `recipeCard.js`, `recipeList.js`, `recipeDetail.js`, `recipeForm.js` | Recepten. |
 | `weekSchedule.js` | Weekschema (5 slots × 7 dagen). |

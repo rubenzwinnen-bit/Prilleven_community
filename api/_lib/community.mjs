@@ -722,6 +722,81 @@ export async function createReport(userId, { target_type, target_id, reason }) {
 }
 
 /* ============================================
+   BLOCKS — eenrichtings gebruiker blokkeren
+   (App Store Guideline 1.2). De blocker verbergt
+   alle content van de geblokkeerde gebruiker.
+============================================ */
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Set van user_ids die `userId` geblokkeerd heeft. */
+export async function loadBlockedUserIds(userId) {
+  if (!userId) return new Set();
+  const { data, error } = await supabase
+    .from('user_blocks')
+    .select('blocked_id')
+    .eq('blocker_id', userId);
+  if (error) {
+    console.warn('[blocks load] ' + error.message);
+    return new Set();
+  }
+  return new Set((data || []).map(r => r.blocked_id));
+}
+
+/** Lijst geblokkeerde gebruikers met nickname (voor beheer-UI). */
+export async function loadMyBlocks(userId) {
+  const { data, error } = await supabase
+    .from('user_blocks')
+    .select('blocked_id, created_at')
+    .eq('blocker_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) throw new Error('Blocks list: ' + error.message);
+  const ids = (data || []).map(r => r.blocked_id);
+  let nickMap = new Map();
+  if (ids.length) {
+    const { data: profs } = await supabase
+      .from('community_profiles')
+      .select('user_id, nickname')
+      .in('user_id', ids);
+    nickMap = new Map((profs || []).map(p => [p.user_id, p.nickname]));
+  }
+  return (data || []).map(r => ({
+    blocked_id: r.blocked_id,
+    nickname: nickMap.get(r.blocked_id) || null,
+    created_at: r.created_at,
+  }));
+}
+
+/** Blokkeer een gebruiker. Idempotent (upsert op PK). */
+export async function blockUser(blockerId, blockedId) {
+  if (!UUID_RE.test(String(blockedId))) {
+    throw Object.assign(new Error('Ongeldige gebruiker-id.'), { status: 422 });
+  }
+  if (blockerId === blockedId) {
+    throw Object.assign(new Error('Je kan jezelf niet blokkeren.'), { status: 422 });
+  }
+  const { error } = await supabase
+    .from('user_blocks')
+    .upsert({ blocker_id: blockerId, blocked_id: blockedId }, { onConflict: 'blocker_id,blocked_id' });
+  if (error) throw new Error('Block insert: ' + error.message);
+  return { ok: true };
+}
+
+/** Hef een blokkade op. */
+export async function unblockUser(blockerId, blockedId) {
+  if (!UUID_RE.test(String(blockedId))) {
+    throw Object.assign(new Error('Ongeldige gebruiker-id.'), { status: 422 });
+  }
+  const { error } = await supabase
+    .from('user_blocks')
+    .delete()
+    .eq('blocker_id', blockerId)
+    .eq('blocked_id', blockedId);
+  if (error) throw new Error('Block delete: ' + error.message);
+  return { ok: true };
+}
+
+/* ============================================
    ADMIN — pin + reports queue
 ============================================ */
 

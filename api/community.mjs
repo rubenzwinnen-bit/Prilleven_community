@@ -14,6 +14,9 @@
 //   POST   /api/community/posts/:id/replies
 //   POST   /api/community/posts/:id/like
 //   POST   /api/community/upload-url
+//   GET    /api/community/blocks            → eigen blocklijst
+//   POST   /api/community/blocks            → gebruiker blokkeren { blocked_id }
+//   DELETE /api/community/blocks/:id        → gebruiker deblokkeren
 
 import { requireAuth, requireAdmin, AuthError } from './_lib/auth.mjs';
 import { supabase } from './_lib/clients.mjs';
@@ -53,6 +56,10 @@ import {
   loadMyNotifications,
   countUnreadNotifications,
   markAllNotificationsRead,
+  loadBlockedUserIds,
+  loadMyBlocks,
+  blockUser,
+  unblockUser,
 } from './_lib/community.mjs';
 import { findBlockedWord } from './_lib/moderation.mjs';
 
@@ -272,6 +279,14 @@ function matchRoute(req) {
     if (segments.length === 2 && segments[1] === 'read' && method === 'POST') return { route: 'notifications.read' };
   }
 
+  // /blocks         → GET eigen blocklijst, POST blokkeren { blocked_id }
+  // /blocks/:id      → DELETE deblokkeren
+  if (segments[0] === 'blocks') {
+    if (segments.length === 1 && method === 'GET')  return { route: 'blocks.list' };
+    if (segments.length === 1 && method === 'POST') return { route: 'blocks.create' };
+    if (segments.length === 2 && method === 'DELETE') return { route: 'blocks.delete', params: { id: segments[1] } };
+  }
+
   return null;
 }
 
@@ -369,11 +384,16 @@ export default async function handler(req, res) {
       const limit    = url.searchParams.get('limit');
       const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 50);
 
-      // Haal community-posts en gevolgde chatroom-topics parallel op
-      const [posts, chatroomItems] = await Promise.all([
+      // Haal community-posts, gevolgde chatroom-topics en blocklijst parallel op
+      const [postsRaw, chatroomRaw, blockedIds] = await Promise.all([
         loadPosts({ category, before, limit }),
         loadFollowedChatroomTopics(auth.userId, { before, limit: safeLimit }),
+        loadBlockedUserIds(auth.userId),
       ]);
+
+      // Verberg content van geblokkeerde gebruikers (eenrichtings-block)
+      const posts         = postsRaw.filter(p => !blockedIds.has(p.user_id));
+      const chatroomItems = chatroomRaw.filter(t => !blockedIds.has(t.user_id));
 
       // Enrich community posts
       const postIds   = posts.map(p => p.id);
@@ -467,7 +487,11 @@ export default async function handler(req, res) {
       if (!isUuid(params.id)) return json(res, 400, { error: 'Ongeldige post-id.' });
     }
     if (route === 'replies.list') {
-      const replies = await loadReplies(params.id);
+      const [repliesRaw, blockedIds] = await Promise.all([
+        loadReplies(params.id),
+        loadBlockedUserIds(auth.userId),
+      ]);
+      const replies = repliesRaw.filter(r => !blockedIds.has(r.user_id));
       const avatarPaths = replies.map(r => r.avatar_path).filter(Boolean);
       const replyIds = replies.map(r => r.id);
       const authorIds = replies.map(r => r.user_id);
@@ -687,6 +711,30 @@ export default async function handler(req, res) {
     if (route === 'notifications.read') {
       await markAllNotificationsRead(auth.userId);
       return json(res, 200, { ok: true });
+    }
+
+    /* ----- blocks (Guideline 1.2) ----- */
+    if (route === 'blocks.list') {
+      const blocks = await loadMyBlocks(auth.userId);
+      return json(res, 200, { blocks });
+    }
+    if (route === 'blocks.create') {
+      const body = parseBody(req);
+      if (body === null) return json(res, 400, { error: 'Ongeldige JSON.' });
+      try {
+        await blockUser(auth.userId, body.blocked_id);
+        return json(res, 201, { ok: true });
+      } catch (err) {
+        return json(res, err.status || 500, { error: err.message });
+      }
+    }
+    if (route === 'blocks.delete') {
+      try {
+        await unblockUser(auth.userId, params.id);
+        return json(res, 200, { ok: true });
+      } catch (err) {
+        return json(res, err.status || 500, { error: err.message });
+      }
     }
 
     /* ----- ADMIN routes ----- */
