@@ -604,6 +604,80 @@ function initChatTab() {
   });
 }
 
+// ---------- Chatruimtes — reports queue ----------
+async function loadRoomReports() {
+  const list = document.getElementById('room-reports-list');
+  if (!list) return;
+  list.innerHTML = '<div class="loading">Laden…</div>';
+  try {
+    const data = await authedFetch('/api/chat-rooms/admin/reports');
+    const reports = data.reports || [];
+    if (reports.length === 0) {
+      list.innerHTML = '<div class="empty">Geen openstaande meldingen 🎉</div>';
+      return;
+    }
+    list.innerHTML = reports.map(renderRoomReportRow).join('');
+  } catch (err) {
+    list.innerHTML = '<div class="error-box">Kon meldingen niet laden: ' + esc(err.message) + '</div>';
+  }
+}
+
+function renderRoomReportRow(rep) {
+  const t = rep.target;
+  const title = t?.title ? `<strong>${esc(t.title)}</strong><br>` : '';
+  const body = t?.body
+    ? esc(t.body.slice(0, 240)).replace(/\n/g, '<br>') + (t.body.length > 240 ? '…' : '')
+    : '<em>(verwijderd)</em>';
+  const targetMeta = t ? fmtRelTime(t.created_at) : '<em>doel bestaat niet meer</em>';
+  const repId = esc(rep.id);
+  return `
+    <article class="tl-report-row" data-report-id="${repId}">
+      <div class="tl-report-meta">
+        <span class="tl-report-type">${rep.target_type === 'topic' ? '📌 Topic' : '💬 Reactie'}</span>
+        <span class="tl-time">${fmtRelTime(rep.created_at)}</span>
+      </div>
+      <div class="tl-report-target">
+        <div class="tl-report-target-meta">${targetMeta}</div>
+        <div class="tl-report-target-body">${title}${body}</div>
+      </div>
+      ${rep.reason ? `<div class="tl-report-reason"><strong>Reden:</strong> ${esc(rep.reason)}</div>` : ''}
+      <div class="tl-report-actions">
+        <button type="button" class="btn btn-outline btn-sm" data-action="report-dismiss">Niets doen</button>
+        <button type="button" class="btn btn-danger btn-sm" data-action="report-delete">Verwijder bericht</button>
+      </div>
+    </article>
+  `;
+}
+
+function initRoomReportsTab() {
+  const list = document.getElementById('room-reports-list');
+  if (!list) return;
+
+  document.getElementById('room-reports-refresh')?.addEventListener('click', () => loadRoomReports());
+
+  list.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const row = btn.closest('[data-report-id]');
+    if (!row) return;
+    const reportId = row.dataset.reportId;
+    const deleteTarget = btn.dataset.action === 'report-delete';
+
+    if (deleteTarget && !window.confirm('Verwijder dit bericht én sluit de melding?')) return;
+    btn.disabled = true;
+    try {
+      await authedPost(`/api/chat-rooms/admin/reports/${encodeURIComponent(reportId)}/resolve`, { delete_target: deleteTarget });
+      row.remove();
+      if (!list.querySelector('[data-report-id]')) {
+        list.innerHTML = '<div class="empty">Geen openstaande meldingen 🎉</div>';
+      }
+    } catch (err) {
+      btn.disabled = false;
+      alert('Mislukt: ' + err.message);
+    }
+  });
+}
+
 // ---------- Tab switching ----------
 tabs.forEach(tab => {
   tab.addEventListener('click', () => {
@@ -614,6 +688,7 @@ tabs.forEach(tab => {
     if (tab.dataset.tab === 'chat' && !chatReportsLoaded) {
       chatReportsLoaded = true;
       loadChatReports();
+      loadRoomReports();
     }
   });
 });
@@ -633,6 +708,7 @@ async function init() {
   dashboard.style.display = '';
 
   initChatTab();
+  initRoomReportsTab();
 
   await Promise.all([
     loadGlobalStats(),
