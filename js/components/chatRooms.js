@@ -7,6 +7,7 @@
 
 import * as Store from '../store.js?v=2.9.0';
 import * as Api from '../chatRoomsApi.js?v=2.9.0';
+import { blockUser } from '../communityApi.js?v=2.9.0';
 import { formatRelativeTime } from '../utils.js?v=2.9.0';
 import { renderAvatar, renderAuthorMeta } from '../profileRender.js?v=2.9.0';
 import { sessionGet } from '../supabase.js?v=2.9.0';
@@ -282,6 +283,8 @@ function renderReplyCard(r, me, admin) {
           <div class="reply-actions">
             ${canEdit ? `<button class="reply-edit" data-action="edit-reply" data-reply-id="${r.id}" type="button">Bewerken</button>` : ''}
             ${canDelete ? `<button class="reply-del" data-action="delete-reply" data-reply-id="${r.id}" type="button" title="Verwijderen">Verwijder</button>` : ''}
+            ${!isOwn ? `<button class="reply-report" data-action="report-reply" data-reply-id="${r.id}" type="button">Rapporteren</button>` : ''}
+            ${!isOwn ? `<button class="reply-block" data-action="block-reply" data-user-id="${escapeHtml(r.user_id || '')}" data-nick="${escapeHtml(r.nickname || '')}" type="button">Blokkeren</button>` : ''}
           </div>
         </div>
       </div>
@@ -321,6 +324,8 @@ function renderTopicView() {
           ${isTopicFollowed && topicUnread > 0 ? `<span class="rooms-badge rooms-badge--inline">${topicUnread > 99 ? '99+' : topicUnread}</span>` : ''}
           ${admin ? `<button class="topic-pin-btn" id="topic-pin-btn" type="button">${t.is_pinned ? 'Unpin' : 'Pin'}</button>` : ''}
           ${canDeleteTopic ? `<button class="topic-del-btn" id="topic-del-btn" type="button">Verwijder</button>` : ''}
+          ${!isOwnTopic ? `<button class="topic-report-btn" id="topic-report-btn" type="button" data-topic-id="${t.id}">Rapporteren</button>` : ''}
+          ${!isOwnTopic ? `<button class="topic-block-btn" id="topic-block-btn" type="button" data-user-id="${escapeHtml(t.user_id || '')}" data-nick="${escapeHtml(t.nickname || '')}">Blokkeren</button>` : ''}
         </div>
       </header>
       <article class="topic-body-card">
@@ -756,6 +761,55 @@ function bindTopicViewHandlers() {
       await openTopic(state.currentTopic.id);
     });
   });
+
+  /* --- Rapporteren (topic + reply, App Store Guideline 1.2) --- */
+  document.getElementById('topic-report-btn')?.addEventListener('click', () =>
+    reportChatTarget('topic', state.currentTopic?.id));
+  document.querySelectorAll('[data-action="report-reply"]').forEach(btn => {
+    btn.addEventListener('click', () => reportChatTarget('reply', btn.dataset.replyId));
+  });
+
+  /* --- Blokkeren (topic + reply, App Store Guideline 1.2) --- */
+  document.getElementById('topic-block-btn')?.addEventListener('click', () =>
+    blockChatUser(document.getElementById('topic-block-btn'), 'topic'));
+  document.querySelectorAll('[data-action="block-reply"]').forEach(btn => {
+    btn.addEventListener('click', () => blockChatUser(btn, 'reply'));
+  });
+}
+
+/* Rapporteer een chat-topic of -reply aan een admin. */
+async function reportChatTarget(targetType, targetId) {
+  if (!targetId) return;
+  const reason = prompt('Waarom rapporteer je dit? (optioneel, max 500 tekens)');
+  if (reason === null) return; // geannuleerd
+  const { ok, error } = await Api.reportTarget({
+    target_type: targetType,
+    target_id: targetId,
+    reason: reason.trim() || null,
+  });
+  if (!ok) { alert(error || 'Kon niet rapporteren.'); return; }
+  alert('Bedankt — gerapporteerd aan een admin.');
+}
+
+/* Blokkeer de auteur van een chat-topic of -reply.
+   scope 'topic' → terug naar de room (hun topic verdwijnt);
+   scope 'reply' → herlaad het topic (hun reacties verdwijnen). */
+async function blockChatUser(el, scope) {
+  const userId = el?.dataset?.userId;
+  if (!userId) return;
+  const nick = el.dataset.nick || 'deze gebruiker';
+  if (!confirm(`Wil je ${nick} blokkeren? Je ziet hun berichten en reacties dan niet meer. Ze worden hier niet van op de hoogte gebracht.`)) return;
+  const { ok, error } = await blockUser(userId);
+  if (!ok) { alert(error || 'Kon niet blokkeren.'); return; }
+  alert('Gebruiker geblokkeerd.');
+  // Herlaad de huidige weergave zodat hun content verdwijnt.
+  if (scope === 'reply' && state.currentTopic) {
+    openTopic(state.currentTopic.id);
+  } else if (state.activeSlug) {
+    openRoom(state.activeSlug);
+  } else {
+    showTimeline();
+  }
 }
 
 /* ---------------- Rooms-cache (instant render na inloggen) ---------------- */

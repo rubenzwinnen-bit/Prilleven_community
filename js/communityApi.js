@@ -113,6 +113,13 @@ export const deleteReply = (replyId) =>
 export const reportTarget = ({ target_type, target_id, reason }) =>
   call('/report', { method: 'POST', body: { target_type, target_id, reason } });
 
+/* ----- Blokkeren (App Store Guideline 1.2) ----- */
+export const listBlocks  = () => call('/blocks');
+export const blockUser   = (blockedId) =>
+  call('/blocks', { method: 'POST', body: { blocked_id: blockedId } });
+export const unblockUser = (blockedId) =>
+  call('/blocks/' + encodeURIComponent(blockedId), { method: 'DELETE' });
+
 /* ----- Admin ----- */
 export const togglePin = (postId, pin) =>
   call(`/posts/${encodeURIComponent(postId)}/pin`, { method: 'POST', body: { pin } });

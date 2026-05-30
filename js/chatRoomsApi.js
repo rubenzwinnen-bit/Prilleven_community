@@ -76,3 +76,7 @@ export const markTopicRead = (id) => call('/topics/' + encodeURIComponent(id) + 
 
 /* ----- Ongelezen tellingen ----- */
 export const getUnread = () => call('/unread');
+
+/* ----- Report (App Store Guideline 1.2) ----- */
+export const reportTarget = ({ target_type, target_id, reason }) =>
+  call('/report', { method: 'POST', body: { target_type, target_id, reason } });

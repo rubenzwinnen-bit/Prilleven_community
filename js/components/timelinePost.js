@@ -35,7 +35,7 @@ export function renderPostCard(post, currentUserId = null, isAdminUser = false) 
   const canEdit  = isOwn;
 
   return `
-    <article class="tl-post${pinned}" data-post-id="${escapeHtml(post.id)}" data-category="${escapeHtml(cat.id)}" data-likes="${likes}" data-replies="${replies}" data-liked="${liked ? '1' : '0'}">
+    <article class="tl-post${pinned}" data-post-id="${escapeHtml(post.id)}" data-category="${escapeHtml(cat.id)}" data-likes="${likes}" data-replies="${replies}" data-liked="${liked ? '1' : '0'}" data-user-id="${escapeHtml(post.user_id || '')}" data-nick="${escapeHtml(post.nickname || '')}">
       ${post.is_pinned ? '<div class="tl-pinned-tag">📌 Mededeling</div>' : ''}
       <header class="tl-post-head">
         ${renderAvatar(post, 'tl-avatar')}
@@ -175,7 +175,7 @@ export function renderReplyRow(reply, currentUserId = null, isAdminUser = false)
   const liked    = !!reply.liked_by_me;
 
   return `
-    <div class="tl-reply" data-reply-id="${escapeHtml(reply.id)}" data-liked="${liked ? '1' : '0'}">
+    <div class="tl-reply" data-reply-id="${escapeHtml(reply.id)}" data-liked="${liked ? '1' : '0'}" data-user-id="${escapeHtml(reply.user_id || '')}" data-nick="${escapeHtml(reply.nickname || '')}">
       ${renderAvatar(reply, 'tl-avatar tl-avatar-sm')}
       <div class="tl-reply-bubble">
         <div class="tl-reply-meta">
@@ -207,6 +207,7 @@ function renderMenu({ isOwn, canEdit, type, isAdminUser = false, isPinned = fals
     items.push(`<button type="button" class="tl-menu-item tl-menu-danger" data-action="delete-${type}">Verwijderen</button>`);
   } else {
     items.push(`<button type="button" class="tl-menu-item" data-action="report-${type}">Rapporteren</button>`);
+    items.push(`<button type="button" class="tl-menu-item tl-menu-danger" data-action="block-${type}">Gebruiker blokkeren</button>`);
   }
   if (isAdminUser && type === 'post') {
     items.push(

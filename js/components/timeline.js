@@ -346,6 +346,9 @@ async function onFeedClick(e) {
   } else if (action === 'report-post') {
     closeAllMenus();
     await handleReport('post', card.dataset.postId);
+  } else if (action === 'block-post') {
+    closeAllMenus();
+    await handleBlock(card);
   } else if (action === 'edit-reply') {
     closeAllMenus();
     enterEditMode(btn.closest('.tl-reply'), 'reply');
@@ -355,6 +358,9 @@ async function onFeedClick(e) {
   } else if (action === 'report-reply') {
     closeAllMenus();
     await handleReport('reply', btn.closest('.tl-reply').dataset.replyId);
+  } else if (action === 'block-reply') {
+    closeAllMenus();
+    await handleBlock(btn.closest('.tl-reply'));
   } else if (action === 'pin-post' || action === 'unpin-post') {
     closeAllMenus();
     await handleTogglePin(card, action === 'pin-post');
@@ -615,6 +621,25 @@ function openReportModal() {
     });
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(null); });
   });
+}
+
+/* ----- Blokkeren (App Store Guideline 1.2) ----- */
+async function handleBlock(el) {
+  const userId = el?.dataset?.userId;
+  if (!userId) return;
+  const nick = el.dataset.nick || 'deze gebruiker';
+  const ok = await confirmDialog(
+    `Wil je ${nick} blokkeren? Je ziet hun berichten en reacties dan niet meer. Ze worden hier niet van op de hoogte gebracht.`
+  );
+  if (!ok) return;
+  const res = await Api.blockUser(userId);
+  if (!res.ok) {
+    showToast(res.error || 'Kon niet blokkeren', 'error');
+    return;
+  }
+  // Verwijder al hun zichtbare content uit de feed (UUID = selector-veilig).
+  document.querySelectorAll('[data-user-id="' + userId + '"]').forEach(n => n.remove());
+  showToast('Gebruiker geblokkeerd.');
 }
 
 async function handlePollVote(card, btn) {
