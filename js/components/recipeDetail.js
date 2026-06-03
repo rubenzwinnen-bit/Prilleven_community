@@ -12,14 +12,16 @@
    - init() haalt alle data parallel op via Promise.all
 ============================================ */
 
-import * as Store from '../store.js?v=3.0.1';
-import * as Router from '../router.js?v=3.0.1';
+import * as Store from '../store.js?v=3.0.2';
+import * as Router from '../router.js?v=3.0.2';
+import { getChildren } from '../childrenApi.js?v=3.0.2';
 import {
   showToast, escapeHtml, formatDate,
   renderStarsDisplay, renderStarsInteractive,
   getMealMomentLabel, getSlotLabel, getAllergenLabel,
+  normalizeAllergen, ageInMonths, getRecipeMinAge,
   WEEKDAYS, SCHEDULE_SLOTS
-} from '../utils.js?v=3.0.1';
+} from '../utils.js?v=3.0.2';
 
 /* ----------------------------------------
    RENDER
@@ -47,17 +49,19 @@ export async function init(recipeId) {
   const container = document.getElementById('recipe-detail-container');
   if (!container) return;
 
-  let recipe, isFav, avgRating, userRating, comments, activeSchedule;
+  let recipe, isFav, avgRating, userRating, comments, activeSchedule, childrenRes;
 
   /* ---- Data parallel ophalen ---- */
   try {
-    [recipe, isFav, avgRating, userRating, comments, activeSchedule] = await Promise.all([
+    [recipe, isFav, avgRating, userRating, comments, activeSchedule, childrenRes] = await Promise.all([
       Store.getRecipe(recipeId),
       Store.isFavorite(recipeId),
       Store.getAverageRating(recipeId),
       Store.getUserRating(recipeId),
       Store.getComments(recipeId),
       Store.getActiveSchedule(),
+      /* Kinderen (family-layer). getChildren throwt niet; geeft {ok,...} terug. */
+      getChildren(),
     ]);
   } catch (err) {
     container.innerHTML = `
@@ -107,17 +111,95 @@ export async function init(recipeId) {
     }
   }
 
+  /* ---- Kinderen voor de family-layer ---- */
+  const children = childrenRes?.ok ? (childrenRes.data?.children || []) : [];
+
   /* ---- Bouw de volledige HTML op ---- */
-  container.innerHTML = buildDetailHtml(recipe, isFav, avgRating, userRating, comments, activeInfo);
+  container.innerHTML = buildDetailHtml(recipe, isFav, avgRating, userRating, comments, activeInfo, children);
 
   /* ---- Event listeners koppelen ---- */
   attachListeners(recipeId, userRating, recipe, activeInfo);
 }
 
 /* ----------------------------------------
+   FAMILY-LAYER
+   Toont per kind of het recept geschikt is:
+   - ROOD   : kind is allergisch voor een allergeen in het recept
+   - TE JONG: kind is jonger dan de (effectieve) minimumleeftijd
+   - ORANJE : recept bevat een allergeen dat nog niet geïntroduceerd is
+   - OK      : oud genoeg én geen waarschuwingen
+   Puur informatief — geen medisch advies.
+---------------------------------------- */
+function childAgeLabel(months) {
+  if (months == null) return 'leeftijd onbekend';
+  if (months < 24) return `${months} mnd`;
+  const years = Math.floor(months / 12);
+  return `${years} jaar`;
+}
+
+function buildFamilyLayerHtml(recipe, children = []) {
+  if (!children || children.length === 0) return '';
+
+  const recipeAllergens = [...new Set((recipe.allergens || []).map(normalizeAllergen))];
+  const minAge = getRecipeMinAge(recipe);
+
+  const cards = children.map(child => {
+    const months = ageInMonths(child.birthdate);
+    const known = (child.known_allergies || []).map(normalizeAllergen);
+    const introduced = (child.introduced_allergens || []).map(normalizeAllergen);
+
+    const allergic = recipeAllergens.filter(a => known.includes(a));
+    const notIntroduced = recipeAllergens.filter(a => !introduced.includes(a) && !known.includes(a));
+    const tooYoung = (minAge != null && months != null && months < minAge);
+
+    let status, icon, statusText;
+    if (allergic.length) {
+      status = 'rood';
+      icon = '&#128308;'; /* 🔴 */
+      statusText = `Allergisch voor: ${allergic.map(getAllergenLabel).join(', ')}`;
+    } else if (tooYoung) {
+      status = 'jong';
+      icon = '&#9203;'; /* ⏳ */
+      statusText = `Nog te jong — geschikt vanaf ${minAge} maanden`;
+    } else if (notIntroduced.length) {
+      status = 'oranje';
+      icon = '&#128992;'; /* 🟠 */
+      statusText = `Nog niet geïntroduceerd: ${notIntroduced.map(getAllergenLabel).join(', ')}`;
+    } else {
+      status = 'ok';
+      icon = '&#9989;'; /* ✅ */
+      statusText = 'Geschikt';
+    }
+
+    return `
+      <div class="family-child family-child--${status}">
+        <span class="family-child-icon">${icon}</span>
+        <div class="family-child-body">
+          <div class="family-child-name">
+            ${escapeHtml(child.name)}
+            <span class="family-child-age">${childAgeLabel(months)}</span>
+          </div>
+          <div class="family-child-status">${escapeHtml(statusText)}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="recipe-section">
+      <h3>Voor jouw gezin</h3>
+      <div class="family-layer">${cards}</div>
+      <p class="text-muted family-layer-note">
+        &#128308; allergisch &middot; &#128992; allergeen nog niet geïntroduceerd &middot; &#9203; nog te jong. Informatief, geen medisch advies.
+      </p>
+    </div>
+  `;
+}
+
+/* ----------------------------------------
    BOUW DE DETAIL HTML
 ---------------------------------------- */
-function buildDetailHtml(recipe, isFav, avgRating, userRating, comments, activeInfo = null) {
+function buildDetailHtml(recipe, isFav, avgRating, userRating, comments, activeInfo = null, children = []) {
   const { average, count } = avgRating;
 
   /* Afbeelding */
@@ -244,6 +326,8 @@ function buildDetailHtml(recipe, isFav, avgRating, userRating, comments, activeI
         </div>
         ${allergens ? `<div style="display:flex;flex-wrap:wrap;gap:0.5rem"><strong style="font-size:0.85rem;margin-right:0.25rem">Allergenen:</strong>${allergens}</div>` : '<p class="text-muted" style="font-size:0.85rem">Geen allergenen</p>'}
       </div>
+
+      ${buildFamilyLayerHtml(recipe, children)}
 
       <div class="recipe-section" id="ingredients-section">
         <h3>Ingrediënten

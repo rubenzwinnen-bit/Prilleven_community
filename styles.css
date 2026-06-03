@@ -7261,3 +7261,81 @@ body.is-allergenen #app-nav { display: none; }
   flex-direction: column;
   gap: .85rem;
 }
+
+/* ============================================
+   FAMILY-LAYER (receptdetail "Voor jouw gezin")
+   Per kind: geschiktheid op leeftijd + allergenen.
+============================================ */
+.family-layer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.family-child {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius-md);
+  background: var(--color-white);
+  border: 1px solid var(--color-light);
+  border-left: 4px solid var(--color-gray-light);
+  box-shadow: var(--shadow-sm);
+}
+
+.family-child-icon {
+  font-size: 1.15rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.family-child-body {
+  min-width: 0;
+}
+
+.family-child-name {
+  font-weight: 600;
+  color: var(--color-dark);
+  font-size: 0.95rem;
+}
+
+.family-child-age {
+  font-weight: 400;
+  color: var(--color-gray);
+  font-size: 0.8rem;
+  margin-left: 0.35rem;
+}
+
+.family-child-status {
+  font-size: 0.82rem;
+  color: var(--color-dark-light);
+  margin-top: 0.1rem;
+}
+
+/* Statuskleuren via linkerrand + zachte achtergrond */
+.family-child--rood {
+  border-left-color: var(--color-danger);
+  background: #fbecea;
+}
+.family-child--rood .family-child-status { color: var(--color-danger-dark); }
+
+.family-child--jong {
+  border-left-color: var(--color-info);
+  background: #eef6fc;
+}
+
+.family-child--oranje {
+  border-left-color: var(--color-primary);
+  background: #fbf1ea;
+}
+
+.family-child--ok {
+  border-left-color: var(--color-secondary-dark);
+  background: #eef6f0;
+}
+
+.family-layer-note {
+  font-size: 0.78rem !important;
+  margin-top: 0.5rem;
+}

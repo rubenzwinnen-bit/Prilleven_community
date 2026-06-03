@@ -82,6 +82,50 @@ export const WEEKDAYS = [
 ];
 
 /* ----------------------------------------
+   FAMILY-LAYER: LEEFTIJD & GESCHIKTHEID
+   Wordt gebruikt om per kind te tonen of een
+   recept geschikt is (leeftijd + allergenen).
+---------------------------------------- */
+
+/* Minimumleeftijd (in maanden) per eetmoment.
+   Fallback wanneer een recept geen expliciete
+   min_age_months heeft ingevuld. */
+export const MEAL_MOMENT_MIN_AGE = {
+  'ochtend': 9,
+  'fruit moment': 7,
+  'middag': 6,
+  'snack': 10,
+  'avond': 6
+};
+
+/* Vaste keuzes voor de admin-dropdown "minimumleeftijd". */
+export const AGE_PRESETS = [4, 6, 7, 8, 9, 10, 12, 18, 24];
+
+/* Leeftijd in (afgeronde) maanden op basis van geboortedatum.
+   Geeft null terug bij ongeldige/ontbrekende datum. */
+export function ageInMonths(birthdate) {
+  if (!birthdate) return null;
+  const d = new Date(birthdate);
+  if (Number.isNaN(d.getTime())) return null;
+  const diffDays = (Date.now() - d.getTime()) / 86400000;
+  if (diffDays < 0) return null;
+  return Math.floor(diffDays / 30.4375);
+}
+
+/* Effectieve minimumleeftijd van een recept (in maanden).
+   - recipe.minAgeMonths als die expliciet is ingevuld
+   - anders het laagste eetmoment-minimum (vroegst bruikbaar)
+   - anders null (geen leeftijdsbeperking). */
+export function getRecipeMinAge(recipe) {
+  if (recipe && recipe.minAgeMonths != null) return recipe.minAgeMonths;
+  const moments = (recipe && recipe.mealMoments) || [];
+  const ages = moments
+    .map(m => MEAL_MOMENT_MIN_AGE[m])
+    .filter(a => typeof a === 'number');
+  return ages.length ? Math.min(...ages) : null;
+}
+
+/* ----------------------------------------
    TOAST NOTIFICATIES
    Toon een korte melding onderaan het scherm
 ---------------------------------------- */
