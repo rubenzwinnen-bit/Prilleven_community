@@ -13,11 +13,51 @@
    CONSTANTEN
    Lijsten van beschikbare allergenen en eetmomenten
 ---------------------------------------- */
+/* Canonieke allergenen = de 9 keys uit de introductie-flow
+   (eersteHapjes-allergen-flow.js). Dit is de standaard voor
+   recepten, filters en kind-allergieën. */
 export const ALLERGENS = [
-  'gluten', 'lactose', 'ei', 'noten', 'pinda',
-  'soja', 'vis', 'schaaldieren', 'selderij',
-  'mosterd', 'sesam', 'sulfiet', 'lupine'
+  'kippen-ei', 'pinda', 'noten', 'sesam', 'vis',
+  'schaaldieren', 'soja', 'tarwe', 'koemelk'
 ];
+
+/* Net leesbaar label per canonieke key (voor UI-weergave). */
+export const ALLERGEN_LABELS = {
+  'kippen-ei': 'Kippenei',
+  'pinda': 'Pinda',
+  'noten': 'Noten',
+  'sesam': 'Sesam',
+  'vis': 'Vis',
+  'schaaldieren': 'Schaaldieren',
+  'soja': 'Soja',
+  'tarwe': 'Tarwe',
+  'koemelk': 'Koemelk'
+};
+
+/* Alias-laag: oude/legacy waarden -> canonieke key.
+   Houdt alles werkend ook als er ergens (mobiele app, oude
+   localStorage, niet-gemigreerde data) nog oude namen opduiken.
+   "lactose" is geen allergeen -> valt onder koemelk (eiwit). */
+export const ALLERGEN_ALIASES = {
+  'gluten': 'tarwe',
+  'lactose': 'koemelk',
+  'melk': 'koemelk',
+  'zuivel': 'koemelk',
+  'ei': 'kippen-ei'
+};
+
+/* Normaliseer een allergeen-waarde naar de canonieke key. */
+export function normalizeAllergen(a) {
+  if (!a) return a;
+  const key = String(a).trim().toLowerCase();
+  return ALLERGEN_ALIASES[key] || key;
+}
+
+/* Net label voor een (mogelijk legacy) allergeen-waarde. */
+export function getAllergenLabel(a) {
+  const key = normalizeAllergen(a);
+  return ALLERGEN_LABELS[key] || key;
+}
 
 export const MEAL_MOMENTS = [
   { id: 'ochtend', label: 'Ochtend' },

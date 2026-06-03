@@ -5,7 +5,7 @@
    beoordeling en favoriet-knop.
 ============================================ */
 
-import { escapeHtml, renderStarsDisplay, getMealMomentLabel } from '../utils.js?v=2.5.10';
+import { escapeHtml, renderStarsDisplay, getMealMomentLabel, getAllergenLabel } from '../utils.js?v=2.10.0';
 
 /* ----------------------------------------
    RENDER
@@ -41,7 +41,7 @@ export function render(recipe, favIds = [], ratingsMap = {}, admin = false, favC
   /* Allergeen-tags (max 3 tonen) */
   const allergenTags = (recipe.allergens || [])
     .slice(0, 3)
-    .map(a => `<span class="tag tag-allergen">${escapeHtml(a)}</span>`)
+    .map(a => `<span class="tag tag-allergen">${escapeHtml(getAllergenLabel(a))}</span>`)
     .join('');
   const moreAllergens = (recipe.allergens || []).length > 3
     ? `<span class="tag tag-allergen">+${recipe.allergens.length - 3}</span>`

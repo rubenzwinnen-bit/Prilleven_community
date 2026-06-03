@@ -16,12 +16,12 @@
    - generateSchedule/refreshSlot werken op de cache (generator sub-tab)
 ============================================ */
 
-import * as Store from '../store.js?v=2.5.10';
-import * as Router from '../router.js?v=2.5.10';
+import * as Store from '../store.js?v=2.10.0';
+import * as Router from '../router.js?v=2.10.0';
 import {
   showToast, escapeHtml, promptInput, renderStarsDisplay, ALLERGENS, WEEKDAYS,
-  SCHEDULE_SLOTS, slotToMealMoment, getSlotLabel
-} from '../utils.js?v=2.5.10';
+  SCHEDULE_SLOTS, slotToMealMoment, getSlotLabel, getAllergenLabel, normalizeAllergen
+} from '../utils.js?v=2.10.0';
 
 /* ----------------------------------------
    STATE
@@ -166,7 +166,7 @@ function buildGenerateTabHtml() {
   const hasRecipes = cachedRecipes.length > 0;
 
   const usedAllergens = new Set();
-  cachedRecipes.forEach(r => (r.allergens || []).forEach(a => usedAllergens.add(a)));
+  cachedRecipes.forEach(r => (r.allergens || []).forEach(a => usedAllergens.add(normalizeAllergen(a))));
 
   if (!hasRecipes) {
     return `
@@ -196,8 +196,8 @@ function buildGenerateTabHtml() {
         ${ALLERGENS.filter(a => usedAllergens.has(a)).map(a => `
           <label class="checkbox-label">
             <input type="checkbox" name="exclude-allergen" value="${a}"
-              ${currentSchedule?.excludedAllergens?.includes(a) ? 'checked' : ''}>
-            <span>${a}</span>
+              ${(currentSchedule?.excludedAllergens || []).map(normalizeAllergen).includes(a) ? 'checked' : ''}>
+            <span>${getAllergenLabel(a)}</span>
           </label>
         `).join('')}
         ${usedAllergens.size === 0 ? '<p class="text-muted">Geen allergenen gevonden in de recepten.</p>' : ''}
@@ -514,9 +514,10 @@ function generateSchedule() {
     document.querySelectorAll('input[name="exclude-allergen"]:checked')
   ).map(cb => cb.value);
 
-  /* Filter recepten op allergenen (gebruik cache) */
+  /* Filter recepten op allergenen (gebruik cache).
+     Normaliseer recept-waarden zodat legacy-namen blijven matchen. */
   const availableRecipes = cachedRecipes.filter(recipe => {
-    return !(recipe.allergens || []).some(a => excluded.includes(a));
+    return !(recipe.allergens || []).some(a => excluded.includes(normalizeAllergen(a)));
   });
 
   if (availableRecipes.length === 0) {
@@ -565,10 +566,11 @@ function generateSchedule() {
 function refreshSlot(day, slotId) {
   if (!currentSchedule) return;
 
-  const excluded = currentSchedule.excludedAllergens || [];
+  /* Normaliseer beide kanten zodat legacy-namen blijven matchen. */
+  const excluded = (currentSchedule.excludedAllergens || []).map(normalizeAllergen);
 
   const availableRecipes = cachedRecipes.filter(recipe => {
-    return !(recipe.allergens || []).some(a => excluded.includes(a));
+    return !(recipe.allergens || []).some(a => excluded.includes(normalizeAllergen(a)));
   });
 
   const mealMoment = slotToMealMoment(slotId);

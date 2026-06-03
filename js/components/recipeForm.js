@@ -10,10 +10,10 @@
      en vult het formulier in
 ============================================ */
 
-import * as Store from '../store.js?v=2.5.10';
-import * as Router from '../router.js?v=2.5.10';
-import { supabaseStorageUpload, dataUriToBlob } from '../supabase.js?v=2.5.10';
-import { showToast, ALLERGENS, MEAL_MOMENTS, escapeHtml } from '../utils.js?v=2.5.10';
+import * as Store from '../store.js?v=2.10.0';
+import * as Router from '../router.js?v=2.10.0';
+import { supabaseStorageUpload, dataUriToBlob } from '../supabase.js?v=2.10.0';
+import { showToast, ALLERGENS, MEAL_MOMENTS, escapeHtml, getAllergenLabel, normalizeAllergen } from '../utils.js?v=2.10.0';
 
 /* ----------------------------------------
    RENDER
@@ -103,7 +103,7 @@ export function render(recipeId = null) {
             ${ALLERGENS.map(a => `
               <label class="checkbox-label">
                 <input type="checkbox" name="allergens" value="${a}">
-                <span>${a}</span>
+                <span>${getAllergenLabel(a)}</span>
               </label>
             `).join('')}
           </div>
@@ -287,9 +287,10 @@ function fillForm(recipe) {
     if (cb) cb.checked = true;
   });
 
-  /* Allergenen */
+  /* Allergenen — normaliseer legacy-waarden naar canonieke keys
+     zodat oude recepten de juiste checkbox aanvinken. */
   (recipe.allergens || []).forEach(a => {
-    const cb = document.querySelector(`input[name="allergens"][value="${a}"]`);
+    const cb = document.querySelector(`input[name="allergens"][value="${normalizeAllergen(a)}"]`);
     if (cb) cb.checked = true;
   });
 
