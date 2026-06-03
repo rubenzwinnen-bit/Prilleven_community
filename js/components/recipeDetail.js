@@ -12,16 +12,17 @@
    - init() haalt alle data parallel op via Promise.all
 ============================================ */
 
-import * as Store from '../store.js?v=3.0.2';
-import * as Router from '../router.js?v=3.0.2';
-import { getChildren } from '../childrenApi.js?v=3.0.2';
+import * as Store from '../store.js?v=3.0.3';
+import * as Router from '../router.js?v=3.0.3';
+import { getChildren } from '../childrenApi.js?v=3.0.3';
 import {
   showToast, escapeHtml, formatDate,
   renderStarsDisplay, renderStarsInteractive,
   getMealMomentLabel, getSlotLabel, getAllergenLabel,
   normalizeAllergen, ageInMonths, getRecipeMinAge,
+  initialsFromName, colorFromSeed,
   WEEKDAYS, SCHEDULE_SLOTS
-} from '../utils.js?v=3.0.2';
+} from '../utils.js?v=3.0.3';
 
 /* ----------------------------------------
    RENDER
@@ -128,6 +129,8 @@ export async function init(recipeId) {
    - TE JONG: kind is jonger dan de (effectieve) minimumleeftijd
    - ORANJE : recept bevat een allergeen dat nog niet geïntroduceerd is
    - OK      : oud genoeg én geen waarschuwingen
+   Kinderen verschijnen als ronde avatars (initialen + leeftijd) naast
+   elkaar; waarschuwingen staan apart eronder in een gekleurde box.
    Puur informatief — geen medisch advies.
 ---------------------------------------- */
 function childAgeLabel(months) {
@@ -143,7 +146,8 @@ function buildFamilyLayerHtml(recipe, children = []) {
   const recipeAllergens = [...new Set((recipe.allergens || []).map(normalizeAllergen))];
   const minAge = getRecipeMinAge(recipe);
 
-  const cards = children.map(child => {
+  /* Elk kind één keer beoordelen; resultaat hergebruiken voor avatar + box. */
+  const evaluated = children.map(child => {
     const months = ageInMonths(child.birthdate);
     const known = (child.known_allergies || []).map(normalizeAllergen);
     const introduced = (child.introduced_allergens || []).map(normalizeAllergen);
@@ -152,45 +156,65 @@ function buildFamilyLayerHtml(recipe, children = []) {
     const notIntroduced = recipeAllergens.filter(a => !introduced.includes(a) && !known.includes(a));
     const tooYoung = (minAge != null && months != null && months < minAge);
 
-    let status, icon, statusText;
+    let status, icon, warnTitle, warnText;
     if (allergic.length) {
       status = 'rood';
       icon = '&#128308;'; /* 🔴 */
-      statusText = `Allergisch voor: ${allergic.map(getAllergenLabel).join(', ')}`;
+      warnTitle = `${child.name} is allergisch`;
+      warnText = `Dit recept bevat ${allergic.map(getAllergenLabel).join(', ')}. Geef dit niet aan ${child.name}.`;
     } else if (tooYoung) {
       status = 'jong';
       icon = '&#9203;'; /* ⏳ */
-      statusText = `Nog te jong — geschikt vanaf ${minAge} maanden`;
+      warnTitle = `${child.name} is nog te jong`;
+      warnText = `Dit recept is geschikt vanaf ${minAge} maanden.`;
     } else if (notIntroduced.length) {
       status = 'oranje';
       icon = '&#128992;'; /* 🟠 */
-      statusText = `Nog niet geïntroduceerd: ${notIntroduced.map(getAllergenLabel).join(', ')}`;
+      warnTitle = `Nog niet geïntroduceerd bij ${child.name}`;
+      warnText = `Introduceer eerst apart: ${notIntroduced.map(getAllergenLabel).join(', ')}.`;
     } else {
       status = 'ok';
       icon = '&#9989;'; /* ✅ */
-      statusText = 'Geschikt';
+      warnTitle = null;
+      warnText = null;
     }
 
+    return { child, months, status, icon, warnTitle, warnText };
+  });
+
+  /* Avatars naast elkaar */
+  const avatars = evaluated.map(({ child, months, status, icon }) => {
+    const color = colorFromSeed(child.id);
+    const initials = initialsFromName(child.name);
     return `
-      <div class="family-child family-child--${status}">
-        <span class="family-child-icon">${icon}</span>
-        <div class="family-child-body">
-          <div class="family-child-name">
-            ${escapeHtml(child.name)}
-            <span class="family-child-age">${childAgeLabel(months)}</span>
-          </div>
-          <div class="family-child-status">${escapeHtml(statusText)}</div>
-        </div>
+      <div class="family-avatar family-avatar--${status}">
+        <span class="family-avatar-circle" style="background:${color};">
+          ${escapeHtml(initials)}
+          <span class="family-avatar-badge">${icon}</span>
+        </span>
+        <span class="family-avatar-name">${escapeHtml(child.name)}</span>
+        <span class="family-avatar-age">${childAgeLabel(months)}</span>
       </div>
     `;
   }).join('');
 
+  /* Waarschuwingen apart eronder (alleen voor kinderen met een issue) */
+  const warnings = evaluated
+    .filter(e => e.warnTitle)
+    .map(({ status, icon, warnTitle, warnText }) => `
+      <div class="family-warn family-warn--${status}">
+        <strong>${icon} ${escapeHtml(warnTitle)}</strong>
+        ${escapeHtml(warnText)}
+      </div>
+    `).join('');
+
   return `
     <div class="recipe-section">
       <h3>Voor jouw gezin</h3>
-      <div class="family-layer">${cards}</div>
+      <div class="family-avatars">${avatars}</div>
+      ${warnings}
       <p class="text-muted family-layer-note">
-        &#128308; allergisch &middot; &#128992; allergeen nog niet geïntroduceerd &middot; &#9203; nog te jong. Informatief, geen medisch advies.
+        Informatief, geen medisch advies.
       </p>
     </div>
   `;

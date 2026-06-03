@@ -7264,75 +7264,100 @@ body.is-allergenen #app-nav { display: none; }
 
 /* ============================================
    FAMILY-LAYER (receptdetail "Voor jouw gezin")
-   Per kind: geschiktheid op leeftijd + allergenen.
+   Ronde avatars (initialen + leeftijd) naast elkaar;
+   waarschuwingen apart eronder in een gekleurde box.
 ============================================ */
-.family-layer {
+.family-avatars {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
 }
 
-.family-child {
+.family-avatar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 64px;
+}
+
+.family-avatar-circle {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
-  gap: 0.65rem;
-  padding: 0.6rem 0.8rem;
-  border-radius: var(--radius-md);
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.05rem;
+  box-shadow: var(--shadow-sm);
+  border: 3px solid var(--color-gray-light);
+}
+
+/* Statusring rond de avatar */
+.family-avatar--rood   .family-avatar-circle { border-color: var(--color-danger); }
+.family-avatar--jong   .family-avatar-circle { border-color: var(--color-info); }
+.family-avatar--oranje .family-avatar-circle { border-color: var(--color-primary); }
+.family-avatar--ok     .family-avatar-circle { border-color: var(--color-secondary-dark); }
+
+.family-avatar-badge {
+  position: absolute;
+  bottom: -5px;
+  right: -5px;
+  font-size: 0.8rem;
+  line-height: 1;
   background: var(--color-white);
-  border: 1px solid var(--color-light);
-  border-left: 4px solid var(--color-gray-light);
+  border-radius: 50%;
+  padding: 1px 2px;
   box-shadow: var(--shadow-sm);
 }
 
-.family-child-icon {
-  font-size: 1.15rem;
-  line-height: 1;
-  flex-shrink: 0;
-}
-
-.family-child-body {
-  min-width: 0;
-}
-
-.family-child-name {
+.family-avatar-name {
   font-weight: 600;
   color: var(--color-dark);
-  font-size: 0.95rem;
-}
-
-.family-child-age {
-  font-weight: 400;
-  color: var(--color-gray);
-  font-size: 0.8rem;
-  margin-left: 0.35rem;
-}
-
-.family-child-status {
   font-size: 0.82rem;
-  color: var(--color-dark-light);
-  margin-top: 0.1rem;
+  margin-top: 0.4rem;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* Statuskleuren via linkerrand + zachte achtergrond */
-.family-child--rood {
-  border-left-color: var(--color-danger);
+.family-avatar-age {
+  color: var(--color-gray);
+  font-size: 0.75rem;
+}
+
+/* Aparte waarschuwingsbox (zelfde stijl als de arts-waarschuwing) */
+.family-warn {
+  margin: 0.5rem 0 0;
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
+  background: #fff4e5;
+  border: 1px solid #f0b97a;
+  color: #6b3a00;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+.family-warn strong { display: block; margin-bottom: 0.2rem; }
+
+.family-warn--rood {
   background: #fbecea;
+  border-color: #e2a39c;
+  color: #7a241b;
 }
-.family-child--rood .family-child-status { color: var(--color-danger-dark); }
-
-.family-child--jong {
-  border-left-color: var(--color-info);
+.family-warn--jong {
   background: #eef6fc;
+  border-color: #a9d2ef;
+  color: #1d4e6b;
 }
-
-.family-child--oranje {
-  border-left-color: var(--color-primary);
+.family-warn--oranje {
   background: #fbf1ea;
-}
-
-.family-child--ok {
-  border-left-color: var(--color-secondary-dark);
-  background: #eef6f0;
+  border-color: #f0b97a;
+  color: #6b3a00;
 }
 
 .family-layer-note {
