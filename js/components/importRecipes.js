@@ -22,7 +22,7 @@
 import * as Store from '../store.js?v=3.0.1';
 import * as Router from '../router.js?v=3.0.1';
 import { supabaseStorageUpload } from '../supabase.js?v=3.0.1';
-import { showToast, escapeHtml, normalizeAllergen } from '../utils.js?v=3.0.1';
+import { showToast, escapeHtml, normalizeAllergen, normalizeMealMoment } from '../utils.js?v=3.0.1';
 
 /* ----------------------------------------
    RENDER (skeleton)
@@ -432,7 +432,7 @@ function parseCsv(csvText) {
     const recipe = {
       name: name,
       image: getCol(cols, colIndex['afbeelding']) || '',
-      mealMoments: parseCommaList(getCol(cols, colIndex['eetmomenten'])),
+      mealMoments: [...new Set(parseCommaList(getCol(cols, colIndex['eetmomenten'])).map(normalizeMealMoment).filter(Boolean))],
       cookingTime: parseInt(getCol(cols, colIndex['kooktijd'])) || 0,
       portions: parseRecipePortions(getCol(cols, colIndex['porties'])),
       ingredients: parseIngredients(getCol(cols, colIndex['ingredienten'])),

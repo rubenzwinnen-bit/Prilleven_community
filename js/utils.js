@@ -67,6 +67,22 @@ export const MEAL_MOMENTS = [
   { id: 'avond', label: 'Avond' }
 ];
 
+/* Synoniemen → canonieke eetmoment-id (de filter-namen). */
+export const MEAL_MOMENT_ALIASES = {
+  'lunch': 'middag',
+  'fruitmoment': 'fruit moment'
+};
+
+/* Normaliseert één eetmoment naar een filter-naam.
+   Geeft null terug bij een onbekende waarde. */
+export function normalizeMealMoment(value) {
+  if (typeof value !== 'string') return null;
+  const v = value.trim().toLowerCase();
+  if (!v) return null;
+  const mapped = MEAL_MOMENT_ALIASES[v] || v;
+  return MEAL_MOMENTS.some(m => m.id === mapped) ? mapped : null;
+}
+
 /* Eetmomenten voor het weekschema (5 slots per dag) */
 export const SCHEDULE_SLOTS = [
   { id: 'ochtend', label: 'Ochtend' },
