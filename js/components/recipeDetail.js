@@ -25,6 +25,42 @@ import {
 } from '../utils.js?v=3.0.3';
 
 /* ----------------------------------------
+   ALGEMENE BABYHAPJE-UITLEG
+   Generiek uitklapblok onderaan de bereidingswijze.
+   Zelfde inhoud bij elk recept (papje vs. stukjes).
+---------------------------------------- */
+const BABY_PREP_HTML = `
+  <details class="baby-prep">
+    <summary>&#127868; Babyhapje maken — papje of stukjes</summary>
+    <div class="baby-prep-body">
+      <p>Papje en stukjes zijn perfect combineerbaar — kies wat bij jouw kindje past. Rond 6 mnd eet het met de hele hand, rond 9 mnd ontstaat de pincetgreep voor kleinere stukjes.</p>
+
+      <div class="baby-prep-sub">
+        <h4>Papje</h4>
+        <ul>
+          <li>Groenten 15-20 min stomen of koken (geen bakken/grillen).</li>
+          <li>Vlees en vis meestomen; een eitje koken of bakken en meemixen.</li>
+          <li>Verdun bij de start met wat (moeder)melk.</li>
+          <li>Naar stukjes overschakelen? Plet met een vork i.p.v. mixen.</li>
+        </ul>
+      </div>
+
+      <div class="baby-prep-sub">
+        <h4>Stukjes</h4>
+        <ul>
+          <li>Stukken zo groot als 2 volwassen vingers, pletbaar tussen duim en wijsvinger.</li>
+          <li>Groenten 5-10 min stomen; harde stukken fruit (appel) kort garen.</li>
+          <li>Snijd ronde soorten (druif, kerstomaat, bes) overlangs — verstikkingsrisico.</li>
+          <li>Vlees en vis volledig garen; vis uit blik tot reepjes drukken.</li>
+          <li>Geen hele noten (gevaarlijk) — gebruik notenpasta; peulvruchten als dip.</li>
+        </ul>
+      </div>
+
+      <p class="baby-prep-note">Informatief, geen medisch advies.</p>
+    </div>
+  </details>`;
+
+/* ----------------------------------------
    RENDER
    Geeft een skeleton terug. De echte content
    wordt door init() ingeladen.
@@ -369,6 +405,7 @@ function buildDetailHtml(recipe, isFav, avgRating, userRating, comments, activeI
         <ol class="preparation-list">
           ${prepSteps}
         </ol>
+        ${BABY_PREP_HTML}
       </div>
 
       <div class="recipe-section">
