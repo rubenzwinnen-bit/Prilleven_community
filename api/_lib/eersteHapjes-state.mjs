@@ -182,6 +182,7 @@ export function sanitizeStatePatch(input) {
       excluded_keys: [...new Set(excluded.map(s => String(s).slice(0, 60)))],
       started: !!a.started,
       setup_done: !!a.setup_done,
+      opted_out: !!a.opted_out,
       pre_introduced: [...new Set(preIntro)],
     };
   }

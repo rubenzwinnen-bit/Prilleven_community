@@ -5067,6 +5067,64 @@ body.is-allergenen #app-nav { display: none; }
   font-size: .8rem;
 }
 
+.pkf-prep-allergen-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .75rem;
+  margin-bottom: .35rem;
+}
+.pkf-prep-allergen-head .profiel-form-label {
+  margin-bottom: 0;
+}
+.btn-text-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-text-link:hover {
+  text-decoration: underline;
+}
+.profiel-form-hint {
+  font-size: .8rem;
+  line-height: 1.4;
+  color: var(--color-gray);
+  margin: 0 0 .6rem;
+}
+
+/* Keuze-checkboxes: nog volgen / functie uitschakelen
+   (gedeeld door nieuw-kind-form en allergenen-setup) */
+.pkf-prep-choice,
+.allergenen-setup-choice {
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+  margin-top: .9rem;
+}
+.pkf-prep-check,
+.allergenen-setup-check {
+  display: flex;
+  align-items: flex-start;
+  gap: .6rem;
+  font-size: .85rem;
+  line-height: 1.4;
+  color: var(--color-dark-light);
+  cursor: pointer;
+}
+.pkf-prep-check input[type="checkbox"],
+.allergenen-setup-check input[type="checkbox"] {
+  margin-top: .15rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+  accent-color: var(--color-primary, #5e7a5b);
+}
+
 .profiel-radio-group {
   display: flex;
   flex-wrap: wrap;

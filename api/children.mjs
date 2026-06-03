@@ -85,6 +85,7 @@ export default async function handler(req, res) {
       // dat "gemarkeerd als veilig" werd (pre_introduced) heeft geen dose-rijen,
       // dus dat alleen op doses baseren mist die gevallen.
       let introMap = {};
+      const optedOutMap = {};
       if (children && children.length > 0) {
         const childIds = children.map(c => c.id);
 
@@ -106,6 +107,7 @@ export default async function handler(req, res) {
         if (states) {
           for (const st of states) {
             const as = st.allergen_state || {};
+            if (as.opted_out) optedOutMap[st.child_id] = true;
             const extra = [...(as.pre_introduced || []), ...(as.known_allergies || [])];
             if (extra.length) {
               if (!introMap[st.child_id]) introMap[st.child_id] = new Set();
@@ -118,6 +120,7 @@ export default async function handler(req, res) {
       const result = (children || []).map(c => ({
         ...c,
         introduced_allergens: introMap[c.id] ? [...introMap[c.id]].sort() : [],
+        allergens_opted_out: !!optedOutMap[c.id],
       }));
 
       return json(res, 200, { children: result });

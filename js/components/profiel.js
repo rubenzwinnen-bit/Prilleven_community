@@ -11,6 +11,7 @@ import * as Api from '../childrenApi.js?v=2.8.0';
 import * as FamilyApi from '../familyApi.js?v=2.8.0';
 import * as CommunityApi from '../communityApi.js?v=2.8.0';
 import { ALLERGEN_FLOW } from '../content/eersteHapjes-allergen-flow.js?v=2.8.0';
+import { patchEhState } from '../eersteHapjesStateApi.js?v=2.8.0';
 
 /* ----------------------------------------
    ALLERGEENLIJST (13 standaard-allergenen, identiek aan tracker)
@@ -412,6 +413,34 @@ function renderKindForm(kind = null) {
           rows="2">${escapeHtml(v.notes || '')}</textarea>
       </div>
 
+      ${!isEdit ? `
+      <div class="profiel-form-row">
+        <div class="pkf-prep-allergen-head">
+          <label class="profiel-form-label">Al geïntroduceerde allergenen</label>
+          <button type="button" class="btn-text-link" id="pkf-prep-allergen-all">Alles selecteren</button>
+        </div>
+        <p class="profiel-form-hint">Vink aan welke allergenen je kindje al regelmatig en zonder reactie heeft gegeten. Deze slaan we over in de allergenen-tracker.</p>
+        <div class="allergenen-setup-list" id="pkf-prep-allergen-list">
+          ${ALLERGEN_OPTIONS.map(opt => `
+            <label class="allergenen-setup-item" data-key="${opt.key}">
+              <input type="checkbox" data-key="${opt.key}">
+              <span class="allergenen-setup-label"><strong>${escapeHtml(opt.label)}</strong></span>
+            </label>
+          `).join('')}
+        </div>
+        <div class="pkf-prep-choice">
+          <label class="pkf-prep-check">
+            <input type="checkbox" id="pkf-prep-follow">
+            <span>Ik ga de introductie nog volgen, zie functie "Allergenen introduceren".</span>
+          </label>
+          <label class="pkf-prep-check">
+            <input type="checkbox" id="pkf-prep-disable">
+            <span>Ik wil de functie "Allergenen introduceren" niet volgen, schakel de functie uit.</span>
+          </label>
+        </div>
+      </div>
+      ` : ''}
+
       <div id="pkf-error" class="auth-error hidden"></div>
 
       <div class="profiel-form-actions">
@@ -801,6 +830,27 @@ function bindFormEvents(formWrap, kind, container) {
 
   panel?.addEventListener('change', () => updateAllergenDisplay(panel, label, selectedTagsEl));
 
+  // "Reeds geïntroduceerde allergenen" tegelselector (alleen bij nieuw kind)
+  const prepList = formWrap.querySelector('#pkf-prep-allergen-list');
+  const prepAllBtn = formWrap.querySelector('#pkf-prep-allergen-all');
+  prepAllBtn?.addEventListener('click', () => {
+    const boxes = [...prepList.querySelectorAll('input[type="checkbox"][data-key]')];
+    const allChecked = boxes.every(b => b.checked);
+    boxes.forEach(b => { b.checked = !allChecked; });
+    prepAllBtn.textContent = allChecked ? 'Alles selecteren' : 'Alles deselecteren';
+  });
+  prepList?.addEventListener('change', () => {
+    const boxes = [...prepList.querySelectorAll('input[type="checkbox"][data-key]')];
+    const allChecked = boxes.length > 0 && boxes.every(b => b.checked);
+    prepAllBtn.textContent = allChecked ? 'Alles deselecteren' : 'Alles selecteren';
+  });
+
+  // Twee elkaar uitsluitende keuzes: nog volgen / functie uitschakelen
+  const prepFollow = formWrap.querySelector('#pkf-prep-follow');
+  const prepDisable = formWrap.querySelector('#pkf-prep-disable');
+  prepFollow?.addEventListener('change', () => { if (prepFollow.checked) prepDisable.checked = false; });
+  prepDisable?.addEventListener('change', () => { if (prepDisable.checked) prepFollow.checked = false; });
+
   cancelBtn?.addEventListener('click', async () => {
     if (kind) {
       const card = formWrap;
@@ -823,6 +873,17 @@ function bindFormEvents(formWrap, kind, container) {
     if (!name) { showFormError(errorEl, 'Naam is verplicht.'); return; }
     if (!birthdate) { showFormError(errorEl, 'Geboortedatum is verplicht.'); return; }
 
+    // Allergenen-keuze (alleen bij nieuw kind): minstens 1 vakje OF 1 allergeen
+    let prepKeys = [];
+    if (!kind && prepList) {
+      prepKeys = [...prepList.querySelectorAll('input[type="checkbox"][data-key]:checked')]
+        .map(cb => cb.dataset.key);
+      if (!prepFollow?.checked && !prepDisable?.checked && prepKeys.length === 0) {
+        showFormError(errorEl, 'Kies bij de allergenen één van de twee opties, of selecteer minstens één allergeen.');
+        return;
+      }
+    }
+
     saveBtn.disabled = true;
     saveBtn.textContent = 'Opslaan…';
 
@@ -837,6 +898,19 @@ function bindFormEvents(formWrap, kind, container) {
       saveBtn.disabled = false;
       saveBtn.textContent = kind ? 'Opslaan' : 'Kind toevoegen';
       return;
+    }
+
+    // Nieuw kind: allergenen-keuze meteen opslaan in eerste_hapjes_state
+    if (!kind && prepList) {
+      const newChildId = result.data?.child?.id;
+      if (newChildId) {
+        const patch = prepDisable?.checked
+          ? { opted_out: true, setup_done: true }
+          : { pre_introduced: prepKeys, setup_done: true, opted_out: false };
+        try {
+          await patchEhState(newChildId, { allergen_state: patch });
+        } catch { /* niet-blokkerend: kind is al aangemaakt */ }
+      }
     }
 
     const [fresh, family, prof, chatProf] = await Promise.all([

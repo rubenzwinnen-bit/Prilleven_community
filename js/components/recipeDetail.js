@@ -187,9 +187,10 @@ function buildFamilyLayerHtml(recipe, children = []) {
     const months = ageInMonths(child.birthdate);
     const known = (child.known_allergies || []).map(normalizeAllergen);
     const introduced = (child.introduced_allergens || []).map(normalizeAllergen);
+    const optedOut = !!child.allergens_opted_out;
 
     const allergic = recipeAllergens.filter(a => known.includes(a));
-    const notIntroduced = recipeAllergens.filter(a => !introduced.includes(a) && !known.includes(a));
+    const notIntroduced = optedOut ? [] : recipeAllergens.filter(a => !introduced.includes(a) && !known.includes(a));
     const tooYoung = (minAge != null && months != null && months < minAge);
 
     let status, icon, warnTitle, warnText;
@@ -200,7 +201,7 @@ function buildFamilyLayerHtml(recipe, children = []) {
       warnText = `Dit recept bevat ${allergic.map(getAllergenLabel).join(', ')}. Geef dit niet aan ${child.name}.`;
     } else if (tooYoung) {
       status = 'jong';
-      icon = '&#9203;'; /* ⏳ */
+      icon = '&#128309;'; /* 🔵 */
       warnTitle = `${child.name} is nog te jong`;
       warnText = `Dit recept is geschikt vanaf ${minAge} maanden.`;
     } else if (notIntroduced.length) {
