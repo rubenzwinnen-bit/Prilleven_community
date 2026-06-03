@@ -10,10 +10,10 @@
      en vult het formulier in
 ============================================ */
 
-import * as Store from '../store.js?v=2.5.10';
-import * as Router from '../router.js?v=2.5.10';
-import { supabaseStorageUpload, dataUriToBlob } from '../supabase.js?v=2.5.10';
-import { showToast, ALLERGENS, MEAL_MOMENTS, escapeHtml } from '../utils.js?v=2.5.10';
+import * as Store from '../store.js?v=3.0.2';
+import * as Router from '../router.js?v=3.0.2';
+import { supabaseStorageUpload, dataUriToBlob } from '../supabase.js?v=3.0.2';
+import { showToast, ALLERGENS, MEAL_MOMENTS, AGE_PRESETS, escapeHtml, getAllergenLabel, normalizeAllergen } from '../utils.js?v=3.0.2';
 
 /* ----------------------------------------
    RENDER
@@ -88,6 +88,17 @@ export function render(recipeId = null) {
         </div>
 
         <div class="form-group">
+          <label for="recipe-min-age">Geschikt vanaf</label>
+          <select class="form-control" id="recipe-min-age">
+            <option value="">Niet ingesteld (volg eetmoment)</option>
+            ${AGE_PRESETS.map(a => `<option value="${a}">${a} maanden</option>`).join('')}
+          </select>
+          <small class="text-muted" style="font-size:0.8rem">
+            Vanaf welke leeftijd is dit recept geschikt? Leeg = afgeleid van het eetmoment.
+          </small>
+        </div>
+
+        <div class="form-group">
           <label>Ingrediënten *</label>
           <div id="ingredients-list">
             ${renderIngredientRow({}, 0)}
@@ -103,7 +114,7 @@ export function render(recipeId = null) {
             ${ALLERGENS.map(a => `
               <label class="checkbox-label">
                 <input type="checkbox" name="allergens" value="${a}">
-                <span>${a}</span>
+                <span>${getAllergenLabel(a)}</span>
               </label>
             `).join('')}
           </div>
@@ -279,6 +290,7 @@ function fillForm(recipe) {
   document.getElementById('recipe-name').value = recipe.name || '';
   document.getElementById('recipe-cooktime').value = recipe.cookingTime || '';
   document.getElementById('recipe-portions').value = recipe.portions || 1;
+  document.getElementById('recipe-min-age').value = recipe.minAgeMonths != null ? String(recipe.minAgeMonths) : '';
   document.getElementById('recipe-image').value = recipe.image || '';
 
   /* Eetmomenten */
@@ -287,9 +299,10 @@ function fillForm(recipe) {
     if (cb) cb.checked = true;
   });
 
-  /* Allergenen */
+  /* Allergenen — normaliseer legacy-waarden naar canonieke keys
+     zodat oude recepten de juiste checkbox aanvinken. */
   (recipe.allergens || []).forEach(a => {
-    const cb = document.querySelector(`input[name="allergens"][value="${a}"]`);
+    const cb = document.querySelector(`input[name="allergens"][value="${normalizeAllergen(a)}"]`);
     if (cb) cb.checked = true;
   });
 
@@ -449,6 +462,10 @@ async function handleSubmit(e) {
   const allergens = Array.from(document.querySelectorAll('input[name="allergens"]:checked'))
     .map(cb => cb.value);
 
+  /* Minimumleeftijd (optioneel; leeg = volg eetmoment) */
+  const minAgeRaw = document.getElementById('recipe-min-age').value;
+  const minAgeMonths = minAgeRaw === '' ? null : parseInt(minAgeRaw);
+
   /* Bereidingsstappen */
   const preparation = [];
   document.querySelectorAll('#preparation-list .prep-step').forEach(textarea => {
@@ -488,6 +505,7 @@ async function handleSubmit(e) {
     ingredients,
     allergens,
     preparation,
+    minAgeMonths,
   };
 
   /* ---- Opslaan of bijwerken ---- */

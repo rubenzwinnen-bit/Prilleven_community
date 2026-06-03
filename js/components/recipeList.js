@@ -8,10 +8,10 @@
    - init() haalt de data op en vult de DOM
 ============================================ */
 
-import * as Store from '../store.js?v=2.5.10';
-import * as Router from '../router.js?v=2.5.10';
-import * as RecipeCard from './recipeCard.js?v=2.5.10';
-import { showToast, confirm, MEAL_MOMENTS, ALLERGENS } from '../utils.js?v=2.5.10';
+import * as Store from '../store.js?v=3.0.1';
+import * as Router from '../router.js?v=3.0.1';
+import * as RecipeCard from './recipeCard.js?v=3.0.1';
+import { showToast, confirm, MEAL_MOMENTS, ALLERGENS, getAllergenLabel, normalizeAllergen } from '../utils.js?v=3.0.1';
 
 /* Cache van pre-fetched data zodat het filteren snel blijft */
 let cachedRecipes = [];
@@ -58,7 +58,7 @@ export function render() {
             ${ALLERGENS.map(a => `
               <label class="allergen-filter-opt">
                 <input type="checkbox" value="${a}" />
-                <span>${a}</span>
+                <span>${getAllergenLabel(a)}</span>
               </label>
             `).join('')}
             <button type="button" class="allergen-filter-clear" id="allergen-filter-clear">Wis alles</button>
@@ -274,8 +274,8 @@ function renderAllergenChipsAndCount() {
   }
   chipsEl.innerHTML = [...excludedAllergens].map(a => `
     <span class="allergen-chip">
-      <span class="allergen-chip-label">geen ${a}</span>
-      <button type="button" class="allergen-chip-x" data-allergen="${a}" aria-label="Verwijder filter ${a}">&times;</button>
+      <span class="allergen-chip-label">geen ${getAllergenLabel(a)}</span>
+      <button type="button" class="allergen-chip-x" data-allergen="${a}" aria-label="Verwijder filter ${getAllergenLabel(a)}">&times;</button>
     </span>
   `).join('');
 }
@@ -322,10 +322,12 @@ function filterRecipes() {
       (recipe.mealMoments || []).includes(momentVal);
 
     /* Recept WEGFILTEREN als het minstens één van de uitgesloten
-       allergenen bevat. Lege set → alle recepten zichtbaar. */
+       allergenen bevat. Lege set → alle recepten zichtbaar.
+       Normaliseer recept-waarden zodat legacy-namen (lactose, ei, …)
+       blijven matchen op de canonieke filter-keys (koemelk, …). */
     const recipeAllergens = recipe.allergens || [];
     const passesAllergens = excludedAllergens.size === 0 ||
-      !recipeAllergens.some(a => excludedAllergens.has(a));
+      !recipeAllergens.some(a => excludedAllergens.has(normalizeAllergen(a)));
 
     return matchesSearch && matchesMoment && passesAllergens;
   });

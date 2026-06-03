@@ -5067,6 +5067,64 @@ body.is-allergenen #app-nav { display: none; }
   font-size: .8rem;
 }
 
+.pkf-prep-allergen-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .75rem;
+  margin-bottom: .35rem;
+}
+.pkf-prep-allergen-head .profiel-form-label {
+  margin-bottom: 0;
+}
+.btn-text-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-text-link:hover {
+  text-decoration: underline;
+}
+.profiel-form-hint {
+  font-size: .8rem;
+  line-height: 1.4;
+  color: var(--color-gray);
+  margin: 0 0 .6rem;
+}
+
+/* Keuze-checkboxes: nog volgen / functie uitschakelen
+   (gedeeld door nieuw-kind-form en allergenen-setup) */
+.pkf-prep-choice,
+.allergenen-setup-choice {
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+  margin-top: .9rem;
+}
+.pkf-prep-check,
+.allergenen-setup-check {
+  display: flex;
+  align-items: flex-start;
+  gap: .6rem;
+  font-size: .85rem;
+  line-height: 1.4;
+  color: var(--color-dark-light);
+  cursor: pointer;
+}
+.pkf-prep-check input[type="checkbox"],
+.allergenen-setup-check input[type="checkbox"] {
+  margin-top: .15rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+  accent-color: var(--color-primary, #5e7a5b);
+}
+
 .profiel-radio-group {
   display: flex;
   flex-wrap: wrap;
@@ -7260,4 +7318,161 @@ body.is-allergenen #app-nav { display: none; }
   display: flex;
   flex-direction: column;
   gap: .85rem;
+}
+
+/* ============================================
+   FAMILY-LAYER (receptdetail "Voor jouw gezin")
+   Ronde avatars (initialen + leeftijd) naast elkaar;
+   waarschuwingen apart eronder in een gekleurde box.
+============================================ */
+.family-avatars {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.family-avatar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 64px;
+}
+
+.family-avatar-circle {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.05rem;
+  box-shadow: var(--shadow-sm);
+  border: 3px solid var(--color-gray-light);
+}
+
+/* Statusring rond de avatar */
+.family-avatar--rood   .family-avatar-circle { border-color: var(--color-danger); }
+.family-avatar--jong   .family-avatar-circle { border-color: var(--color-info); }
+.family-avatar--oranje .family-avatar-circle { border-color: var(--color-primary); }
+.family-avatar--ok     .family-avatar-circle { border-color: var(--color-secondary-dark); }
+
+.family-avatar-badge {
+  position: absolute;
+  bottom: -5px;
+  right: -5px;
+  font-size: 0.8rem;
+  line-height: 1;
+  background: var(--color-white);
+  border-radius: 50%;
+  padding: 1px 2px;
+  box-shadow: var(--shadow-sm);
+}
+
+.family-avatar-name {
+  font-weight: 600;
+  color: var(--color-dark);
+  font-size: 0.82rem;
+  margin-top: 0.4rem;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.family-avatar-age {
+  color: var(--color-gray);
+  font-size: 0.75rem;
+}
+
+/* Aparte waarschuwingsbox (zelfde stijl als de arts-waarschuwing) */
+.family-warn {
+  margin: 0.5rem 0 0;
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
+  background: #fff4e5;
+  border: 1px solid #f0b97a;
+  color: #6b3a00;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+.family-warn strong { display: block; margin-bottom: 0.2rem; }
+
+.family-warn--rood {
+  background: #fbecea;
+  border-color: #e2a39c;
+  color: #7a241b;
+}
+.family-warn--jong {
+  background: #eef6fc;
+  border-color: #a9d2ef;
+  color: #1d4e6b;
+}
+.family-warn--oranje {
+  background: #fbf1ea;
+  border-color: #f0b97a;
+  color: #6b3a00;
+}
+
+.family-layer-note {
+  font-size: 0.78rem !important;
+  margin-top: 0.5rem;
+}
+
+/* ----------------------------------------
+   ALGEMENE BABYHAPJE-UITLEG (uitklapblok)
+---------------------------------------- */
+.baby-prep {
+  margin-top: 1rem;
+  border: 1px solid var(--color-light);
+  border-radius: var(--radius-md);
+  background: #f7f3ee;
+  overflow: hidden;
+}
+.baby-prep > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 0.8rem 1rem;
+  font-weight: 600;
+  color: var(--color-primary-dark);
+}
+.baby-prep > summary::-webkit-details-marker { display: none; }
+.baby-prep > summary::after {
+  content: '+';
+  float: right;
+  font-weight: 700;
+  opacity: 0.6;
+}
+.baby-prep[open] > summary::after { content: '\2212'; }
+.baby-prep-body { padding: 0 1rem 1rem; }
+.baby-prep-body > p {
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--color-dark-light);
+  margin: 0 0 0.6rem;
+}
+.baby-prep-sub { margin-top: 1rem; }
+.baby-prep-sub h4 {
+  margin: 0 0 0.4rem;
+  font-size: 0.95rem;
+  color: var(--color-dark);
+}
+.baby-prep-sub ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+.baby-prep-sub li {
+  margin: 0.3rem 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--color-dark-light);
+}
+.baby-prep-note {
+  font-size: 0.78rem;
+  color: var(--color-gray);
+  margin-top: 0.8rem;
 }

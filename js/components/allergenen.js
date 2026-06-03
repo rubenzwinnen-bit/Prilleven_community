@@ -237,7 +237,9 @@ function renderStage(root, child) {
   const stage = root.querySelector('#allergenen-stage');
   if (!stage) return;
   const allergenState = state.ehState?.allergen_state || {};
-  if (!allergenState.started) {
+  if (allergenState.opted_out) {
+    renderDisabled(stage, child);
+  } else if (!allergenState.started) {
     renderWelcome(stage, child);
   } else if (!allergenState.setup_done) {
     renderSetup(stage, child);
@@ -286,6 +288,37 @@ function renderWelcome(stage, child) {
 }
 
 /* ============================================
+   FUNCTIE UITGESCHAKELD
+============================================ */
+function renderDisabled(stage, child) {
+  stage.innerHTML = `
+    <div class="allergenen-welcome-card">
+      <div class="allergenen-welcome-icon">🔕</div>
+      <h3>Allergenen-introductie staat uit voor ${escapeHtml(child.name)}</h3>
+      <p>
+        Je hebt aangegeven deze functie niet te volgen voor ${escapeHtml(child.name)}.
+        Je kunt dit altijd weer aanzetten.
+      </p>
+      <button type="button" class="btn btn-primary btn-lg" data-action="reenable-flow">
+        Toch volgen
+      </button>
+    </div>
+  `;
+  stage.querySelector('[data-action="reenable-flow"]').addEventListener('click', async () => {
+    try {
+      const updated = await patchEhState(child.id, {
+        allergen_state: { ...(state.ehState?.allergen_state || {}), opted_out: false, started: false },
+      });
+      state.ehState = updated;
+      const root = document.getElementById('allergenen-root');
+      if (root) renderStage(root, child);
+    } catch (err) {
+      showToast(err.message || 'Activeren mislukt.', 'error');
+    }
+  });
+}
+
+/* ============================================
    ONBOARDING — Markeer reeds geïntroduceerd
 ============================================ */
 function renderSetup(stage, child) {
@@ -319,10 +352,17 @@ function renderSetup(stage, child) {
       <div class="allergenen-setup-list">
         ${items || '<p>Geen allergenen om te markeren.</p>'}
       </div>
+      <div class="allergenen-setup-choice">
+        <label class="allergenen-setup-check">
+          <input type="checkbox" data-action="follow-check">
+          <span>Ik ga de introductie nog volgen, zie functie "Allergenen introduceren".</span>
+        </label>
+        <label class="allergenen-setup-check">
+          <input type="checkbox" data-action="disable-check">
+          <span>Ik wil de functie "Allergenen introduceren" niet volgen, schakel de functie uit.</span>
+        </label>
+      </div>
       <div class="allergenen-setup-actions">
-        <button type="button" class="btn btn-outline" data-action="setup-skip">
-          Niets aanvinken
-        </button>
         <button type="button" class="btn btn-primary" data-action="setup-save">
           Verder
         </button>
@@ -330,7 +370,7 @@ function renderSetup(stage, child) {
     </div>
   `;
 
-  const finalize = async (preIntroduced) => {
+  const finalize = async ({ preIntroduced = [], optedOut = false }) => {
     try {
       const current = state.ehState?.allergen_state || {};
       const updated = await patchEhState(child.id, {
@@ -338,6 +378,7 @@ function renderSetup(stage, child) {
           ...current,
           pre_introduced: preIntroduced,
           setup_done: true,
+          opted_out: optedOut,
         },
       });
       state.ehState = updated;
@@ -348,11 +389,20 @@ function renderSetup(stage, child) {
     }
   };
 
-  stage.querySelector('[data-action="setup-skip"]').addEventListener('click', () => finalize([]));
+  const followCb = stage.querySelector('[data-action="follow-check"]');
+  const disableCb = stage.querySelector('[data-action="disable-check"]');
+  followCb.addEventListener('change', () => { if (followCb.checked) disableCb.checked = false; });
+  disableCb.addEventListener('change', () => { if (disableCb.checked) followCb.checked = false; });
+
   stage.querySelector('[data-action="setup-save"]').addEventListener('click', () => {
     const checked = [...stage.querySelectorAll('input[type="checkbox"][data-key]:checked')]
       .map(i => i.dataset.key);
-    finalize(checked);
+    if (!followCb.checked && !disableCb.checked && checked.length === 0) {
+      showToast('Kies één van de twee opties, of selecteer minstens één allergeen.', 'error');
+      return;
+    }
+    if (disableCb.checked) finalize({ optedOut: true });
+    else finalize({ preIntroduced: checked });
   });
 }
 

@@ -13,11 +13,51 @@
    CONSTANTEN
    Lijsten van beschikbare allergenen en eetmomenten
 ---------------------------------------- */
+/* Canonieke allergenen = de 9 keys uit de introductie-flow
+   (eersteHapjes-allergen-flow.js). Dit is de standaard voor
+   recepten, filters en kind-allergieën. */
 export const ALLERGENS = [
-  'gluten', 'lactose', 'ei', 'noten', 'pinda',
-  'soja', 'vis', 'schaaldieren', 'selderij',
-  'mosterd', 'sesam', 'sulfiet', 'lupine'
+  'kippen-ei', 'pinda', 'noten', 'sesam', 'vis',
+  'schaaldieren', 'soja', 'tarwe', 'koemelk'
 ];
+
+/* Net leesbaar label per canonieke key (voor UI-weergave). */
+export const ALLERGEN_LABELS = {
+  'kippen-ei': 'Kippenei',
+  'pinda': 'Pinda',
+  'noten': 'Noten',
+  'sesam': 'Sesam',
+  'vis': 'Vis',
+  'schaaldieren': 'Schaaldieren',
+  'soja': 'Soja',
+  'tarwe': 'Tarwe',
+  'koemelk': 'Koemelk'
+};
+
+/* Alias-laag: oude/legacy waarden -> canonieke key.
+   Houdt alles werkend ook als er ergens (mobiele app, oude
+   localStorage, niet-gemigreerde data) nog oude namen opduiken.
+   "lactose" is geen allergeen -> valt onder koemelk (eiwit). */
+export const ALLERGEN_ALIASES = {
+  'gluten': 'tarwe',
+  'lactose': 'koemelk',
+  'melk': 'koemelk',
+  'zuivel': 'koemelk',
+  'ei': 'kippen-ei'
+};
+
+/* Normaliseer een allergeen-waarde naar de canonieke key. */
+export function normalizeAllergen(a) {
+  if (!a) return a;
+  const key = String(a).trim().toLowerCase();
+  return ALLERGEN_ALIASES[key] || key;
+}
+
+/* Net label voor een (mogelijk legacy) allergeen-waarde. */
+export function getAllergenLabel(a) {
+  const key = normalizeAllergen(a);
+  return ALLERGEN_LABELS[key] || key;
+}
 
 export const MEAL_MOMENTS = [
   { id: 'ochtend', label: 'Ochtend' },
@@ -26,6 +66,22 @@ export const MEAL_MOMENTS = [
   { id: 'snack', label: 'Snack' },
   { id: 'avond', label: 'Avond' }
 ];
+
+/* Synoniemen → canonieke eetmoment-id (de filter-namen). */
+export const MEAL_MOMENT_ALIASES = {
+  'lunch': 'middag',
+  'fruitmoment': 'fruit moment'
+};
+
+/* Normaliseert één eetmoment naar een filter-naam.
+   Geeft null terug bij een onbekende waarde. */
+export function normalizeMealMoment(value) {
+  if (typeof value !== 'string') return null;
+  const v = value.trim().toLowerCase();
+  if (!v) return null;
+  const mapped = MEAL_MOMENT_ALIASES[v] || v;
+  return MEAL_MOMENTS.some(m => m.id === mapped) ? mapped : null;
+}
 
 /* Eetmomenten voor het weekschema (5 slots per dag) */
 export const SCHEDULE_SLOTS = [
@@ -40,6 +96,50 @@ export const WEEKDAYS = [
   'maandag', 'dinsdag', 'woensdag', 'donderdag',
   'vrijdag', 'zaterdag', 'zondag'
 ];
+
+/* ----------------------------------------
+   FAMILY-LAYER: LEEFTIJD & GESCHIKTHEID
+   Wordt gebruikt om per kind te tonen of een
+   recept geschikt is (leeftijd + allergenen).
+---------------------------------------- */
+
+/* Minimumleeftijd (in maanden) per eetmoment.
+   Fallback wanneer een recept geen expliciete
+   min_age_months heeft ingevuld. */
+export const MEAL_MOMENT_MIN_AGE = {
+  'ochtend': 9,
+  'fruit moment': 7,
+  'middag': 6,
+  'snack': 10,
+  'avond': 6
+};
+
+/* Vaste keuzes voor de admin-dropdown "minimumleeftijd". */
+export const AGE_PRESETS = [4, 6, 7, 8, 9, 10, 12, 18, 24];
+
+/* Leeftijd in (afgeronde) maanden op basis van geboortedatum.
+   Geeft null terug bij ongeldige/ontbrekende datum. */
+export function ageInMonths(birthdate) {
+  if (!birthdate) return null;
+  const d = new Date(birthdate);
+  if (Number.isNaN(d.getTime())) return null;
+  const diffDays = (Date.now() - d.getTime()) / 86400000;
+  if (diffDays < 0) return null;
+  return Math.floor(diffDays / 30.4375);
+}
+
+/* Effectieve minimumleeftijd van een recept (in maanden).
+   - recipe.minAgeMonths als die expliciet is ingevuld
+   - anders het laagste eetmoment-minimum (vroegst bruikbaar)
+   - anders null (geen leeftijdsbeperking). */
+export function getRecipeMinAge(recipe) {
+  if (recipe && recipe.minAgeMonths != null) return recipe.minAgeMonths;
+  const moments = (recipe && recipe.mealMoments) || [];
+  const ages = moments
+    .map(m => MEAL_MOMENT_MIN_AGE[m])
+    .filter(a => typeof a === 'number');
+  return ages.length ? Math.min(...ages) : null;
+}
 
 /* ----------------------------------------
    TOAST NOTIFICATIES

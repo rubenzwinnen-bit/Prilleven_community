@@ -12,14 +12,53 @@
    - init() haalt alle data parallel op via Promise.all
 ============================================ */
 
-import * as Store from '../store.js?v=2.5.10';
-import * as Router from '../router.js?v=2.5.10';
+import * as Store from '../store.js?v=3.0.3';
+import * as Router from '../router.js?v=3.0.3';
+import { getChildren } from '../childrenApi.js?v=3.0.3';
 import {
   showToast, escapeHtml, formatDate,
   renderStarsDisplay, renderStarsInteractive,
-  getMealMomentLabel, getSlotLabel,
+  getMealMomentLabel, getSlotLabel, getAllergenLabel,
+  normalizeAllergen, ageInMonths, getRecipeMinAge,
+  initialsFromName, colorFromSeed,
   WEEKDAYS, SCHEDULE_SLOTS
-} from '../utils.js?v=2.5.10';
+} from '../utils.js?v=3.0.3';
+
+/* ----------------------------------------
+   ALGEMENE BABYHAPJE-UITLEG
+   Generiek uitklapblok onderaan de bereidingswijze.
+   Zelfde inhoud bij elk recept (papje vs. stukjes).
+---------------------------------------- */
+const BABY_PREP_HTML = `
+  <details class="baby-prep">
+    <summary>Kinderhapje maken — papje of stukjes</summary>
+    <div class="baby-prep-body">
+      <p>Papje en stukjes zijn perfect combineerbaar — kies wat bij jouw kindje past. Rond 6 mnd eet het met de hele hand, rond 9 mnd ontwikkelt zich de pincetgreep voor kleinere stukjes.</p>
+
+      <div class="baby-prep-sub">
+        <h4>Papje</h4>
+        <ul>
+          <li>Groenten 15-20 min stomen of koken (geen bakken/grillen).</li>
+          <li>Vlees en vis meestomen; een eitje koken of bakken en meemixen.</li>
+          <li>Verdun bij de start met wat (moeder)melk.</li>
+          <li>Naar stukjes overschakelen? Plet met een vork i.p.v. mixen.</li>
+        </ul>
+      </div>
+
+      <div class="baby-prep-sub">
+        <h4>Stukjes</h4>
+        <ul>
+          <li>Stukken zo groot als 2 volwassen vingers, pletbaar tussen duim en wijsvinger.</li>
+          <li>Groenten 5-10 min stomen; harde stukken fruit (appel) kort garen.</li>
+          <li>Snijd ronde soorten (druif, kerstomaat, bes) overlangs — verstikkingsrisico.</li>
+          <li>Vlees en vis volledig garen; vis uit blik tot reepjes drukken.</li>
+          <li>Geen hele noten (gevaarlijk) — gebruik notenpasta; peulvruchten als dip.</li>
+        </ul>
+      </div>
+
+      <p class="baby-prep-note">Informatief, geen medisch advies.</p>
+    </div>
+  </details>`;
 
 /* ----------------------------------------
    RENDER
@@ -47,17 +86,19 @@ export async function init(recipeId) {
   const container = document.getElementById('recipe-detail-container');
   if (!container) return;
 
-  let recipe, isFav, avgRating, userRating, comments, activeSchedule;
+  let recipe, isFav, avgRating, userRating, comments, activeSchedule, childrenRes;
 
   /* ---- Data parallel ophalen ---- */
   try {
-    [recipe, isFav, avgRating, userRating, comments, activeSchedule] = await Promise.all([
+    [recipe, isFav, avgRating, userRating, comments, activeSchedule, childrenRes] = await Promise.all([
       Store.getRecipe(recipeId),
       Store.isFavorite(recipeId),
       Store.getAverageRating(recipeId),
       Store.getUserRating(recipeId),
       Store.getComments(recipeId),
       Store.getActiveSchedule(),
+      /* Kinderen (family-layer). getChildren throwt niet; geeft {ok,...} terug. */
+      getChildren(),
     ]);
   } catch (err) {
     container.innerHTML = `
@@ -107,17 +148,119 @@ export async function init(recipeId) {
     }
   }
 
+  /* ---- Kinderen voor de family-layer ---- */
+  const children = childrenRes?.ok ? (childrenRes.data?.children || []) : [];
+
   /* ---- Bouw de volledige HTML op ---- */
-  container.innerHTML = buildDetailHtml(recipe, isFav, avgRating, userRating, comments, activeInfo);
+  container.innerHTML = buildDetailHtml(recipe, isFav, avgRating, userRating, comments, activeInfo, children);
 
   /* ---- Event listeners koppelen ---- */
   attachListeners(recipeId, userRating, recipe, activeInfo);
 }
 
 /* ----------------------------------------
+   FAMILY-LAYER
+   Toont per kind of het recept geschikt is:
+   - ROOD   : kind is allergisch voor een allergeen in het recept
+   - TE JONG: kind is jonger dan de (effectieve) minimumleeftijd
+   - ORANJE : recept bevat een allergeen dat nog niet geïntroduceerd is
+   - OK      : oud genoeg én geen waarschuwingen
+   Kinderen verschijnen als ronde avatars (initialen + leeftijd) naast
+   elkaar; waarschuwingen staan apart eronder in een gekleurde box.
+   Puur informatief — geen medisch advies.
+---------------------------------------- */
+function childAgeLabel(months) {
+  if (months == null) return 'leeftijd onbekend';
+  if (months < 24) return `${months} mnd`;
+  const years = Math.floor(months / 12);
+  return `${years} jaar`;
+}
+
+function buildFamilyLayerHtml(recipe, children = []) {
+  if (!children || children.length === 0) return '';
+
+  const recipeAllergens = [...new Set((recipe.allergens || []).map(normalizeAllergen))];
+  const minAge = getRecipeMinAge(recipe);
+
+  /* Elk kind één keer beoordelen; resultaat hergebruiken voor avatar + box. */
+  const evaluated = children.map(child => {
+    const months = ageInMonths(child.birthdate);
+    const known = (child.known_allergies || []).map(normalizeAllergen);
+    const introduced = (child.introduced_allergens || []).map(normalizeAllergen);
+    const optedOut = !!child.allergens_opted_out;
+
+    const allergic = recipeAllergens.filter(a => known.includes(a));
+    const notIntroduced = optedOut ? [] : recipeAllergens.filter(a => !introduced.includes(a) && !known.includes(a));
+    const tooYoung = (minAge != null && months != null && months < minAge);
+
+    let status, icon, warnTitle, warnText;
+    if (allergic.length) {
+      status = 'rood';
+      icon = '&#128308;'; /* 🔴 */
+      warnTitle = `${child.name} is allergisch`;
+      warnText = `Dit recept bevat ${allergic.map(getAllergenLabel).join(', ')}. Geef dit niet aan ${child.name}.`;
+    } else if (tooYoung) {
+      status = 'jong';
+      icon = '&#128309;'; /* 🔵 */
+      warnTitle = `${child.name} is nog te jong`;
+      warnText = `Dit recept is geschikt vanaf ${minAge} maanden.`;
+    } else if (notIntroduced.length) {
+      status = 'oranje';
+      icon = '&#128992;'; /* 🟠 */
+      warnTitle = `Nog niet geïntroduceerd bij ${child.name}`;
+      warnText = `Introduceer eerst apart: ${notIntroduced.map(getAllergenLabel).join(', ')}.`;
+    } else {
+      status = 'ok';
+      icon = '&#9989;'; /* ✅ */
+      warnTitle = null;
+      warnText = null;
+    }
+
+    return { child, months, status, icon, warnTitle, warnText };
+  });
+
+  /* Avatars naast elkaar */
+  const avatars = evaluated.map(({ child, months, status, icon }) => {
+    const color = colorFromSeed(child.id);
+    const initials = initialsFromName(child.name);
+    return `
+      <div class="family-avatar family-avatar--${status}">
+        <span class="family-avatar-circle" style="background:${color};">
+          ${escapeHtml(initials)}
+          <span class="family-avatar-badge">${icon}</span>
+        </span>
+        <span class="family-avatar-name">${escapeHtml(child.name)}</span>
+        <span class="family-avatar-age">${childAgeLabel(months)}</span>
+      </div>
+    `;
+  }).join('');
+
+  /* Waarschuwingen apart eronder (alleen voor kinderen met een issue) */
+  const warnings = evaluated
+    .filter(e => e.warnTitle)
+    .map(({ status, icon, warnTitle, warnText }) => `
+      <div class="family-warn family-warn--${status}">
+        <strong>${icon} ${escapeHtml(warnTitle)}</strong>
+        ${escapeHtml(warnText)}
+      </div>
+    `).join('');
+
+  return `
+    <div class="recipe-section">
+      <h3>Voor jouw gezin</h3>
+      <div class="family-avatars">${avatars}</div>
+      ${warnings}
+      <p class="text-muted family-layer-note">
+        Informatief, geen medisch advies.
+      </p>
+    </div>
+  `;
+}
+
+/* ----------------------------------------
    BOUW DE DETAIL HTML
 ---------------------------------------- */
-function buildDetailHtml(recipe, isFav, avgRating, userRating, comments, activeInfo = null) {
+function buildDetailHtml(recipe, isFav, avgRating, userRating, comments, activeInfo = null, children = []) {
   const { average, count } = avgRating;
 
   /* Afbeelding */
@@ -132,7 +275,7 @@ function buildDetailHtml(recipe, isFav, avgRating, userRating, comments, activeI
 
   /* Allergenen */
   const allergens = (recipe.allergens || [])
-    .map(a => `<span class="tag tag-allergen">${escapeHtml(a)}</span>`)
+    .map(a => `<span class="tag tag-allergen">${escapeHtml(getAllergenLabel(a))}</span>`)
     .join('');
 
   /* Bereidingsstappen */
@@ -245,6 +388,8 @@ function buildDetailHtml(recipe, isFav, avgRating, userRating, comments, activeI
         ${allergens ? `<div style="display:flex;flex-wrap:wrap;gap:0.5rem"><strong style="font-size:0.85rem;margin-right:0.25rem">Allergenen:</strong>${allergens}</div>` : '<p class="text-muted" style="font-size:0.85rem">Geen allergenen</p>'}
       </div>
 
+      ${buildFamilyLayerHtml(recipe, children)}
+
       <div class="recipe-section" id="ingredients-section">
         <h3>Ingrediënten
           <span class="text-muted" style="font-size:0.85rem;font-weight:normal" id="portions-subtitle">
@@ -261,6 +406,7 @@ function buildDetailHtml(recipe, isFav, avgRating, userRating, comments, activeI
         <ol class="preparation-list">
           ${prepSteps}
         </ol>
+        ${BABY_PREP_HTML}
       </div>
 
       <div class="recipe-section">

@@ -161,6 +161,9 @@ function dbToRecipe(row) {
     ingredients: row.ingredients || [],
     allergens: row.allergens || [],
     preparation: row.preparation || [],
+    /* Minimumleeftijd in maanden (family-layer). NULL = geen expliciete
+       waarde; de UI valt dan terug op de eetmoment-minima. */
+    minAgeMonths: row.min_age_months != null ? Number(row.min_age_months) : null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     /* Beoordelingen en commentaren komen uit aparte tabellen.
@@ -174,6 +177,8 @@ function dbToRecipe(row) {
 function recipeToDb(data) {
   /* Porties: minimaal 1, parseInt vangt "12 stuks" soort strings af */
   const portions = parseInt(data.portions);
+  /* Minimumleeftijd: leeg/ongeldig -> NULL (volg eetmomenten). */
+  const minAge = parseInt(data.minAgeMonths);
   return {
     name: data.name || 'Naamloos recept',
     image: data.image || '',
@@ -183,6 +188,7 @@ function recipeToDb(data) {
     ingredients: data.ingredients || [],
     allergens: data.allergens || [],
     preparation: data.preparation || [],
+    min_age_months: Number.isFinite(minAge) && minAge >= 0 ? minAge : null,
   };
 }
 
