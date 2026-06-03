@@ -31,7 +31,7 @@ import {
 ---------------------------------------- */
 const BABY_PREP_HTML = `
   <details class="baby-prep">
-    <summary>&#127868; Babyhapje maken — papje of stukjes</summary>
+    <summary>Kinderhapje maken — papje of stukjes</summary>
     <div class="baby-prep-body">
       <p>Papje en stukjes zijn perfect combineerbaar — kies wat bij jouw kindje past. Rond 6 mnd eet het met de hele hand, rond 9 mnd ontwikkelt zich de pincetgreep voor kleinere stukjes.</p>
 
