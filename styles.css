@@ -553,6 +553,37 @@ select.form-control {
   color: #8a5a1a;
 }
 
+/* Leeftijd-badge: klein groen ovaal naast de recepttitel */
+.recipe-card-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.recipe-card-title-row .recipe-card-title {
+  margin-bottom: 0;
+}
+
+.recipe-age-badge {
+  display: inline-block;
+  flex-shrink: 0;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+  background: rgba(152, 195, 164, 0.25);
+  color: #4a7c59;
+}
+
+.recipe-age-badge--lg {
+  font-size: 0.8rem;
+  padding: 0.25rem 0.75rem;
+}
+
 /* ============================================
    STERREN BEOORDELING
 ============================================ */
@@ -1795,6 +1826,49 @@ select.form-control {
 .allergen-chip-x:hover {
   background: var(--color-light);
   color: var(--color-text);
+}
+
+/* ============================================
+   LEEFTIJD-FILTER (multi-select pills)
+   In de recepten-toolbar; gebruiker kiest 1+
+   leeftijdscategorieën om op te filteren.
+============================================ */
+.age-filter {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  width: 100%;
+}
+
+.age-filter-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-gray);
+  margin-right: 0.15rem;
+}
+
+.age-pill {
+  padding: 0.35rem 0.75rem;
+  border: 2px solid var(--color-light);
+  border-radius: 999px;
+  background: var(--color-white);
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.8rem;
+  color: var(--color-dark);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.age-pill:hover {
+  border-color: var(--color-secondary);
+}
+
+.age-pill.active {
+  background: var(--color-secondary);
+  border-color: var(--color-secondary);
+  color: #2f5d3f;
+  font-weight: 600;
 }
 
 /* ============================================

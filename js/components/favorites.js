@@ -14,7 +14,7 @@
 
 import * as Store from '../store.js?v=2.5.10';
 import * as Router from '../router.js?v=2.5.10';
-import * as RecipeCard from './recipeCard.js?v=2.5.10';
+import * as RecipeCard from './recipeCard.js?v=3.1.1';
 import {
   showToast, confirm, promptInput, escapeHtml, formatDateShort, renderStarsDisplay,
   WEEKDAYS, SCHEDULE_SLOTS, getSlotLabel

@@ -19,10 +19,10 @@ import {
   showToast, escapeHtml, formatDate,
   renderStarsDisplay, renderStarsInteractive,
   getMealMomentLabel, getSlotLabel, getAllergenLabel,
-  normalizeAllergen, ageInMonths, getRecipeMinAge,
+  normalizeAllergen, ageInMonths, getRecipeMinAge, getRecipeAgeLabel,
   initialsFromName, colorFromSeed,
   WEEKDAYS, SCHEDULE_SLOTS
-} from '../utils.js?v=3.0.3';
+} from '../utils.js?v=3.1.1';
 
 /* ----------------------------------------
    ALGEMENE BABYHAPJE-UITLEG
@@ -379,7 +379,10 @@ function buildDetailHtml(recipe, isFav, avgRating, userRating, comments, activeI
       ${activeScheduleHtml}
 
       <div class="recipe-section">
-        <h3>Informatie</h3>
+        <h3 style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem">
+          <span>Informatie</span>
+          ${getRecipeAgeLabel(recipe) ? `<span class="recipe-age-badge recipe-age-badge--lg">${getRecipeAgeLabel(recipe)}</span>` : ''}
+        </h3>
         <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem">
           ${moments}
           <span class="tag tag-time">&#9201; ${recipe.cookingTime} min</span>
