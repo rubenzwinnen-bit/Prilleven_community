@@ -618,3 +618,29 @@ De mobiele app bestaat al (gebouwd parallel aan de website vanaf V1). De volgend
 - ⬜ Inline CSS-resten `.memory-toggle` + `.pf-email-readonly` in `chat.html` opruimen.
 - ⬜ Vercel Company Name corrigeren naar `Anneleen Plettinx`.
 - ⬜ Vercel Observability Plus overwegen uit te zetten (ongebruikt, extra kosten).
+
+---
+
+## 2026-06-03 — V3.1.0 Release: Allergenen-introductie & per-kind familielaag (branch `implementatie-kindjes-in-recepten` → main)
+
+Merge-commit `eb5c625`. Cache-buster `3.0.0 → 3.1.0`.
+
+### Vandaag afgerond
+- ✅ **Familielaag in receptdetail**: per kind toont het receptdetail geschiktheid via ronde avatars + aparte waarschuwingsboxen. Statusbollen: rood = bekende allergie, blauw = te jong (min-leeftijd), oranje = nog niet geïntroduceerd, groen = ok. "Geïntroduceerd" = doses + `pre_introduced` + bekende allergieën.
+- ✅ **Allergenen-onboarding bij nieuw kind**: tegel-selector met foto's + "Alles selecteren" → pre-seedt de tracker (`setup_done`), zodat het "reeds geïntroduceerd"-scherm in de tracker wordt overgeslagen.
+- ✅ **Functie uitschakelen**: 2 elkaar uitsluitende checkboxes (nog volgen / functie uitschakelen) in nieuw-kind-form én allergenen-setup, met validatie (1 keuze óf ≥1 allergeen). `opted_out`-state + apart "functie uitgeschakeld"-scherm met "Toch volgen".
+- ✅ **Allergenen-keuze ook bij kind bewerken**: `openEditForm` laadt async de ehState; tegels/keuze staan vooraf juist; opslaan raakt `started`/doses niet.
+- ✅ **Profielkaart** toont "Functie uitgeschakeld" bij `opted_out` (veld komt uit `GET /api/children`).
+- ✅ **Recepten**: oranje "nog niet geïntroduceerd"-waarschuwing onderdrukt voor kinderen met de functie uit (rood/blauw blijven).
+- ✅ **Allergenen-standaardisatie**: 9 canonieke flow-keys + alias-laag (bv. `ei-geel`+`ei-wit` → `kippen-ei`).
+- ✅ **Babyhapje/Kinderhapje-content** onderaan bereidingswijze; **eetmomenten genormaliseerd** bij CSV-import (`lunch → middag`, onbekende geweerd).
+
+### Beslissingen
+- Re-enable na uitschakelen → terug naar welkomsscherm (`opted_out:false, started:false`, `setup_done` blijft true) — geen dubbele setup.
+- Bij bewerken wordt `started`/doses bewust niet aangeraakt: enkel `pre_introduced`/`opted_out`/`setup_done`.
+- Cache-buster blijft op de HTML-tags van `index.html` (overige losse pagina's hebben eigen oudere versie).
+
+### Niet vergeten / open
+- ⬜ **Twee SQL-migraties draaien in Supabase** (indien nog niet gebeurd): `2026-06-03-allergenen-standaardiseren.sql` + `2026-06-03-recepten-min-leeftijd.sql`.
+- ⬜ Eventuele data-fix eetmomenten voor recept `rec-69de953a-50c71` (indien nog relevant).
+- ⬜ Feature-branch `implementatie-kindjes-in-recepten` mag opgeruimd worden (gemerged).

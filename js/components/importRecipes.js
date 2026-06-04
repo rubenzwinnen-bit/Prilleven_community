@@ -117,7 +117,7 @@ export function render() {
             <tr style="border-bottom:1px solid var(--color-light)">
               <td style="padding:0.5rem"><strong>Allergenen</strong></td>
               <td style="padding:0.5rem">Komma-gescheiden</td>
-              <td style="padding:0.5rem">gluten, lactose</td>
+              <td style="padding:0.5rem">tarwe, koemelk</td>
             </tr>
             <tr>
               <td style="padding:0.5rem"><strong>Bereiding</strong></td>
@@ -151,9 +151,9 @@ export async function init() {
 
 function downloadCsvTemplate() {
   const template = `Naam;Afbeelding;Eetmomenten;Kooktijd;Porties;Ingredienten;Allergenen;Bereiding
-Voorbeeld Recept;https://voorbeeld.com/foto.jpg;ochtend, middag;30;4;bloem: 250 gram | eieren: 3 stuks | melk: 500 ml;gluten, ei, lactose;Meng alle droge ingredienten. | Voeg de natte ingredienten toe. | Bak in een voorverwarmde oven.
+Voorbeeld Recept;https://voorbeeld.com/foto.jpg;ochtend, middag;30;4;bloem: 250 gram | eieren: 3 stuks | melk: 500 ml;tarwe, kippen-ei, koemelk;Meng alle droge ingredienten. | Voeg de natte ingredienten toe. | Bak in een voorverwarmde oven.
 Voorbeeld Fruit Moment;https://voorbeeld.com/fruit.jpg;fruit moment;5;2;appel: 2 stuks | kaneel: 1 theelepel;;Snijd het fruit. | Bestrooi met kaneel.
-Voorbeeld Koekjes;https://voorbeeld.com/koekjes.jpg;snack;25;12;bananen: 3 stuks | havermout: 120 gram;gluten;Pureer de bananen. | Meng alles. | Bak 20 minuten op 180°C.`;
+Voorbeeld Koekjes;https://voorbeeld.com/koekjes.jpg;snack;25;12;bananen: 3 stuks | havermout: 120 gram;tarwe;Pureer de bananen. | Meng alles. | Bak 20 minuten op 180°C.`;
 
   downloadFile('recepten-template.csv', template);
   showToast('CSV template gedownload!');
