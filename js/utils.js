@@ -141,6 +141,18 @@ export function getRecipeMinAge(recipe) {
   return ages.length ? Math.min(...ages) : null;
 }
 
+/* Korte badge-tekst met de leeftijdscategorie van een recept,
+   bv. "vanaf 6 mnd". Geeft null terug als er geen leeftijd bekend is. */
+export function getRecipeAgeLabel(recipe) {
+  const age = getRecipeMinAge(recipe);
+  return age != null ? `vanaf ${age} mnd` : null;
+}
+
+/* Mogelijke leeftijdscategorieën voor de receptenfilter:
+   de unieke eetmoment-minima, oplopend (→ [6, 7, 9, 10]). */
+export const AGE_FILTER_OPTIONS =
+  [...new Set(Object.values(MEAL_MOMENT_MIN_AGE))].sort((a, b) => a - b);
+
 /* ----------------------------------------
    TOAST NOTIFICATIES
    Toon een korte melding onderaan het scherm

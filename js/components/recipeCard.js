@@ -5,7 +5,7 @@
    beoordeling en favoriet-knop.
 ============================================ */
 
-import { escapeHtml, renderStarsDisplay, getMealMomentLabel, getAllergenLabel } from '../utils.js?v=3.0.1';
+import { escapeHtml, renderStarsDisplay, getMealMomentLabel, getAllergenLabel, getRecipeAgeLabel } from '../utils.js?v=3.1.1';
 
 /* ----------------------------------------
    RENDER
@@ -47,6 +47,12 @@ export function render(recipe, favIds = [], ratingsMap = {}, admin = false, favC
     ? `<span class="tag tag-allergen">+${recipe.allergens.length - 3}</span>`
     : '';
 
+  /* Leeftijd-badge (vroegst bruikbare leeftijd) naast de titel */
+  const ageLabel = getRecipeAgeLabel(recipe);
+  const ageBadge = ageLabel
+    ? `<span class="recipe-age-badge">${ageLabel}</span>`
+    : '';
+
   return `
     <article class="recipe-card" data-recipe-id="${recipe.id}">
       <!-- Favoriet knop + teller -->
@@ -62,7 +68,10 @@ export function render(recipe, favIds = [], ratingsMap = {}, admin = false, favC
 
       <!-- Kaart inhoud -->
       <div class="recipe-card-body">
-        <h3 class="recipe-card-title">${escapeHtml(recipe.name)}</h3>
+        <div class="recipe-card-title-row">
+          <h3 class="recipe-card-title">${escapeHtml(recipe.name)}</h3>
+          ${ageBadge}
+        </div>
         <div class="recipe-card-meta">
           ${momentTags}
           <span class="tag tag-time">&#9201; ${recipe.cookingTime} min</span>

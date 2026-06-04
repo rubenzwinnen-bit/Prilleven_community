@@ -19,10 +19,10 @@ import {
   showToast, escapeHtml, formatDate,
   renderStarsDisplay, renderStarsInteractive,
   getMealMomentLabel, getSlotLabel, getAllergenLabel,
-  normalizeAllergen, ageInMonths, getRecipeMinAge,
+  normalizeAllergen, ageInMonths, getRecipeMinAge, getRecipeAgeLabel,
   initialsFromName, colorFromSeed,
   WEEKDAYS, SCHEDULE_SLOTS
-} from '../utils.js?v=3.0.3';
+} from '../utils.js?v=3.1.1';
 
 /* ----------------------------------------
    ALGEMENE BABYHAPJE-UITLEG
@@ -368,7 +368,10 @@ function buildDetailHtml(recipe, isFav, avgRating, userRating, comments, activeI
         ${imageHtml}
       </div>
 
-      <h1 class="recipe-detail-title">${escapeHtml(recipe.name)}</h1>
+      <div class="recipe-detail-title-row">
+        <h1 class="recipe-detail-title">${escapeHtml(recipe.name)}</h1>
+        ${getRecipeAgeLabel(recipe) ? `<span class="recipe-age-badge recipe-age-badge--lg">${getRecipeAgeLabel(recipe)}</span>` : ''}
+      </div>
 
       <div class="recipe-detail-actions">
         <button class="btn ${isFav ? 'btn-primary' : 'btn-outline'}" id="btn-toggle-fav" data-id="${recipe.id}">

@@ -10,8 +10,8 @@
 
 import * as Store from '../store.js?v=3.0.1';
 import * as Router from '../router.js?v=3.0.1';
-import * as RecipeCard from './recipeCard.js?v=3.0.1';
-import { showToast, confirm, MEAL_MOMENTS, ALLERGENS, getAllergenLabel, normalizeAllergen } from '../utils.js?v=3.0.1';
+import * as RecipeCard from './recipeCard.js?v=3.1.1';
+import { showToast, confirm, MEAL_MOMENTS, ALLERGENS, getAllergenLabel, normalizeAllergen, AGE_FILTER_OPTIONS, getRecipeMinAge } from '../utils.js?v=3.1.1';
 
 /* Cache van pre-fetched data zodat het filteren snel blijft */
 let cachedRecipes = [];
@@ -22,6 +22,11 @@ let cachedFavCounts = {};
 /* Set van allergenen die de gebruiker wil WEGFILTEREN (verbergen).
    Een recept dat één van deze allergenen bevat valt buiten de lijst. */
 let excludedAllergens = new Set();
+
+/* Set van geselecteerde leeftijdscategorieën (in maanden, bv. 6, 7, 9, 10).
+   Leeg = geen leeftijdsfilter. Recept zichtbaar als zijn minimumleeftijd
+   in deze set zit (meerdere selecties = OF). */
+let selectedAges = new Set();
 
 /* AbortController om vorige listeners op te ruimen wanneer de pagina
    opnieuw wordt geïnitialiseerd. Voorkomt dat dezelfde click-handler
@@ -67,6 +72,13 @@ export function render() {
       </div>
 
       <div class="allergen-filter-chips" id="allergen-filter-chips"></div>
+
+      <div class="age-filter" id="age-filter">
+        <span class="age-filter-label">Leeftijd:</span>
+        ${AGE_FILTER_OPTIONS.map(a => `
+          <button type="button" class="age-pill" data-age="${a}">vanaf ${a} mnd</button>
+        `).join('')}
+      </div>
 
       <div class="toolbar-right" id="toolbar-admin">
       </div>
@@ -208,6 +220,17 @@ export async function init() {
   document.getElementById('recipe-search')?.addEventListener('input', filterRecipes, { signal: listAbort.signal });
   document.getElementById('filter-moment')?.addEventListener('change', filterRecipes, { signal: listAbort.signal });
 
+  /* Leeftijd-filter: pills toggelen (meerdere selecteerbaar) */
+  document.getElementById('age-filter')?.addEventListener('click', (e) => {
+    const pill = e.target.closest('.age-pill');
+    if (!pill) return;
+    const age = Number(pill.dataset.age);
+    if (selectedAges.has(age)) selectedAges.delete(age);
+    else selectedAges.add(age);
+    pill.classList.toggle('active', selectedAges.has(age));
+    filterRecipes();
+  }, { signal: listAbort.signal });
+
   /* Allergenen-filter: dropdown openen/sluiten */
   const filterBtn = document.getElementById('allergen-filter-btn');
   const filterPop = document.getElementById('allergen-filter-pop');
@@ -329,7 +352,13 @@ function filterRecipes() {
     const passesAllergens = excludedAllergens.size === 0 ||
       !recipeAllergens.some(a => excludedAllergens.has(normalizeAllergen(a)));
 
-    return matchesSearch && matchesMoment && passesAllergens;
+    /* Leeftijdsfilter: recept zichtbaar als zijn minimumleeftijd
+       overeenkomt met één van de geselecteerde categorieën. */
+    const recipeAge = getRecipeMinAge(recipe);
+    const matchesAge = selectedAges.size === 0 ||
+      (recipeAge != null && selectedAges.has(recipeAge));
+
+    return matchesSearch && matchesMoment && passesAllergens && matchesAge;
   });
 
   const grid = document.getElementById('recipe-grid');
