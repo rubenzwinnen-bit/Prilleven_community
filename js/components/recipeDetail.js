@@ -368,10 +368,7 @@ function buildDetailHtml(recipe, isFav, avgRating, userRating, comments, activeI
         ${imageHtml}
       </div>
 
-      <div class="recipe-detail-title-row">
-        <h1 class="recipe-detail-title">${escapeHtml(recipe.name)}</h1>
-        ${getRecipeAgeLabel(recipe) ? `<span class="recipe-age-badge recipe-age-badge--lg">${getRecipeAgeLabel(recipe)}</span>` : ''}
-      </div>
+      <h1 class="recipe-detail-title">${escapeHtml(recipe.name)}</h1>
 
       <div class="recipe-detail-actions">
         <button class="btn ${isFav ? 'btn-primary' : 'btn-outline'}" id="btn-toggle-fav" data-id="${recipe.id}">
@@ -387,6 +384,7 @@ function buildDetailHtml(recipe, isFav, avgRating, userRating, comments, activeI
           ${moments}
           <span class="tag tag-time">&#9201; ${recipe.cookingTime} min</span>
           ${portionsTag}
+          ${getRecipeAgeLabel(recipe) ? `<span class="recipe-age-badge recipe-age-badge--lg">${getRecipeAgeLabel(recipe)}</span>` : ''}
         </div>
         ${allergens ? `<div style="display:flex;flex-wrap:wrap;gap:0.5rem"><strong style="font-size:0.85rem;margin-right:0.25rem">Allergenen:</strong>${allergens}</div>` : '<p class="text-muted" style="font-size:0.85rem">Geen allergenen</p>'}
       </div>

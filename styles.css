@@ -566,13 +566,6 @@ select.form-control {
   margin-bottom: 0;
 }
 
-.recipe-detail-title-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-}
-
 .recipe-age-badge {
   display: inline-block;
   flex-shrink: 0;
