@@ -379,12 +379,14 @@ function buildDetailHtml(recipe, isFav, avgRating, userRating, comments, activeI
       ${activeScheduleHtml}
 
       <div class="recipe-section">
-        <h3>Informatie</h3>
+        <h3 style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem">
+          <span>Informatie</span>
+          ${getRecipeAgeLabel(recipe) ? `<span class="recipe-age-badge recipe-age-badge--lg">${getRecipeAgeLabel(recipe)}</span>` : ''}
+        </h3>
         <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem">
           ${moments}
           <span class="tag tag-time">&#9201; ${recipe.cookingTime} min</span>
           ${portionsTag}
-          ${getRecipeAgeLabel(recipe) ? `<span class="recipe-age-badge recipe-age-badge--lg">${getRecipeAgeLabel(recipe)}</span>` : ''}
         </div>
         ${allergens ? `<div style="display:flex;flex-wrap:wrap;gap:0.5rem"><strong style="font-size:0.85rem;margin-right:0.25rem">Allergenen:</strong>${allergens}</div>` : '<p class="text-muted" style="font-size:0.85rem">Geen allergenen</p>'}
       </div>
