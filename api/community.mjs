@@ -17,6 +17,7 @@
 //   GET    /api/community/blocks            → eigen blocklijst
 //   POST   /api/community/blocks            → gebruiker blokkeren { blocked_id }
 //   DELETE /api/community/blocks/:id        → gebruiker deblokkeren
+//   GET    /api/community/app-badges?since= → tijdlijn-badge teller { timeline }
 
 import { requireAuth, requireAdmin, AuthError } from './_lib/auth.mjs';
 import { supabase } from './_lib/clients.mjs';
@@ -145,6 +146,83 @@ async function loadFollowedChatroomTopics(userId, { before = null, limit = 20 } 
       poll: null,
     };
   });
+}
+
+// Ondergrens voor de tijdlijn-badge: items ouder dan 6 weken tellen nooit
+// nog als "nieuw" — voorkomt dat de badge eindeloos oploopt.
+const BADGE_MAX_AGE_MS = 6 * 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Tel de tijdlijn-badge: nieuwe items sinds `since` (ISO-string).
+ *  - nieuwe community-posts
+ *  - nieuwe community-replies  ← toegevoegd t.o.v. de oude client-telling
+ *  - nieuwe gevolgde chatroom-topics (tellen altijd mee)
+ *
+ * Telregel (spiegelt de app-afspraak):
+ *  - admin ziet ALLE nieuwe posts + replies;
+ *  - gewone gebruiker enkel admin-geschreven posts + replies (+ gevolgde topics).
+ *
+ * Geblokkeerde auteurs tellen niet mee. Ondergrens 6 weken.
+ * Ontbrekende/ongeldige `since` → 0.
+ */
+async function countTimelineBadge(userId, since) {
+  if (!since) return 0;
+  const sinceDate = new Date(since);
+  if (Number.isNaN(sinceDate.getTime())) return 0;
+  const floor = new Date(Date.now() - BADGE_MAX_AGE_MS);
+  const refIso = (sinceDate > floor ? sinceDate : floor).toISOString();
+
+  // Self-admin-check + eigen blocklijst parallel.
+  const [selfAdminSet, blockedIds] = await Promise.all([
+    loadAdminUserIds([userId]),
+    loadBlockedUserIds(userId),
+  ]);
+  const isAdmin = selfAdminSet.has(userId);
+
+  // Gewone gebruiker: globale admin-set nodig om posts/replies te filteren.
+  let adminIds = [];
+  if (!isAdmin) {
+    const { data: adminRows } = await supabase
+      .from('community_admin_user_ids')
+      .select('user_id');
+    adminIds = (adminRows || []).map(r => r.user_id).filter(Boolean);
+  }
+
+  const blocked = [...blockedIds];
+  const applyBlocked = (q) =>
+    blocked.length ? q.not('user_id', 'in', `(${blocked.join(',')})`) : q;
+
+  const countTable = async (table) => {
+    // Gewone gebruiker zonder bekende admins → niets te tellen in deze tabel.
+    if (!isAdmin && adminIds.length === 0) return 0;
+    let q = supabase
+      .from(table)
+      .select('id', { count: 'exact', head: true })
+      .gt('created_at', refIso);
+    if (!isAdmin) q = q.in('user_id', adminIds);
+    q = applyBlocked(q);
+    const { count, error } = await q;
+    if (error) {
+      console.warn(`[app-badges] ${table} count: ${error.message}`);
+      return 0;
+    }
+    return count || 0;
+  };
+
+  const countFollowedTopics = async () => {
+    const topics = await loadFollowedChatroomTopics(userId, { limit: 100 });
+    const ref = new Date(refIso);
+    return topics.filter(t =>
+      !blockedIds.has(t.user_id) && new Date(t.created_at) > ref
+    ).length;
+  };
+
+  const [posts, replies, followed] = await Promise.all([
+    countTable('community_posts'),
+    countTable('community_replies'),
+    countFollowedTopics(),
+  ]);
+  return posts + replies + followed;
 }
 
 function json(res, status, body) {
@@ -287,6 +365,11 @@ function matchRoute(req) {
     if (segments.length === 2 && method === 'DELETE') return { route: 'blocks.delete', params: { id: segments[1] } };
   }
 
+  // /app-badges     → GET tijdlijn-badge teller { timeline }
+  if (segments.length === 1 && segments[0] === 'app-badges' && method === 'GET') {
+    return { route: 'app-badges' };
+  }
+
   return null;
 }
 
@@ -375,6 +458,13 @@ export default async function handler(req, res) {
         if (err.status === 409) return json(res, 409, { error: err.message });
         throw err;
       }
+    }
+
+    /* ----- app-badges ----- */
+    if (route === 'app-badges') {
+      const since = url.searchParams.get('since');
+      const timeline = await countTimelineBadge(auth.userId, since);
+      return json(res, 200, { timeline });
     }
 
     /* ----- posts ----- */
