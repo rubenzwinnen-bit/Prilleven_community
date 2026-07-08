@@ -644,3 +644,22 @@ Merge-commit `eb5c625`. Cache-buster `3.0.0 → 3.1.0`.
 - ⬜ **Twee SQL-migraties draaien in Supabase** (indien nog niet gebeurd): `2026-06-03-allergenen-standaardiseren.sql` + `2026-06-03-recepten-min-leeftijd.sql`.
 - ⬜ Eventuele data-fix eetmomenten voor recept `rec-69de953a-50c71` (indien nog relevant).
 - ⬜ Feature-branch `implementatie-kindjes-in-recepten` mag opgeruimd worden (gemerged).
+
+---
+
+## 2026-06-04 — Leeftijd-badge + multi-select leeftijdsfilter (branch `toevoegen-badge-recepten-leeftijd-categorie` → main)
+
+Merge-commit `63e81f6`. Cache-buster `3.1.0 → 3.1.3`.
+
+### Vandaag afgerond
+- ✅ **Leeftijd-badge** (klein groen ovaal `.recipe-age-badge`, "vanaf X mnd"): op de receptkaarten naast de titel (dus ook in favorieten) én op het receptdetail **rechts naast de "Informatie"-titel** (`--lg`-variant, h3 als flex met `space-between`).
+- ✅ **Multi-select leeftijdsfilter** boven de receptenlijst: pills "vanaf 6/7/9/10 mnd", meerdere tegelijk selecteerbaar (`recipeList.js`, state `selectedAges`, matcht op `getRecipeMinAge`).
+- ✅ Hergebruikt bestaande `MEAL_MOMENT_MIN_AGE`/`getRecipeMinAge`; twee dunne helpers in `utils.js`: `getRecipeAgeLabel()` + `AGE_FILTER_OPTIONS`.
+
+### Beslissingen
+- Geen nieuwe leeftijd-bron: de eetmoment-minima blijven de single source of truth. De badge toont niets als er geen leeftijd bekend is.
+- Verificatie van de badge gebeurde geïsoleerd (component-render via preview-eval), want de app is login-gated.
+
+### Niet vergeten / open
+- ⬜ Feature-branch `toevoegen-badge-recepten-leeftijd-categorie` mag opgeruimd worden (gemerged).
+- ⬜ De twee SQL-migraties van 2026-06-03 nog steeds open indien nog niet gedraaid.

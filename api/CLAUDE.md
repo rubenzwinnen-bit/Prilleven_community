@@ -39,6 +39,8 @@ Interne routes (in `matchRoute()`):
 - `POST /upload-url` — signed image upload-URL voor posts
 - `POST /report` — body: `{ target_type, target_id, reason }`
 - `GET /notifications` + `POST /notifications/read`
+- `GET /app-badges?since=` — server-side tijdlijn-badge-teller (posts+replies+gevolgde topics, admin/gevolgd-telregel + 6-weken-vervaltermijn). Zie `countTimelineBadge` in `_lib/badges.mjs`.
+- **App-icoon-push (v3.2.0):** `POST/DELETE /push/register` (Expo-push-token opslaan/wissen in `push_tokens`) + `PUT /badge-state` (spiegelt `timeline_seen_at`/`chatrooms_seen_at`/`topic_reads` naar `user_badge_state` zodat de server bij een push het absolute app-icoon-getal per ontvanger kan berekenen). Bij een nieuwe post/reply triggert `posts.create`/`replies.create` de push via `notifyNewActivity()` uit `_lib/push.mjs`.
 - **Admin (vereist `requireAdmin`):**
   - `POST /posts/:id/pin` (max 5 gepinned)
   - `GET /admin/reports`
@@ -55,6 +57,7 @@ Chatruimtes (topics + replies + admin). Eén function, rewrite: `/api/chat-rooms
 - `GET/POST /topics/:id/replies` + `PATCH/DELETE /replies/:id`
 - `POST /topics/:id/pin` (admin)
 - Alle endpoints: `requireAuth`, `findBlockedWord` op user-content, admin via `requireAdmin`.
+- **App-icoon-push (v3.2.0):** `topic.create` en `reply.create` triggeren `notifyNewActivity('chatroom_topic'|'chatroom_reply', ...)` uit `_lib/push.mjs` (defensief — breekt de create nooit).
 
 ### `webhooks/plugpay.mjs` — POST `/api/webhooks/plugpay`
 **KRITISCH endpoint — NOOIT aanpassen zonder expliciete bevestiging.** Foutieve wijziging = users zonder toegang.
@@ -113,7 +116,9 @@ Admin dashboard. Vereist `requireAdmin`. Sections: `global`, `users`, `queries`,
 | `conversation.mjs` | `getOrCreateConversation`, `loadConversationMessages`, `storeMessage`, `generateConversationTitle` (Haiku, max 40 chars), `setConversationTitle`, `listConversations`, `deleteConversation`, `renameConversation`. Doet expliciet user-id ownership check. |
 | `profile.mjs` | `loadUserProfile`, `sanitizeProfileInput` (whitelist), `upsertUserProfile`, `ageMonths(birthdate)`, `formatProfileForPrompt(profile)`, `primaryChildAgeMonths(profile)` (jongste kind). |
 | `user-memory.mjs` | `retrieveUserMemory`, `extractAndStoreMemories(userId, q, a, msgId)` — Haiku extraheert max 5 feiten, dedupeert via embedding-sim ≥ 0.92, insert in `chat_user_memory`. |
-| `community.mjs` | Alle community helpers (groot bestand) — zie endpoint-overzicht hierboven. Bevat ook `loadAdminUserIds(userIds)` met fallback via `auth.admin.getUserById` als view onbeschikbaar is. |
+| `community.mjs` | Alle community helpers (groot bestand) — zie endpoint-overzicht hierboven. Bevat ook `loadAdminUserIds(userIds)` met fallback via `auth.admin.getUserById` als view onbeschikbaar is, en `loadBlockedUserIds(userId)`. |
+| `badges.mjs` (v3.2.0) | Single source of truth voor de badge-tellingen. `countTimelineBadge(userId, since)` (posts+replies+gevolgde topics, admin/gevolgd-telregel), `countChatroomBadge(userId, since, topicReads)` (per topic nieuw topic + replies, per-topic `effectiveSince`), `computeTotalBadge(userId)` (leest `user_badge_state` → tijdlijn+chatruimtes opgeteld = het absolute app-icoon-getal voor de push). `BADGE_MAX_AGE_MS` = 6 weken (`withExpiry` ondergrens). Hergebruikt door zowel `api/community.mjs` (route `app-badges`) als `_lib/push.mjs`. Importeert `loadAdminUserIds`/`loadBlockedUserIds` uit `_lib/community.mjs` + `loadFollowedChatroomTopics` (ook hier). |
+| `push.mjs` (v3.2.0) | Expo-push versturen + tokens. `upsertPushToken`/`deletePushToken` (`push_tokens`), `notifyNewActivity(kind, ctx, notif)` = hoofdingang voor de triggers: bepaalt de ontvangers (`resolveRecipients`: timeline_post→iedereen met token; timeline_reply→admins tenzij auteur admin; chatroom_topic/reply→admins + room-/topic-volgers tenzij auteur admin; steeds minus auteur + minus wie de auteur blokkeerde), berekent per ontvanger `computeTotalBadge` (uit `badges.mjs`) en stuurt één Expo-push per token (`https://exp.host/--/api/v2/push/send`, chunks van 100). Volledig defensief — gooit nooit, een push-fout mag de post/reply-request nooit breken. |
 
 ---
 

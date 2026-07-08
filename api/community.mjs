@@ -63,173 +63,28 @@ import {
   unblockUser,
 } from './_lib/community.mjs';
 import { findBlockedWord } from './_lib/moderation.mjs';
+import {
+  countTimelineBadge,
+  loadFollowedChatroomTopics,
+} from './_lib/badges.mjs';
+import {
+  upsertPushToken,
+  deletePushToken,
+  notifyNewActivity,
+} from './_lib/push.mjs';
 
-/**
- * Laad topics van gevolgde chatruimtes + direct gevolgde topics voor de tijdlijn.
- * Returned items krijgen source_type: 'chatroom' zodat de frontend ze anders kan renderen.
- */
-async function loadFollowedChatroomTopics(userId, { before = null, limit = 20 } = {}) {
-  // Haal gevolgde rooms + gevolgde topics op
-  const [{ data: roomFollows }, { data: topicFollows }] = await Promise.all([
-    supabase
-      .from('chat_room_followers')
-      .select('room_id, followed_at')
-      .eq('user_id', userId),
-    supabase
-      .from('chat_topic_followers')
-      .select('topic_id, followed_at')
-      .eq('user_id', userId),
-  ]);
-
-  const followedRoomIds  = (roomFollows  || []).map(f => f.room_id);
-  const followedTopicIds = (topicFollows || []).map(f => f.topic_id);
-  if (followedRoomIds.length === 0 && followedTopicIds.length === 0) return [];
-
-  // Haal topics op uit gevolgde rooms
-  let roomTopics = [];
-  if (followedRoomIds.length > 0) {
-    let q = supabase
-      .from('chat_topics_view')
-      .select('id, room_id, user_id, title, body, is_pinned, replies_count, last_reply_at, created_at, edited_at, nickname, avatar_path')
-      .in('room_id', followedRoomIds)
-      .order('created_at', { ascending: false })
-      .limit(limit);
-    if (before) q = q.lt('created_at', before);
-    const { data } = await q;
-    roomTopics = data || [];
-  }
-
-  // Haal direct gevolgde topics op (altijd tonen, dus zonder `before`-filter)
-  let directTopics = [];
-  if (followedTopicIds.length > 0) {
-    const { data } = await supabase
-      .from('chat_topics_view')
-      .select('id, room_id, user_id, title, body, is_pinned, replies_count, last_reply_at, created_at, edited_at, nickname, avatar_path')
-      .in('id', followedTopicIds)
-      .order('created_at', { ascending: false });
-    directTopics = data || [];
-  }
-
-  // Merge, dedupliceer (topic kan zowel direct als via room gevolgd zijn)
-  const seen = new Set();
-  const allTopics = [];
-  for (const t of [...roomTopics, ...directTopics]) {
-    if (seen.has(t.id)) continue;
-    seen.add(t.id);
-    allTopics.push(t);
-  }
-
-  // Voeg room-info toe (title + slug) voor de tijdlijn-badge
-  const roomIds = [...new Set(allTopics.map(t => t.room_id).filter(Boolean))];
-  let roomMap = new Map();
-  if (roomIds.length > 0) {
-    const { data: rooms } = await supabase
-      .from('chat_rooms')
-      .select('id, slug, title')
-      .in('id', roomIds);
-    roomMap = new Map((rooms || []).map(r => [r.id, r]));
-  }
-
-  return allTopics.map(t => {
-    const room = roomMap.get(t.room_id) || {};
-    return {
-      ...t,
-      source_type: 'chatroom',
-      source_room_title: room.title || null,
-      source_room_slug:  room.slug  || null,
-      // Velden die community-posts ook hebben (voor uniforme sort/render)
-      is_pinned: t.is_pinned || false,
-      liked_by_me: false,
-      image_path: null,
-      image_url: null,
-      has_poll: false,
-      poll: null,
-    };
-  });
-}
-
-// Ondergrens voor de tijdlijn-badge: items ouder dan 6 weken tellen nooit
-// nog als "nieuw" — voorkomt dat de badge eindeloos oploopt.
-const BADGE_MAX_AGE_MS = 6 * 7 * 24 * 60 * 60 * 1000;
-
-/**
- * Tel de tijdlijn-badge: nieuwe items sinds `since` (ISO-string).
- *  - nieuwe community-posts
- *  - nieuwe community-replies  ← toegevoegd t.o.v. de oude client-telling
- *  - nieuwe gevolgde chatroom-topics (tellen altijd mee)
- *
- * Telregel (spiegelt de app-afspraak):
- *  - admin ziet ALLE nieuwe posts + replies;
- *  - gewone gebruiker enkel admin-geschreven posts + replies (+ gevolgde topics).
- *
- * Geblokkeerde auteurs tellen niet mee. Ondergrens 6 weken.
- * Ontbrekende/ongeldige `since` → 0.
- */
-async function countTimelineBadge(userId, since) {
-  if (!since) return 0;
-  const sinceDate = new Date(since);
-  if (Number.isNaN(sinceDate.getTime())) return 0;
-  const floor = new Date(Date.now() - BADGE_MAX_AGE_MS);
-  const refIso = (sinceDate > floor ? sinceDate : floor).toISOString();
-
-  // Self-admin-check + eigen blocklijst parallel.
-  const [selfAdminSet, blockedIds] = await Promise.all([
-    loadAdminUserIds([userId]),
-    loadBlockedUserIds(userId),
-  ]);
-  const isAdmin = selfAdminSet.has(userId);
-
-  // Gewone gebruiker: globale admin-set nodig om posts/replies te filteren.
-  let adminIds = [];
-  if (!isAdmin) {
-    const { data: adminRows } = await supabase
-      .from('community_admin_user_ids')
-      .select('user_id');
-    adminIds = (adminRows || []).map(r => r.user_id).filter(Boolean);
-  }
-
-  const blocked = [...blockedIds];
-  const applyBlocked = (q) =>
-    blocked.length ? q.not('user_id', 'in', `(${blocked.join(',')})`) : q;
-
-  const countTable = async (table) => {
-    // Gewone gebruiker zonder bekende admins → niets te tellen in deze tabel.
-    if (!isAdmin && adminIds.length === 0) return 0;
-    let q = supabase
-      .from(table)
-      .select('id', { count: 'exact', head: true })
-      .gt('created_at', refIso);
-    if (!isAdmin) q = q.in('user_id', adminIds);
-    q = applyBlocked(q);
-    const { count, error } = await q;
-    if (error) {
-      console.warn(`[app-badges] ${table} count: ${error.message}`);
-      return 0;
-    }
-    return count || 0;
-  };
-
-  const countFollowedTopics = async () => {
-    const topics = await loadFollowedChatroomTopics(userId, { limit: 100 });
-    const ref = new Date(refIso);
-    return topics.filter(t =>
-      !blockedIds.has(t.user_id) && new Date(t.created_at) > ref
-    ).length;
-  };
-
-  const [posts, replies, followed] = await Promise.all([
-    countTable('community_posts'),
-    countTable('community_replies'),
-    countFollowedTopics(),
-  ]);
-  return posts + replies + followed;
-}
 
 function json(res, status, body) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
   res.statusCode = status;
   res.end(JSON.stringify(body));
+}
+
+/** Kort fragment voor de push-body (max 120 tekens, whitespace genormaliseerd). */
+function snippet(text, max = 120) {
+  const s = String(text || '').replace(/\s+/g, ' ').trim();
+  return s.length > max ? s.slice(0, max - 1) + '…' : s;
 }
 
 function isUuid(s) {
@@ -370,6 +225,17 @@ function matchRoute(req) {
     return { route: 'app-badges' };
   }
 
+  // /push/register  → POST token opslaan { token, platform }, DELETE { token }
+  if (segments.length === 2 && segments[0] === 'push' && segments[1] === 'register') {
+    if (method === 'POST')   return { route: 'push.register' };
+    if (method === 'DELETE') return { route: 'push.deregister' };
+  }
+
+  // /badge-state    → PUT server-side "laatst gezien"-state syncen
+  if (segments.length === 1 && segments[0] === 'badge-state' && method === 'PUT') {
+    return { route: 'badge-state.put' };
+  }
+
   return null;
 }
 
@@ -467,6 +333,41 @@ export default async function handler(req, res) {
       return json(res, 200, { timeline });
     }
 
+    /* ----- push register / deregister ----- */
+    if (route === 'push.register') {
+      const body = parseBody(req);
+      if (body === null) return json(res, 400, { error: 'Ongeldige JSON.' });
+      const token = String(body.token || '').trim();
+      if (!token) return json(res, 400, { error: 'Token ontbreekt.' });
+      await upsertPushToken(auth.userId, token, body.platform);
+      return json(res, 200, { ok: true });
+    }
+    if (route === 'push.deregister') {
+      const body = parseBody(req);
+      if (body === null) return json(res, 400, { error: 'Ongeldige JSON.' });
+      const token = String(body.token || '').trim();
+      if (!token) return json(res, 400, { error: 'Token ontbreekt.' });
+      await deletePushToken(auth.userId, token);
+      return json(res, 200, { ok: true });
+    }
+
+    /* ----- badge-state (server-side "laatst gezien"-spiegel) ----- */
+    if (route === 'badge-state.put') {
+      const body = parseBody(req);
+      if (body === null) return json(res, 400, { error: 'Ongeldige JSON.' });
+      const patch = { user_id: auth.userId, updated_at: new Date().toISOString() };
+      if (body.timeline_seen_at !== undefined)  patch.timeline_seen_at  = body.timeline_seen_at;
+      if (body.chatrooms_seen_at !== undefined) patch.chatrooms_seen_at = body.chatrooms_seen_at;
+      if (body.topic_reads !== undefined && body.topic_reads !== null) {
+        patch.topic_reads = body.topic_reads;
+      }
+      const { error } = await supabase
+        .from('user_badge_state')
+        .upsert(patch, { onConflict: 'user_id' });
+      if (error) return json(res, 500, { error: error.message });
+      return json(res, 200, { ok: true });
+    }
+
     /* ----- posts ----- */
     if (route === 'posts.list') {
       const category = url.searchParams.get('category');
@@ -560,6 +461,13 @@ export default async function handler(req, res) {
         post.has_poll   ? loadPollsForPosts(auth.userId, [post.id]) : Promise.resolve(new Map()),
         loadAdminUserIds([post.user_id]),
       ]);
+      /* Push-notificatie (niet-blokkerend): een nieuwe tijdlijn-post gaat naar
+         alle gebruikers met een token; hun app-icoon-badge wordt bijgewerkt. */
+      await notifyNewActivity(
+        'timeline_post',
+        { authorId: post.user_id, authorIsAdmin: adminSet.has(post.user_id) },
+        { title: 'Nieuw bericht op de tijdlijn', body: snippet(post.body) }
+      );
       return json(res, 201, {
         post: {
           ...post,
@@ -627,6 +535,13 @@ export default async function handler(req, res) {
           const m = await signImageUrls([me.avatar_path]);
           avatar_url = m.get(me.avatar_path) || null;
         }
+        /* Push (niet-blokkerend): een nieuwe reply telt voor admins altijd mee,
+           voor gewone gebruikers enkel als de auteur admin is. */
+        await notifyNewActivity(
+          'timeline_reply',
+          { authorId: auth.userId, authorIsAdmin: adminSet.has(auth.userId) },
+          { title: 'Nieuwe reactie op de tijdlijn', body: snippet(reply.body) }
+        );
         return json(res, 201, {
           reply: {
             ...reply,

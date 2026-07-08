@@ -32,6 +32,7 @@ import { supabase } from './_lib/clients.mjs';
 import { findBlockedWord } from './_lib/moderation.mjs';
 import { getAccessStatus } from './_lib/subscription.mjs';
 import { signImageUrls, loadAdminUserIds, loadBlockedUserIds } from './_lib/community.mjs';
+import { notifyNewActivity } from './_lib/push.mjs';
 
 async function attachAvatarUrls(rows) {
   if (!rows || rows.length === 0) return [];
@@ -68,6 +69,12 @@ function json(res, status, body) {
   res.setHeader('Cache-Control', 'no-store');
   res.statusCode = status;
   res.end(JSON.stringify(body));
+}
+
+/** Korte, opgeschoonde tekst voor de push-body. */
+function snippet(text, max = 120) {
+  const t = String(text || '').replace(/\s+/g, ' ').trim();
+  return t.length > max ? `${t.slice(0, max - 1)}…` : t;
 }
 
 function isUuid(s) {
@@ -622,6 +629,14 @@ export default async function handler(req, res) {
         replies_count: 0,
         last_reply_at: null,
       }));
+
+      // Push-notificatie (defensief — mag de topic-create nooit breken).
+      await notifyNewActivity(
+        'chatroom_topic',
+        { authorId: auth.userId, roomId: room.id, authorIsAdmin: topicOut.author_is_admin },
+        { title: `Nieuw topic in ${room.title}`, body: snippet(clean.title) }
+      );
+
       return json(res, 201, { topic: topicOut });
     }
 
@@ -778,7 +793,7 @@ export default async function handler(req, res) {
       if (!profile) return json(res, 412, { error: 'Stel eerst een nickname in.' });
 
       const { data: topic, error: tErr } = await supabase
-        .from('chat_topics').select('id').eq('id', params.id).maybeSingle();
+        .from('chat_topics').select('id, room_id, title').eq('id', params.id).maybeSingle();
       if (tErr) throw tErr;
       if (!topic) return json(res, 404, { error: 'Topic niet gevonden.' });
 
@@ -800,6 +815,19 @@ export default async function handler(req, res) {
         nickname: profile.nickname,
         avatar_path: profile.avatar_path || null,
       }));
+
+      // Push-notificatie (defensief — mag de reply-create nooit breken).
+      await notifyNewActivity(
+        'chatroom_reply',
+        {
+          authorId: auth.userId,
+          roomId: topic.room_id,
+          topicId: topic.id,
+          authorIsAdmin: replyOut.author_is_admin,
+        },
+        { title: `Nieuwe reactie in ${topic.title}`, body: snippet(clean.body) }
+      );
+
       return json(res, 201, { reply: replyOut });
     }
 

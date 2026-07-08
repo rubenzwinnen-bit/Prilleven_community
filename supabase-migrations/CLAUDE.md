@@ -160,6 +160,11 @@ Alle tabellen `auth.role() = 'authenticated'` voor read; mutations enkel eigen r
 - **`community_poll_votes`** — PK `(post_id, user_id, option_idx)` (multi-vote support).
 - **`community_notifications`** — `id, user_id (ontvanger), type ∈ ('reply','like','poll_result','poll_reply'), post_id, reply_id, actor_id (veroorzaker), read_at, created_at`. Inserts alleen via service-role (anti-spoof).
 
+### Push / app-icoon-badge (v3.2.0 — `2026-07-08-push-notifications.sql`)
+Voedt de app-icoon-push (APNs/FCM via Expo Push) en de server-side badge-berekening.
+- **`push_tokens`** — `token (PK, Expo-push-token), user_id (FK auth.users), platform ('ios'|'android'), updated_at`. Index op `user_id`. RLS owner-only ("own tokens" op `auth.uid() = user_id`). Upsert bij (her)login vanuit de app; delete bij uitloggen. Server leest deze om pushes te sturen wanneer de app dicht is.
+- **`user_badge_state`** — `user_id (PK, FK auth.users), timeline_seen_at timestamptz, chatrooms_seen_at timestamptz, topic_reads jsonb (default '{}')`. RLS owner-only ("own badge state"). Server-spiegel van de "laatst gezien"-tijdstippen die de app pusht via `PUT /api/community/badge-state`; hergebruikt door `_lib/badges.mjs::computeTotalBadge` om het absolute app-icoon-getal per ontvanger te berekenen bij een push.
+
 ### Views
 - **`community_posts_view`** — post + nickname + avatar_path + likes_count + replies_count + has_poll. `security_invoker = true`.
 - **`community_admin_user_ids`** — resolveert admin user_ids via email-join `auth.users ↔ allowed_users.is_admin`. `security_invoker = true`. Bevat ook email + nickname (na `2026-05-03-community-admin-view-email.sql`).
