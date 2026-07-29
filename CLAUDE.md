@@ -177,10 +177,12 @@ Op Vercel zelf staan deze al ingesteld via project settings.
 ## 7b. Tooling — MCP's en slash commands
 
 **MCP-servers** (geconfigureerd in `.mcp.json`, gitignored — zie `.mcp.json.example` als template):
-- **Supabase MCP** — read-only, project-scoped op `ynrdoxukevhzupjvcjuw`. Voor schema-introspectie, RLS-checks, queries.
+- **Supabase MCP** — schrijftoegang (sinds 2026-07-25, `--read-only` verwijderd), project-scoped op `ynrdoxukevhzupjvcjuw`. Voor schema-introspectie, RLS-checks, queries én data-fixes. Let op: dit is de **productie**-DB, er is geen staging — schrijfacties altijd eerst tonen en laten bevestigen.
 - **Vercel MCP** — OAuth, alle Vercel-projecten. Voor deployments, logs, env-vars.
 
-**Vercel-context:** Team = `prilleven-community`. Projecten: `pril_leven_community` (productie, https://community-web.prilleven.be) en `pril-leven-web` (functie nog te bevestigen).
+**Vercel-context:** Team = `prilleven-community`. Projecten: `pril_leven_community` (productie, https://community-web.prilleven.be, `prj_zkMG5BjCYbKrdByD9MMQPs5gg2XM`) en `pril-leven-web` (`prj_9Xb3RYWEe8D4OdvDou8vkaOwMqxq` — **leeg**: geen deployments, geen domeinen, nooit live gegaan). Team-ID: `team_IMBOlGe5B7550tDd1S1aFywJ`.
+
+**Plan-tier:** sinds 2026-07-29 zowel **Vercel Pro** als **Supabase Pro**. De Hobby function-limiet (12 per deployment) geldt niet meer — zie `api/CLAUDE.md §9`. Supabase pauzeert niet meer bij inactiviteit.
 
 **Slash commands** (in `.claude/commands/`):
 - `/start-sessie` — leest PLAN-TIMELINE + git, vat status samen, stelt voor wat te doen.

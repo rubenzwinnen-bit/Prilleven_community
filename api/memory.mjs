@@ -2,7 +2,8 @@
 // DELETE /api/memory           → verwijder alle memories van deze user
 // DELETE /api/memory?id=<uuid> → verwijder één memory
 //
-// Samengevoegd in 1 file om onder Vercel Hobby function-limit te blijven.
+// Samengevoegd in 1 file (destijds voor de Vercel Hobby function-limit; sinds
+// Vercel Pro geen harde noodzaak meer, maar de opzet blijft omdat het bij elkaar hoort).
 
 import { requireAuth, AuthError } from './_lib/auth.mjs';
 import { supabase } from './_lib/clients.mjs';

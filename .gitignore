@@ -104,3 +104,10 @@ recepten boeken/
 # voor lopende features. Niet onderdeel van product.
 # ============================================
 /mockups/
+
+# ============================================
+# AFFILIATE-WERKDOCUMENT
+# Bevat partnerlijst, kortingscodes en affiliate-
+# links. Repo is public, dus lokaal houden.
+# ============================================
+PLAN-AFFILIATE.md

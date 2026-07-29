@@ -216,12 +216,15 @@ Er is **geen lokale dev-server** voor Vercel Functions in dit project (`.claude/
 
 ---
 
-## 9. Vercel Hobby functie-limiet
+## 9. Functie-opzet (catch-alls)
 
-Je zit op de Hobby tier met max 12 functions per deployment. Daarom:
+**Sinds 2026-07-29: Vercel Pro.** De oude Hobby-limiet van 12 functions per deployment
+geldt niet meer. Bestaande samenvoegingen blijven wel staan:
 - `community.mjs` is een catch-all (had anders 15+ files moeten worden).
 - `me.mjs` doet GET (export) + DELETE (forget) in één file.
 - `memory.mjs` idem (GET + DELETE all + DELETE one).
 - `admin.mjs` dispatched op `?section=...`.
 
-**Voeg geen nieuwe `.mjs` toe als het bij een bestaand endpoint kan via een query-param of catch-all.**
+Splits deze niet op zonder reden — ze zijn nu samengevoegd omdat de routes bij elkaar
+horen, niet meer omwille van een limiet. Een nieuw `.mjs` toevoegen mag voortaan wel
+wanneer het een echt losstaand endpoint is.
