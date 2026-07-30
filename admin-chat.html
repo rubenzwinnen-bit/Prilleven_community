@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=3.1.5" />
+  <link rel="stylesheet" href="/styles.css?v=3.1.7" />
 
   <style>
     body { background: var(--color-bg); min-height: 100vh; }
@@ -345,7 +345,6 @@
         <button class="admin-tab" data-tab="fallbacks">Fallbacks</button>
         <button class="admin-tab" data-tab="events">Abonnement-events</button>
         <button class="admin-tab" data-tab="chat">Chat</button>
-        <button class="admin-tab" data-tab="aanraders">Aanraders</button>
       </div>
 
       <!-- Overview -->
@@ -429,10 +428,6 @@
         </div>
       </div>
 
-      <!-- Aanraders — beheer van de publieke affiliatepagina /aanraders -->
-      <div id="tab-aanraders" class="tab-content">
-        <div id="aanraders-mount"><div class="loading">Laden…</div></div>
-      </div>
     </div>
   </main>
 
@@ -468,11 +463,9 @@
   <script src="/js/admin-chat.js?v=3.1.5" type="module"></script>
   <script type="module">
     import { mountHeaderAvatar, attachLogoutHandler } from '/js/headerAvatarStandalone.js?v=2.9.0';
-    import { initAanradersTab } from '/js/aanradersAdmin.js?v=3.1.5';
     document.addEventListener('DOMContentLoaded', () => {
       mountHeaderAvatar(document.getElementById('header-avatar-mount'));
       attachLogoutHandler(document.getElementById('header-logout-btn-standalone'));
-      initAanradersTab();
     });
   </script>
 </body>

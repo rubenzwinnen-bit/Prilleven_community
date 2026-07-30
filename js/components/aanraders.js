@@ -16,7 +16,16 @@
    HTML via innerHTML injecteren.
 ============================================ */
 
+import * as Store from '../store.js?v=2.5.10';
+
 const FRAGMENT_URL = '/api/aanraders?fragment=1';
+
+/* Beheermodule wordt lazy geladen: gewone leden halen die code nooit op. */
+let Admin = null;
+let beheerAan = false;
+
+/* Huidige route onthouden, zodat we na een wijziging kunnen herladen. */
+let huidig = { soort: 'overzicht', slug: null };
 
 /* ----------------------------------------
    RENDER — skelet, inhoud komt asynchroon
@@ -29,15 +38,19 @@ export function render() {
 
 /* ----------------------------------------
    INIT
-   params: {} | { slug } afhankelijk van de route
 ---------------------------------------- */
 export async function init(soort = 'overzicht', slug = null) {
+  huidig = { soort, slug };
   const view = document.getElementById('aanraders-view');
   if (!view) return;
 
+  await laadInhoud(view, { scroll: true });
+}
+
+async function laadInhoud(view, { scroll = false } = {}) {
   let url = FRAGMENT_URL;
-  if (soort === 'product')   url += '&p=' + encodeURIComponent(slug);
-  if (soort === 'categorie') url += '&c=' + encodeURIComponent(slug);
+  if (huidig.soort === 'product')   url += '&p=' + encodeURIComponent(huidig.slug);
+  if (huidig.soort === 'categorie') url += '&c=' + encodeURIComponent(huidig.slug);
 
   try {
     const res = await fetch(url);
@@ -57,8 +70,13 @@ export async function init(soort = 'overzicht', slug = null) {
 
     view.innerHTML = data.html;
     view.classList.toggle('heeft-balk', Boolean(data.heeftBalk));
-    wireInteracties(view);
-    window.scrollTo(0, 0);
+    if (!view.dataset.wired) {
+      wireInteracties(view);
+      view.dataset.wired = '1';
+    }
+    if (scroll) window.scrollTo(0, 0);
+
+    if (Store.isAdmin()) await toonBeheer(view);
   } catch {
     view.innerHTML = `
       <div class="wrap">
@@ -71,18 +89,149 @@ export async function init(soort = 'overzicht', slug = null) {
 }
 
 /* ----------------------------------------
+   BEHEER — alleen voor admins
+   Een laag bovenop dezelfde HTML: een balk bovenaan
+   en een bewerkknop op elke tegel. Geen tweede
+   weergave, dus niets kan uiteenlopen.
+---------------------------------------- */
+async function toonBeheer(view) {
+  if (!Admin) {
+    Admin = await import('../aanradersAdmin.js?v=3.1.7');
+  }
+  try {
+    await Admin.laadBeheerdata();
+  } catch {
+    return;   // geen admin-rechten op de server: stil laten, pagina blijft gewoon werken
+  }
+
+  const beheer = Admin.getBeheerdata();
+  const verborgen = beheer.producten.filter(p => !p.zichtbaar).length;
+
+  const balk = document.createElement('div');
+  balk.className = 'aa-beheerbalk' + (beheerAan ? ' is-aan' : '');
+  balk.innerHTML = `
+    <div class="wrap aa-beheerbalk-inner">
+      <span class="aa-beheer-titel">Beheer</span>
+      <label class="aa-schakelaar">
+        <input type="checkbox" id="aa-beheer-toggle" ${beheerAan ? 'checked' : ''}>
+        <span>Bewerken tonen</span>
+      </label>
+      <span class="muted aa-beheer-info">
+        ${beheer.producten.length} producten${verborgen ? ` · ${verborgen} verborgen` : ''}
+      </span>
+      <button type="button" class="aa-btn" data-beheer="categorieen">Categorieën &amp; downloads</button>
+      <button type="button" class="aa-btn aa-btn--primair" data-beheer="nieuw">+ Nieuw product</button>
+    </div>`;
+  view.insertBefore(balk, view.firstChild);
+
+  if (beheerAan) markeerTegels(view, beheer);
+}
+
+/**
+ * Zet een bewerkknop op elke tegel, en toon verborgen producten die
+ * anders niet in de fragment-HTML zitten.
+ */
+function markeerTegels(view, beheer) {
+  view.querySelectorAll('.card[data-slug]').forEach(kaart => {
+    if (kaart.querySelector('.aa-kaart-knoppen')) return;
+    const slug = kaart.dataset.slug;
+    const p = beheer.producten.find(x => x.slug === slug);
+    if (!p) return;
+
+    const knoppen = document.createElement('div');
+    knoppen.className = 'aa-kaart-knoppen';
+    knoppen.innerHTML = `
+      <button type="button" class="aa-kaart-knop" data-beheer="bewerk" data-slug="${slug}">Bewerken</button>
+      <button type="button" class="aa-kaart-knop" data-beheer="zichtbaar" data-slug="${slug}">
+        ${p.zichtbaar ? 'Verbergen' : 'Tonen'}
+      </button>`;
+    kaart.appendChild(knoppen);
+    kaart.classList.add('aa-bewerkbaar');
+  });
+
+  /* Verborgen producten staan niet in de publieke HTML. Zonder deze lijst
+     zou een admin ze op de pagina zelf nooit terugvinden. */
+  const verborgen = beheer.producten.filter(p => !p.zichtbaar);
+  if (!verborgen.length || view.querySelector('.aa-verborgen')) return;
+
+  const blok = document.createElement('section');
+  blok.className = 'aa-verborgen wrap';
+  blok.innerHTML = `
+    <div class="section-head"><h2>Verborgen producten</h2>
+      <p>Alleen zichtbaar voor jou. Zet ze op zichtbaar om ze op de pagina te tonen.</p></div>
+    <div class="aa-verborgen-lijst">
+      ${verborgen.map(p => `
+        <div class="aa-verborgen-item">
+          <div>
+            <strong>${escapeTekst(p.titel)}</strong>
+            <div class="muted" style="font-size:.8rem">${escapeTekst(p.merk || '')}</div>
+          </div>
+          <button type="button" class="aa-kaart-knop" data-beheer="bewerk" data-slug="${escapeTekst(p.slug)}">Bewerken</button>
+          <button type="button" class="aa-kaart-knop" data-beheer="zichtbaar" data-slug="${escapeTekst(p.slug)}">Tonen</button>
+        </div>`).join('')}
+    </div>`;
+  view.appendChild(blok);
+}
+
+/* ----------------------------------------
    INTERACTIES
    Kopieer-knop + fotogalerij. Zelfde gedrag als
    het inline script op de publieke pagina.
 ---------------------------------------- */
 function wireInteracties(view) {
-  view.addEventListener('click', (e) => {
+  view.addEventListener('click', async (e) => {
+    /* Beheeracties eerst: die zitten binnen een kaart die zelf een link is. */
+    const beheerBtn = e.target.closest('[data-beheer]');
+    if (beheerBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      return beheerActie(view, beheerBtn);
+    }
+
     const codeBtn = e.target.closest('.code');
     if (codeBtn) return kopieerCode(codeBtn);
 
     const thumb = e.target.closest('.thumb');
     if (thumb) return wisselFoto(view, thumb);
   });
+
+  view.addEventListener('change', (e) => {
+    if (e.target.id !== 'aa-beheer-toggle') return;
+    beheerAan = e.target.checked;
+    laadInhoud(view);
+  });
+}
+
+async function beheerActie(view, btn) {
+  if (!Admin) return;
+  const soort = btn.dataset.beheer;
+  const herlaad = () => laadInhoud(view);
+
+  if (soort === 'nieuw') {
+    return Admin.openProductEditor(null, { onKlaar: herlaad });
+  }
+
+  if (soort === 'categorieen') {
+    return Admin.openBeheerEditor({ onKlaar: herlaad });
+  }
+
+  if (soort === 'bewerk') {
+    const p = Admin.productBySlug(btn.dataset.slug);
+    if (p) Admin.openProductEditor(p, { onKlaar: herlaad });
+    return;
+  }
+
+  if (soort === 'zichtbaar') {
+    const p = Admin.productBySlug(btn.dataset.slug);
+    if (!p) return;
+    btn.disabled = true;
+    try {
+      await Admin.zetZichtbaar(p.id, !p.zichtbaar);
+      await herlaad();
+    } catch {
+      btn.disabled = false;
+    }
+  }
 }
 
 function kopieerCode(btn) {

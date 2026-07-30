@@ -39,7 +39,7 @@ import * as LearningsLibrary from './js/components/learningsLibrary.js?v=2.5.8';
 import * as LearningsDetail from './js/components/learningsDetail.js?v=2.5.8';
 import * as Profiel from './js/components/profiel.js?v=2.5.8';
 import * as Allergenen from './js/components/allergenen.js?v=2.5.8';
-import * as Aanraders from './js/components/aanraders.js?v=3.1.6';
+import * as Aanraders from './js/components/aanraders.js?v=3.1.7';
 
 /* ============================================
    RECOVERY TOKEN DETECTIE
@@ -528,6 +528,9 @@ function setupApp() {
     // Verberg nav op de allergenen-pagina
     const isAllergenen = Router.getCurrentPath() === 'allergenen';
     document.body.classList.toggle('is-allergenen', isAllergenen);
+    // Verberg nav op de aanraders-pagina's (eigen opbouw, geen recepten-tabs)
+    const isAanraders = Router.getCurrentPath().split('/')[0] === 'aanraders';
+    document.body.classList.toggle('is-aanraders', isAanraders);
     if (initFn) await initFn();
 
     /* Scroll-positie herstellen als we terugkomen op een eerder bezochte

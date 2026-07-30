@@ -600,8 +600,11 @@ function renderKaart(p, ctx = CTX_PUBLIEK) {
   const relCls = (p.relatie_type === 'enkel_korting' || p.relatie_type === 'geen_samenwerking')
     ? 'rel rel--none' : 'rel';
 
+  /* data-slug laat de app een kaart terugkoppelen aan een product, zodat
+     een admin hem ter plekke kan bewerken. Een slug is publieke info —
+     hij staat al in de URL — en schrijven blijft achter requireAdmin. */
   return `
-      <article class="card">
+      <article class="card" data-slug="${esc(p.slug)}">
         <a class="card-media-link" href="${esc(detail)}"><div class="card-media">${media}${renderLabels(p)}</div></a>
         <div class="card-body">
           ${p.merk ? `<div class="card-brand">${esc(p.merk)}</div>` : ''}

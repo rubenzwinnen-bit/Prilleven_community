@@ -1,19 +1,20 @@
-// Aanraders-beheer — tabblad in het admin-dashboard (/admin-chat.html).
+// Aanraders — beheerlaag.
 //
-// Beheert de drie tabellen achter de publieke affiliatepagina /aanraders:
-// producten, categorieën en gratis downloads.
+// Wordt gebruikt vanuit js/components/aanraders.js: de admin bewerkt de
+// producten op de pagina zelf, tussen de tegels, in plaats van in een
+// apart dashboard. Dit is bewust géén tweede weergave — het is een laag
+// bovenop dezelfde server-gerenderde HTML.
 //
-// Auth: dezelfde community-sessie als de rest van het dashboard. De
-// zichtbaarheid van dit tabblad is cosmetisch — het echte slot zit in
-// api/aanraders.mjs (requireAdmin → allowed_users.is_admin).
+// Auth: de bestaande community-sessie. De zichtbaarheid van de knoppen is
+// cosmetisch; het echte slot zit in api/aanraders.mjs (requireAdmin →
+// allowed_users.is_admin).
 
-import { sessionRefreshIfNeeded } from './supabase.js?v=3.1.5';
-import { escapeHtml, processImageForUpload, showToast, confirm as confirmDialog } from './utils.js?v=3.1.5';
+import { sessionRefreshIfNeeded } from './supabase.js?v=2.5.10';
+import { escapeHtml, processImageForUpload, showToast, confirm as confirmDialog } from './utils.js?v=2.5.10';
 
 const API = '/api/aanraders/admin';
 
-/* Labels voor de vier transparantie-waarden. Moet overeenkomen met
-   RELATIE_LABELS in api/aanraders.mjs. */
+/* Moet overeenkomen met RELATIE_LABELS in api/aanraders.mjs. */
 const RELATIE_OPTIES = [
   ['affiliate_korting', 'Affiliatelink + kortingscode'],
   ['affiliate',         'Affiliatelink'],
@@ -23,12 +24,11 @@ const RELATIE_OPTIES = [
 
 const LABEL_OPTIES = ['favoriet', 'bestseller', 'community-favoriet', 'budgetvriendelijk', 'nieuw'];
 
-let data = { categorieen: [], producten: [], downloads: [] };
-let geladen = false;
-let root = null;
+/* Beheerdata (inclusief onzichtbare items). Los van wat de pagina toont. */
+let beheer = { categorieen: [], producten: [], downloads: [] };
 
 /* ---------------------------------------------------------------
-   API-helpers
+   API
 --------------------------------------------------------------- */
 
 async function call(path, { method = 'GET', body } = {}) {
@@ -49,30 +49,29 @@ async function call(path, { method = 'GET', body } = {}) {
   return json;
 }
 
+export async function laadBeheerdata() {
+  beheer = await call('/data');
+  return beheer;
+}
+
+export function getBeheerdata() {
+  return beheer;
+}
+
+export function productBySlug(slug) {
+  return beheer.producten.find(p => p.slug === slug) || null;
+}
+
 /* ---------------------------------------------------------------
    Helpers
 --------------------------------------------------------------- */
 
-function categorieNaam(id) {
-  const c = data.categorieen.find(c => c.id === id);
-  return c ? c.titel : '—';
-}
-
-function relatieLabel(v) {
-  const gevonden = RELATIE_OPTIES.find(o => o[0] === v);
-  return gevonden ? gevonden[1] : v || '—';
-}
-
-/** Textarea met één item per regel → array. Lege regels vallen weg. */
 function regelsNaarArray(v) {
   return String(v || '').split('\n').map(r => r.trim()).filter(Boolean);
 }
-
 function arrayNaarRegels(v) {
   return Array.isArray(v) ? v.join('\n') : '';
 }
-
-/** FAQ als "vraag | antwoord" per regel — simpeler dan een aparte editor. */
 function regelsNaarFaq(v) {
   return regelsNaarArray(v).map(r => {
     const i = r.indexOf('|');
@@ -80,161 +79,32 @@ function regelsNaarFaq(v) {
     return { vraag: r.slice(0, i).trim(), antwoord: r.slice(i + 1).trim() };
   }).filter(f => f.vraag && f.antwoord);
 }
-
 function faqNaarRegels(v) {
   return Array.isArray(v) ? v.map(f => `${f.vraag} | ${f.antwoord}`).join('\n') : '';
 }
-
-function val(id) {
-  const el = root.querySelector('#' + id);
-  return el ? el.value : '';
+function slugify(v) {
+  return String(v).normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
 }
 
-function checked(id) {
-  const el = root.querySelector('#' + id);
+function val(scope, id) {
+  const el = scope.querySelector('#' + id);
+  return el ? el.value : '';
+}
+function checked(scope, id) {
+  const el = scope.querySelector('#' + id);
   return el ? el.checked : false;
 }
 
 /* ---------------------------------------------------------------
-   Laden
+   Productformulier — als overlay boven de pagina
 --------------------------------------------------------------- */
 
-export async function laadAanraders() {
-  const mount = document.getElementById('aanraders-mount');
-  if (!mount) return;
-  root = mount;
+export function openProductEditor(product, { onKlaar }) {
+  const nieuw = !product;
+  const v = product || {};
 
-  mount.innerHTML = '<div class="loading">Laden…</div>';
-  try {
-    data = await call('/data');
-    geladen = true;
-    renderOverzicht();
-  } catch (err) {
-    mount.innerHTML = `<div class="error-box">Kon de aanraders niet laden: ${escapeHtml(err.message)}</div>`;
-  }
-}
-
-/* ---------------------------------------------------------------
-   Overzicht
---------------------------------------------------------------- */
-
-function renderOverzicht() {
-  const producten = [...data.producten].sort((a, b) => (a.volgorde || 0) - (b.volgorde || 0));
-
-  const rijen = producten.map(p => `
-    <tr>
-      <td>
-        <strong>${escapeHtml(p.titel)}</strong>
-        <div class="muted" style="font-size:.78rem">${escapeHtml(p.merk || '')} · /${escapeHtml(p.slug)}</div>
-      </td>
-      <td>${escapeHtml(categorieNaam(p.categorie_id))}</td>
-      <td style="font-size:.8rem">${escapeHtml(relatieLabel(p.relatie_type))}</td>
-      <td>${p.favoriet_anneleen ? '⭐' : ''}</td>
-      <td>
-        <span class="aa-badge ${p.zichtbaar ? 'aa-badge--aan' : 'aa-badge--uit'}">
-          ${p.zichtbaar ? 'zichtbaar' : 'verborgen'}
-        </span>
-      </td>
-      <td style="white-space:nowrap">
-        <button type="button" class="aa-btn" data-actie="bewerk" data-id="${p.id}">Bewerken</button>
-        <button type="button" class="aa-btn aa-btn--stil" data-actie="toggle" data-id="${p.id}">
-          ${p.zichtbaar ? 'Verbergen' : 'Tonen'}
-        </button>
-        <button type="button" class="aa-btn aa-btn--rood" data-actie="verwijder" data-id="${p.id}">Verwijderen</button>
-      </td>
-    </tr>`).join('');
-
-  const catRijen = data.categorieen.map(c => `
-    <tr>
-      <td>${escapeHtml(c.emoji || '')} <strong>${escapeHtml(c.titel)}</strong>
-        <div class="muted" style="font-size:.78rem">/${escapeHtml(c.slug)}</div>
-      </td>
-      <td style="width:90px">
-        <input type="number" class="aa-input aa-cat-volgorde" data-id="${c.id}" value="${c.volgorde ?? 0}">
-      </td>
-      <td><label class="aa-check"><input type="checkbox" class="aa-cat-binnenkort" data-id="${c.id}" ${c.binnenkort ? 'checked' : ''}> binnenkort</label></td>
-      <td><label class="aa-check"><input type="checkbox" class="aa-cat-zichtbaar" data-id="${c.id}" ${c.zichtbaar ? 'checked' : ''}> zichtbaar</label></td>
-      <td><button type="button" class="aa-btn" data-actie="cat-opslaan" data-id="${c.id}">Opslaan</button></td>
-    </tr>`).join('');
-
-  const dlRijen = data.downloads.length ? data.downloads.map(d => `
-    <tr>
-      <td>${escapeHtml(d.emoji || '📄')} <strong>${escapeHtml(d.titel)}</strong>
-        <div class="muted" style="font-size:.78rem">${escapeHtml(d.omschrijving || '')}</div>
-      </td>
-      <td>
-        <span class="aa-badge ${d.zichtbaar ? 'aa-badge--aan' : 'aa-badge--uit'}">
-          ${d.zichtbaar ? 'zichtbaar' : 'verborgen'}
-        </span>
-      </td>
-      <td style="white-space:nowrap">
-        <button type="button" class="aa-btn" data-actie="dl-bewerk" data-id="${d.id}">Bewerken</button>
-        <button type="button" class="aa-btn aa-btn--rood" data-actie="dl-verwijder" data-id="${d.id}">Verwijderen</button>
-      </td>
-    </tr>`).join('')
-    : '<tr><td colspan="3" class="muted">Nog geen downloads toegevoegd.</td></tr>';
-
-  root.innerHTML = `
-    <div class="panel">
-      <div class="panel-header">
-        <h3>Producten (${producten.length})</h3>
-        <button type="button" class="aa-btn aa-btn--primair" data-actie="nieuw" style="margin-left:auto">+ Nieuw product</button>
-      </div>
-      <div class="panel-body">
-        <p class="muted" style="margin-bottom:.75rem;font-size:.85rem">
-          Alleen producten op <strong>zichtbaar</strong> staan op
-          <a href="/aanraders" target="_blank" rel="noopener">de publieke pagina</a>.
-        </p>
-        <div class="aa-tabel-wrap">
-          <table class="aa-tabel">
-            <thead><tr><th>Product</th><th>Categorie</th><th>Relatie</th><th>Fav</th><th>Status</th><th></th></tr></thead>
-            <tbody>${rijen || '<tr><td colspan="6" class="muted">Nog geen producten.</td></tr>'}</tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <div class="panel" style="margin-top:1.25rem">
-      <div class="panel-header"><h3>Categorieën</h3></div>
-      <div class="panel-body">
-        <p class="muted" style="margin-bottom:.75rem;font-size:.85rem">
-          "Binnenkort" toont een placeholder in plaats van producten. Een categorie zonder
-          zichtbare producten toont dat blok sowieso.
-        </p>
-        <div class="aa-tabel-wrap">
-          <table class="aa-tabel">
-            <thead><tr><th>Categorie</th><th>Volgorde</th><th></th><th></th><th></th></tr></thead>
-            <tbody>${catRijen}</tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <div class="panel" style="margin-top:1.25rem">
-      <div class="panel-header">
-        <h3>Gratis downloads</h3>
-        <button type="button" class="aa-btn aa-btn--primair" data-actie="dl-nieuw" style="margin-left:auto">+ Nieuwe download</button>
-      </div>
-      <div class="panel-body">
-        <div class="aa-tabel-wrap">
-          <table class="aa-tabel">
-            <thead><tr><th>Download</th><th>Status</th><th></th></tr></thead>
-            <tbody>${dlRijen}</tbody>
-          </table>
-        </div>
-      </div>
-    </div>`;
-}
-
-/* ---------------------------------------------------------------
-   Productformulier
---------------------------------------------------------------- */
-
-function renderProductForm(p) {
-  const nieuw = !p;
-  const v = p || {};
-
-  const catOpties = data.categorieen.map(c =>
+  const catOpties = beheer.categorieen.map(c =>
     `<option value="${c.id}" ${v.categorie_id === c.id ? 'selected' : ''}>${escapeHtml(c.titel)}</option>`
   ).join('');
 
@@ -248,13 +118,15 @@ function renderProductForm(p) {
         ${(v.labels || []).includes(l) ? 'checked' : ''}> ${l}
     </label>`).join('');
 
-  root.innerHTML = `
-    <div class="panel">
-      <div class="panel-header">
-        <h3>${nieuw ? 'Nieuw product' : escapeHtml(v.titel)}</h3>
-        <button type="button" class="aa-btn aa-btn--stil" data-actie="annuleer" style="margin-left:auto">← Terug</button>
+  const overlay = document.createElement('div');
+  overlay.className = 'aa-overlay';
+  overlay.innerHTML = `
+    <div class="aa-editor" role="dialog" aria-modal="true" aria-label="${nieuw ? 'Nieuw product' : 'Product bewerken'}">
+      <div class="aa-editor-kop">
+        <h2>${nieuw ? 'Nieuw product' : escapeHtml(v.titel || '')}</h2>
+        <button type="button" class="aa-sluit" data-actie="sluit" aria-label="Sluiten">×</button>
       </div>
-      <div class="panel-body">
+      <div class="aa-editor-body">
         <input type="hidden" id="aa-id" value="${v.id || ''}">
 
         <div class="aa-sectie">Basis</div>
@@ -271,7 +143,7 @@ function renderProductForm(p) {
           <label class="aa-veld"><span>Categorie</span>
             <select class="aa-input" id="aa-categorie"><option value="">— geen —</option>${catOpties}</select></label>
         </div>
-        <label class="aa-veld"><span>Korte beschrijving (op de kaart)</span>
+        <label class="aa-veld"><span>Korte beschrijving (op de tegel)</span>
           <textarea class="aa-input" id="aa-kort" rows="2">${escapeHtml(v.korte_beschrijving || '')}</textarea></label>
         <label class="aa-veld"><span>Waarom ik dit aanbeveel</span>
           <textarea class="aa-input" id="aa-waarom" rows="3">${escapeHtml(v.waarom_aanbevolen || '')}</textarea></label>
@@ -287,7 +159,7 @@ function renderProductForm(p) {
             <input type="file" id="aa-foto-file" accept="image/*" style="display:none">
             <button type="button" class="aa-btn" data-actie="kies-foto">Hoofdfoto kiezen</button>
             <div class="muted" style="font-size:.78rem;margin-top:.4rem">
-              Locatiegegevens worden automatisch verwijderd; de foto wordt verkleind naar max 1920px.
+              Locatiegegevens worden verwijderd; de foto wordt verkleind naar max 1920px.
             </div>
             <input type="hidden" id="aa-afbeelding-url" value="${escapeHtml(v.afbeelding_url || '')}">
           </div>
@@ -299,7 +171,7 @@ function renderProductForm(p) {
         <div class="aa-rij">
           <label class="aa-veld"><span>Relatietype *</span>
             <select class="aa-input" id="aa-relatie">${relOpties}</select>
-            <small class="muted">Staat zichtbaar op de kaart én de detailpagina.</small></label>
+            <small class="muted">Staat zichtbaar op de tegel én de detailpagina.</small></label>
           <label class="aa-veld aa-veld--check">
             <label class="aa-check"><input type="checkbox" id="aa-commissie" ${v.commissie ? 'checked' : ''}> Pril Leven ontvangt commissie</label>
           </label>
@@ -340,7 +212,7 @@ function renderProductForm(p) {
           <textarea class="aa-input" id="aa-faq" rows="4">${escapeHtml(faqNaarRegels(v.faq))}</textarea></label>
         <label class="aa-veld"><span>Waarschuwing / opmerking</span>
           <textarea class="aa-input" id="aa-opmerking" rows="2">${escapeHtml(v.opmerking || '')}</textarea>
-          <small class="muted">Verschijnt als geel kader. Bv. bij plantaardige melk vóór 12 maanden.</small></label>
+          <small class="muted">Verschijnt als geel kader op de tegel en de detailpagina.</small></label>
 
         <div class="aa-sectie">Status</div>
         <div class="aa-checks">
@@ -356,278 +228,311 @@ function renderProductForm(p) {
           <label class="aa-veld"><span>Laatst gecontroleerd</span>
             <input class="aa-input" type="date" id="aa-gecontroleerd" value="${escapeHtml(v.laatst_gecontroleerd || '')}"></label>
         </div>
-
-        <div class="aa-acties">
-          <button type="button" class="aa-btn aa-btn--primair" data-actie="opslaan">Opslaan</button>
-          <button type="button" class="aa-btn aa-btn--stil" data-actie="annuleer">Annuleren</button>
-          <span id="aa-status" class="muted"></span>
-        </div>
+      </div>
+      <div class="aa-editor-voet">
+        <button type="button" class="aa-btn aa-btn--primair" data-actie="opslaan">Opslaan</button>
+        <button type="button" class="aa-btn aa-btn--stil" data-actie="sluit">Annuleren</button>
+        ${nieuw ? '' : '<button type="button" class="aa-btn aa-btn--rood" data-actie="verwijder" style="margin-left:auto">Verwijderen</button>'}
+        <span id="aa-status" class="muted"></span>
       </div>
     </div>`;
 
-  const titelEl = root.querySelector('#aa-titel');
-  const slugEl = root.querySelector('#aa-slug');
-  const preview = root.querySelector('#aa-slug-preview');
+  document.body.appendChild(overlay);
+  document.body.classList.add('aa-overlay-open');
+
+  const sluit = () => {
+    overlay.remove();
+    document.body.classList.remove('aa-overlay-open');
+  };
+
+  /* Slug-preview live meelopen met de titel. */
+  const titelEl = overlay.querySelector('#aa-titel');
+  const slugEl = overlay.querySelector('#aa-slug');
+  const preview = overlay.querySelector('#aa-slug-preview');
   const updatePreview = () => {
     preview.textContent = slugEl.value.trim() || slugify(titelEl.value) || '…';
   };
   titelEl.addEventListener('input', updatePreview);
   slugEl.addEventListener('input', updatePreview);
+
+  overlay.addEventListener('click', async (e) => {
+    if (e.target === overlay) return;               // klik naast = niets (voorkomt verlies)
+    const btn = e.target.closest('[data-actie]');
+    if (!btn) return;
+
+    if (btn.dataset.actie === 'sluit') return sluit();
+
+    if (btn.dataset.actie === 'kies-foto') {
+      overlay.querySelector('#aa-foto-file').click();
+      return;
+    }
+
+    if (btn.dataset.actie === 'opslaan') {
+      const payload = verzamel(overlay);
+      if (!payload.titel) { showToast('Titel is verplicht.', 'error'); return; }
+      const statusEl = overlay.querySelector('#aa-status');
+      statusEl.textContent = 'Opslaan…';
+      try {
+        const id = val(overlay, 'aa-id');
+        if (id) await call('/products/' + id, { method: 'PUT', body: payload });
+        else await call('/products', { method: 'POST', body: payload });
+        showToast('Opgeslagen.', 'success');
+        sluit();
+        await onKlaar();
+      } catch (err) {
+        statusEl.textContent = '';
+        showToast(err.message, 'error');
+      }
+      return;
+    }
+
+    if (btn.dataset.actie === 'verwijder') {
+      const id = val(overlay, 'aa-id');
+      const ok = await confirmDialog(
+        `"${v.titel}" definitief verwijderen? Dit kan niet ongedaan gemaakt worden.`
+      );
+      if (!ok) return;
+      try {
+        await call('/products/' + id, { method: 'DELETE' });
+        showToast('Verwijderd.', 'success');
+        sluit();
+        await onKlaar();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+  });
+
+  overlay.addEventListener('change', async (e) => {
+    if (e.target.id !== 'aa-foto-file') return;
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const statusEl = overlay.querySelector('#aa-status');
+    try {
+      statusEl.textContent = 'Foto voorbereiden…';
+      /* processImageForUpload geeft { blob, width, height } terug, niet de blob zelf. */
+      const { blob } = await processImageForUpload(file);
+      statusEl.textContent = 'Uploaden…';
+      const { uploadUrl, publicUrl } = await call('/upload-url', { method: 'POST' });
+      const res = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': blob.type || 'image/jpeg' },
+        body: blob,
+      });
+      if (!res.ok) throw new Error(`Upload mislukt (${res.status})`);
+      overlay.querySelector('#aa-afbeelding-url').value = publicUrl;
+      overlay.querySelector('#aa-foto-preview').innerHTML =
+        `<img src="${escapeHtml(publicUrl)}" alt="">`;
+      statusEl.textContent = 'Foto geüpload — vergeet niet op te slaan.';
+    } catch (err) {
+      statusEl.textContent = '';
+      showToast(err.message, 'error');
+    }
+    e.target.value = '';
+  });
+
+  /* Escape sluit de editor. */
+  const opEsc = (e) => {
+    if (e.key === 'Escape') { sluit(); document.removeEventListener('keydown', opEsc); }
+  };
+  document.addEventListener('keydown', opEsc);
 }
 
-function slugify(v) {
-  return String(v).normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
-}
-
-function verzamelProduct() {
+function verzamel(scope) {
   return {
-    titel: val('aa-titel').trim(),
-    slug: val('aa-slug').trim(),
-    merk: val('aa-merk').trim(),
-    categorie_id: val('aa-categorie') || null,
-    korte_beschrijving: val('aa-kort').trim(),
-    waarom_aanbevolen: val('aa-waarom').trim(),
-    lange_beschrijving: val('aa-lang').trim(),
-    afbeelding_url: val('aa-afbeelding-url').trim(),
-    afbeeldingen: regelsNaarArray(val('aa-afbeeldingen')),
-    relatie_type: val('aa-relatie'),
-    commissie: checked('aa-commissie'),
-    affiliate_link: val('aa-link').trim(),
-    kortingscode: val('aa-code').trim(),
-    korting_tekst: val('aa-kortingtekst').trim(),
-    leeftijd_vanaf_maanden: val('aa-leeftijd') === '' ? null : val('aa-leeftijd'),
-    prijs_indicatie: val('aa-prijsind') || null,
-    materiaal: val('aa-materiaal').trim(),
-    volgorde: val('aa-volgorde') || 0,
-    labels: [...root.querySelectorAll('.aa-label-optie:checked')].map(el => el.value),
-    voordelen: regelsNaarArray(val('aa-voordelen')),
-    nadelen: regelsNaarArray(val('aa-nadelen')),
-    faq: regelsNaarFaq(val('aa-faq')),
-    opmerking: val('aa-opmerking').trim(),
-    persoonlijk_getest: checked('aa-getest'),
-    zelf_in_gebruik: checked('aa-gebruik'),
-    community_favoriet: checked('aa-commfav'),
-    favoriet_anneleen: checked('aa-fav'),
-    zichtbaar: checked('aa-zichtbaar'),
-    favoriet_volgorde: val('aa-favvolgorde') === '' ? null : val('aa-favvolgorde'),
-    laatst_gecontroleerd: val('aa-gecontroleerd') || null,
+    titel: val(scope, 'aa-titel').trim(),
+    slug: val(scope, 'aa-slug').trim(),
+    merk: val(scope, 'aa-merk').trim(),
+    categorie_id: val(scope, 'aa-categorie') || null,
+    korte_beschrijving: val(scope, 'aa-kort').trim(),
+    waarom_aanbevolen: val(scope, 'aa-waarom').trim(),
+    lange_beschrijving: val(scope, 'aa-lang').trim(),
+    afbeelding_url: val(scope, 'aa-afbeelding-url').trim(),
+    afbeeldingen: regelsNaarArray(val(scope, 'aa-afbeeldingen')),
+    relatie_type: val(scope, 'aa-relatie'),
+    commissie: checked(scope, 'aa-commissie'),
+    affiliate_link: val(scope, 'aa-link').trim(),
+    kortingscode: val(scope, 'aa-code').trim(),
+    korting_tekst: val(scope, 'aa-kortingtekst').trim(),
+    leeftijd_vanaf_maanden: val(scope, 'aa-leeftijd') === '' ? null : val(scope, 'aa-leeftijd'),
+    prijs_indicatie: val(scope, 'aa-prijsind') || null,
+    materiaal: val(scope, 'aa-materiaal').trim(),
+    volgorde: val(scope, 'aa-volgorde') || 0,
+    labels: [...scope.querySelectorAll('.aa-label-optie:checked')].map(el => el.value),
+    voordelen: regelsNaarArray(val(scope, 'aa-voordelen')),
+    nadelen: regelsNaarArray(val(scope, 'aa-nadelen')),
+    faq: regelsNaarFaq(val(scope, 'aa-faq')),
+    opmerking: val(scope, 'aa-opmerking').trim(),
+    persoonlijk_getest: checked(scope, 'aa-getest'),
+    zelf_in_gebruik: checked(scope, 'aa-gebruik'),
+    community_favoriet: checked(scope, 'aa-commfav'),
+    favoriet_anneleen: checked(scope, 'aa-fav'),
+    zichtbaar: checked(scope, 'aa-zichtbaar'),
+    favoriet_volgorde: val(scope, 'aa-favvolgorde') === '' ? null : val(scope, 'aa-favvolgorde'),
+    laatst_gecontroleerd: val(scope, 'aa-gecontroleerd') || null,
   };
 }
 
 /* ---------------------------------------------------------------
-   Downloadformulier
+   Snelle acties vanaf een tegel
 --------------------------------------------------------------- */
 
-function renderDownloadForm(d) {
-  const v = d || {};
-  root.innerHTML = `
-    <div class="panel">
-      <div class="panel-header">
-        <h3>${d ? escapeHtml(v.titel) : 'Nieuwe download'}</h3>
-        <button type="button" class="aa-btn aa-btn--stil" data-actie="annuleer" style="margin-left:auto">← Terug</button>
+export async function zetZichtbaar(id, zichtbaar) {
+  await call('/products/' + id, { method: 'PUT', body: { zichtbaar } });
+}
+
+/* ---------------------------------------------------------------
+   Categorieën & downloads
+--------------------------------------------------------------- */
+
+export function openBeheerEditor({ onKlaar }) {
+  const catRijen = beheer.categorieen.map(c => `
+    <tr>
+      <td>${escapeHtml(c.emoji || '')} <strong>${escapeHtml(c.titel)}</strong>
+        <div class="muted" style="font-size:.78rem">/${escapeHtml(c.slug)}</div></td>
+      <td style="width:90px"><input type="number" class="aa-input aa-cat-volgorde" data-id="${c.id}" value="${c.volgorde ?? 0}"></td>
+      <td><label class="aa-check"><input type="checkbox" class="aa-cat-binnenkort" data-id="${c.id}" ${c.binnenkort ? 'checked' : ''}> binnenkort</label></td>
+      <td><label class="aa-check"><input type="checkbox" class="aa-cat-zichtbaar" data-id="${c.id}" ${c.zichtbaar ? 'checked' : ''}> zichtbaar</label></td>
+      <td><button type="button" class="aa-btn" data-actie="cat-opslaan" data-id="${c.id}">Opslaan</button></td>
+    </tr>`).join('');
+
+  const dlRijen = beheer.downloads.length ? beheer.downloads.map(d => `
+    <tr>
+      <td>${escapeHtml(d.emoji || '📄')} <strong>${escapeHtml(d.titel)}</strong>
+        <div class="muted" style="font-size:.78rem">${escapeHtml(d.omschrijving || '')}</div></td>
+      <td><span class="aa-badge ${d.zichtbaar ? 'aa-badge--aan' : 'aa-badge--uit'}">${d.zichtbaar ? 'zichtbaar' : 'verborgen'}</span></td>
+      <td style="white-space:nowrap">
+        <button type="button" class="aa-btn" data-actie="dl-bewerk" data-id="${d.id}">Bewerken</button>
+        <button type="button" class="aa-btn aa-btn--rood" data-actie="dl-verwijder" data-id="${d.id}">Verwijderen</button>
+      </td>
+    </tr>`).join('') : '<tr><td colspan="3" class="muted">Nog geen downloads.</td></tr>';
+
+  const overlay = document.createElement('div');
+  overlay.className = 'aa-overlay';
+  overlay.innerHTML = `
+    <div class="aa-editor" role="dialog" aria-modal="true" aria-label="Categorieën en downloads">
+      <div class="aa-editor-kop">
+        <h2>Categorieën &amp; downloads</h2>
+        <button type="button" class="aa-sluit" data-actie="sluit" aria-label="Sluiten">×</button>
       </div>
-      <div class="panel-body">
-        <input type="hidden" id="aa-dl-id" value="${v.id || ''}">
-        <div class="aa-rij">
-          <label class="aa-veld"><span>Titel *</span>
-            <input class="aa-input" id="aa-dl-titel" value="${escapeHtml(v.titel || '')}"></label>
-          <label class="aa-veld"><span>Emoji</span>
-            <input class="aa-input" id="aa-dl-emoji" value="${escapeHtml(v.emoji || '')}" placeholder="📋"></label>
+      <div class="aa-editor-body">
+        <div class="aa-sectie">Categorieën</div>
+        <p class="muted" style="font-size:.85rem;margin-bottom:.75rem">
+          "Binnenkort" toont een placeholder in plaats van producten. Een categorie zonder
+          zichtbare producten toont dat blok sowieso.
+        </p>
+        <div class="aa-tabel-wrap"><table class="aa-tabel"><tbody>${catRijen}</tbody></table></div>
+
+        <div class="aa-sectie" style="display:flex;align-items:center;gap:1rem">
+          Gratis downloads
+          <button type="button" class="aa-btn" data-actie="dl-nieuw" style="margin-left:auto;text-transform:none;letter-spacing:0">+ Nieuwe download</button>
         </div>
-        <label class="aa-veld"><span>Omschrijving</span>
-          <input class="aa-input" id="aa-dl-oms" value="${escapeHtml(v.omschrijving || '')}"></label>
-        <label class="aa-veld"><span>Bestand-URL</span>
-          <input class="aa-input" id="aa-dl-url" value="${escapeHtml(v.bestand_url || '')}" placeholder="https://…"></label>
-        <div class="aa-rij">
-          <label class="aa-veld"><span>Volgorde</span>
-            <input class="aa-input" type="number" id="aa-dl-volgorde" value="${v.volgorde ?? 0}"></label>
-          <label class="aa-veld aa-veld--check">
-            <label class="aa-check"><input type="checkbox" id="aa-dl-zichtbaar" ${v.zichtbaar ? 'checked' : ''}> <strong>Zichtbaar op de site</strong></label>
-          </label>
-        </div>
-        <div class="aa-acties">
-          <button type="button" class="aa-btn aa-btn--primair" data-actie="dl-opslaan">Opslaan</button>
-          <button type="button" class="aa-btn aa-btn--stil" data-actie="annuleer">Annuleren</button>
-          <span id="aa-status" class="muted"></span>
-        </div>
+        <div class="aa-tabel-wrap"><table class="aa-tabel"><tbody>${dlRijen}</tbody></table></div>
+
+        <div id="aa-dl-form"></div>
+      </div>
+      <div class="aa-editor-voet">
+        <button type="button" class="aa-btn aa-btn--stil" data-actie="sluit">Sluiten</button>
+        <span id="aa-status" class="muted"></span>
       </div>
     </div>`;
-}
 
-/* ---------------------------------------------------------------
-   Foto-upload
---------------------------------------------------------------- */
+  document.body.appendChild(overlay);
+  document.body.classList.add('aa-overlay-open');
 
-async function uploadFoto(file) {
-  const statusEl = root.querySelector('#aa-status');
-  const zet = t => { if (statusEl) statusEl.textContent = t; };
-
-  zet('Foto voorbereiden…');
-  /* processImageForUpload geeft { blob, width, height } terug — niet de blob zelf. */
-  const { blob } = await processImageForUpload(file);
-
-  zet('Uploaden…');
-  const { uploadUrl, publicUrl } = await call('/upload-url', { method: 'POST' });
-
-  const res = await fetch(uploadUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': blob.type || 'image/jpeg' },
-    body: blob,
-  });
-  if (!res.ok) throw new Error(`Upload mislukt (${res.status})`);
-
-  root.querySelector('#aa-afbeelding-url').value = publicUrl;
-  root.querySelector('#aa-foto-preview').innerHTML =
-    `<img src="${escapeHtml(publicUrl)}" alt="">`;
-  zet('Foto geüpload. Vergeet niet op te slaan.');
-}
-
-/* ---------------------------------------------------------------
-   Acties
---------------------------------------------------------------- */
-
-async function bewaarProduct() {
-  const id = val('aa-id');
-  const payload = verzamelProduct();
-  const statusEl = root.querySelector('#aa-status');
-
-  if (!payload.titel) { showToast('Titel is verplicht.', 'error'); return; }
-
-  statusEl.textContent = 'Opslaan…';
-  try {
-    if (id) await call('/products/' + id, { method: 'PUT', body: payload });
-    else await call('/products', { method: 'POST', body: payload });
-    showToast('Product opgeslagen.', 'success');
-    await laadAanraders();
-  } catch (err) {
-    statusEl.textContent = '';
-    showToast(err.message, 'error');
-  }
-}
-
-async function bewaarDownload() {
-  const id = val('aa-dl-id');
-  const payload = {
-    titel: val('aa-dl-titel').trim(),
-    emoji: val('aa-dl-emoji').trim(),
-    omschrijving: val('aa-dl-oms').trim(),
-    bestand_url: val('aa-dl-url').trim(),
-    volgorde: val('aa-dl-volgorde') || 0,
-    zichtbaar: checked('aa-dl-zichtbaar'),
+  const sluit = async () => {
+    overlay.remove();
+    document.body.classList.remove('aa-overlay-open');
+    await onKlaar();
   };
-  if (!payload.titel) { showToast('Titel is verplicht.', 'error'); return; }
 
-  try {
-    if (id) await call('/downloads/' + id, { method: 'PUT', body: payload });
-    else await call('/downloads', { method: 'POST', body: payload });
-    showToast('Download opgeslagen.', 'success');
-    await laadAanraders();
-  } catch (err) {
-    showToast(err.message, 'error');
-  }
-}
-
-async function bewaarCategorie(id) {
-  const volgorde = root.querySelector(`.aa-cat-volgorde[data-id="${id}"]`).value;
-  const binnenkort = root.querySelector(`.aa-cat-binnenkort[data-id="${id}"]`).checked;
-  const zichtbaar = root.querySelector(`.aa-cat-zichtbaar[data-id="${id}"]`).checked;
-  try {
-    await call('/categories/' + id, { method: 'PUT', body: { volgorde, binnenkort, zichtbaar } });
-    showToast('Categorie opgeslagen.', 'success');
-    await laadAanraders();
-  } catch (err) {
-    showToast(err.message, 'error');
-  }
-}
-
-/* ---------------------------------------------------------------
-   Event delegation
---------------------------------------------------------------- */
-
-function initEvents() {
-  const mount = document.getElementById('aanraders-mount');
-  if (!mount) return;
-
-  mount.addEventListener('click', async (e) => {
+  overlay.addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-actie]');
     if (!btn) return;
     const actie = btn.dataset.actie;
     const id = btn.dataset.id;
 
-    if (actie === 'nieuw')     return renderProductForm(null);
-    if (actie === 'annuleer')  return renderOverzicht();
-    if (actie === 'opslaan')   return bewaarProduct();
-    if (actie === 'dl-nieuw')  return renderDownloadForm(null);
-    if (actie === 'dl-opslaan') return bewaarDownload();
+    if (actie === 'sluit') return sluit();
 
-    if (actie === 'bewerk') {
-      const p = data.producten.find(x => x.id === id);
-      if (p) renderProductForm(p);
-      return;
-    }
-
-    if (actie === 'dl-bewerk') {
-      const d = data.downloads.find(x => x.id === id);
-      if (d) renderDownloadForm(d);
-      return;
-    }
-
-    if (actie === 'cat-opslaan') return bewaarCategorie(id);
-
-    if (actie === 'toggle') {
-      const p = data.producten.find(x => x.id === id);
-      if (!p) return;
+    if (actie === 'cat-opslaan') {
       try {
-        await call('/products/' + id, { method: 'PUT', body: { zichtbaar: !p.zichtbaar } });
-        await laadAanraders();
+        await call('/categories/' + id, {
+          method: 'PUT',
+          body: {
+            volgorde: overlay.querySelector(`.aa-cat-volgorde[data-id="${id}"]`).value,
+            binnenkort: overlay.querySelector(`.aa-cat-binnenkort[data-id="${id}"]`).checked,
+            zichtbaar: overlay.querySelector(`.aa-cat-zichtbaar[data-id="${id}"]`).checked,
+          },
+        });
+        showToast('Categorie opgeslagen.', 'success');
+        await laadBeheerdata();
       } catch (err) { showToast(err.message, 'error'); }
       return;
     }
 
-    if (actie === 'verwijder' || actie === 'dl-verwijder') {
-      const lijst = actie === 'verwijder' ? data.producten : data.downloads;
-      const item = lijst.find(x => x.id === id);
-      if (!item) return;
-      const ok = await confirmDialog(
-        `"${item.titel}" definitief verwijderen? Dit kan niet ongedaan gemaakt worden.`
-      );
+    if (actie === 'dl-nieuw' || actie === 'dl-bewerk') {
+      const d = actie === 'dl-bewerk' ? beheer.downloads.find(x => x.id === id) : null;
+      toonDownloadForm(overlay, d);
+      return;
+    }
+
+    if (actie === 'dl-opslaan') {
+      const dlId = val(overlay, 'aa-dl-id');
+      const payload = {
+        titel: val(overlay, 'aa-dl-titel').trim(),
+        emoji: val(overlay, 'aa-dl-emoji').trim(),
+        omschrijving: val(overlay, 'aa-dl-oms').trim(),
+        bestand_url: val(overlay, 'aa-dl-url').trim(),
+        volgorde: val(overlay, 'aa-dl-volgorde') || 0,
+        zichtbaar: checked(overlay, 'aa-dl-zichtbaar'),
+      };
+      if (!payload.titel) { showToast('Titel is verplicht.', 'error'); return; }
+      try {
+        if (dlId) await call('/downloads/' + dlId, { method: 'PUT', body: payload });
+        else await call('/downloads', { method: 'POST', body: payload });
+        showToast('Download opgeslagen.', 'success');
+        await laadBeheerdata();
+        sluit();
+      } catch (err) { showToast(err.message, 'error'); }
+      return;
+    }
+
+    if (actie === 'dl-verwijder') {
+      const d = beheer.downloads.find(x => x.id === id);
+      const ok = await confirmDialog(`"${d?.titel}" verwijderen?`);
       if (!ok) return;
       try {
-        await call((actie === 'verwijder' ? '/products/' : '/downloads/') + id, { method: 'DELETE' });
+        await call('/downloads/' + id, { method: 'DELETE' });
         showToast('Verwijderd.', 'success');
-        await laadAanraders();
+        await laadBeheerdata();
+        sluit();
       } catch (err) { showToast(err.message, 'error'); }
-      return;
     }
-
-    if (actie === 'kies-foto') {
-      root.querySelector('#aa-foto-file').click();
-      return;
-    }
-  });
-
-  mount.addEventListener('change', async (e) => {
-    if (e.target.id !== 'aa-foto-file') return;
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    try {
-      await uploadFoto(file);
-    } catch (err) {
-      showToast(err.message, 'error');
-      const statusEl = root.querySelector('#aa-status');
-      if (statusEl) statusEl.textContent = '';
-    }
-    e.target.value = '';
   });
 }
 
-/** Lazy: pas laden wanneer het tabblad voor het eerst geopend wordt. */
-export function initAanradersTab() {
-  initEvents();
-  const tab = document.querySelector('.admin-tab[data-tab="aanraders"]');
-  if (!tab) return;
-  tab.addEventListener('click', () => {
-    if (!geladen) laadAanraders();
-  });
+function toonDownloadForm(overlay, d) {
+  const v = d || {};
+  overlay.querySelector('#aa-dl-form').innerHTML = `
+    <div class="aa-sectie">${d ? 'Download bewerken' : 'Nieuwe download'}</div>
+    <input type="hidden" id="aa-dl-id" value="${v.id || ''}">
+    <div class="aa-rij">
+      <label class="aa-veld"><span>Titel *</span>
+        <input class="aa-input" id="aa-dl-titel" value="${escapeHtml(v.titel || '')}"></label>
+      <label class="aa-veld"><span>Emoji</span>
+        <input class="aa-input" id="aa-dl-emoji" value="${escapeHtml(v.emoji || '')}" placeholder="📋"></label>
+    </div>
+    <label class="aa-veld"><span>Omschrijving</span>
+      <input class="aa-input" id="aa-dl-oms" value="${escapeHtml(v.omschrijving || '')}"></label>
+    <label class="aa-veld"><span>Bestand-URL</span>
+      <input class="aa-input" id="aa-dl-url" value="${escapeHtml(v.bestand_url || '')}" placeholder="https://…"></label>
+    <div class="aa-rij">
+      <label class="aa-veld"><span>Volgorde</span>
+        <input class="aa-input" type="number" id="aa-dl-volgorde" value="${v.volgorde ?? 0}"></label>
+      <label class="aa-veld aa-veld--check">
+        <label class="aa-check"><input type="checkbox" id="aa-dl-zichtbaar" ${v.zichtbaar ? 'checked' : ''}> <strong>Zichtbaar</strong></label>
+      </label>
+    </div>
+    <button type="button" class="aa-btn aa-btn--primair" data-actie="dl-opslaan">Download opslaan</button>`;
+  overlay.querySelector('#aa-dl-form').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
