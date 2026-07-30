@@ -24,7 +24,7 @@ import { supabase } from './_lib/clients.mjs';
 const BASE = '/aanraders';
 
 /* Cache-buster voor aanraders.css — bump bij CSS-wijziging. */
-const CSS_VERSION = '3.1.3';
+const CSS_VERSION = '3.1.4';
 
 /* Vier eigen producten. Bewust hardcoded: ze wijzigen zelden en horen
    niet tussen de affiliateproducten in de database te staan. */
@@ -101,6 +101,16 @@ function leeftijdLabel(maanden) {
   return `Vanaf ${jaren} jaar`;
 }
 
+const MAANDEN = ['januari','februari','maart','april','mei','juni',
+  'juli','augustus','september','oktober','november','december'];
+
+/** date-kolom (YYYY-MM-DD) → "29 juli 2026". */
+function formatDatum(d) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(d));
+  if (!m) return String(d);
+  return `${Number(m[3])} ${MAANDEN[Number(m[2]) - 1]} ${m[1]}`;
+}
+
 function getSegments(req) {
   const raw = req.query?.path;
   if (Array.isArray(raw) && raw.length > 0) return raw;
@@ -156,6 +166,80 @@ async function fetchPaginaData() {
   };
 }
 
+/** Categorie + haar zichtbare producten. null als de slug niet bestaat. */
+async function fetchCategorie(slug) {
+  const { data: cat, error } = await supabase
+    .from('affiliate_categories')
+    .select('id, slug, titel, emoji, omschrijving, binnenkort')
+    .eq('slug', slug)
+    .eq('zichtbaar', true)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!cat) return null;
+
+  const { data: producten, error: pErr } = await supabase
+    .from('affiliate_products')
+    .select('*')
+    .eq('categorie_id', cat.id)
+    .eq('zichtbaar', true)
+    .order('volgorde', { ascending: true });
+
+  if (pErr) throw pErr;
+  return { cat, producten: producten || [] };
+}
+
+/**
+ * Product + categorie + gerelateerde producten.
+ * Gerelateerd = zelfde categorie; is dat te weinig, dan aanvullen met
+ * andere zichtbare producten zodat de sectie nooit halfleeg staat.
+ */
+async function fetchProduct(slug) {
+  const { data: p, error } = await supabase
+    .from('affiliate_products')
+    .select('*')
+    .eq('slug', slug)
+    .eq('zichtbaar', true)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!p) return null;
+
+  let cat = null;
+  if (p.categorie_id) {
+    const { data } = await supabase
+      .from('affiliate_categories')
+      .select('slug, titel, emoji')
+      .eq('id', p.categorie_id)
+      .maybeSingle();
+    cat = data || null;
+  }
+
+  const { data: zelfde } = await supabase
+    .from('affiliate_products')
+    .select('*')
+    .eq('zichtbaar', true)
+    .eq('categorie_id', p.categorie_id)
+    .neq('id', p.id)
+    .order('volgorde', { ascending: true })
+    .limit(3);
+
+  let gerelateerd = zelfde || [];
+  if (gerelateerd.length < 3) {
+    const uitsluiten = [p.id, ...gerelateerd.map(g => g.id)];
+    const { data: rest } = await supabase
+      .from('affiliate_products')
+      .select('*')
+      .eq('zichtbaar', true)
+      .not('id', 'in', `(${uitsluiten.join(',')})`)
+      .order('volgorde', { ascending: true })
+      .limit(3 - gerelateerd.length);
+    gerelateerd = gerelateerd.concat(rest || []);
+  }
+
+  return { p, cat, gerelateerd };
+}
+
 /* ---------------------------------------------------------------
    RENDER — bouwstenen
 --------------------------------------------------------------- */
@@ -182,8 +266,14 @@ function renderLabels(p) {
   return uit.length ? `<div class="card-labels">${uit.join('')}</div>` : '';
 }
 
+/** URL van de detailpagina van een product. */
+function productHref(p) {
+  return `${BASE}/p/${encodeURIComponent(p.slug)}`;
+}
+
 function renderKaart(p) {
   const link = safeUrl(p.affiliate_link);
+  const detail = productHref(p);
   const media = p.afbeelding_url
     ? `<img src="${esc(p.afbeelding_url)}" alt="${esc(p.titel)}" loading="lazy">`
     : '<span class="ph">🛍️</span>';
@@ -221,10 +311,10 @@ function renderKaart(p) {
 
   return `
       <article class="card">
-        <div class="card-media">${media}${renderLabels(p)}</div>
+        <a class="card-media-link" href="${esc(detail)}"><div class="card-media">${media}${renderLabels(p)}</div></a>
         <div class="card-body">
           ${p.merk ? `<div class="card-brand">${esc(p.merk)}</div>` : ''}
-          <h3 class="card-title">${esc(p.titel)}</h3>
+          <h3 class="card-title"><a href="${esc(detail)}">${esc(p.titel)}</a></h3>
           ${p.korte_beschrijving ? `<p class="card-desc">${esc(p.korte_beschrijving)}</p>` : ''}
           ${p.waarom_aanbevolen ? `<div class="card-why"><b>Waarom ik dit aanbeveel</b>${esc(p.waarom_aanbevolen)}</div>` : ''}
           ${meta ? `<div class="card-meta">${meta}</div>` : ''}
@@ -252,9 +342,14 @@ function renderCategorie(cat, producten) {
     </div>`;
   }
 
+  const href = `${BASE}/c/${encodeURIComponent(cat.slug)}`;
+
   return `
     <div class="cat">
-      <div class="cat-head"><h3>${titel}</h3></div>
+      <div class="cat-head">
+        <h3><a href="${esc(href)}">${titel}</a></h3>
+        <a href="${esc(href)}">Alles bekijken →</a>
+      </div>
       ${cat.omschrijving ? `<p class="section-head-p">${esc(cat.omschrijving)}</p>` : ''}
       <div class="grid">${eigen.map(renderKaart).join('')}</div>
     </div>`;
@@ -362,13 +457,27 @@ document.addEventListener('click', function (e) {
   } else {
     terugvallen();
   }
+});
+
+/* Galerij op de productdetailpagina: thumbnail wisselt de hoofdfoto.
+   Werkt zonder JS ook prima — dan zie je enkel de hoofdfoto. */
+document.addEventListener('click', function (e) {
+  var t = e.target.closest('.thumb');
+  if (!t) return;
+  var hoofd = document.getElementById('galerij-hoofd');
+  var src = t.getAttribute('data-src');
+  if (!hoofd || !src) return;
+  hoofd.src = src;
+  var alle = document.querySelectorAll('.thumb');
+  for (var i = 0; i < alle.length; i++) alle[i].classList.remove('active');
+  t.classList.add('active');
 });`;
 
 /* ---------------------------------------------------------------
    RENDER — volledige pagina
 --------------------------------------------------------------- */
 
-function layout({ titel, beschrijving, canonical, body }) {
+function layout({ titel, beschrijving, canonical, body, bodyClass = '', afbeelding = null }) {
   return `<!DOCTYPE html>
 <html lang="nl">
 <head>
@@ -381,13 +490,14 @@ function layout({ titel, beschrijving, canonical, body }) {
 <meta property="og:title" content="${esc(titel)}">
 <meta property="og:description" content="${esc(beschrijving)}">
 <meta property="og:url" content="${esc(canonical)}">
+${afbeelding ? `<meta property="og:image" content="${esc(afbeelding)}">` : ''}
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/aanraders.css?v=${CSS_VERSION}">
 </head>
-<body>
+<body${bodyClass ? ` class="${esc(bodyClass)}"` : ''}>
 
 <header class="site-header">
   <div class="site-header-inner">
@@ -471,6 +581,216 @@ function renderOverzicht(data, origin) {
   });
 }
 
+function renderCategoriePagina({ cat, producten }, origin) {
+  const titelTekst = `${cat.emoji ? cat.emoji + ' ' : ''}${cat.titel}`;
+
+  const inhoud = producten.length
+    ? `<div class="grid">${producten.map(renderKaart).join('')}</div>`
+    : `<div class="soon"><b>Binnenkort</b>Deze categorie is nog in opbouw — enkel producten die ik zelf getest heb komen erin.</div>`;
+
+  const body = `
+<div class="wrap">
+  <nav class="crumbs">
+    <a href="${BASE}">Aanraders</a><em>/</em>${esc(cat.titel)}
+  </nav>
+
+  <div class="cat-hero">
+    <h1>${esc(titelTekst)}</h1>
+    ${cat.omschrijving ? `<p>${esc(cat.omschrijving)}</p>` : ''}
+  </div>
+
+  <section>${inhoud}</section>
+
+  <p style="margin-bottom:56px"><a class="terug" href="${BASE}">← Alle categorieën</a></p>
+</div>`;
+
+  return layout({
+    titel: `${cat.titel} — Aanraders | Pril Leven`,
+    beschrijving: cat.omschrijving
+      || `Producten voor ${cat.titel.toLowerCase()} die Anneleen van Pril Leven zelf gebruikt en aanbeveelt.`,
+    canonical: `${origin}${BASE}/c/${cat.slug}`,
+    body,
+  });
+}
+
+function renderProductPagina({ p, cat, gerelateerd }, origin) {
+  const link = safeUrl(p.affiliate_link);
+
+  /* Galerij: hoofdfoto voorop, daarna de extra's uit afbeeldingen[].
+     Zonder foto's blijft er één placeholder staan, geen lege thumbnails. */
+  const extra = Array.isArray(p.afbeeldingen) ? p.afbeeldingen.filter(Boolean) : [];
+  const alle = [p.afbeelding_url, ...extra].filter(Boolean);
+
+  const hoofd = alle.length
+    ? `<img src="${esc(alle[0])}" alt="${esc(p.titel)}" id="galerij-hoofd">`
+    : '<span class="ph">🛍️</span>';
+
+  const thumbs = alle.length > 1 ? `
+      <div class="thumbs">${alle.map((src, i) => `
+        <button type="button" class="thumb${i === 0 ? ' active' : ''}" data-src="${esc(src)}">
+          <img src="${esc(src)}" alt="" loading="lazy">
+        </button>`).join('')}
+      </div>` : '';
+
+  const facts = [
+    `<span class="chip"><b>Leeftijd</b> ${esc(leeftijdLabel(p.leeftijd_vanaf_maanden))}</span>`,
+    cat ? `<span class="chip"><b>Categorie</b> ${esc(cat.titel)}</span>` : '',
+    p.prijs_indicatie ? `<span class="chip"><b>Prijs</b> ${esc(p.prijs_indicatie)}</span>` : '',
+    p.materiaal ? `<span class="chip"><b>Materiaal</b> ${esc(p.materiaal)}</span>` : '',
+    p.subcategorie ? `<span class="chip">${esc(p.subcategorie)}</span>` : '',
+  ].filter(Boolean).join('');
+
+  const code = p.kortingscode ? `
+      <button type="button" class="code" data-code="${esc(p.kortingscode)}">
+        <span class="code-left">
+          <span class="code-lbl">Kortingscode${p.korting_tekst ? ' — ' + esc(p.korting_tekst) : ''}</span>
+          <span class="code-val">${esc(p.kortingscode)}</span>
+        </span>
+        <span class="code-copy">${ICON_COPY}kopieer</span>
+      </button>` : '';
+
+  let knop;
+  if (link) {
+    knop = `<a class="btn" href="${esc(link)}" target="_blank" rel="sponsored nofollow noopener">` +
+           `Bekijk bij ${esc(p.merk || p.titel)}${ICON_EXTERN}</a>`;
+  } else if (p.kortingscode) {
+    knop = `<span class="btn btn--disabled">Gebruik de code in de webshop</span>`;
+  } else {
+    knop = `<span class="btn btn--disabled">Link volgt</span>`;
+  }
+
+  const relTekst = RELATIE_LABELS[p.relatie_type] || '';
+  const relUitleg = p.commissie
+    ? `${relTekst} — Pril Leven ontvangt een kleine commissie wanneer je via deze link aankoopt, zonder extra kost voor jou.`
+    : relTekst;
+
+  const vinkjes = [
+    p.persoonlijk_getest ? 'Persoonlijk getest' : '',
+    p.zelf_in_gebruik ? 'Zelf in gebruik' : '',
+    p.community_favoriet ? 'Community favoriet' : '',
+    p.favoriet_anneleen ? "Favoriet van Anneleen" : '',
+  ].filter(Boolean);
+
+  const ICON_CHECK = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2.2" ' +
+    'stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"/></svg>';
+
+  const trust = vinkjes.length
+    ? `<div class="trust">${vinkjes.map(v => `<div>${ICON_CHECK} ${esc(v)}</div>`).join('')}</div>`
+    : '';
+
+  const gecontroleerd = p.laatst_gecontroleerd
+    ? `<p class="checked">Laatst gecontroleerd op ${esc(formatDatum(p.laatst_gecontroleerd))}</p>`
+    : '';
+
+  /* Lange beschrijving: dubbele witregel = nieuwe alinea. */
+  const langeTekst = p.lange_beschrijving
+    ? `
+  <section class="sec">
+    <h2>Over dit product</h2>
+    <div class="prose">${String(p.lange_beschrijving).split(/\n\s*\n/)
+      .map(a => `<p>${esc(a.trim())}</p>`).join('')}</div>
+  </section>` : '';
+
+  const voordelen = Array.isArray(p.voordelen) ? p.voordelen.filter(Boolean) : [];
+  const nadelen = Array.isArray(p.nadelen) ? p.nadelen.filter(Boolean) : [];
+
+  const prosCons = (voordelen.length || nadelen.length) ? `
+  <section class="sec">
+    <h2>Voordelen en nadelen</h2>
+    <div class="pros-cons">
+      ${voordelen.length ? `
+      <div class="pc pc--pro">
+        <h3>Wat ik er goed aan vind</h3>
+        <ul>${voordelen.map(v => `<li>${esc(v)}</li>`).join('')}</ul>
+      </div>` : ''}
+      ${nadelen.length ? `
+      <div class="pc pc--con">
+        <h3>Waar je rekening mee moet houden</h3>
+        <ul>${nadelen.map(v => `<li>${esc(v)}</li>`).join('')}</ul>
+      </div>` : ''}
+    </div>
+  </section>` : '';
+
+  const faqItems = Array.isArray(p.faq)
+    ? p.faq.filter(f => f && f.vraag && f.antwoord)
+    : [];
+
+  const faq = faqItems.length ? `
+  <section class="sec">
+    <h2>Veelgestelde vragen</h2>
+    <div class="faq">${faqItems.map((f, i) => `
+      <details${i === 0 ? ' open' : ''}>
+        <summary>${esc(f.vraag)}</summary>
+        <p>${esc(f.antwoord)}</p>
+      </details>`).join('')}
+    </div>
+  </section>` : '';
+
+  const gerelateerdSectie = gerelateerd.length ? `
+  <section class="sec">
+    <h2>Bekijk ook</h2>
+    <div class="grid">${gerelateerd.map(renderKaart).join('')}</div>
+  </section>` : '';
+
+  /* Mobiele actiebalk: alleen zinvol als er iets te doen valt. */
+  const mobileBar = (p.kortingscode || link) ? `
+<div class="mobile-bar">
+  ${p.kortingscode ? `<button type="button" class="code" data-code="${esc(p.kortingscode)}"><span class="code-val">${esc(p.kortingscode)}</span></button>` : ''}
+  ${link ? `<a class="btn" href="${esc(link)}" target="_blank" rel="sponsored nofollow noopener">Naar ${esc(p.merk || 'de webshop')}</a>` : ''}
+</div>` : '';
+
+  const body = `
+<div class="wrap">
+  <nav class="crumbs">
+    <a href="${BASE}">Aanraders</a><em>/</em>
+    ${cat ? `<a href="${BASE}/c/${esc(cat.slug)}">${esc(cat.titel)}</a><em>/</em>` : ''}
+    ${esc(p.titel)}
+  </nav>
+
+  <div class="product">
+    <div>
+      <div class="gallery-main">${hoofd}${renderLabels(p)}</div>
+      ${thumbs}
+    </div>
+
+    <div class="buy">
+      ${p.merk ? `<div class="buy-brand">${esc(p.merk)}</div>` : ''}
+      <h1>${esc(p.titel)}</h1>
+      ${p.korte_beschrijving ? `<p class="buy-lead">${esc(p.korte_beschrijving)}</p>` : ''}
+      ${facts ? `<div class="facts">${facts}</div>` : ''}
+      ${p.waarom_aanbevolen ? `
+      <div class="why">
+        <h3>Waarom ik dit aanbeveel</h3>
+        <p>${esc(p.waarom_aanbevolen)}</p>
+      </div>` : ''}
+      ${code}
+      ${knop}
+      ${relUitleg ? `<div class="rel"><i></i>${esc(relUitleg)}</div>` : ''}
+      ${p.opmerking ? `<div class="note-groot"><strong>Belangrijk:</strong> ${esc(p.opmerking)}</div>` : ''}
+      ${trust}
+      ${gecontroleerd}
+    </div>
+  </div>
+
+  ${langeTekst}
+  ${prosCons}
+  ${faq}
+  ${gerelateerdSectie}
+</div>${mobileBar}`;
+
+  const beschrijving = p.korte_beschrijving
+    || `${p.titel} — aanbevolen door Anneleen van Pril Leven.`;
+
+  return layout({
+    titel: `${p.titel} — Aanraders | Pril Leven`,
+    beschrijving,
+    canonical: `${origin}${BASE}/p/${p.slug}`,
+    body,
+    bodyClass: mobileBar ? 'has-bar' : '',
+    afbeelding: alle[0] || null,
+  });
+}
+
 function renderNotFound(origin) {
   return layout({
     titel: 'Niet gevonden — Aanraders | Pril Leven',
@@ -518,7 +838,7 @@ export default async function handler(req, res) {
   }
 
   const origin = getOrigin(req);
-  const { route } = matchRoute(req);
+  const { route, params } = matchRoute(req);
 
   try {
     if (route === 'overzicht') {
@@ -526,9 +846,20 @@ export default async function handler(req, res) {
       return sendHtml(res, 200, renderOverzicht(data, origin));
     }
 
-    /* Categorie- en productpagina's komen in stap 6. Tot dan een echte
-       404 in plaats van een lege pagina — beter voor Google én voor de
-       bezoeker die een oude link opent. */
+    if (route === 'categorie') {
+      const data = await fetchCategorie(params.slug);
+      if (!data) return sendHtml(res, 404, renderNotFound(origin), { cache: false });
+      return sendHtml(res, 200, renderCategoriePagina(data, origin));
+    }
+
+    if (route === 'product') {
+      const data = await fetchProduct(params.slug);
+      if (!data) return sendHtml(res, 404, renderNotFound(origin), { cache: false });
+      return sendHtml(res, 200, renderProductPagina(data, origin));
+    }
+
+    /* Onbekend pad: echte 404, geen lege pagina — beter voor Google én
+       voor de bezoeker die een oude link opent. */
     return sendHtml(res, 404, renderNotFound(origin), { cache: false });
 
   } catch (err) {
