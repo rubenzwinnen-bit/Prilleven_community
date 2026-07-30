@@ -7643,7 +7643,7 @@ textarea.aa-input { resize: vertical; line-height: 1.55; }
    Alleen zichtbaar voor admins. Ligt bovenop de
    server-gerenderde tegels; geen tweede weergave.
 ============================================ */
-.aa-beheerbalk {
+.aanraders .aa-beheerbalk {
   background: #2b2b2b;
   color: #e8e8e8;
   border-radius: var(--radius-lg);
@@ -7652,87 +7652,77 @@ textarea.aa-input { resize: vertical; line-height: 1.55; }
 }
 /* Eigen padding: .wrap heeft binnen .aanraders geen zijpadding, dus
    daarop leunen zou de tekst tegen de afgeronde rand duwen. */
-.aa-beheerbalk-inner {
+.aanraders .aa-beheerbalk-inner {
   display: flex; align-items: center; justify-content: space-between;
   gap: 1rem 2rem; flex-wrap: wrap;
   padding: 1.35rem 1.75rem;
 }
-.aa-beheer-links { display: flex; flex-direction: column; gap: .2rem; min-width: 0; }
-.aa-beheer-titel {
+.aanraders .aa-beheer-links { display: flex; flex-direction: column; gap: .2rem; min-width: 0; }
+.aanraders .aa-beheer-titel {
   display: inline-flex; align-items: center; gap: .5rem;
   font-size: .72rem; font-weight: 700; letter-spacing: .12em;
   text-transform: uppercase; color: var(--color-primary-light);
 }
-.aa-beheer-titel::before {
+.aanraders .aa-beheer-titel::before {
   content: ""; width: 7px; height: 7px; border-radius: 50%;
   background: var(--color-primary-light); flex: none;
 }
-.aa-beheer-info { font-size: .85rem; color: #9d9d9d; }
+.aanraders .aa-beheer-info { font-size: .85rem; color: #9d9d9d; }
 
-.aa-beheer-acties { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.aanraders .aa-beheer-acties { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
 /* Knoppen in de balk krijgen meer lucht dan de standaard .aa-btn */
-.aa-beheerbalk .aa-btn {
+.aanraders .aa-beheerbalk .aa-btn {
   display: inline-flex; align-items: center; justify-content: center;
   padding: .6rem 1.15rem; font-size: .85rem; border-radius: 999px; white-space: nowrap;
 }
 
 @media (max-width: 700px) {
-  .aa-beheerbalk-inner { padding: 1.1rem 1.25rem; }
-  .aa-beheer-acties { width: 100%; }
-  .aa-beheerbalk .aa-btn { flex: 1 1 auto; justify-content: center; text-align: center; }
+  .aanraders .aa-beheerbalk-inner { padding: 1.1rem 1.25rem; }
+  .aanraders .aa-beheer-acties { width: 100%; }
+  .aanraders .aa-beheerbalk .aa-btn { flex: 1 1 auto; justify-content: center; text-align: center; }
 }
-
-/* Bewerkknop op het koopblok van een productdetail */
-.aa-inline-bewerk {
-  display: block; width: 100%; margin-bottom: 1.5rem;
-  font-family: inherit; font-size: .85rem; font-weight: 500; cursor: pointer;
-  padding: .6rem 1rem; border-radius: var(--radius-md);
-  border: 1px dashed var(--color-primary); background: #fdf8f4; color: var(--color-primary-dark);
-  transition: var(--transition);
-}
-.aa-inline-bewerk:hover { background: var(--color-primary); border-style: solid; color: #fff; }
 
 /* Uitlegblok in de beheer-overlays */
-.aa-uitleg {
+.aanraders .aa-uitleg {
   background: var(--color-bg); border: 1px solid var(--color-light);
   border-radius: var(--radius-md); padding: .9rem 1.1rem; margin-bottom: 1.1rem;
 }
 .aa-uitleg p { font-size: .84rem; line-height: 1.6; color: var(--color-dark-light); margin: 0 0 .5rem; }
 .aa-uitleg p:last-child { margin-bottom: 0; }
 .aa-uitleg strong { color: var(--color-dark); font-weight: 600; }
-.aa-uitleg-let { color: var(--color-gray) !important; font-style: italic; }
-.aa-beheerbalk .aa-btn { background: transparent; color: #e8e8e8; border-color: #555; }
+.aanraders .aa-uitleg-let { color: var(--color-gray) !important; font-style: italic; }
+.aanraders .aa-beheerbalk .aa-btn { background: transparent; color: #e8e8e8; border-color: #555; }
 .aa-beheerbalk .aa-btn:hover { border-color: var(--color-primary-light); color: var(--color-primary-light); }
-.aa-beheerbalk .aa-btn--primair {
+.aanraders .aa-beheerbalk .aa-btn--primair {
   background: var(--color-primary); border-color: var(--color-primary); color: #fff;
 }
 .aa-beheerbalk .aa-btn--primair:hover { background: var(--color-primary-dark); color: #fff; }
 
 /* Bewerkknoppen op een tegel */
-.aa-bewerkbaar { position: relative; outline: 2px dashed rgba(201,137,102,.45); outline-offset: 3px; }
-.aa-kaart-knoppen {
+.aanraders .aa-bewerkbaar { position: relative; outline: 2px dashed rgba(201,137,102,.45); outline-offset: 3px; }
+.aanraders .aa-kaart-knoppen {
   display: flex; gap: .4rem; padding: .6rem .9rem .9rem;
   border-top: 1px dashed var(--color-light);
 }
-.aa-kaart-knop {
+.aanraders .aa-kaart-knop {
   flex: 1; font-family: inherit; font-size: .78rem; font-weight: 500; cursor: pointer;
   padding: .35rem .6rem; border-radius: var(--radius-md);
   border: 1px solid var(--color-gray-light); background: var(--color-white);
   color: var(--color-dark-light); transition: var(--transition);
 }
-.aa-kaart-knop:hover { border-color: var(--color-primary); color: var(--color-primary); }
-.aa-kaart-knop:disabled { opacity: .5; cursor: default; }
+.aanraders .aa-kaart-knop:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.aanraders .aa-kaart-knop:disabled { opacity: .5; cursor: default; }
 
 /* Verborgen producten — staan niet in de publieke HTML */
-.aa-verborgen { margin: 3rem 0; }
-.aa-verborgen-lijst { display: flex; flex-direction: column; gap: .6rem; }
-.aa-verborgen-item {
+.aanraders .aa-verborgen { margin: 3rem 0; }
+.aanraders .aa-verborgen-lijst { display: flex; flex-direction: column; gap: .6rem; }
+.aanraders .aa-verborgen-item {
   display: flex; align-items: center; gap: .75rem;
   background: var(--color-white); border: 1px dashed var(--color-gray-light);
   border-radius: var(--radius-md); padding: .75rem 1rem;
 }
-.aa-verborgen-item > div:first-child { flex: 1; min-width: 0; }
-.aa-verborgen-item .aa-kaart-knop { flex: none; }
+.aanraders .aa-verborgen-item > div:first-child { flex: 1; min-width: 0; }
+.aanraders .aa-verborgen-item .aa-kaart-knop { flex: none; }
 
 /* Editor-overlay */
 .aa-overlay {

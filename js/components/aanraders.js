@@ -109,7 +109,7 @@ async function laadInhoud(view, { scroll = false } = {}) {
 ---------------------------------------- */
 async function bouwBeheerbalk(view) {
   if (!Admin) {
-    Admin = await import('../aanradersAdmin.js?v=3.2.0');
+    Admin = await import('../aanradersAdmin.js?v=3.2.1');
   }
   try {
     await Admin.laadBeheerdata();
@@ -158,18 +158,8 @@ function vulBeheerbalk(view) {
 function markeerBewerkbaar(view) {
   const beheer = Admin.getBeheerdata();
 
-  /* Productdetail: het hoofdproduct is geen tegel, dus zet de knop bovenaan
-     het koopblok. Anders zie je op zo'n pagina nergens hoe je bewerkt. */
-  const buy = view.querySelector('.buy');
-  if (buy && huidig.soort === 'product' && !buy.querySelector('.aa-inline-bewerk')) {
-    const knop = document.createElement('button');
-    knop.type = 'button';
-    knop.className = 'aa-inline-bewerk';
-    knop.dataset.beheer = 'bewerk';
-    knop.dataset.slug = huidig.slug;
-    knop.textContent = '✎ Dit product bewerken';
-    buy.insertBefore(knop, buy.firstChild);
-  }
+  /* Op een productdetail zit de bewerkknop in de beheerbalk ("Dit product
+     bewerken"). Geen tweede knop op het koopblok: die stond in de weg. */
 
   view.querySelectorAll('.card[data-slug]').forEach(kaart => {
     if (kaart.querySelector('.aa-kaart-knoppen')) return;
