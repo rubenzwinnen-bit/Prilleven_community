@@ -1,0 +1,154 @@
+/* ============================================
+   AANRADERS — publieke affiliatepagina
+   Server-rendered door api/aanraders.mjs.
+   Staat los van styles.css: die is voor de app
+   achter login en is veel te groot voor een
+   publieke landingspagina.
+   Tokens hieronder zijn overgenomen uit
+   styles.css :root zodat de look identiek is.
+============================================ */
+:root{
+  --color-primary:#C98966; --color-primary-dark:#BE764E; --color-primary-light:#FFBC7D;
+  --color-secondary:#98C3A4; --color-secondary-dark:#82BE93; --color-green-text:#4a7c59;
+  --color-dark:#171717; --color-dark-light:#3d3d3d; --color-gray:#7a7a7a; --color-gray-light:#c5c5c5;
+  --color-light:#f0ebe6; --color-white:#fff; --color-bg:#faf8f5;
+  --shadow-sm:0 1px 4px rgba(0,0,0,.06); --shadow-md:0 4px 12px rgba(0,0,0,.08);
+  --radius-sm:4px; --radius-md:12px; --radius-lg:20px;
+  --max-width:1140px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Poppins',sans-serif;background:var(--color-bg);color:var(--color-dark);line-height:1.6;font-weight:400}
+a{color:inherit;text-decoration:none}
+img{max-width:100%;display:block}
+
+/* ---------- header ---------- */
+.site-header{background:var(--color-white);border-bottom:1px solid var(--color-light);position:sticky;top:0;z-index:50}
+.site-header-inner{max-width:var(--max-width);margin:0 auto;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.brand{font-weight:600;font-size:1.05rem;letter-spacing:-.01em}
+.brand span{color:var(--color-primary)}
+.header-cta{font-size:.85rem;font-weight:500;color:var(--color-gray);border:1px solid var(--color-light);padding:7px 14px;border-radius:999px;transition:all .25s ease}
+.header-cta:hover{color:var(--color-primary);border-color:var(--color-primary)}
+
+/* ---------- layout ---------- */
+.wrap{max-width:var(--max-width);margin:0 auto;padding:0 20px}
+section{margin-bottom:72px}
+.section-head{margin-bottom:24px}
+.section-head h2{font-size:1.45rem;font-weight:600;letter-spacing:-.02em;display:flex;align-items:center;gap:10px}
+.section-head p{color:var(--color-gray);font-size:.92rem;margin-top:6px;max-width:62ch}
+
+/* ---------- hero ---------- */
+.hero{padding:64px 0 48px;text-align:center}
+.hero h1{font-size:2rem;font-weight:600;letter-spacing:-.03em;line-height:1.25;margin-bottom:18px}
+.hero .lead{color:var(--color-dark-light);font-size:1.02rem;max-width:56ch;margin:0 auto 28px}
+.disclosure{background:var(--color-white);border:1px solid var(--color-light);border-radius:var(--radius-md);padding:18px 20px;max-width:62ch;margin:0 auto;font-size:.85rem;color:var(--color-gray);line-height:1.65;text-align:left}
+.disclosure strong{color:var(--color-dark-light);font-weight:500}
+
+/* ---------- zoek + filters (stap 8) ---------- */
+.toolbar{background:var(--color-white);border:1px solid var(--color-light);border-radius:var(--radius-lg);padding:16px;box-shadow:var(--shadow-sm);margin-bottom:56px}
+.search{display:flex;align-items:center;gap:10px;border:1px solid var(--color-light);border-radius:999px;padding:10px 16px;background:var(--color-bg)}
+.search input{border:0;background:none;outline:none;font-family:inherit;font-size:.92rem;width:100%;color:var(--color-dark)}
+.search svg{flex:none;stroke:var(--color-gray)}
+.filters{display:flex;gap:8px;overflow-x:auto;padding-top:14px;scrollbar-width:none}
+.filters::-webkit-scrollbar{display:none}
+.pill{flex:none;font-family:inherit;font-size:.82rem;font-weight:500;color:var(--color-dark-light);background:var(--color-bg);border:1px solid var(--color-light);border-radius:999px;padding:7px 14px;cursor:pointer;transition:all .2s ease}
+.pill:hover{border-color:var(--color-gray-light)}
+.pill.active{background:var(--color-primary);border-color:var(--color-primary);color:#fff}
+
+/* ---------- productkaart ---------- */
+.grid{display:grid;grid-template-columns:1fr;gap:20px}
+.card{background:var(--color-white);border:1px solid var(--color-light);border-radius:var(--radius-lg);overflow:hidden;display:flex;flex-direction:column;transition:box-shadow .25s ease,transform .25s ease}
+.card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}
+.card-media{aspect-ratio:4/3;background:linear-gradient(135deg,#f4efe9,#eae2da);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.card-media img{width:100%;height:100%;object-fit:cover}
+.card-media .ph{font-size:2.4rem;opacity:.35}
+.card-labels{position:absolute;top:12px;left:12px;display:flex;gap:6px;flex-wrap:wrap}
+.label{font-size:.68rem;font-weight:600;letter-spacing:.02em;text-transform:uppercase;padding:4px 9px;border-radius:999px;background:rgba(255,255,255,.94);color:var(--color-dark-light)}
+.label--fav{background:var(--color-primary);color:#fff}
+.label--new{background:var(--color-secondary-dark);color:#fff}
+.card-body{padding:18px 18px 0;flex:1}
+.card-brand{font-size:.72rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--color-gray)}
+.card-title{font-size:1.08rem;font-weight:600;letter-spacing:-.01em;margin:3px 0 8px}
+.card-desc{font-size:.88rem;color:var(--color-dark-light);line-height:1.6}
+.card-why{margin-top:14px;padding:12px 14px;background:var(--color-bg);border-radius:var(--radius-md);font-size:.83rem;color:var(--color-dark-light);line-height:1.6}
+.card-why b{display:block;font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--color-primary);margin-bottom:4px}
+.card-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chip{font-size:.75rem;color:var(--color-gray);background:var(--color-bg);border:1px solid var(--color-light);border-radius:var(--radius-sm);padding:3px 9px}
+.card-note{margin-top:12px;font-size:.78rem;line-height:1.55;color:#8a6d3b;background:#fdf6e3;border:1px solid #f3e3bd;border-radius:var(--radius-md);padding:10px 12px}
+.card-foot{padding:16px 18px 18px;margin-top:16px;border-top:1px solid var(--color-light)}
+
+/* kortingscode — groen = kopieer, terracotta = ga naar winkel */
+.code{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;font-family:inherit;text-align:left;border:1px dashed var(--color-secondary-dark);border-radius:var(--radius-md);padding:9px 12px;margin-bottom:12px;background:#f3f9f5;cursor:pointer;transition:background .2s ease,border-color .2s ease}
+.code:hover{background:#e9f4ed;border-color:var(--color-green-text)}
+.code-val{font-family:ui-monospace,Menlo,monospace;font-size:.88rem;font-weight:600;color:var(--color-green-text);letter-spacing:.04em}
+.code-copy{display:flex;align-items:center;gap:5px;font-size:.75rem;font-weight:500;color:var(--color-green-text);opacity:.75;flex:none}
+.code-copy svg{stroke:currentColor}
+.code.is-copied{background:#e9f4ed;border-style:solid}
+
+.btn{display:flex;align-items:center;justify-content:center;gap:7px;text-align:center;background:var(--color-primary);color:#fff;font-weight:500;font-size:.9rem;padding:11px;border-radius:999px;transition:background .25s ease}
+.btn:hover{background:var(--color-primary-dark);color:#fff}
+.btn svg{stroke:currentColor;flex:none}
+.btn--ghost{background:transparent;border:1px solid var(--color-light);color:var(--color-dark-light)}
+.btn--ghost:hover{background:var(--color-light);color:var(--color-dark)}
+.btn--disabled{background:var(--color-bg);border:1px solid var(--color-light);color:var(--color-gray);cursor:default}
+.btn--disabled:hover{background:var(--color-bg);color:var(--color-gray)}
+
+.rel{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:.72rem;color:var(--color-gray)}
+.rel i{width:5px;height:5px;border-radius:50%;background:var(--color-gray-light);flex:none;font-style:normal}
+.rel--none i{background:var(--color-secondary-dark)}
+
+/* ---------- categorie ---------- */
+.cat{margin-bottom:56px}
+.cat-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--color-light)}
+.cat-head h3{font-size:1.15rem;font-weight:600;letter-spacing:-.01em;display:flex;align-items:center;gap:9px}
+.cat-head a{font-size:.82rem;color:var(--color-gray);flex:none}
+.cat-head a:hover{color:var(--color-primary)}
+.soon{background:var(--color-white);border:1px dashed var(--color-gray-light);border-radius:var(--radius-lg);padding:32px 24px;text-align:center;color:var(--color-gray);font-size:.9rem}
+.soon b{display:block;color:var(--color-dark-light);font-weight:500;margin-bottom:4px}
+
+/* ---------- downloads ---------- */
+.dl-grid{display:grid;grid-template-columns:1fr;gap:14px}
+.dl{display:flex;align-items:center;gap:16px;background:var(--color-white);border:1px solid var(--color-light);border-radius:var(--radius-lg);padding:18px;transition:box-shadow .25s ease}
+.dl:hover{box-shadow:var(--shadow-sm)}
+.dl-ico{width:46px;height:46px;border-radius:var(--radius-md);background:var(--color-light);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex:none}
+.dl-txt h4{font-size:.97rem;font-weight:600;margin-bottom:2px}
+.dl-txt p{font-size:.83rem;color:var(--color-gray);line-height:1.5}
+.dl-arrow{margin-left:auto;color:var(--color-gray-light);flex:none}
+
+/* ---------- pril leven CTA ---------- */
+.pl{background:var(--color-white);border:1px solid var(--color-light);border-radius:var(--radius-lg);padding:36px 28px}
+.pl-head{text-align:center;margin-bottom:28px}
+.pl-head h2{font-size:1.35rem;font-weight:600;letter-spacing:-.02em;margin-bottom:8px}
+.pl-head p{color:var(--color-gray);font-size:.9rem;max-width:52ch;margin:0 auto}
+.pl-grid{display:grid;grid-template-columns:1fr;gap:14px}
+.pl-item{border:1px solid var(--color-light);border-radius:var(--radius-md);padding:20px;transition:border-color .25s ease}
+.pl-item:hover{border-color:var(--color-primary)}
+.pl-item h4{font-size:.98rem;font-weight:600;margin-bottom:5px}
+.pl-item p{font-size:.83rem;color:var(--color-gray);line-height:1.55;margin-bottom:12px}
+.pl-item span{font-size:.82rem;font-weight:500;color:var(--color-primary)}
+
+/* ---------- footer ---------- */
+.site-footer{border-top:1px solid var(--color-light);background:var(--color-white);padding:40px 0;margin-top:24px}
+.site-footer .wrap{text-align:center}
+.site-footer p{font-size:.8rem;color:var(--color-gray);line-height:1.7;max-width:64ch;margin:0 auto 14px}
+.site-footer nav{display:flex;gap:18px;justify-content:center;font-size:.82rem;color:var(--color-gray);flex-wrap:wrap}
+.site-footer nav a:hover{color:var(--color-primary)}
+
+/* ---------- leeg / fout ---------- */
+.empty{text-align:center;padding:80px 20px}
+.empty h1{font-size:1.5rem;font-weight:600;margin-bottom:10px}
+.empty p{color:var(--color-gray);font-size:.95rem;margin-bottom:24px}
+
+@media(min-width:640px){
+  .grid{grid-template-columns:repeat(2,1fr);gap:24px}
+  .dl-grid{grid-template-columns:repeat(2,1fr)}
+  .pl-grid{grid-template-columns:repeat(2,1fr)}
+  .hero h1{font-size:2.5rem}
+  .hero{padding:80px 0 56px}
+}
+@media(min-width:1000px){
+  .grid{grid-template-columns:repeat(3,1fr)}
+  .pl-grid{grid-template-columns:repeat(4,1fr)}
+  .toolbar{display:flex;align-items:center;gap:20px;border-radius:999px;padding:12px 12px 12px 20px}
+  .search{flex:none;width:300px;border:0;background:none;padding:0}
+  .filters{padding-top:0;border-left:1px solid var(--color-light);padding-left:20px}
+}
