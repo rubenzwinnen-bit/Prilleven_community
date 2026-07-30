@@ -22,9 +22,14 @@ const NAV_ITEMS = [
    ADMIN ITEMS
    Alleen zichtbaar in het Admin dropdown
    menu voor admin-gebruikers.
+
+   Dit dropdown is enkel voor het receptenboek
+   en weekschema. Het algemene admin-dashboard
+   staat op /admin-chat.html en is bereikbaar
+   via de tegel op de landingspagina — daar
+   hoort ook alles wat niet over recepten gaat.
 ---------------------------------------- */
 const ADMIN_ITEMS = [
-  { href: '/admin-chat.html', label: 'Admin dashboard' },
   { path: 'import', label: 'Recepten importeren' },
   { path: 'ingredient-icons', label: 'Iconen importeren' }
 ];
