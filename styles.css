@@ -7550,3 +7550,86 @@ body.is-allergenen #app-nav { display: none; }
   color: var(--color-gray);
   margin-top: 0.8rem;
 }
+
+/* ============================================
+   AANRADERS-BEHEER (admin-dashboard tabblad)
+   Zie js/aanradersAdmin.js
+============================================ */
+.aa-tabel-wrap { overflow-x: auto; }
+.aa-tabel { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.aa-tabel th {
+  text-align: left; font-weight: 600; font-size: .75rem; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--color-gray);
+  padding: .5rem .6rem; border-bottom: 1px solid var(--color-light);
+}
+.aa-tabel td { padding: .7rem .6rem; border-bottom: 1px solid var(--color-light); vertical-align: middle; }
+.aa-tabel tr:last-child td { border-bottom: 0; }
+
+.aa-badge {
+  display: inline-block; font-size: .72rem; font-weight: 600; padding: 3px 9px;
+  border-radius: 999px; white-space: nowrap;
+}
+.aa-badge--aan { background: #eaf4ee; color: #4a7c59; }
+.aa-badge--uit { background: var(--color-light); color: var(--color-gray); }
+
+.aa-btn {
+  font-family: inherit; font-size: .82rem; font-weight: 500; cursor: pointer;
+  padding: .38rem .8rem; border-radius: var(--radius-md);
+  border: 1px solid var(--color-gray-light); background: var(--color-white);
+  color: var(--color-dark-light); transition: var(--transition);
+}
+.aa-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.aa-btn--primair {
+  background: var(--color-primary); border-color: var(--color-primary); color: #fff;
+}
+.aa-btn--primair:hover { background: var(--color-primary-dark); border-color: var(--color-primary-dark); color: #fff; }
+.aa-btn--stil { background: transparent; }
+.aa-btn--rood { color: var(--color-danger); border-color: #e6c9c5; }
+.aa-btn--rood:hover { background: var(--color-danger); border-color: var(--color-danger); color: #fff; }
+
+.aa-sectie {
+  font-size: .75rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--color-primary); margin: 1.75rem 0 .85rem;
+  padding-bottom: .4rem; border-bottom: 1px solid var(--color-light);
+}
+.aa-sectie:first-of-type { margin-top: .25rem; }
+
+.aa-veld { display: block; margin-bottom: 1rem; }
+.aa-veld > span {
+  display: block; font-size: .82rem; font-weight: 500;
+  color: var(--color-dark-light); margin-bottom: .3rem;
+}
+.aa-veld small { display: block; margin-top: .25rem; font-size: .75rem; }
+.aa-veld--check { display: flex; align-items: flex-end; padding-bottom: .5rem; }
+
+.aa-input {
+  width: 100%; font-family: inherit; font-size: .9rem; color: var(--color-dark);
+  padding: .55rem .75rem; border: 1px solid var(--color-gray-light);
+  border-radius: var(--radius-md); background: var(--color-white);
+}
+.aa-input:focus { outline: none; border-color: var(--color-primary); }
+textarea.aa-input { resize: vertical; line-height: 1.55; }
+
+.aa-rij { display: grid; grid-template-columns: 1fr; gap: 0 1rem; }
+@media (min-width: 700px) { .aa-rij { grid-template-columns: 1fr 1fr; } }
+
+.aa-checks { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; margin-bottom: 1rem; }
+.aa-check {
+  display: inline-flex; align-items: center; gap: .4rem;
+  font-size: .87rem; color: var(--color-dark-light); cursor: pointer;
+}
+.aa-check input { cursor: pointer; }
+
+.aa-foto-blok { display: flex; gap: 1.25rem; align-items: flex-start; margin-bottom: 1rem; flex-wrap: wrap; }
+.aa-foto-preview {
+  width: 130px; height: 130px; flex: none; border-radius: var(--radius-md);
+  background: var(--color-light); display: flex; align-items: center; justify-content: center;
+  overflow: hidden; font-size: .78rem;
+}
+.aa-foto-preview img { width: 100%; height: 100%; object-fit: cover; }
+
+.aa-acties {
+  display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
+  margin-top: 1.75rem; padding-top: 1.25rem; border-top: 1px solid var(--color-light);
+}
+.aa-acties .muted { font-size: .82rem; }

@@ -17,6 +17,7 @@
 // Publieke routes doen GEEN auth-check — dat is het hele punt.
 
 import { supabase } from './_lib/clients.mjs';
+import { requireAdmin, AuthError } from './_lib/auth.mjs';
 
 /* Pad waarop de pagina leeft. Wil je later /favorieten of /producten,
    dan pas je dit aan + de twee rewrites in vercel.json. Doe dat vóór je
@@ -111,21 +112,73 @@ function formatDatum(d) {
   return `${Number(m[3])} ${MAANDEN[Number(m[2]) - 1]} ${m[1]}`;
 }
 
+function parseBody(req) {
+  try {
+    return typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Pad-segmenten ná /aanraders/ (publiek) of /api/aanraders/ (admin).
+ * Beide lopen via een rewrite naar deze ene function.
+ */
 function getSegments(req) {
   const raw = req.query?.path;
   if (Array.isArray(raw) && raw.length > 0) return raw;
   if (typeof raw === 'string' && raw.length > 0) return raw.split('/').filter(Boolean);
   if (req.url) {
     const pathname = new URL(req.url, 'http://x').pathname;
-    const stripped = pathname.replace(/^\/aanraders\/?/, '');
+    const stripped = pathname
+      .replace(/^\/api\/aanraders\/?/, '')
+      .replace(/^\/aanraders\/?/, '');
     return stripped.split('/').filter(Boolean);
   }
   return [];
 }
 
+/** Kwam de request binnen op /api/aanraders...? Dan is het geen publieke pagina. */
+function isApiPad(req) {
+  if (!req.url) return false;
+  return new URL(req.url, 'http://x').pathname.startsWith('/api/aanraders');
+}
+
+const ADMIN_COLLECTIES = {
+  products:   'affiliate_products',
+  categories: 'affiliate_categories',
+  downloads:  'affiliate_downloads',
+};
+
 function matchRoute(req) {
   const segments = getSegments(req);
+  const method = req.method;
 
+  /* ---- admin ---- */
+  if (segments[0] === 'admin') {
+    // GET /admin/data — alles, inclusief onzichtbare items
+    if (segments.length === 2 && segments[1] === 'data' && method === 'GET') {
+      return { route: 'admin.data' };
+    }
+    // POST /admin/upload-url — signed URL voor een foto-upload
+    if (segments.length === 2 && segments[1] === 'upload-url' && method === 'POST') {
+      return { route: 'admin.uploadUrl' };
+    }
+    // POST /admin/<collectie>
+    if (segments.length === 2 && ADMIN_COLLECTIES[segments[1]] && method === 'POST') {
+      return { route: 'admin.create', params: { tabel: ADMIN_COLLECTIES[segments[1]] } };
+    }
+    // PUT|DELETE /admin/<collectie>/<id>
+    if (segments.length === 3 && ADMIN_COLLECTIES[segments[1]]) {
+      const params = { tabel: ADMIN_COLLECTIES[segments[1]], id: segments[2] };
+      if (method === 'PUT')    return { route: 'admin.update', params };
+      if (method === 'DELETE') return { route: 'admin.delete', params };
+    }
+    return { route: 'admin.notfound' };
+  }
+
+  /* ---- publiek ---- */
+  if (method !== 'GET' && method !== 'HEAD') return { route: 'methodNotAllowed' };
   if (segments.length === 0) return { route: 'overzicht' };
   if (segments.length === 2 && segments[0] === 'c') return { route: 'categorie', params: { slug: segments[1] } };
   if (segments.length === 2 && segments[0] === 'p') return { route: 'product',   params: { slug: segments[1] } };
@@ -238,6 +291,218 @@ async function fetchProduct(slug) {
   }
 
   return { p, cat, gerelateerd };
+}
+
+/* ---------------------------------------------------------------
+   ADMIN
+--------------------------------------------------------------- */
+
+const BUCKET = 'affiliate-images';
+
+/* Whitelist per tabel. Alles wat hier niet in staat wordt genegeerd —
+   zo kan een client nooit id, created_at of een onbekende kolom zetten. */
+const SCHRIJFBARE_VELDEN = {
+  affiliate_products: [
+    'slug', 'titel', 'categorie_id', 'subcategorie', 'merk',
+    'afbeelding_url', 'afbeeldingen',
+    'korte_beschrijving', 'lange_beschrijving', 'waarom_aanbevolen',
+    'voordelen', 'nadelen', 'faq', 'opmerking',
+    'affiliate_link', 'kortingscode', 'korting_tekst', 'prijs', 'prijs_indicatie',
+    'labels', 'leeftijd_vanaf_maanden', 'materiaal',
+    'relatie_type', 'commissie', 'persoonlijk_getest', 'zelf_in_gebruik',
+    'community_favoriet', 'laatst_gecontroleerd',
+    'favoriet_anneleen', 'favoriet_volgorde', 'zichtbaar', 'volgorde',
+  ],
+  affiliate_categories: [
+    'slug', 'titel', 'emoji', 'omschrijving', 'volgorde', 'zichtbaar', 'binnenkort',
+  ],
+  affiliate_downloads: [
+    'slug', 'titel', 'omschrijving', 'bestand_url', 'afbeelding_url',
+    'emoji', 'volgorde', 'zichtbaar',
+  ],
+};
+
+const RELATIE_WAARDEN = Object.keys(RELATIE_LABELS);
+const PRIJS_INDICATIES = ['€', '€€', '€€€'];
+
+class ValidatieError extends Error {}
+
+/** Lege string → null. Scheelt "" in de database waar null hoort. */
+function leegNaarNull(v) {
+  if (typeof v !== 'string') return v;
+  const t = v.trim();
+  return t === '' ? null : t;
+}
+
+/**
+ * Filter op de whitelist en valideer.
+ * Gooit ValidatieError met een Nederlandse melding die de admin te zien krijgt.
+ */
+function schoonPayload(tabel, body, { nieuw }) {
+  const toegestaan = SCHRIJFBARE_VELDEN[tabel];
+  const uit = {};
+
+  for (const veld of toegestaan) {
+    if (!Object.prototype.hasOwnProperty.call(body, veld)) continue;
+    uit[veld] = leegNaarNull(body[veld]);
+  }
+
+  if (nieuw && !uit.titel) throw new ValidatieError('Titel is verplicht.');
+
+  /* Slug: onderdeel van de publieke URL, dus streng. Bij een nieuw item
+     afleiden uit de titel als hij niet is meegegeven. */
+  if (nieuw && !uit.slug && uit.titel) uit.slug = slugify(uit.titel);
+  if (uit.slug !== undefined && uit.slug !== null) {
+    uit.slug = slugify(uit.slug);
+    if (!uit.slug) throw new ValidatieError('Slug mag niet leeg zijn.');
+  }
+  if (nieuw && !uit.slug) throw new ValidatieError('Slug is verplicht.');
+
+  if (tabel === 'affiliate_products') {
+    if (uit.relatie_type !== undefined && uit.relatie_type !== null
+        && !RELATIE_WAARDEN.includes(uit.relatie_type)) {
+      throw new ValidatieError('Onbekend relatietype.');
+    }
+    if (uit.prijs_indicatie !== undefined && uit.prijs_indicatie !== null
+        && !PRIJS_INDICATIES.includes(uit.prijs_indicatie)) {
+      throw new ValidatieError('Prijsindicatie moet €, €€ of €€€ zijn.');
+    }
+    /* Een affiliate-link die geen http(s) is, komt straks als dode of
+       gevaarlijke href op een publieke pagina. Nu tegenhouden. */
+    if (uit.affiliate_link && !safeUrl(uit.affiliate_link)) {
+      throw new ValidatieError('Affiliate-link moet met http:// of https:// beginnen.');
+    }
+    for (const veld of ['afbeeldingen', 'voordelen', 'nadelen', 'faq']) {
+      if (uit[veld] !== undefined && uit[veld] !== null && !Array.isArray(uit[veld])) {
+        throw new ValidatieError(`Veld ${veld} moet een lijst zijn.`);
+      }
+    }
+    if (uit.labels !== undefined && uit.labels !== null && !Array.isArray(uit.labels)) {
+      throw new ValidatieError('Labels moet een lijst zijn.');
+    }
+    for (const veld of ['leeftijd_vanaf_maanden', 'favoriet_volgorde', 'volgorde']) {
+      if (uit[veld] !== undefined && uit[veld] !== null && uit[veld] !== '') {
+        const n = Number(uit[veld]);
+        if (!Number.isFinite(n)) throw new ValidatieError(`Veld ${veld} moet een getal zijn.`);
+        uit[veld] = Math.round(n);
+      }
+    }
+    if (uit.prijs !== undefined && uit.prijs !== null && uit.prijs !== '') {
+      const n = Number(uit.prijs);
+      if (!Number.isFinite(n)) throw new ValidatieError('Prijs moet een getal zijn.');
+      uit.prijs = n;
+    }
+  }
+
+  if (tabel === 'affiliate_downloads' && uit.bestand_url && !safeUrl(uit.bestand_url)) {
+    throw new ValidatieError('Bestand-URL moet met http:// of https:// beginnen.');
+  }
+
+  return uit;
+}
+
+/** Titel → URL-veilige slug. */
+function slugify(v) {
+  return String(v)
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')   // accenten weg
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Alles ophalen, inclusief onzichtbare items — dit is de beheerweergave. */
+async function fetchAdminData() {
+  const [cats, prods, downloads] = await Promise.all([
+    supabase.from('affiliate_categories').select('*').order('volgorde', { ascending: true }),
+    supabase.from('affiliate_products').select('*').order('volgorde', { ascending: true }),
+    supabase.from('affiliate_downloads').select('*').order('volgorde', { ascending: true }),
+  ]);
+  if (cats.error) throw cats.error;
+  if (prods.error) throw prods.error;
+  if (downloads.error) throw downloads.error;
+
+  return {
+    categorieen: cats.data || [],
+    producten: prods.data || [],
+    downloads: downloads.data || [],
+    relatie_labels: RELATIE_LABELS,
+  };
+}
+
+function newRandomId() {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+/** Signed upload-URL + de publieke URL die na de upload geldig is. */
+async function createUploadUrl() {
+  const path = `${newRandomId()}.jpg`;
+  const { data, error } = await supabase.storage.from(BUCKET).createSignedUploadUrl(path);
+  if (error) throw new Error('Upload URL: ' + error.message);
+  const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  return { path, uploadUrl: data.signedUrl, token: data.token, publicUrl: pub.publicUrl };
+}
+
+function json(res, status, body) {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store');
+  res.statusCode = status;
+  res.end(JSON.stringify(body));
+}
+
+async function handleAdmin(req, res, route, params) {
+  await requireAdmin(req);
+
+  if (route === 'admin.data') {
+    return json(res, 200, await fetchAdminData());
+  }
+
+  if (route === 'admin.uploadUrl') {
+    return json(res, 200, await createUploadUrl());
+  }
+
+  if (route === 'admin.create') {
+    const body = parseBody(req);
+    if (body === null) return json(res, 400, { error: 'Ongeldige JSON.' });
+    const payload = schoonPayload(params.tabel, body, { nieuw: true });
+    const { data, error } = await supabase.from(params.tabel).insert(payload).select().single();
+    if (error) return json(res, 400, { error: dbFoutmelding(error) });
+    return json(res, 201, data);
+  }
+
+  if (route === 'admin.update') {
+    if (!UUID_RE.test(params.id)) return json(res, 400, { error: 'Ongeldig id.' });
+    const body = parseBody(req);
+    if (body === null) return json(res, 400, { error: 'Ongeldige JSON.' });
+    const payload = schoonPayload(params.tabel, body, { nieuw: false });
+    if (Object.keys(payload).length === 0) {
+      return json(res, 400, { error: 'Niets om op te slaan.' });
+    }
+    const { data, error } = await supabase.from(params.tabel)
+      .update(payload).eq('id', params.id).select().single();
+    if (error) return json(res, 400, { error: dbFoutmelding(error) });
+    if (!data) return json(res, 404, { error: 'Niet gevonden.' });
+    return json(res, 200, data);
+  }
+
+  if (route === 'admin.delete') {
+    if (!UUID_RE.test(params.id)) return json(res, 400, { error: 'Ongeldig id.' });
+    const { error } = await supabase.from(params.tabel).delete().eq('id', params.id);
+    if (error) return json(res, 400, { error: dbFoutmelding(error) });
+    return json(res, 200, { ok: true });
+  }
+
+  return json(res, 404, { error: 'Onbekende admin-route.' });
+}
+
+/** Postgres-fouten omzetten naar iets dat een mens begrijpt. */
+function dbFoutmelding(error) {
+  if (error.code === '23505') return 'Die slug bestaat al. Kies een andere.';
+  if (error.code === '23503') return 'De gekozen categorie bestaat niet (meer).';
+  if (error.code === '23514') return 'Een waarde is niet toegestaan (check de leeftijd, prijs of het relatietype).';
+  return error.message || 'Opslaan mislukt.';
 }
 
 /* ---------------------------------------------------------------
@@ -831,14 +1096,33 @@ function getOrigin(req) {
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') { res.statusCode = 204; return res.end(); }
-  if (req.method !== 'GET' && req.method !== 'HEAD') {
+
+  const origin = getOrigin(req);
+  const { route, params } = matchRoute(req);
+
+  /* ---- admin: JSON, achter requireAdmin ---- */
+  if (route.startsWith('admin.')) {
+    try {
+      return await handleAdmin(req, res, route, params);
+    } catch (err) {
+      if (err instanceof AuthError) return json(res, err.status, { error: err.message });
+      if (err instanceof ValidatieError) return json(res, 400, { error: err.message });
+      console.error('[aanraders admin]', err);
+      return json(res, 500, { error: 'Er ging iets mis bij het opslaan.' });
+    }
+  }
+
+  if (route === 'methodNotAllowed') {
     res.statusCode = 405;
     res.setHeader('Allow', 'GET, HEAD');
     return res.end('Method not allowed');
   }
 
-  const origin = getOrigin(req);
-  const { route, params } = matchRoute(req);
+  /* De publieke pagina hoort op /aanraders te staan, niet op /api/aanraders.
+     Anders zou dezelfde HTML op twee URL's leven (duplicate content). */
+  if (isApiPad(req)) {
+    return json(res, 404, { error: 'Niet gevonden.' });
+  }
 
   try {
     if (route === 'overzicht') {
