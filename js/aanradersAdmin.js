@@ -386,9 +386,12 @@ export async function zetZichtbaar(id, zichtbaar) {
 --------------------------------------------------------------- */
 
 export function openBeheerEditor({ onKlaar }) {
-  /* Op volgorde tonen, zodat de lijst hier dezelfde volgorde heeft als de
-     pagina. Anders is het cijfer helemaal niet te plaatsen. */
-  const opVolgorde = [...beheer.categorieen].sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0));
+  /* Zelfde sortering als de server: volgorde, en bij gelijke stand op titel.
+     Zonder die tweede sleutel is de volgorde bij een gelijkspel willekeurig
+     en zou dit scherm iets anders tonen dan de pagina. */
+  const opVolgorde = [...beheer.categorieen].sort((a, b) =>
+    (a.volgorde ?? 0) - (b.volgorde ?? 0) || String(a.titel).localeCompare(String(b.titel), 'nl')
+  );
 
   const catRijen = opVolgorde.map((c, i) => `
     <tr>
@@ -429,6 +432,9 @@ export function openBeheerEditor({ onKlaar }) {
           laagste getal komt bovenaan. De lijst hieronder staat al in die volgorde, zodat je
           ziet wat je verandert. Wil je een categorie hogerop? Geef hem een lager getal dan
           de categorie die er nu boven staat.</p>
+          <p>Hebben twee categorieën <strong>hetzelfde getal</strong>, dan komt de
+          alfabetisch eerste bovenaan. Wil je zelf bepalen welke voorgaat, geef ze dan
+          verschillende getallen.</p>
           <p><strong>Binnenkort</strong> toont een "binnenkort"-blok in plaats van de
           producten. Een categorie zonder zichtbare producten toont dat blok sowieso.</p>
           <p><strong>Zichtbaar</strong> uit betekent dat de categorie helemaal van de pagina

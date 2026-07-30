@@ -201,17 +201,17 @@ async function fetchPaginaData() {
     supabase.from('affiliate_categories')
       .select('id, slug, titel, emoji, omschrijving, volgorde, binnenkort')
       .eq('zichtbaar', true)
-      .order('volgorde', { ascending: true }),
+      .order('volgorde', { ascending: true }).order('titel', { ascending: true }),
 
     supabase.from('affiliate_products')
       .select('*')
       .eq('zichtbaar', true)
-      .order('volgorde', { ascending: true }),
+      .order('volgorde', { ascending: true }).order('titel', { ascending: true }),
 
     supabase.from('affiliate_downloads')
       .select('slug, titel, omschrijving, bestand_url, emoji, volgorde')
       .eq('zichtbaar', true)
-      .order('volgorde', { ascending: true }),
+      .order('volgorde', { ascending: true }).order('titel', { ascending: true }),
   ]);
 
   if (cats.error)      throw cats.error;
@@ -242,7 +242,7 @@ async function fetchCategorie(slug) {
     .select('*')
     .eq('categorie_id', cat.id)
     .eq('zichtbaar', true)
-    .order('volgorde', { ascending: true });
+    .order('volgorde', { ascending: true }).order('titel', { ascending: true });
 
   if (pErr) throw pErr;
   return { cat, producten: producten || [] };
@@ -280,7 +280,7 @@ async function fetchProduct(slug) {
     .eq('zichtbaar', true)
     .eq('categorie_id', p.categorie_id)
     .neq('id', p.id)
-    .order('volgorde', { ascending: true })
+    .order('volgorde', { ascending: true }).order('titel', { ascending: true })
     .limit(3);
 
   let gerelateerd = zelfde || [];
@@ -291,7 +291,7 @@ async function fetchProduct(slug) {
       .select('*')
       .eq('zichtbaar', true)
       .not('id', 'in', `(${uitsluiten.join(',')})`)
-      .order('volgorde', { ascending: true })
+      .order('volgorde', { ascending: true }).order('titel', { ascending: true })
       .limit(3 - gerelateerd.length);
     gerelateerd = gerelateerd.concat(rest || []);
   }
@@ -422,9 +422,9 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 /** Alles ophalen, inclusief onzichtbare items — dit is de beheerweergave. */
 async function fetchAdminData() {
   const [cats, prods, downloads] = await Promise.all([
-    supabase.from('affiliate_categories').select('*').order('volgorde', { ascending: true }),
-    supabase.from('affiliate_products').select('*').order('volgorde', { ascending: true }),
-    supabase.from('affiliate_downloads').select('*').order('volgorde', { ascending: true }),
+    supabase.from('affiliate_categories').select('*').order('volgorde', { ascending: true }).order('titel', { ascending: true }),
+    supabase.from('affiliate_products').select('*').order('volgorde', { ascending: true }).order('titel', { ascending: true }),
+    supabase.from('affiliate_downloads').select('*').order('volgorde', { ascending: true }).order('titel', { ascending: true }),
   ]);
   if (cats.error) throw cats.error;
   if (prods.error) throw prods.error;
@@ -821,9 +821,14 @@ ${body}
 function bodyOverzicht(data, ctx) {
   const { categorieen, producten, downloads } = data;
 
+  /* Ook hier een tweede sleutel: twee favorieten met dezelfde
+     favoriet_volgorde zouden anders in willekeurige volgorde staan. */
   const favorieten = producten
     .filter(p => p.favoriet_anneleen)
-    .sort((a, b) => (a.favoriet_volgorde ?? 999) - (b.favoriet_volgorde ?? 999))
+    .sort((a, b) =>
+      (a.favoriet_volgorde ?? 999) - (b.favoriet_volgorde ?? 999)
+      || String(a.titel).localeCompare(String(b.titel), 'nl')
+    )
     .slice(0, 10);
 
   const favSectie = favorieten.length ? `

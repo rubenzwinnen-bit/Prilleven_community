@@ -109,7 +109,7 @@ async function laadInhoud(view, { scroll = false } = {}) {
 ---------------------------------------- */
 async function bouwBeheerbalk(view) {
   if (!Admin) {
-    Admin = await import('../aanradersAdmin.js?v=3.2.1');
+    Admin = await import('../aanradersAdmin.js?v=3.2.2');
   }
   try {
     await Admin.laadBeheerdata();
