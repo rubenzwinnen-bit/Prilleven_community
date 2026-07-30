@@ -31,8 +31,14 @@ let huidig = { soort: 'overzicht', slug: null };
    RENDER — skelet, inhoud komt asynchroon
 ---------------------------------------- */
 export function render() {
+  /* Balk en inhoud staan bewust in aparte containers. De balk mag niet
+     mee vervangen worden bij het herladen van de inhoud — anders springt
+     de pagina omhoog zodra je "Bewerken tonen" aanzet. */
   return `<div class="aanraders" id="aanraders-view">
-    <div class="aanraders-laden">Aanraders laden…</div>
+    <div id="aanraders-beheer"></div>
+    <div id="aanraders-inhoud">
+      <div class="aanraders-laden">Aanraders laden…</div>
+    </div>
   </div>`;
 }
 
@@ -44,10 +50,22 @@ export async function init(soort = 'overzicht', slug = null) {
   const view = document.getElementById('aanraders-view');
   if (!view) return;
 
+  if (!view.dataset.wired) {
+    wireInteracties(view);
+    view.dataset.wired = '1';
+  }
+
+  /* Beheerbalk eerst: die is er dan al voor de inhoud binnenkomt en
+     hoeft daarna niet meer opnieuw opgebouwd te worden. */
+  if (Store.isAdmin()) await bouwBeheerbalk(view);
+
   await laadInhoud(view, { scroll: true });
 }
 
 async function laadInhoud(view, { scroll = false } = {}) {
+  const doel = view.querySelector('#aanraders-inhoud');
+  if (!doel) return;
+
   let url = FRAGMENT_URL;
   if (huidig.soort === 'product')   url += '&p=' + encodeURIComponent(huidig.slug);
   if (huidig.soort === 'categorie') url += '&c=' + encodeURIComponent(huidig.slug);
@@ -57,7 +75,7 @@ async function laadInhoud(view, { scroll = false } = {}) {
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
-      view.innerHTML = `
+      doel.innerHTML = `
         <div class="wrap">
           <div class="empty">
             <h1>Niet gevonden</h1>
@@ -68,17 +86,13 @@ async function laadInhoud(view, { scroll = false } = {}) {
       return;
     }
 
-    view.innerHTML = data.html;
+    doel.innerHTML = data.html;
     view.classList.toggle('heeft-balk', Boolean(data.heeftBalk));
-    if (!view.dataset.wired) {
-      wireInteracties(view);
-      view.dataset.wired = '1';
-    }
     if (scroll) window.scrollTo(0, 0);
 
-    if (Store.isAdmin()) await toonBeheer(view);
+    if (Store.isAdmin() && Admin && beheerAan) markeerBewerkbaar(view);
   } catch {
-    view.innerHTML = `
+    doel.innerHTML = `
       <div class="wrap">
         <div class="empty">
           <h1>Er ging iets mis</h1>
@@ -94,44 +108,69 @@ async function laadInhoud(view, { scroll = false } = {}) {
    en een bewerkknop op elke tegel. Geen tweede
    weergave, dus niets kan uiteenlopen.
 ---------------------------------------- */
-async function toonBeheer(view) {
+async function bouwBeheerbalk(view) {
   if (!Admin) {
-    Admin = await import('../aanradersAdmin.js?v=3.1.7');
+    Admin = await import('../aanradersAdmin.js?v=3.1.8');
   }
   try {
     await Admin.laadBeheerdata();
   } catch {
     return;   // geen admin-rechten op de server: stil laten, pagina blijft gewoon werken
   }
+  vulBeheerbalk(view);
+}
+
+/** Alleen de balk hertekenen — raakt de pagina-inhoud niet aan. */
+function vulBeheerbalk(view) {
+  const mount = view.querySelector('#aanraders-beheer');
+  if (!mount || !Admin) return;
 
   const beheer = Admin.getBeheerdata();
   const verborgen = beheer.producten.filter(p => !p.zichtbaar).length;
 
-  const balk = document.createElement('div');
-  balk.className = 'aa-beheerbalk' + (beheerAan ? ' is-aan' : '');
-  balk.innerHTML = `
-    <div class="wrap aa-beheerbalk-inner">
-      <span class="aa-beheer-titel">Beheer</span>
-      <label class="aa-schakelaar">
-        <input type="checkbox" id="aa-beheer-toggle" ${beheerAan ? 'checked' : ''}>
-        <span>Bewerken tonen</span>
-      </label>
-      <span class="muted aa-beheer-info">
-        ${beheer.producten.length} producten${verborgen ? ` · ${verborgen} verborgen` : ''}
-      </span>
-      <button type="button" class="aa-btn" data-beheer="categorieen">Categorieën &amp; downloads</button>
-      <button type="button" class="aa-btn aa-btn--primair" data-beheer="nieuw">+ Nieuw product</button>
-    </div>`;
-  view.insertBefore(balk, view.firstChild);
+  /* Op een productdetailpagina is het product zelf geen tegel. Zonder deze
+     knop zou je daar niets kunnen bewerken. */
+  const ditProduct = huidig.soort === 'product'
+    ? `<button type="button" class="aa-btn aa-btn--primair" data-beheer="bewerk" data-slug="${escapeTekst(huidig.slug)}">Dit product bewerken</button>`
+    : '';
 
-  if (beheerAan) markeerTegels(view, beheer);
+  mount.innerHTML = `
+    <div class="aa-beheerbalk${beheerAan ? ' is-aan' : ''}">
+      <div class="wrap aa-beheerbalk-inner">
+        <span class="aa-beheer-titel">Beheer</span>
+        <label class="aa-schakelaar">
+          <input type="checkbox" id="aa-beheer-toggle" ${beheerAan ? 'checked' : ''}>
+          <span>Bewerken tonen</span>
+        </label>
+        <span class="muted aa-beheer-info">
+          ${beheer.producten.length} producten${verborgen ? ` · ${verborgen} verborgen` : ''}
+        </span>
+        ${ditProduct}
+        <button type="button" class="aa-btn" data-beheer="categorieen">Categorieën &amp; downloads</button>
+        <button type="button" class="aa-btn aa-btn--primair" data-beheer="nieuw">+ Nieuw product</button>
+      </div>
+    </div>`;
+}
+
+/** Bewerkknoppen aan- of uitzetten zonder de inhoud opnieuw op te halen. */
+function zetBewerkModus(view, aan) {
+  beheerAan = aan;
+  vulBeheerbalk(view);
+  if (aan) {
+    markeerBewerkbaar(view);
+  } else {
+    view.querySelectorAll('.aa-kaart-knoppen').forEach(el => el.remove());
+    view.querySelectorAll('.aa-bewerkbaar').forEach(el => el.classList.remove('aa-bewerkbaar'));
+    view.querySelectorAll('.aa-verborgen').forEach(el => el.remove());
+  }
 }
 
 /**
  * Zet een bewerkknop op elke tegel, en toon verborgen producten die
  * anders niet in de fragment-HTML zitten.
  */
-function markeerTegels(view, beheer) {
+function markeerBewerkbaar(view) {
+  const beheer = Admin.getBeheerdata();
   view.querySelectorAll('.card[data-slug]').forEach(kaart => {
     if (kaart.querySelector('.aa-kaart-knoppen')) return;
     const slug = kaart.dataset.slug;
@@ -170,7 +209,9 @@ function markeerTegels(view, beheer) {
           <button type="button" class="aa-kaart-knop" data-beheer="zichtbaar" data-slug="${escapeTekst(p.slug)}">Tonen</button>
         </div>`).join('')}
     </div>`;
-  view.appendChild(blok);
+  /* In de inhoud-container, niet in de view: zo verdwijnt het blok vanzelf
+     bij het herladen van de pagina en blijft het niet hangen op een detail. */
+  view.querySelector('#aanraders-inhoud')?.appendChild(blok);
 }
 
 /* ----------------------------------------
@@ -195,17 +236,26 @@ function wireInteracties(view) {
     if (thumb) return wisselFoto(view, thumb);
   });
 
+  /* Omschakelen doet géén nieuwe fetch: de knoppen worden ter plekke
+     toegevoegd of weggehaald. Anders verdween de balk even en sprong de
+     pagina omhoog. */
   view.addEventListener('change', (e) => {
     if (e.target.id !== 'aa-beheer-toggle') return;
-    beheerAan = e.target.checked;
-    laadInhoud(view);
+    zetBewerkModus(view, e.target.checked);
   });
 }
 
 async function beheerActie(view, btn) {
   if (!Admin) return;
   const soort = btn.dataset.beheer;
-  const herlaad = () => laadInhoud(view);
+
+  /* Na een wijziging: eerst de beheerdata verversen (aantallen, verborgen
+     items), dan de balk en de pagina-inhoud. */
+  const herlaad = async () => {
+    await Admin.laadBeheerdata();
+    vulBeheerbalk(view);
+    await laadInhoud(view);
+  };
 
   if (soort === 'nieuw') {
     return Admin.openProductEditor(null, { onKlaar: herlaad });
