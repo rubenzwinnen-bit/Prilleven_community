@@ -7647,37 +7647,44 @@ textarea.aa-input { resize: vertical; line-height: 1.55; }
   background: #2b2b2b;
   color: #e8e8e8;
   border-radius: var(--radius-lg);
-  margin-bottom: 1.75rem;
-  box-shadow: var(--shadow-sm);
+  margin-bottom: 2rem;
+  box-shadow: var(--shadow-md);
 }
 /* Eigen padding: .wrap heeft binnen .aanraders geen zijpadding, dus
    daarop leunen zou de tekst tegen de afgeronde rand duwen. */
 .aa-beheerbalk-inner {
-  display: flex; align-items: center; gap: .5rem 1.25rem; flex-wrap: wrap;
-  padding: .9rem 1.5rem;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem 2rem; flex-wrap: wrap;
+  padding: 1.35rem 1.75rem;
 }
+.aa-beheer-links { display: flex; flex-direction: column; gap: .2rem; min-width: 0; }
 .aa-beheer-titel {
-  display: inline-flex; align-items: center; gap: .4rem;
-  font-size: .7rem; font-weight: 700; letter-spacing: .1em;
+  display: inline-flex; align-items: center; gap: .5rem;
+  font-size: .72rem; font-weight: 700; letter-spacing: .12em;
   text-transform: uppercase; color: var(--color-primary-light);
-  padding-right: 1.25rem; margin-right: .25rem;
-  border-right: 1px solid #454545;
 }
 .aa-beheer-titel::before {
   content: ""; width: 7px; height: 7px; border-radius: 50%;
-  background: var(--color-primary-light);
+  background: var(--color-primary-light); flex: none;
 }
-.aa-schakelaar {
-  display: inline-flex; align-items: center; gap: .5rem;
-  font-size: .88rem; cursor: pointer; user-select: none;
+.aa-beheer-info { font-size: .85rem; color: #9d9d9d; }
+
+.aa-beheer-acties { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+/* Knoppen in de balk krijgen meer lucht dan de standaard .aa-btn */
+.aa-beheerbalk .aa-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: .6rem 1.15rem; font-size: .85rem; border-radius: 999px; white-space: nowrap;
 }
-.aa-schakelaar input { cursor: pointer; width: 15px; height: 15px; accent-color: var(--color-primary); }
-.aa-beheer-info { font-size: .8rem; color: #9d9d9d; margin-right: auto; }
-.aa-beheer-acties { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+
+@media (max-width: 700px) {
+  .aa-beheerbalk-inner { padding: 1.1rem 1.25rem; }
+  .aa-beheer-acties { width: 100%; }
+  .aa-beheerbalk .aa-btn { flex: 1 1 auto; justify-content: center; text-align: center; }
+}
 
 /* Bewerkknop op het koopblok van een productdetail */
 .aa-inline-bewerk {
-  display: block; width: 100%; margin-bottom: 1rem;
+  display: block; width: 100%; margin-bottom: 1.5rem;
   font-family: inherit; font-size: .85rem; font-weight: 500; cursor: pointer;
   padding: .6rem 1rem; border-radius: var(--radius-md);
   border: 1px dashed var(--color-primary); background: #fdf8f4; color: var(--color-primary-dark);
