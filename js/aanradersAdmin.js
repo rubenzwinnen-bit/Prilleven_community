@@ -386,11 +386,18 @@ export async function zetZichtbaar(id, zichtbaar) {
 --------------------------------------------------------------- */
 
 export function openBeheerEditor({ onKlaar }) {
-  const catRijen = beheer.categorieen.map(c => `
+  /* Op volgorde tonen, zodat de lijst hier dezelfde volgorde heeft als de
+     pagina. Anders is het cijfer helemaal niet te plaatsen. */
+  const opVolgorde = [...beheer.categorieen].sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0));
+
+  const catRijen = opVolgorde.map((c, i) => `
     <tr>
+      <td style="width:34px" class="muted">${i + 1}.</td>
       <td>${escapeHtml(c.emoji || '')} <strong>${escapeHtml(c.titel)}</strong>
         <div class="muted" style="font-size:.78rem">/${escapeHtml(c.slug)}</div></td>
-      <td style="width:90px"><input type="number" class="aa-input aa-cat-volgorde" data-id="${c.id}" value="${c.volgorde ?? 0}"></td>
+      <td style="width:110px">
+        <input type="number" class="aa-input aa-cat-volgorde" data-id="${c.id}" value="${c.volgorde ?? 0}">
+      </td>
       <td><label class="aa-check"><input type="checkbox" class="aa-cat-binnenkort" data-id="${c.id}" ${c.binnenkort ? 'checked' : ''}> binnenkort</label></td>
       <td><label class="aa-check"><input type="checkbox" class="aa-cat-zichtbaar" data-id="${c.id}" ${c.zichtbaar ? 'checked' : ''}> zichtbaar</label></td>
       <td><button type="button" class="aa-btn" data-actie="cat-opslaan" data-id="${c.id}">Opslaan</button></td>
@@ -417,11 +424,24 @@ export function openBeheerEditor({ onKlaar }) {
       </div>
       <div class="aa-editor-body">
         <div class="aa-sectie">Categorieën</div>
-        <p class="muted" style="font-size:.85rem;margin-bottom:.75rem">
-          "Binnenkort" toont een placeholder in plaats van producten. Een categorie zonder
-          zichtbare producten toont dat blok sowieso.
-        </p>
-        <div class="aa-tabel-wrap"><table class="aa-tabel"><tbody>${catRijen}</tbody></table></div>
+        <div class="aa-uitleg">
+          <p><strong>Volgorde</strong> bepaalt waar de categorie op de pagina staat: het
+          laagste getal komt bovenaan. De lijst hieronder staat al in die volgorde, zodat je
+          ziet wat je verandert. Wil je een categorie hogerop? Geef hem een lager getal dan
+          de categorie die er nu boven staat.</p>
+          <p><strong>Binnenkort</strong> toont een "binnenkort"-blok in plaats van de
+          producten. Een categorie zonder zichtbare producten toont dat blok sowieso.</p>
+          <p><strong>Zichtbaar</strong> uit betekent dat de categorie helemaal van de pagina
+          verdwijnt, inclusief haar producten.</p>
+          <p class="aa-uitleg-let">Elke rij heeft een eigen Opslaan-knop — wijzig je meerdere
+          rijen, sla ze dan één voor één op.</p>
+        </div>
+        <div class="aa-tabel-wrap"><table class="aa-tabel">
+          <thead><tr>
+            <th></th><th>Categorie</th><th>Volgorde</th><th>Weergave</th><th>Op de site</th><th></th>
+          </tr></thead>
+          <tbody>${catRijen}</tbody>
+        </table></div>
 
         <div class="aa-sectie" style="display:flex;align-items:center;gap:1rem">
           Gratis downloads

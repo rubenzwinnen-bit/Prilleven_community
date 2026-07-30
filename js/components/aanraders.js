@@ -110,7 +110,7 @@ async function laadInhoud(view, { scroll = false } = {}) {
 ---------------------------------------- */
 async function bouwBeheerbalk(view) {
   if (!Admin) {
-    Admin = await import('../aanradersAdmin.js?v=3.1.8');
+    Admin = await import('../aanradersAdmin.js?v=3.1.9');
   }
   try {
     await Admin.laadBeheerdata();
@@ -136,18 +136,20 @@ function vulBeheerbalk(view) {
 
   mount.innerHTML = `
     <div class="aa-beheerbalk${beheerAan ? ' is-aan' : ''}">
-      <div class="wrap aa-beheerbalk-inner">
+      <div class="aa-beheerbalk-inner">
         <span class="aa-beheer-titel">Beheer</span>
         <label class="aa-schakelaar">
           <input type="checkbox" id="aa-beheer-toggle" ${beheerAan ? 'checked' : ''}>
           <span>Bewerken tonen</span>
         </label>
-        <span class="muted aa-beheer-info">
-          ${beheer.producten.length} producten${verborgen ? ` · ${verborgen} verborgen` : ''}
+        <span class="aa-beheer-info">
+          ${beheer.producten.length} producten${verborgen ? ` &middot; ${verborgen} verborgen` : ''}
         </span>
-        ${ditProduct}
-        <button type="button" class="aa-btn" data-beheer="categorieen">Categorieën &amp; downloads</button>
-        <button type="button" class="aa-btn aa-btn--primair" data-beheer="nieuw">+ Nieuw product</button>
+        <div class="aa-beheer-acties">
+          ${ditProduct}
+          <button type="button" class="aa-btn" data-beheer="categorieen">Categorieën &amp; downloads</button>
+          <button type="button" class="aa-btn aa-btn--primair" data-beheer="nieuw">+ Nieuw product</button>
+        </div>
       </div>
     </div>`;
 }
@@ -171,6 +173,20 @@ function zetBewerkModus(view, aan) {
  */
 function markeerBewerkbaar(view) {
   const beheer = Admin.getBeheerdata();
+
+  /* Productdetail: het hoofdproduct is geen tegel, dus zet de knop bovenaan
+     het koopblok. Anders zie je op zo'n pagina nergens hoe je bewerkt. */
+  const buy = view.querySelector('.buy');
+  if (buy && huidig.soort === 'product' && !buy.querySelector('.aa-inline-bewerk')) {
+    const knop = document.createElement('button');
+    knop.type = 'button';
+    knop.className = 'aa-inline-bewerk';
+    knop.dataset.beheer = 'bewerk';
+    knop.dataset.slug = huidig.slug;
+    knop.textContent = '✎ Dit product bewerken';
+    buy.insertBefore(knop, buy.firstChild);
+  }
+
   view.querySelectorAll('.card[data-slug]').forEach(kaart => {
     if (kaart.querySelector('.aa-kaart-knoppen')) return;
     const slug = kaart.dataset.slug;
