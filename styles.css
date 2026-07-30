@@ -7553,8 +7553,11 @@ body.is-aanraders #app-nav { display: none; }
 }
 
 /* ============================================
-   AANRADERS-BEHEER (admin-dashboard tabblad)
-   Zie js/aanradersAdmin.js
+   AANRADERS-BEHEER — formulier-onderdelen
+   Gebruikt door de editor-overlay op de
+   aanraders-pagina zelf. Zie js/aanradersAdmin.js.
+   (Stond eerder in een admin-dashboard-tabblad;
+   dat is verplaatst naar de pagina zelf.)
 ============================================ */
 .aa-tabel-wrap { overflow-x: auto; }
 .aa-tabel { width: 100%; border-collapse: collapse; font-size: .9rem; }
