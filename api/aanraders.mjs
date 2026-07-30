@@ -4,17 +4,23 @@
 // indexeren en elke categorie/product een echte URL heeft. De rest van de
 // site is een hash-router achter login; die kan dat niet.
 //
-// Catch-all via rewrite in vercel.json:
-//   /aanraders          → /api/aanraders
-//   /aanraders/:path*   → /api/aanraders
+// Catch-all via rewrites in vercel.json:
+//   /aanraders           → /api/aanraders
+//   /aanraders/:path*    → /api/aanraders
+//   /api/aanraders/:path* → /api/aanraders   (admin + fragment)
 //
-// Routes (zie matchRoute):
-//   GET /aanraders              → overzichtspagina
-//   GET /aanraders/c/:slug      → categoriepagina        (stap 6)
-//   GET /aanraders/p/:slug      → productdetailpagina    (stap 6)
+// Drie soorten output uit één bestand:
 //
-// Admin-CRUD komt later in dit bestand (stap 7), achter requireAdmin().
-// Publieke routes doen GEEN auth-check — dat is het hele punt.
+//   1. Publieke HTML — GET /aanraders, /aanraders/c/:slug, /aanraders/p/:slug
+//      Geen auth. Dat is het hele punt: indexeerbaar en deelbaar.
+//
+//   2. Fragment voor de app — GET /api/aanraders?fragment=1[&c=|&p=]
+//      Exact dezelfde HTML, maar zonder <html>/header/footer en met
+//      hash-links, zodat de SPA het kan injecteren. Bewust hetzelfde
+//      render-pad als (1): één renderer, dus de in-app weergave kan niet
+//      uiteenlopen met de publieke pagina.
+//
+//   3. Admin-JSON — /api/aanraders/admin/*, achter requireAdmin().
 
 import { supabase } from './_lib/clients.mjs';
 import { requireAdmin, AuthError } from './_lib/auth.mjs';
@@ -25,7 +31,7 @@ import { requireAdmin, AuthError } from './_lib/auth.mjs';
 const BASE = '/aanraders';
 
 /* Cache-buster voor aanraders.css — bump bij CSS-wijziging. */
-const CSS_VERSION = '3.1.4';
+const CSS_VERSION = '3.1.6';
 
 /* Vier eigen producten. Bewust hardcoded: ze wijzigen zelden en horen
    niet tussen de affiliateproducten in de database te staan. */
@@ -531,14 +537,34 @@ function renderLabels(p) {
   return uit.length ? `<div class="card-labels">${uit.join('')}</div>` : '';
 }
 
-/** URL van de detailpagina van een product. */
-function productHref(p) {
-  return `${BASE}/p/${encodeURIComponent(p.slug)}`;
+/**
+ * Links verschillen per context:
+ *   publieke pagina → /aanraders/p/slug   (echte URL, indexeerbaar)
+ *   in de app       → #/aanraders/p/slug  (hash-route, blijft in de SPA)
+ * Daarom krijgt elke render-functie een ctx mee.
+ */
+const CTX_PUBLIEK = { inApp: false };
+const CTX_APP = { inApp: true };
+
+function productHref(p, ctx) {
+  return ctx.inApp
+    ? `#/aanraders/p/${encodeURIComponent(p.slug)}`
+    : `${BASE}/p/${encodeURIComponent(p.slug)}`;
 }
 
-function renderKaart(p) {
+function categorieHref(slug, ctx) {
+  return ctx.inApp
+    ? `#/aanraders/c/${encodeURIComponent(slug)}`
+    : `${BASE}/c/${encodeURIComponent(slug)}`;
+}
+
+function overzichtHref(ctx) {
+  return ctx.inApp ? '#/aanraders' : BASE;
+}
+
+function renderKaart(p, ctx = CTX_PUBLIEK) {
   const link = safeUrl(p.affiliate_link);
-  const detail = productHref(p);
+  const detail = productHref(p, ctx);
   const media = p.afbeelding_url
     ? `<img src="${esc(p.afbeelding_url)}" alt="${esc(p.titel)}" loading="lazy">`
     : '<span class="ph">🛍️</span>';
@@ -593,7 +619,7 @@ function renderKaart(p) {
       </article>`;
 }
 
-function renderCategorie(cat, producten) {
+function renderCategorie(cat, producten, ctx = CTX_PUBLIEK) {
   const eigen = producten.filter(p => p.categorie_id === cat.id);
   const titel = `${cat.emoji ? esc(cat.emoji) + ' ' : ''}${esc(cat.titel)}`;
 
@@ -607,7 +633,7 @@ function renderCategorie(cat, producten) {
     </div>`;
   }
 
-  const href = `${BASE}/c/${encodeURIComponent(cat.slug)}`;
+  const href = categorieHref(cat.slug, ctx);
 
   return `
     <div class="cat">
@@ -616,7 +642,7 @@ function renderCategorie(cat, producten) {
         <a href="${esc(href)}">Alles bekijken →</a>
       </div>
       ${cat.omschrijving ? `<p class="section-head-p">${esc(cat.omschrijving)}</p>` : ''}
-      <div class="grid">${eigen.map(renderKaart).join('')}</div>
+      <div class="grid">${eigen.map(p => renderKaart(p, ctx)).join('')}</div>
     </div>`;
 }
 
@@ -646,9 +672,9 @@ function renderDownloads(downloads) {
   </section>`;
 }
 
-function renderPrilLeven() {
+function renderPrilLeven(ctx = CTX_PUBLIEK) {
   const items = PRIL_LEVEN_ITEMS.map(i => `
-        <a href="${esc(i.href)}" class="pl-item">
+        <a href="${esc(ctx.inApp ? '#/' : i.href)}" class="pl-item">
           <h4>${esc(i.titel)}</h4>
           <p>${esc(i.tekst)}</p>
           <span>Ontdek →</span>
@@ -762,7 +788,7 @@ ${afbeelding ? `<meta property="og:image" content="${esc(afbeelding)}">` : ''}
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/aanraders.css?v=${CSS_VERSION}">
 </head>
-<body${bodyClass ? ` class="${esc(bodyClass)}"` : ''}>
+<body class="aanraders aanraders-page${bodyClass ? ' ' + esc(bodyClass) : ''}">
 
 <header class="site-header">
   <div class="site-header-inner">
@@ -789,7 +815,7 @@ ${body}
 </html>`;
 }
 
-function renderOverzicht(data, origin) {
+function bodyOverzicht(data, ctx) {
   const { categorieen, producten, downloads } = data;
 
   const favorieten = producten
@@ -803,13 +829,13 @@ function renderOverzicht(data, origin) {
       <h2>⭐ Anneleen's favorieten</h2>
       <p>De producten die ik het vaakst aanraad — omdat ze het verschil maken in ons eigen gezin.</p>
     </div>
-    <div class="grid">${favorieten.map(renderKaart).join('')}</div>
+    <div class="grid">${favorieten.map(p => renderKaart(p, ctx)).join('')}</div>
   </section>` : '';
 
   /* Nog geen enkel product zichtbaar: geen halfleeg skelet tonen. */
   const geenProducten = producten.length === 0;
 
-  const body = `
+  return `
 <div class="wrap">
 
   <section class="hero">
@@ -829,34 +855,42 @@ function renderOverzicht(data, origin) {
       <h2>Alle categorieën</h2>
       <p>Per thema gebundeld, zodat je vindt wat je zoekt zonder door alles te scrollen.</p>
     </div>
-    ${categorieen.map(c => renderCategorie(c, producten)).join('')}
+    ${categorieen.map(c => renderCategorie(c, producten, ctx)).join('')}
   </section>`}
 
   ${renderDownloads(downloads)}
 
-  ${renderPrilLeven()}
+  ${renderPrilLeven(ctx)}
 
 </div>`;
+}
 
+const OVERZICHT_TITEL = 'Aanraders — producten die ik zelf gebruik | Pril Leven';
+const OVERZICHT_BESCHRIJVING =
+  'Alle producten, materialen en tools die Anneleen van Pril Leven zelf gebruikt en ' +
+  'aanbeveelt. Met kortingscodes en eerlijke uitleg per product.';
+
+function renderOverzicht(data, origin) {
   return layout({
-    titel: 'Aanraders — producten die ik zelf gebruik | Pril Leven',
-    beschrijving: 'Alle producten, materialen en tools die Anneleen van Pril Leven zelf gebruikt en aanbeveelt. Met kortingscodes en eerlijke uitleg per product.',
+    titel: OVERZICHT_TITEL,
+    beschrijving: OVERZICHT_BESCHRIJVING,
     canonical: `${origin}${BASE}`,
-    body,
+    body: bodyOverzicht(data, CTX_PUBLIEK),
   });
 }
 
-function renderCategoriePagina({ cat, producten }, origin) {
+function bodyCategorie({ cat, producten }, ctx) {
   const titelTekst = `${cat.emoji ? cat.emoji + ' ' : ''}${cat.titel}`;
+  const terug = overzichtHref(ctx);
 
   const inhoud = producten.length
-    ? `<div class="grid">${producten.map(renderKaart).join('')}</div>`
+    ? `<div class="grid">${producten.map(p => renderKaart(p, ctx)).join('')}</div>`
     : `<div class="soon"><b>Binnenkort</b>Deze categorie is nog in opbouw — enkel producten die ik zelf getest heb komen erin.</div>`;
 
-  const body = `
+  return `
 <div class="wrap">
   <nav class="crumbs">
-    <a href="${BASE}">Aanraders</a><em>/</em>${esc(cat.titel)}
+    <a href="${esc(terug)}">Aanraders</a><em>/</em>${esc(cat.titel)}
   </nav>
 
   <div class="cat-hero">
@@ -866,19 +900,28 @@ function renderCategoriePagina({ cat, producten }, origin) {
 
   <section>${inhoud}</section>
 
-  <p style="margin-bottom:56px"><a class="terug" href="${BASE}">← Alle categorieën</a></p>
+  <p style="margin-bottom:56px"><a class="terug" href="${esc(terug)}">← Alle categorieën</a></p>
 </div>`;
+}
 
-  return layout({
+function categorieMeta(cat) {
+  return {
     titel: `${cat.titel} — Aanraders | Pril Leven`,
     beschrijving: cat.omschrijving
       || `Producten voor ${cat.titel.toLowerCase()} die Anneleen van Pril Leven zelf gebruikt en aanbeveelt.`,
-    canonical: `${origin}${BASE}/c/${cat.slug}`,
-    body,
+  };
+}
+
+function renderCategoriePagina(data, origin) {
+  const meta = categorieMeta(data.cat);
+  return layout({
+    ...meta,
+    canonical: `${origin}${BASE}/c/${data.cat.slug}`,
+    body: bodyCategorie(data, CTX_PUBLIEK),
   });
 }
 
-function renderProductPagina({ p, cat, gerelateerd }, origin) {
+function bodyProduct({ p, cat, gerelateerd }, ctx) {
   const link = safeUrl(p.affiliate_link);
 
   /* Galerij: hoofdfoto voorop, daarna de extra's uit afbeeldingen[].
@@ -994,7 +1037,7 @@ function renderProductPagina({ p, cat, gerelateerd }, origin) {
   const gerelateerdSectie = gerelateerd.length ? `
   <section class="sec">
     <h2>Bekijk ook</h2>
-    <div class="grid">${gerelateerd.map(renderKaart).join('')}</div>
+    <div class="grid">${gerelateerd.map(g => renderKaart(g, ctx)).join('')}</div>
   </section>` : '';
 
   /* Mobiele actiebalk: alleen zinvol als er iets te doen valt. */
@@ -1004,11 +1047,11 @@ function renderProductPagina({ p, cat, gerelateerd }, origin) {
   ${link ? `<a class="btn" href="${esc(link)}" target="_blank" rel="sponsored nofollow noopener">Naar ${esc(p.merk || 'de webshop')}</a>` : ''}
 </div>` : '';
 
-  const body = `
+  return `
 <div class="wrap">
   <nav class="crumbs">
-    <a href="${BASE}">Aanraders</a><em>/</em>
-    ${cat ? `<a href="${BASE}/c/${esc(cat.slug)}">${esc(cat.titel)}</a><em>/</em>` : ''}
+    <a href="${esc(overzichtHref(ctx))}">Aanraders</a><em>/</em>
+    ${cat ? `<a href="${esc(categorieHref(cat.slug, ctx))}">${esc(cat.titel)}</a><em>/</em>` : ''}
     ${esc(p.titel)}
   </nav>
 
@@ -1042,17 +1085,25 @@ function renderProductPagina({ p, cat, gerelateerd }, origin) {
   ${faq}
   ${gerelateerdSectie}
 </div>${mobileBar}`;
+}
 
-  const beschrijving = p.korte_beschrijving
-    || `${p.titel} — aanbevolen door Anneleen van Pril Leven.`;
+/** Heeft dit product een mobiele actiebalk? Bepaalt de body-class. */
+function heeftMobieleBalk(p) {
+  return Boolean(p.kortingscode || safeUrl(p.affiliate_link));
+}
+
+function renderProductPagina(data, origin) {
+  const { p } = data;
+  const extra = Array.isArray(p.afbeeldingen) ? p.afbeeldingen.filter(Boolean) : [];
+  const eersteFoto = [p.afbeelding_url, ...extra].filter(Boolean)[0] || null;
 
   return layout({
     titel: `${p.titel} — Aanraders | Pril Leven`,
-    beschrijving,
+    beschrijving: p.korte_beschrijving || `${p.titel} — aanbevolen door Anneleen van Pril Leven.`,
     canonical: `${origin}${BASE}/p/${p.slug}`,
-    body,
-    bodyClass: mobileBar ? 'has-bar' : '',
-    afbeelding: alle[0] || null,
+    body: bodyProduct(data, CTX_PUBLIEK),
+    bodyClass: heeftMobieleBalk(p) ? 'has-bar' : '',
+    afbeelding: eersteFoto,
   });
 }
 
@@ -1088,6 +1139,45 @@ function sendHtml(res, status, html, { cache = true } = {}) {
   res.end(html);
 }
 
+/**
+ * Fragment-modus voor de SPA:
+ *   GET /api/aanraders?fragment=1            → overzicht
+ *   GET /api/aanraders?fragment=1&c=<slug>   → categorie
+ *   GET /api/aanraders?fragment=1&p=<slug>   → product
+ *
+ * Geeft JSON terug met de HTML én de titel, zodat de app de paginatitel
+ * kan zetten. Publieke data, dus geen auth — net als de gewone pagina.
+ */
+async function handleFragment(req, res, url) {
+  const pSlug = url.searchParams.get('p');
+  const cSlug = url.searchParams.get('c');
+
+  if (pSlug) {
+    const data = await fetchProduct(pSlug);
+    if (!data) return json(res, 404, { error: 'Dit product bestaat niet (meer).' });
+    return json(res, 200, {
+      html: bodyProduct(data, CTX_APP),
+      titel: data.p.titel,
+      heeftBalk: heeftMobieleBalk(data.p),
+    });
+  }
+
+  if (cSlug) {
+    const data = await fetchCategorie(cSlug);
+    if (!data) return json(res, 404, { error: 'Deze categorie bestaat niet (meer).' });
+    return json(res, 200, {
+      html: bodyCategorie(data, CTX_APP),
+      titel: data.cat.titel,
+    });
+  }
+
+  const data = await fetchPaginaData();
+  return json(res, 200, {
+    html: bodyOverzicht(data, CTX_APP),
+    titel: 'Aanraders',
+  });
+}
+
 function getOrigin(req) {
   const proto = req.headers['x-forwarded-proto'] || 'https';
   const host = req.headers['x-forwarded-host'] || req.headers.host || 'community-web.prilleven.be';
@@ -1118,9 +1208,23 @@ export default async function handler(req, res) {
     return res.end('Method not allowed');
   }
 
-  /* De publieke pagina hoort op /aanraders te staan, niet op /api/aanraders.
-     Anders zou dezelfde HTML op twee URL's leven (duplicate content). */
+  /* ---- fragment voor de app ----
+     De SPA toont dezelfde aanraders zonder de community te verlaten. In
+     plaats van een tweede renderer te bouwen (die na verloop van tijd
+     uiteenloopt met deze) geeft de server hier exact dezelfde HTML terug,
+     maar zonder <html>/header/footer en met hash-links. */
   if (isApiPad(req)) {
+    const url = new URL(req.url, 'http://x');
+    if (url.searchParams.get('fragment') === '1') {
+      try {
+        return await handleFragment(req, res, url);
+      } catch (err) {
+        console.error('[aanraders fragment]', err);
+        return json(res, 500, { error: 'Kon de aanraders niet laden.' });
+      }
+    }
+    /* De publieke pagina hoort op /aanraders te staan, niet op /api/aanraders.
+       Anders zou dezelfde HTML op twee URL's leven (duplicate content). */
     return json(res, 404, { error: 'Niet gevonden.' });
   }
 

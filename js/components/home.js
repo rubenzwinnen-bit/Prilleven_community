@@ -62,12 +62,12 @@ export function render() {
       hoverImg: '/fotos/Introduceren-allargenen.png',
     },
     {
-      /* Publieke pagina, geen hash-route: dit verlaat de SPA en doet een
-         volledige page load — net als de HapjesHeld- en admin-tegels. */
+      /* Hash-route: blijft binnen de app. De inhoud is dezelfde als op de
+         publieke pagina /aanraders — de server levert die als fragment. */
       id: 'aanraders',
       title: 'Aanraders',
       desc: 'Producten, materialen en tools die Anneleen zelf gebruikt en aanbeveelt.',
-      href: '/aanraders',
+      href: '#/aanraders',
       accent: 'sage',
     },
   ];
