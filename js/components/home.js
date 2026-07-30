@@ -61,6 +61,15 @@ export function render() {
       badge: 'BETA',
       hoverImg: '/fotos/Introduceren-allargenen.png',
     },
+    {
+      /* Publieke pagina, geen hash-route: dit verlaat de SPA en doet een
+         volledige page load — net als de HapjesHeld- en admin-tegels. */
+      id: 'aanraders',
+      title: 'Aanraders',
+      desc: 'Producten, materialen en tools die Anneleen zelf gebruikt en aanbeveelt.',
+      href: '/aanraders',
+      accent: 'sage',
+    },
   ];
 
   if (admin) {
