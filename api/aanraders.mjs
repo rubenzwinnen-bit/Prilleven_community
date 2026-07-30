@@ -306,23 +306,61 @@ function renderPrilLeven() {
   </section>`;
 }
 
-/* Kopieer-gedrag. Klein en inline: één extern JS-bestand voor 15 regels
-   is niet de moeite, en het moet werken zonder de app-bundel. */
+/* Kopieer-gedrag. Klein en inline: één extern JS-bestand voor dit beetje
+   is niet de moeite, en het moet werken zonder de app-bundel.
+   Drie niveaus, want een kortingscode die je niet kan kopiëren is een
+   kapotte pagina:
+     1. navigator.clipboard  — moderne browsers, secure context
+     2. execCommand('copy')  — oudere Safari / niet-secure context
+     3. tekst selecteren     — dan kan de bezoeker zelf Cmd/Ctrl+C doen */
 const INLINE_SCRIPT = `
 document.addEventListener('click', function (e) {
   var btn = e.target.closest('.code');
   if (!btn) return;
   var code = btn.getAttribute('data-code') || '';
   var label = btn.querySelector('.code-copy');
-  function ok() {
+  var oud = label ? label.innerHTML : '';
+
+  function melden(tekst) {
     if (!label) return;
-    var oud = label.innerHTML;
-    label.textContent = 'gekopieerd';
+    label.textContent = tekst;
     btn.classList.add('is-copied');
-    setTimeout(function () { label.innerHTML = oud; btn.classList.remove('is-copied'); }, 1800);
+    setTimeout(function () {
+      label.innerHTML = oud;
+      btn.classList.remove('is-copied');
+    }, 1800);
   }
+
+  function selecteer() {
+    var val = btn.querySelector('.code-val');
+    if (!val || !window.getSelection) return false;
+    try {
+      var r = document.createRange();
+      r.selectNodeContents(val);
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(r);
+      return true;
+    } catch (err) { return false; }
+  }
+
+  function viaExecCommand() {
+    if (!selecteer()) return false;
+    try { return document.execCommand('copy'); } catch (err) { return false; }
+  }
+
+  function terugvallen() {
+    if (viaExecCommand()) { melden('gekopieerd'); return; }
+    if (selecteer()) { melden('selecteer + kopieer'); return; }
+    melden(code);
+  }
+
   if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(code).then(ok).catch(function () {});
+    navigator.clipboard.writeText(code).then(function () {
+      melden('gekopieerd');
+    }).catch(terugvallen);
+  } else {
+    terugvallen();
   }
 });`;
 
