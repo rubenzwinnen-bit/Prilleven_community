@@ -97,6 +97,18 @@ GDPR-endpoints voor de huidige user.
 ### `admin.mjs` — GET `/api/admin?section=…`
 Admin dashboard. Vereist `requireAdmin`. Sections: `global`, `users`, `queries`, `events`, `conversations` (per email), `chunks` (per ids), `fallbacks`.
 
+### `aanraders.mjs` — `/aanraders*` (catch-all, **publiek, server-rendered HTML**)
+De affiliatepagina. Wijkt bewust af van elk ander endpoint hier:
+- **Geen auth.** Enige publieke, niet-ingelogde pagina van de site. Dat is het punt: SEO-indexeerbaar en deelbaar.
+- **Geeft HTML terug, geen JSON.** Nodig omdat de rest van de site een hash-router achter login is en Google `#/`-URL's niet indexeert.
+- **Rewrites in `vercel.json`** (`/aanraders` + `/aanraders/:path*`) staan **vóór** de SPA-catch-all — Vercel neemt de eerste match.
+- Routes in `matchRoute()`: `overzicht`, `categorie` (`/c/:slug`), `product` (`/p/:slug`). Onbekend → echte 404-pagina, geen leeg skelet.
+- Styling via `/aanraders.css` (eigen bestand, tokens uit `styles.css`) met eigen `CSS_VERSION`-constante als cache-buster — **niet** de app-versie in de HTML-bestanden.
+- `esc()` op elke DB-waarde, `safeUrl()` laat enkel http(s) door als href.
+- Affiliate-links: altijd `rel="sponsored nofollow noopener"` + `target="_blank"`.
+- `Cache-Control: s-maxage=300, stale-while-revalidate=86400`. Vercel consumeert `s-maxage` op de edge en stuurt de browser `max-age=0` — dat is correct, geen bug.
+- Het pad staat in de constante `BASE`; omdopen = `BASE` + de twee rewrites, en alleen doen vóór publieke lancering.
+
 ---
 
 ## 3. Helpers in `_lib/` — gebruik ze!
