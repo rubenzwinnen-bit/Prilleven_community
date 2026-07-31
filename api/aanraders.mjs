@@ -31,7 +31,7 @@ import { requireAdmin, AuthError } from './_lib/auth.mjs';
 const BASE = '/aanraders';
 
 /* Cache-buster voor aanraders.css — bump bij CSS-wijziging. */
-const CSS_VERSION = '3.3.1';
+const CSS_VERSION = '3.3.3';
 
 /* Transparantielabels. relatie_type is verplicht in de DB met een CHECK,
    dus onbekende waarden kunnen niet voorkomen — de fallback is defensief. */
@@ -59,6 +59,14 @@ const INTRO_TEKST =
   'testte ik uitgebreid of raad ik met vertrouwen aan. Sommige links zijn affiliatelinks ' +
   'of bevatten een kortingscode. Daarmee steun je Pril Leven, zonder dat het jou iets ' +
   'extra kost.';
+
+/* Contactadres in de footer — bewust één centraal adres, ook voor
+   samenwerkingsaanvragen van merken. */
+const CONTACT_MAIL = 'hallo@prilleven.be';
+
+/* Plug&Pay-checkout van de community. Staat ook in index.html (auth-modal)
+   en script.js (verlopen-scherm) — bij wijziging alle drie aanpassen. */
+const CHECKOUT_URL = 'https://prillenbe.plugandpay.com/checkout/pril-leven-community';
 
 const FOOTER_TEKST =
   'Pril Leven werkt samen met een beperkt aantal merken. Bij elk product staat duidelijk ' +
@@ -775,7 +783,10 @@ ${afbeelding ? `<meta property="og:image" content="${esc(afbeelding)}">` : ''}
     <a href="${BASE}" class="brand">
       <img src="/pril-leven-logo.png" alt="Pril Leven" class="brand-logo">
     </a>
-    <a href="/" class="header-cta">Naar de community</a>
+    <div class="header-actions">
+      <a href="/" class="header-cta"><span class="cta-lang">Naar de c</span><span class="cta-kort">C</span>ommunity</a>
+      <a href="${CHECKOUT_URL}" class="header-cta header-cta--join" target="_blank" rel="noopener">Lid worden<span class="cta-lang"> van de community</span></a>
+    </div>
   </div>
 </header>
 
@@ -783,6 +794,11 @@ ${body}
 
 <footer class="site-footer">
   <div class="wrap">
+    <div class="footer-contact">
+      <h2>Samenwerken of een vraag?</h2>
+      <p>Merken, makers en ouders mogen me altijd rechtstreeks mailen.</p>
+      <a class="footer-mail" href="mailto:${CONTACT_MAIL}">${CONTACT_MAIL}</a>
+    </div>
     <p>${FOOTER_TEKST}</p>
     <nav>
       <a href="/privacy.html">Privacy</a>

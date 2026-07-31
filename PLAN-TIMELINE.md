@@ -663,3 +663,37 @@ Merge-commit `63e81f6`. Cache-buster `3.1.0 → 3.1.3`.
 ### Niet vergeten / open
 - ⬜ Feature-branch `toevoegen-badge-recepten-leeftijd-categorie` mag opgeruimd worden (gemerged).
 - ⬜ De twee SQL-migraties van 2026-06-03 nog steeds open indien nog niet gedraaid.
+
+---
+
+## 2026-07-31 — Affiliatepagina "Aanraders" (branch `affiliatepagina`, NOG NIET GEMERGED)
+
+Cache-buster `3.1.2 → 3.3.1`. Eigen `CSS_VERSION` voor `aanraders.css` (staat los van de app-versie, zit in `api/aanraders.mjs`).
+
+### Vandaag afgerond
+- ✅ **Publieke, server-rendered affiliatepagina** `/aanraders` — géén login, echte URL's per categorie (`/c/:slug`) en product (`/p/:slug`), meta/OG-tags + canonical. Eén nieuwe function `api/aanraders.mjs` met drie soorten output: publieke HTML, fragment voor de app, admin-JSON.
+- ✅ **Supabase**: `affiliate_categories`, `affiliate_products`, `affiliate_downloads` + bucket `affiliate-images` (migratie `2026-07-29-affiliate-aanraders.sql`, al toegepast op productie). 9 categorieën + 8 startpartners geseed.
+- ✅ **In-app weergave** `#/aanraders` binnen de community: tegel in de Functies-kolom, nav-tabs verborgen (`body.is-aanraders`). Gebruikt hetzelfde render-pad als de publieke pagina via fragment-modus — geen tweede renderer.
+- ✅ **Beheer op de pagina zelf** (niet in een dashboard-tabblad): beheerbalk + bewerkknop op elke tegel, editor-overlay met alle velden, foto-upload, categorie- en downloadbeheer, blok "Nog niet zichtbaar" bovenaan.
+- ✅ **"Admin dashboard" uit het recepten-dropdown** in `nav.js` — dat menu is enkel voor receptenboek/weekschema; het algemene dashboard staat op `/admin-chat.html`.
+- ✅ **Tekstgroen als design-token**: `--color-green-text` (#4F7D6C, merkkleur van Anneleen) in `:root`. Alle 26 plekken die de vulkleur `--color-secondary-dark` als tékstkleur gebruikten zijn omgezet — headers, "Uitloggen", landingspagina-koppen, chatruimte-titels, Admin-badge, recept- en weekschema-tags.
+- ✅ **Docs**: `CLAUDE.md` (Pro-tiers, project-ID's, kleurregel, `/aanraders`-valkuil), `api/CLAUDE.md` (endpoint + §9 herschreven), `js/CLAUDE.md` (§7 kleur, twee nieuwe modules, twee valkuilen), `supabase-migrations/CLAUDE.md` (tabellen + bucket).
+
+### Beslissingen
+- **Server-rendered, niet client-side.** De app is een hash-router achter login; `#/`-URL's worden niet geïndexeerd. De publieke pagina moest daarom náást de SPA leven.
+- **Eén renderer, twee weergaves.** De in-app versie haalt exact dezelfde HTML op als fragment (`?fragment=1`), alleen zonder header/footer en met hash-links. Bewust: twee renderers voor dezelfde data lopen na verloop van tijd uit elkaar.
+- **Géén aparte test-database.** De migratie was puur additief (drie nieuwe tabellen) en alles stond op `zichtbaar = false`; een Supabase-branch was daarvoor te veel omhaal. Preview en productie delen dus dezelfde DB.
+- **Beheer op de pagina, niet in het admin-dashboard.** Visueel en functioneel logischer: je ziet meteen wat je aanpast. Eén login (de bestaande community-sessie), twee sloten: `Store.isAdmin()` verbergt (cosmetisch), `requireAdmin()` blokkeert (echt).
+- **Prijsindicatie volledig geschrapt** uit formulier, detailpagina en servervalidatie. Kolom en bestaande waarden blijven staan, worden nergens meer gebruikt.
+- **Favorieten-sectie verwijderd**: elke categorie is al een selectie van Anneleen, en de drie producten stonden dubbel op de pagina. `favoriet_anneleen` zet nu enkel nog het label "Favoriet".
+- **Sectie "Van Pril Leven zelf" verwijderd**, inclusief de hardcoded lijst.
+- **`#4F7D6C` haalt 4.42 contrast** op de paginakleur — net onder de WCAG-norm van 4.5 voor kleine tekst, ruim boven de 3.0 voor koppen. Bewuste merkkeuze, genoteerd bij de variabele zodat het niet per ongeluk "gecorrigeerd" wordt.
+
+### Niet vergeten / open
+- ⬜ **Stap 8: filters + zoekfunctie** (leeftijd, categorie, materiaal, merk; zoeken op merk/product/trefwoord). De `.toolbar`-stijlen staan al in `aanraders.css`, de HTML nog niet.
+- ⬜ **Stap 9: SEO-afwerking** — `robots.txt` ontbreekt (404), sitemap, structured data.
+- ⬜ **Pad `/aanraders` is nog niet definitief.** Omdopen kost 5 minuten (constante `BASE` + twee rewrites in `vercel.json`) maar moet vóór publieke lancering; daarna verlies je SEO.
+- ⬜ **Branch nog niet gemerged.** Zodra dat gebeurt is `/aanraders` publiek op community-web.prilleven.be — de producten staan al op `zichtbaar = true`.
+- ⬜ Content ontbreekt nog: productfoto's, "waarom ik dit aanbeveel"-teksten, lange beschrijvingen, downloadbestanden, Crisp-affiliatelink.
+- ⬜ Categorie **Kookboeken** staat op `binnenkort` maar bevat een zichtbaar product (Eten met Handjes) — dat blijft daardoor verborgen.
+- ⬜ **Bestaand, niet opgelost:** `supabase.js` wordt onder ~8 verschillende `?v=`-strings geladen; de dedup van token-refreshes werkt daardoor niet app-breed. Opruimen raakt tientallen bestanden.

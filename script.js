@@ -138,7 +138,7 @@ function showSubscriptionExpiredScreen(status) {
       <div style="font-size: 3rem; margin-bottom: 1rem;">🌿</div>
       <h1 style="color: var(--color-primary, #C98966); margin-bottom: 1rem;">Je lidmaatschap is verlopen</h1>
       <p style="color: var(--color-dark-light, #3d3d3d); line-height: 1.6; margin-bottom: 2rem;">${message}</p>
-      <a href="https://prilleven.be" style="
+      <a href="https://prillenbe.plugandpay.com/checkout/pril-leven-community" target="_blank" rel="noopener" style="
         display: inline-block;
         padding: .85rem 1.75rem;
         background: var(--color-primary, #C98966);
@@ -148,7 +148,7 @@ function showSubscriptionExpiredScreen(status) {
         font-weight: 600;
         margin-right: .5rem;
         margin-bottom: .5rem;
-      ">Verleng op prilleven.be</a>
+      ">Lid worden van de community</a>
       <button id="sub-refresh-btn" style="
         padding: .85rem 1.75rem;
         background: #82BE93;

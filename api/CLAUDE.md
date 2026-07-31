@@ -108,6 +108,7 @@ De affiliatepagina. Wijkt bewust af van elk ander endpoint hier:
 - Affiliate-links: altijd `rel="sponsored nofollow noopener"` + `target="_blank"`.
 - `Cache-Control: s-maxage=300, stale-while-revalidate=86400`. Vercel consumeert `s-maxage` op de edge en stuurt de browser `max-age=0` — dat is correct, geen bug.
 - Het pad staat in de constante `BASE`; omdopen = `BASE` + de twee rewrites, en alleen doen vóór publieke lancering.
+- Contactadres = `CONTACT_MAIL` (footer). De Plug&Pay-checkout staat als `CHECKOUT_URL` hier én hardcoded in `index.html` (auth-modal) en `script.js` (verlopen-scherm) — bij wijziging alle drie aanpassen.
 
 ---
 

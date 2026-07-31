@@ -28,6 +28,18 @@ body.aanraders-page{font-family:'Poppins',sans-serif;background:var(--color-bg);
 .aanraders .brand-logo{height:64px;width:auto;display:block}
 .aanraders .header-cta{font-size:.85rem;font-weight:500;color:var(--color-gray);border:1px solid var(--color-light);padding:7px 14px;border-radius:999px;transition:all .25s ease}
 .aanraders .header-cta:hover{color:var(--color-primary);border-color:var(--color-primary)}
+/* Twee knoppen naast het logo passen op mobiel enkel met kortere labels;
+   de header is sticky, dus wrappen naar twee rijen kost te veel hoogte. */
+.aanraders .header-actions{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+.aanraders .cta-lang{display:none}
+.aanraders .cta-kort{display:inline}
+@media(min-width:640px){
+  .aanraders .header-actions{gap:10px}
+  .aanraders .cta-lang{display:inline}
+  .aanraders .cta-kort{display:none}
+}
+.aanraders .header-cta--join{background:var(--color-primary);border-color:var(--color-primary);color:#fff;font-weight:600}
+.aanraders .header-cta--join:hover{background:var(--color-primary-dark);border-color:var(--color-primary-dark);color:#fff}
 
 /* ---------- layout ---------- */
 .aanraders .wrap{max-width:var(--max-width);margin:0 auto;padding:0 20px}
@@ -126,6 +138,11 @@ body.aanraders-page{font-family:'Poppins',sans-serif;background:var(--color-bg);
 .aanraders .site-footer p{font-size:.8rem;color:var(--color-gray);line-height:1.7;max-width:64ch;margin:0 auto 14px}
 .aanraders .site-footer nav{display:flex;gap:18px;justify-content:center;font-size:.82rem;color:var(--color-gray);flex-wrap:wrap}
 .aanraders .site-footer nav a:hover{color:var(--color-primary)}
+.aanraders .footer-contact{border-bottom:1px solid var(--color-light);padding-bottom:26px;margin-bottom:26px}
+.aanraders .footer-contact h2{font-size:1.05rem;font-weight:600;color:var(--color-green-text);margin-bottom:6px}
+.aanraders .footer-contact p{font-size:.87rem;color:var(--color-gray);margin-bottom:12px}
+.aanraders .footer-mail{display:inline-block;font-size:1rem;font-weight:600;color:var(--color-green-text);border-bottom:1px solid rgba(79,125,108,.35);padding-bottom:2px;transition:color .2s ease,border-color .2s ease}
+.aanraders .footer-mail:hover{color:var(--color-primary);border-bottom-color:var(--color-primary)}
 
 /* ---------- leeg / fout ---------- */
 .aanraders .empty{text-align:center;padding:80px 20px}
