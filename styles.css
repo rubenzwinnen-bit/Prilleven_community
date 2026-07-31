@@ -148,7 +148,7 @@ h3 { font-size: 1.15rem; }
 .header-bell-btn.tl-bell-btn {
   background: var(--color-light);
   border: none;
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   width: 36px;
   height: 36px;
 }
@@ -1492,7 +1492,7 @@ select.form-control {
 }
 
 .auth-success {
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   font-size: 0.8rem;
   margin-bottom: 0.75rem;
   line-height: 1.4;
@@ -2245,7 +2245,7 @@ select.form-control {
 }
 .home-pane-title {
   font-size: 1.05rem;
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   margin: 0;
   font-weight: 700;
   letter-spacing: .2px;
@@ -2352,7 +2352,7 @@ select.form-control {
   transform: translateX(4px);
 }
 .home-tile--sage:hover .home-tile-arrow {
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
 }
 
 /* ============================================
@@ -2379,7 +2379,7 @@ select.form-control {
   transition: color .15s ease;
 }
 .home-bottom-nav-tab.is-active {
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
 }
 .home-bottom-nav-icon {
   font-size: 1.2rem;
@@ -2611,7 +2611,7 @@ body.is-aanraders #app-nav { display: none; }
   padding: 2rem;
 }
 .nickname-modal h2 {
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   margin-bottom: 0.5rem;
 }
 .nickname-modal-desc {
@@ -2677,7 +2677,7 @@ body.is-aanraders #app-nav { display: none; }
 }
 .tl-composer-title {
   font-weight: 600;
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   font-size: 1rem;
 }
 .tl-composer-head-right {
@@ -3160,7 +3160,7 @@ body.is-aanraders #app-nav { display: none; }
   margin-bottom: 0.5rem;
 }
 .tl-poll-builder-head strong {
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   font-size: 0.9rem;
 }
 .tl-poll-remove {
@@ -3416,7 +3416,7 @@ body.is-aanraders #app-nav { display: none; }
 }
 .tl-admin-label {
   font-size: 0.85rem;
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   font-weight: 600;
 }
 
@@ -3438,7 +3438,7 @@ body.is-aanraders #app-nav { display: none; }
 }
 .tl-reports-head h2 {
   margin: 0;
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
 }
 .tl-reports-head .tl-photo-remove {
   position: static;
@@ -3579,7 +3579,7 @@ body.is-aanraders #app-nav { display: none; }
   background: var(--color-bg);
 }
 .tl-bell-head strong {
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   font-size: 0.9rem;
 }
 .tl-bell-mark-read {
@@ -3751,8 +3751,8 @@ body.is-aanraders #app-nav { display: none; }
   display: inline-flex;
   align-items: center;
   background: transparent;
-  color: var(--color-secondary-dark);
-  border: 1px solid var(--color-secondary-dark);
+  color: var(--color-green-text);
+  border: 1px solid var(--color-green-text);
   padding: 0.1rem 0.6rem;
   border-radius: 999px;
   font-size: 0.7rem;
@@ -3816,7 +3816,7 @@ body.is-aanraders #app-nav { display: none; }
   color: var(--color-gray);
 }
 .tl-poll-vote-btn.is-checked .tl-poll-checkbox {
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
 }
 .tl-poll-vote-btn.is-checked {
   border-color: var(--color-secondary-dark);
@@ -4403,7 +4403,7 @@ body.is-aanraders #app-nav { display: none; }
 .rooms-pane-header { margin-bottom: .85rem; }
 .rooms-pane-title {
   font-size: 1.05rem;
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   margin: 0;
   font-weight: 700;
   letter-spacing: .2px;
@@ -4418,7 +4418,7 @@ body.is-aanraders #app-nav { display: none; }
   font-family: inherit;
   font-size: .85rem;
   font-weight: 600;
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   cursor: pointer;
   text-align: left;
 }
@@ -4462,7 +4462,7 @@ body.is-aanraders #app-nav { display: none; }
 .rooms-list-title {
   font-weight: 600;
   font-size: .85rem;
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
 }
 /* Beschrijving niet tonen — alleen titels in de tegels. */
 .rooms-list-desc { display: none; }
@@ -4508,7 +4508,7 @@ body.is-aanraders #app-nav { display: none; }
   border: 0;
   font-size: 1.3rem;
   cursor: pointer;
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   padding: .15rem .35rem;
   line-height: 1;
   flex-shrink: 0;
@@ -4518,7 +4518,7 @@ body.is-aanraders #app-nav { display: none; }
 .chatroom-title, .topic-detail-title {
   font-size: 1.15rem;
   font-weight: 700;
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   margin: 0;
   flex: 1;
   min-width: 0;
@@ -4545,7 +4545,7 @@ body.is-aanraders #app-nav { display: none; }
 .chatroom-intro-edit-btn:hover {
   background: #f3f9f3;
   border-color: var(--color-secondary-dark, #82be93);
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
 }
 /* Inline edit-form voor de room-intro (admin) */
 .chatroom-header--editing { flex-direction: row; align-items: flex-start; }
@@ -4626,7 +4626,7 @@ body.is-aanraders #app-nav { display: none; }
 .topic-title {
   font-size: 1rem;
   font-weight: 700;
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   margin: 0 0 .25rem 0;
   padding-right: 1.5rem;
 }
@@ -4675,7 +4675,7 @@ body.is-aanraders #app-nav { display: none; }
   margin-bottom: .25rem;
   font-size: .78rem;
 }
-.reply-author { font-weight: 700; color: var(--color-secondary-dark); }
+.reply-author { font-weight: 700; color: var(--color-green-text); }
 .reply-date   { color: var(--color-gray); flex: 1; }
 .reply-del {
   background: transparent;
@@ -6987,7 +6987,7 @@ body.is-aanraders #app-nav { display: none; }
 }
 .admin-intro-author {
   font-weight: 700;
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
 }
 .admin-intro-date {
   color: var(--color-gray);
@@ -7224,7 +7224,7 @@ body.is-aanraders #app-nav { display: none; }
   border: 1.5px solid var(--color-secondary);
   border-radius: var(--radius);
   background: transparent;
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   font-size: .82rem;
   font-weight: 600;
   cursor: pointer;
@@ -7308,7 +7308,7 @@ body.is-aanraders #app-nav { display: none; }
   background: var(--color-light);
   border: 1px solid var(--color-secondary);
   border-radius: var(--radius);
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   font-size: .83rem;
   font-weight: 600;
   cursor: pointer;
@@ -7369,7 +7369,7 @@ body.is-aanraders #app-nav { display: none; }
   transition: color .15s, border-color .15s;
 }
 .admin-tab-btn.is-active {
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   border-bottom-color: var(--color-secondary);
 }
 .admin-tab-btn:hover:not(.is-active) {
