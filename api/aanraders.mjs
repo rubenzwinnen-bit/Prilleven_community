@@ -31,7 +31,7 @@ import { requireAdmin, AuthError } from './_lib/auth.mjs';
 const BASE = '/aanraders';
 
 /* Cache-buster voor aanraders.css — bump bij CSS-wijziging. */
-const CSS_VERSION = '3.3.0';
+const CSS_VERSION = '3.3.1';
 
 /* Transparantielabels. relatie_type is verplicht in de DB met een CHECK,
    dus onbekende waarden kunnen niet voorkomen — de fallback is defensief. */
