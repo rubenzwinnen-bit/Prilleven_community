@@ -11,9 +11,9 @@
   --color-secondary-dark: #82BE93;
   /* Donkergroen voor TEKST. --color-secondary(-dark) zijn vulkleuren:
      op #faf8f5 halen ze maar 1.9 en 2.0 contrast, te weinig om te lezen
-     (WCAG vraagt 4.5, of 3.0 voor grote koppen). Deze haalt 8.0 op de
-     pagina en 8.5 op wit. Gebruik hem voor alle groene tekst. */
-  --color-green-text: #2C5446;
+     (WCAG vraagt 4.5, of 3.0 voor grote koppen). Deze haalt 6.2 op de
+     pagina en 6.6 op wit. Gebruik hem voor alle groene tekst. */
+  --color-green-text: #31674F;
   --color-danger: #c0392b;
   --color-danger-dark: #a93226;
   --color-warning: #f1c40f;

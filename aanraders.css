@@ -9,7 +9,7 @@
 ============================================ */
 .aanraders{
   --color-primary:#C98966; --color-primary-dark:#BE764E; --color-primary-light:#FFBC7D;
-  --color-secondary:#98C3A4; --color-secondary-dark:#82BE93; --color-green-text:#2C5446;
+  --color-secondary:#98C3A4; --color-secondary-dark:#82BE93; --color-green-text:#31674F;
   --color-dark:#171717; --color-dark-light:#3d3d3d; --color-gray:#7a7a7a; --color-gray-light:#c5c5c5;
   --color-light:#f0ebe6; --color-white:#fff; --color-bg:#faf8f5;
   --shadow-sm:0 1px 4px rgba(0,0,0,.06); --shadow-md:0 4px 12px rgba(0,0,0,.08);
@@ -25,7 +25,7 @@ body.aanraders-page{font-family:'Poppins',sans-serif;background:var(--color-bg);
 .aanraders .site-header{background:var(--color-white);border-bottom:1px solid var(--color-light);position:sticky;top:0;z-index:50}
 .aanraders .site-header-inner{max-width:var(--max-width);margin:0 auto;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px}
 .aanraders .brand{display:flex;align-items:center}
-.aanraders .brand-logo{height:52px;width:auto;display:block}
+.aanraders .brand-logo{height:64px;width:auto;display:block}
 .aanraders .header-cta{font-size:.85rem;font-weight:500;color:var(--color-gray);border:1px solid var(--color-light);padding:7px 14px;border-radius:999px;transition:all .25s ease}
 .aanraders .header-cta:hover{color:var(--color-primary);border-color:var(--color-primary)}
 
