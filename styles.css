@@ -9,12 +9,11 @@
   --color-primary-light: #FFBC7D;
   --color-secondary: #98C3A4;
   --color-secondary-dark: #82BE93;
-  /* Groen voor TEKST. --color-secondary(-dark) zijn vulkleuren: op de
-     achtergrond #faf8f5 halen ze maar 1.9 en 2.0 contrast, te weinig
-     voor leesbare tekst (WCAG vraagt 4.5, of 3.0 voor grote koppen).
-     Deze haalt 4.59 en werd al gebruikt in de allergenen- en
-     receptenbadges. */
-  --color-green-text: #4a7c59;
+  /* Donkergroen voor TEKST. --color-secondary(-dark) zijn vulkleuren:
+     op #faf8f5 halen ze maar 1.9 en 2.0 contrast, te weinig om te lezen
+     (WCAG vraagt 4.5, of 3.0 voor grote koppen). Deze haalt 8.0 op de
+     pagina en 8.5 op wit. Gebruik hem voor alle groene tekst. */
+  --color-green-text: #2C5446;
   --color-danger: #c0392b;
   --color-danger-dark: #a93226;
   --color-warning: #f1c40f;
@@ -115,7 +114,7 @@ h3 { font-size: 1.15rem; }
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   text-decoration: none;
 }
 .header-title:hover { opacity: 0.8; }
@@ -541,7 +540,7 @@ select.form-control {
 
 .tag-moment {
   background: rgba(152, 195, 164, 0.2);
-  color: #4a7c59;
+  color: var(--color-green-text);
 }
 
 .tag-allergen {
@@ -551,7 +550,7 @@ select.form-control {
 
 .tag-time {
   background: rgba(152, 195, 164, 0.15);
-  color: #4a7c59;
+  color: var(--color-green-text);
 }
 
 .tag-portions {
@@ -582,7 +581,7 @@ select.form-control {
   line-height: 1.4;
   white-space: nowrap;
   background: rgba(152, 195, 164, 0.25);
-  color: #4a7c59;
+  color: var(--color-green-text);
 }
 
 .recipe-age-badge--lg {
@@ -1526,8 +1525,8 @@ select.form-control {
 /* --- Uitlogknop in header --- */
 .btn-logout {
   background: transparent;
-  color: var(--color-secondary-dark);
-  border: 1px solid var(--color-secondary-dark);
+  color: var(--color-green-text);
+  border: 1px solid var(--color-green-text);
   padding: 0.25rem 0.7rem;
   border-radius: var(--radius-sm);
   font-size: 0.75rem;
@@ -1537,9 +1536,9 @@ select.form-control {
 }
 
 .btn-logout:hover {
-  background: var(--color-secondary-dark);
+  background: var(--color-green-text);
   color: var(--color-white);
-  border-color: var(--color-secondary-dark);
+  border-color: var(--color-green-text);
 }
 
 /* ============================================
@@ -2117,7 +2116,7 @@ select.form-control {
 .schedule-day-pill {
   display: inline-block;
   background: rgba(152, 195, 164, 0.2);
-  color: #4a7c59;
+  color: var(--color-green-text);
   font-size: 0.8rem;
   font-weight: 500;
   padding: 0.25rem 0.65rem;
