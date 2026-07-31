@@ -189,15 +189,10 @@ export function openProductEditor(product, { onKlaar }) {
         <div class="aa-rij">
           <label class="aa-veld"><span>Leeftijd vanaf (maanden)</span>
             <input class="aa-input" type="number" id="aa-leeftijd" value="${v.leeftijd_vanaf_maanden ?? ''}" placeholder="leeg = alle leeftijden"></label>
-          <label class="aa-veld"><span>Prijsindicatie</span>
-            <select class="aa-input" id="aa-prijsind">
-              <option value="">—</option>
-              ${['€', '€€', '€€€'].map(x => `<option value="${x}" ${v.prijs_indicatie === x ? 'selected' : ''}>${x}</option>`).join('')}
-            </select></label>
-        </div>
-        <div class="aa-rij">
           <label class="aa-veld"><span>Materiaal</span>
             <input class="aa-input" id="aa-materiaal" value="${escapeHtml(v.materiaal || '')}"></label>
+        </div>
+        <div class="aa-rij">
           <label class="aa-veld"><span>Volgorde</span>
             <input class="aa-input" type="number" id="aa-volgorde" value="${v.volgorde ?? 0}"></label>
         </div>
@@ -355,7 +350,6 @@ function verzamel(scope) {
     kortingscode: val(scope, 'aa-code').trim(),
     korting_tekst: val(scope, 'aa-kortingtekst').trim(),
     leeftijd_vanaf_maanden: val(scope, 'aa-leeftijd') === '' ? null : val(scope, 'aa-leeftijd'),
-    prijs_indicatie: val(scope, 'aa-prijsind') || null,
     materiaal: val(scope, 'aa-materiaal').trim(),
     volgorde: val(scope, 'aa-volgorde') || 0,
     labels: [...scope.querySelectorAll('.aa-label-optie:checked')].map(el => el.value),

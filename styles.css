@@ -9,6 +9,12 @@
   --color-primary-light: #FFBC7D;
   --color-secondary: #98C3A4;
   --color-secondary-dark: #82BE93;
+  /* Groen voor TEKST. --color-secondary(-dark) zijn vulkleuren: op de
+     achtergrond #faf8f5 halen ze maar 1.9 en 2.0 contrast, te weinig
+     voor leesbare tekst (WCAG vraagt 4.5, of 3.0 voor grote koppen).
+     Deze haalt 4.59 en werd al gebruikt in de allergenen- en
+     receptenbadges. */
+  --color-green-text: #4a7c59;
   --color-danger: #c0392b;
   --color-danger-dark: #a93226;
   --color-warning: #f1c40f;
@@ -7573,7 +7579,7 @@ body.is-aanraders #app-nav { display: none; }
   display: inline-block; font-size: .72rem; font-weight: 600; padding: 3px 9px;
   border-radius: 999px; white-space: nowrap;
 }
-.aa-badge--aan { background: #eaf4ee; color: #4a7c59; }
+.aa-badge--aan { background: #eaf4ee; color: var(--color-green-text); }
 .aa-badge--uit { background: var(--color-light); color: var(--color-gray); }
 
 .aa-btn {

@@ -31,7 +31,7 @@ import { requireAdmin, AuthError } from './_lib/auth.mjs';
 const BASE = '/aanraders';
 
 /* Cache-buster voor aanraders.css — bump bij CSS-wijziging. */
-const CSS_VERSION = '3.2.6';
+const CSS_VERSION = '3.2.7';
 
 /* Transparantielabels. relatie_type is verplicht in de DB met een CHECK,
    dus onbekende waarden kunnen niet voorkomen — de fallback is defensief. */
@@ -308,7 +308,7 @@ const SCHRIJFBARE_VELDEN = {
     'afbeelding_url', 'afbeeldingen',
     'korte_beschrijving', 'lange_beschrijving', 'waarom_aanbevolen',
     'voordelen', 'nadelen', 'faq', 'opmerking',
-    'affiliate_link', 'kortingscode', 'korting_tekst', 'prijs', 'prijs_indicatie',
+    'affiliate_link', 'kortingscode', 'korting_tekst', 'prijs',
     'labels', 'leeftijd_vanaf_maanden', 'materiaal',
     'relatie_type', 'commissie', 'persoonlijk_getest', 'zelf_in_gebruik',
     'community_favoriet', 'laatst_gecontroleerd',
@@ -324,7 +324,6 @@ const SCHRIJFBARE_VELDEN = {
 };
 
 const RELATIE_WAARDEN = Object.keys(RELATIE_LABELS);
-const PRIJS_INDICATIES = ['€', '€€', '€€€'];
 
 class ValidatieError extends Error {}
 
@@ -363,10 +362,6 @@ function schoonPayload(tabel, body, { nieuw }) {
     if (uit.relatie_type !== undefined && uit.relatie_type !== null
         && !RELATIE_WAARDEN.includes(uit.relatie_type)) {
       throw new ValidatieError('Onbekend relatietype.');
-    }
-    if (uit.prijs_indicatie !== undefined && uit.prijs_indicatie !== null
-        && !PRIJS_INDICATIES.includes(uit.prijs_indicatie)) {
-      throw new ValidatieError('Prijsindicatie moet €, €€ of €€€ zijn.');
     }
     /* Een affiliate-link die geen http(s) is, komt straks als dode of
        gevaarlijke href op een publieke pagina. Nu tegenhouden. */
@@ -914,7 +909,6 @@ function bodyProduct({ p, cat, gerelateerd }, ctx) {
   const facts = [
     `<span class="chip"><b>Leeftijd</b> ${esc(leeftijdLabel(p.leeftijd_vanaf_maanden))}</span>`,
     cat ? `<span class="chip"><b>Categorie</b> ${esc(cat.titel)}</span>` : '',
-    p.prijs_indicatie ? `<span class="chip"><b>Prijs</b> ${esc(p.prijs_indicatie)}</span>` : '',
     p.materiaal ? `<span class="chip"><b>Materiaal</b> ${esc(p.materiaal)}</span>` : '',
     p.subcategorie ? `<span class="chip">${esc(p.subcategorie)}</span>` : '',
   ].filter(Boolean).join('');

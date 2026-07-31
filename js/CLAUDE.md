@@ -180,7 +180,8 @@ Een vind-vervang over alle bestanden tegelijk werkt prima.
 
 - **Géén** CSS in JS. Alle styling staat in `/styles.css`. Voeg classes toe, geen `element.style.X = ...` (uitzondering: dynamische waardes zoals progress-bar width).
 - Class-naming volgt bestaand patroon (`recipe-card`, `header-user`, `btn-primary`, `auth-error`, `confirm-dialog`, …).
-- Kleurthema: salie-groen via CSS-variabelen `--color-primary`, `--color-secondary`, `--color-info`, `--color-warning`, `--color-primary-dark`, `--color-secondary-dark`. Gebruik die ipv hardcoded hexes.
+- Kleurthema via CSS-variabelen `--color-primary`, `--color-secondary`, `--color-info`, `--color-warning`, `--color-primary-dark`, `--color-secondary-dark`, `--color-green-text`. Gebruik die ipv hardcoded hexes.
+- **Let op — vulkleur vs. tekstkleur.** `--color-primary` (#C98966, terracotta) is de hoofdkleur; `--color-secondary`/`-dark` (#98C3A4 / #82BE93) zijn salie-groene **vulkleuren** voor achtergronden, bollen en badges. Op de paginakleur #faf8f5 halen ze slechts 1.9 en 2.0 contrast — te weinig voor tekst (WCAG: 4.5 gewoon, 3.0 grote koppen). Gebruik voor **groene tekst** altijd `--color-green-text` (#4a7c59, contrast 4.59). Die zat al hardcoded in de allergenen- en receptenbadges en staat sinds V3.2 als variabele in `:root`.
 
 ---
 

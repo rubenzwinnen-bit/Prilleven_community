@@ -66,7 +66,7 @@ Node ≥ 20.
 
 ### Algemeen
 - **Taal:** alles in het **Nederlands** (UI, foutmeldingen, commit messages, comments waar nodig).
-- **Stijl:** salie-groen (`#...` — zie `styles.css`), zachte UI, ronding, subtiele schaduwen. Pas geen kleuren aan zonder bevestiging.
+- **Stijl:** terracotta `--color-primary` #C98966 als hoofdkleur, salie-groen `--color-secondary(-dark)` #98C3A4/#82BE93 als vulkleur, `--color-green-text` #4a7c59 voor groene **tekst** (de vulgroenen halen te weinig contrast). Zachte UI, ronding, subtiele schaduwen. Pas geen kleuren aan zonder bevestiging. Zie `js/CLAUDE.md §7`.
 - **Geen frameworks toevoegen.** Geen React, Vue, Tailwind, Next.js, build tools, TypeScript. Vanilla JS blijft vanilla JS.
 - **Geen overengineering.** Kleine, gerichte wijzigingen. Geen refactors "voor de zekerheid".
 
