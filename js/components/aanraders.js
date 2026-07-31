@@ -109,7 +109,7 @@ async function laadInhoud(view, { scroll = false } = {}) {
 ---------------------------------------- */
 async function bouwBeheerbalk(view) {
   if (!Admin) {
-    Admin = await import('../aanradersAdmin.js?v=3.2.2');
+    Admin = await import('../aanradersAdmin.js?v=3.2.4');
   }
   try {
     await Admin.laadBeheerdata();
@@ -186,8 +186,8 @@ function markeerBewerkbaar(view) {
   const blok = document.createElement('section');
   blok.className = 'aa-verborgen wrap';
   blok.innerHTML = `
-    <div class="section-head"><h2>Verborgen producten</h2>
-      <p>Alleen zichtbaar voor jou. Zet ze op zichtbaar om ze op de pagina te tonen.</p></div>
+    <div class="section-head"><h2>Nog niet zichtbaar (${verborgen.length})</h2>
+      <p>Deze producten staan alleen hier, voor jou. Klik op "Tonen" om ze op de pagina te zetten.</p></div>
     <div class="aa-verborgen-lijst">
       ${verborgen.map(p => `
         <div class="aa-verborgen-item">
@@ -199,9 +199,11 @@ function markeerBewerkbaar(view) {
           <button type="button" class="aa-kaart-knop" data-beheer="zichtbaar" data-slug="${escapeTekst(p.slug)}">Tonen</button>
         </div>`).join('')}
     </div>`;
-  /* In de inhoud-container, niet in de view: zo verdwijnt het blok vanzelf
-     bij het herladen van de pagina en blijft het niet hangen op een detail. */
-  view.querySelector('#aanraders-inhoud')?.appendChild(blok);
+  /* Bovenaan de inhoud, niet onderaan: eerder stond dit blok ná de
+     downloads en de Pril Leven-sectie, waardoor een pas toegevoegd
+     product in de praktijk onvindbaar was. */
+  const doel = view.querySelector('#aanraders-inhoud');
+  doel?.insertBefore(blok, doel.firstChild);
 }
 
 /* ----------------------------------------

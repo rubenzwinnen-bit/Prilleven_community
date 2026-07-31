@@ -65,12 +65,13 @@ body.aanraders-page{font-family:'Poppins',sans-serif;background:var(--color-bg);
 .aanraders .label--fav{background:var(--color-primary);color:#fff}
 .aanraders .label--new{background:var(--color-secondary-dark);color:#fff}
 .aanraders .card-body{padding:18px 18px 0;flex:1}
+.aanraders .card-kop{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:2px}
 .aanraders .card-brand{font-size:.72rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--color-gray)}
-.aanraders .card-title{font-size:1.08rem;font-weight:600;letter-spacing:-.01em;margin:3px 0 8px}
+.aanraders .card-title{font-size:1.08rem;font-weight:600;letter-spacing:-.01em;margin:4px 0 8px}
 .aanraders .card-desc{font-size:.88rem;color:var(--color-dark-light);line-height:1.6}
 .aanraders .card-why{margin-top:14px;padding:12px 14px;background:var(--color-bg);border-radius:var(--radius-md);font-size:.83rem;color:var(--color-dark-light);line-height:1.6}
 .aanraders .card-why b{display:block;font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--color-primary);margin-bottom:4px}
-.aanraders .card-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.aanraders .card-meta{display:flex;flex-wrap:wrap;gap:6px}
 .aanraders .chip{font-size:.75rem;color:var(--color-gray);background:var(--color-bg);border:1px solid var(--color-light);border-radius:var(--radius-sm);padding:3px 9px}
 .aanraders .card-note{margin-top:12px;font-size:.78rem;line-height:1.55;color:#8a6d3b;background:#fdf6e3;border:1px solid #f3e3bd;border-radius:var(--radius-md);padding:10px 12px}
 .aanraders .card-foot{padding:16px 18px 18px;margin-top:16px;border-top:1px solid var(--color-light)}

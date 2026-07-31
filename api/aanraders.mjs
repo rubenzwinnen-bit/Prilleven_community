@@ -31,7 +31,7 @@ import { requireAdmin, AuthError } from './_lib/auth.mjs';
 const BASE = '/aanraders';
 
 /* Cache-buster voor aanraders.css — bump bij CSS-wijziging. */
-const CSS_VERSION = '3.2.3';
+const CSS_VERSION = '3.2.4';
 
 /* Vier eigen producten. Bewust hardcoded: ze wijzigen zelden en horen
    niet tussen de affiliateproducten in de database te staan. */
@@ -573,9 +573,11 @@ function renderKaart(p, ctx = CTX_PUBLIEK) {
     ? `<img src="${esc(p.afbeelding_url)}" alt="${esc(p.titel)}" loading="lazy">`
     : '<span class="ph">🛍️</span>';
 
+  /* Kleine labels staan naast de merknaam, niet onderaan de kaart: daar
+     onderbraken ze de leesvolgorde tussen "waarom ik dit aanbeveel" en de
+     knop. Prijsindicatie is er bewust uit — die zei te weinig. */
   const meta = [
     `<span class="chip">${esc(leeftijdLabel(p.leeftijd_vanaf_maanden))}</span>`,
-    p.prijs_indicatie ? `<span class="chip">${esc(p.prijs_indicatie)}</span>` : '',
     p.materiaal ? `<span class="chip">${esc(p.materiaal)}</span>` : '',
   ].filter(Boolean).join('');
 
@@ -611,11 +613,13 @@ function renderKaart(p, ctx = CTX_PUBLIEK) {
       <article class="card" data-slug="${esc(p.slug)}">
         <a class="card-media-link" href="${esc(detail)}"><div class="card-media">${media}${renderLabels(p)}</div></a>
         <div class="card-body">
-          ${p.merk ? `<div class="card-brand">${esc(p.merk)}</div>` : ''}
+          <div class="card-kop">
+            ${p.merk ? `<div class="card-brand">${esc(p.merk)}</div>` : '<span></span>'}
+            ${meta ? `<div class="card-meta">${meta}</div>` : ''}
+          </div>
           <h3 class="card-title"><a href="${esc(detail)}">${esc(p.titel)}</a></h3>
           ${p.korte_beschrijving ? `<p class="card-desc">${esc(p.korte_beschrijving)}</p>` : ''}
           ${p.waarom_aanbevolen ? `<div class="card-why"><b>Waarom ik dit aanbeveel</b>${esc(p.waarom_aanbevolen)}</div>` : ''}
-          ${meta ? `<div class="card-meta">${meta}</div>` : ''}
           ${p.opmerking ? `<div class="card-note"><strong>Belangrijk:</strong> ${esc(p.opmerking)}</div>` : ''}
         </div>
         <div class="card-foot">
