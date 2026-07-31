@@ -628,7 +628,10 @@ function renderKaart(p, ctx = CTX_PUBLIEK) {
 
 function renderCategorie(cat, producten, ctx = CTX_PUBLIEK) {
   const eigen = producten.filter(p => p.categorie_id === cat.id);
-  const titel = `${cat.emoji ? esc(cat.emoji) + ' ' : ''}${esc(cat.titel)}`;
+  /* Geen emoji voor de categorienaam: rustiger beeld, past bij het
+     minimalistische uitgangspunt. De emoji blijft wel in de database
+     staan, mocht je hem ooit terug willen. */
+  const titel = esc(cat.titel);
 
   /* binnenkort-vlag OF gewoon nog geen producten → hetzelfde blok.
      Zo staat er nooit een lege categorie op de pagina. */
@@ -825,24 +828,12 @@ ${body}
 function bodyOverzicht(data, ctx) {
   const { categorieen, producten, downloads } = data;
 
-  /* Ook hier een tweede sleutel: twee favorieten met dezelfde
-     favoriet_volgorde zouden anders in willekeurige volgorde staan. */
-  const favorieten = producten
-    .filter(p => p.favoriet_anneleen)
-    .sort((a, b) =>
-      (a.favoriet_volgorde ?? 999) - (b.favoriet_volgorde ?? 999)
-      || String(a.titel).localeCompare(String(b.titel), 'nl')
-    )
-    .slice(0, 10);
-
-  const favSectie = favorieten.length ? `
-  <section>
-    <div class="section-head">
-      <h2>⭐ Anneleen's favorieten</h2>
-      <p>De producten die ik het vaakst aanraad — omdat ze het verschil maken in ons eigen gezin.</p>
-    </div>
-    <div class="grid">${favorieten.map(p => renderKaart(p, ctx)).join('')}</div>
-  </section>` : '';
+  /* Geen aparte favorieten-sectie meer: élke categorie is een selectie van
+     Anneleen, dus een uitgelichte kop erboven suggereerde ten onrechte dat
+     de rest dat niet is. De producten stonden er bovendien dubbel op —
+     één keer bovenaan, één keer in hun eigen categorie.
+     Het veld favoriet_anneleen blijft wel bestaan: het zet het label
+     "Favoriet" op de kaart. */
 
   /* Nog geen enkel product zichtbaar: geen halfleeg skelet tonen. */
   const geenProducten = producten.length === 0;
@@ -859,13 +850,7 @@ function bodyOverzicht(data, ctx) {
   <section>
     <div class="soon"><b>Binnenkort</b>De eerste aanraders worden op dit moment samengesteld.</div>
   </section>` : `
-  ${favSectie}
-
   <section>
-    <div class="section-head">
-      <h2>Alle categorieën</h2>
-      <p>Per thema gebundeld, zodat je vindt wat je zoekt zonder door alles te scrollen.</p>
-    </div>
     ${categorieen.map(c => renderCategorie(c, producten, ctx)).join('')}
   </section>`}
 
@@ -891,7 +876,7 @@ function renderOverzicht(data, origin) {
 }
 
 function bodyCategorie({ cat, producten }, ctx) {
-  const titelTekst = `${cat.emoji ? cat.emoji + ' ' : ''}${cat.titel}`;
+  const titelTekst = cat.titel;
   const terug = overzichtHref(ctx);
 
   const inhoud = producten.length
