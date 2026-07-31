@@ -70,7 +70,7 @@ body.aanraders-page{font-family:'Poppins',sans-serif;background:var(--color-bg);
 .aanraders .card-title{font-size:1.08rem;font-weight:600;letter-spacing:-.01em;margin:4px 0 8px}
 .aanraders .card-desc{font-size:.88rem;color:var(--color-dark-light);line-height:1.6}
 .aanraders .card-why{margin-top:14px;padding:12px 14px;background:var(--color-bg);border-radius:var(--radius-md);font-size:.83rem;color:var(--color-dark-light);line-height:1.6}
-.aanraders .card-why b{display:block;font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--color-primary);margin-bottom:4px}
+.aanraders .card-why b{display:block;font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--color-green-text);margin-bottom:4px}
 .aanraders .card-meta{display:flex;flex-wrap:wrap;gap:6px}
 .aanraders .chip{font-size:.75rem;color:var(--color-gray);background:var(--color-bg);border:1px solid var(--color-light);border-radius:var(--radius-sm);padding:3px 9px}
 .aanraders .card-note{margin-top:12px;font-size:.78rem;line-height:1.55;color:#8a6d3b;background:#fdf6e3;border:1px solid #f3e3bd;border-radius:var(--radius-md);padding:10px 12px}
@@ -100,8 +100,13 @@ body.aanraders-page{font-family:'Poppins',sans-serif;background:var(--color-bg);
 .aanraders .cat{margin-bottom:56px}
 .aanraders .cat-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--color-light)}
 .aanraders .cat-head h3{font-size:1.15rem;font-weight:600;letter-spacing:-.01em;display:flex;align-items:center;gap:9px}
-.aanraders .cat-head a{font-size:.82rem;color:var(--color-gray);flex:none}
-.aanraders .cat-head a:hover{color:var(--color-primary)}
+/* Alleen de "Alles bekijken"-link is klein en grijs. Stond hier eerder als
+   .cat-head a, waardoor ook de link rond de categorienaam verkleind werd en
+   gevulde categorieen een kleinere titel kregen dan lege. */
+.aanraders .cat-head h3 a{color:inherit}
+.aanraders .cat-head h3 a:hover{color:var(--color-primary)}
+.aanraders .cat-meer{font-size:.82rem;color:var(--color-gray);flex:none}
+.aanraders .cat-meer:hover{color:var(--color-primary)}
 .aanraders .soon{background:var(--color-white);border:1px dashed var(--color-gray-light);border-radius:var(--radius-lg);padding:32px 24px;text-align:center;color:var(--color-gray);font-size:.9rem}
 .aanraders .soon b{display:block;color:var(--color-dark-light);font-weight:500;margin-bottom:4px}
 
@@ -181,8 +186,8 @@ body.aanraders-page{font-family:'Poppins',sans-serif;background:var(--color-bg);
 .aanraders .facts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px}
 .aanraders .facts .chip{background:var(--color-white);padding:5px 11px;font-size:.78rem}
 .aanraders .facts .chip b{color:var(--color-dark-light);font-weight:500}
-.aanraders .why{background:var(--color-white);border:1px solid var(--color-light);border-left:3px solid var(--color-primary);border-radius:var(--radius-md);padding:18px 20px;margin-bottom:22px}
-.aanraders .why h3{font-size:.72rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--color-primary);margin-bottom:8px}
+.aanraders .why{background:var(--color-white);border:1px solid var(--color-light);border-left:3px solid var(--color-secondary-dark);border-radius:var(--radius-md);padding:18px 20px;margin-bottom:22px}
+.aanraders .why h3{font-size:.72rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--color-green-text);margin-bottom:8px}
 .aanraders .why p{font-size:.92rem;color:var(--color-dark-light);line-height:1.7}
 .aanraders .buy .code{padding:14px 16px}
 .aanraders .buy .code-val{font-size:1.05rem}

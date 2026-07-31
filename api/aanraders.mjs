@@ -31,7 +31,7 @@ import { requireAdmin, AuthError } from './_lib/auth.mjs';
 const BASE = '/aanraders';
 
 /* Cache-buster voor aanraders.css — bump bij CSS-wijziging. */
-const CSS_VERSION = '3.2.4';
+const CSS_VERSION = '3.2.5';
 
 /* Vier eigen producten. Bewust hardcoded: ze wijzigen zelden en horen
    niet tussen de affiliateproducten in de database te staan. */
@@ -653,7 +653,7 @@ function renderCategorie(cat, producten, ctx = CTX_PUBLIEK) {
     <div class="cat">
       <div class="cat-head">
         <h3><a href="${esc(href)}">${titel}</a></h3>
-        <a href="${esc(href)}">Alles bekijken →</a>
+        <a class="cat-meer" href="${esc(href)}">Alles bekijken →</a>
       </div>
       ${cat.omschrijving ? `<p class="section-head-p">${esc(cat.omschrijving)}</p>` : ''}
       <div class="grid">${eigen.map(p => renderKaart(p, ctx)).join('')}</div>
