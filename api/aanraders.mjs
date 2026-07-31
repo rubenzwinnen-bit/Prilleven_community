@@ -31,7 +31,7 @@ import { requireAdmin, AuthError } from './_lib/auth.mjs';
 const BASE = '/aanraders';
 
 /* Cache-buster voor aanraders.css — bump bij CSS-wijziging. */
-const CSS_VERSION = '3.1.6';
+const CSS_VERSION = '3.2.3';
 
 /* Vier eigen producten. Bewust hardcoded: ze wijzigen zelden en horen
    niet tussen de affiliateproducten in de database te staan. */
@@ -59,11 +59,15 @@ const LABEL_TEKST = {
   nieuw:              'Nieuw',
 };
 
+/* Eén intro-blok. Verving eerder twee losse teksten (een lead-zin en een
+   apart disclosure-kader) — de transparantie zit nu in dezelfde alinea,
+   wat eerlijker leest dan een kleine grijze voetnoot eronder. */
 const INTRO_TEKST =
-  'Op deze pagina vind je alle producten die ik zelf gebruik, testte of met overtuiging ' +
-  'aanbeveel. Sommige links zijn affiliatelinks of bevatten een kortingscode. Wanneer je ' +
-  'via deze links aankoopt, ontvangt Pril Leven mogelijk een kleine commissie, ' +
-  '<strong>zonder extra kost voor jou</strong>. Zo help je mee om gratis content te blijven maken.';
+  'Als ouders worden we overspoeld met producten en adviezen. Daarom verzamel ik hier ' +
+  'enkel de producten waar ik écht achter sta. Alles op deze pagina gebruik ik zelf, ' +
+  'testte ik uitgebreid of raad ik met vertrouwen aan. Sommige links zijn affiliatelinks ' +
+  'of bevatten een kortingscode. Daarmee steun je Pril Leven, zonder dat het jou iets ' +
+  'extra kost.';
 
 const FOOTER_TEKST =
   'Pril Leven werkt samen met een beperkt aantal merken. Bij elk product staat duidelijk ' +
@@ -848,8 +852,7 @@ function bodyOverzicht(data, ctx) {
 
   <section class="hero">
     <h1>Alles wat ik zelf gebruik en met overtuiging aanbeveel</h1>
-    <p class="lead">Geen webshop, geen willekeurige lijst. Een zorgvuldig samengestelde bibliotheek van producten, materialen en tools die passen binnen de visie van Pril Leven.</p>
-    <div class="disclosure">${INTRO_TEKST}</div>
+    <p class="intro">${INTRO_TEKST}</p>
   </section>
 
   ${geenProducten ? `
