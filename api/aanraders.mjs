@@ -31,16 +31,7 @@ import { requireAdmin, AuthError } from './_lib/auth.mjs';
 const BASE = '/aanraders';
 
 /* Cache-buster voor aanraders.css — bump bij CSS-wijziging. */
-const CSS_VERSION = '3.2.5';
-
-/* Vier eigen producten. Bewust hardcoded: ze wijzigen zelden en horen
-   niet tussen de affiliateproducten in de database te staan. */
-const PRIL_LEVEN_ITEMS = [
-  { titel: 'Community',              tekst: 'Vragen stellen, meelezen en ervaringen delen met andere ouders.', href: '/' },
-  { titel: 'Roadmap Eerste Hapjes',  tekst: 'Stap voor stap van eerste hapje tot mee-eten aan tafel.',        href: '/' },
-  { titel: 'Kookboek',               tekst: 'Recepten voor het hele gezin, ook voor de allerkleinsten.',      href: '/' },
-  { titel: 'Masterclass',            tekst: 'Verdiepend en praktisch, in je eigen tempo te volgen.',          href: '/' },
-];
+const CSS_VERSION = '3.2.6';
 
 /* Transparantielabels. relatie_type is verplicht in de DB met een CHECK,
    dus onbekende waarden kunnen niet voorkomen — de fallback is defensief. */
@@ -686,98 +677,6 @@ function renderDownloads(downloads) {
   </section>`;
 }
 
-function renderPrilLeven(ctx = CTX_PUBLIEK) {
-  const items = PRIL_LEVEN_ITEMS.map(i => `
-        <a href="${esc(ctx.inApp ? '#/' : i.href)}" class="pl-item">
-          <h4>${esc(i.titel)}</h4>
-          <p>${esc(i.tekst)}</p>
-          <span>Ontdek →</span>
-        </a>`).join('');
-
-  return `
-  <section>
-    <div class="pl">
-      <div class="pl-head">
-        <h2>Van Pril Leven zelf</h2>
-        <p>Geen affiliate, geen commissie — dit is het werk waar Pril Leven zelf achter staat.</p>
-      </div>
-      <div class="pl-grid">${items}</div>
-    </div>
-  </section>`;
-}
-
-/* Kopieer-gedrag. Klein en inline: één extern JS-bestand voor dit beetje
-   is niet de moeite, en het moet werken zonder de app-bundel.
-   Drie niveaus, want een kortingscode die je niet kan kopiëren is een
-   kapotte pagina:
-     1. navigator.clipboard  — moderne browsers, secure context
-     2. execCommand('copy')  — oudere Safari / niet-secure context
-     3. tekst selecteren     — dan kan de bezoeker zelf Cmd/Ctrl+C doen */
-const INLINE_SCRIPT = `
-document.addEventListener('click', function (e) {
-  var btn = e.target.closest('.code');
-  if (!btn) return;
-  var code = btn.getAttribute('data-code') || '';
-  var label = btn.querySelector('.code-copy');
-  var oud = label ? label.innerHTML : '';
-
-  function melden(tekst) {
-    if (!label) return;
-    label.textContent = tekst;
-    btn.classList.add('is-copied');
-    setTimeout(function () {
-      label.innerHTML = oud;
-      btn.classList.remove('is-copied');
-    }, 1800);
-  }
-
-  function selecteer() {
-    var val = btn.querySelector('.code-val');
-    if (!val || !window.getSelection) return false;
-    try {
-      var r = document.createRange();
-      r.selectNodeContents(val);
-      var sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(r);
-      return true;
-    } catch (err) { return false; }
-  }
-
-  function viaExecCommand() {
-    if (!selecteer()) return false;
-    try { return document.execCommand('copy'); } catch (err) { return false; }
-  }
-
-  function terugvallen() {
-    if (viaExecCommand()) { melden('gekopieerd'); return; }
-    if (selecteer()) { melden('selecteer + kopieer'); return; }
-    melden(code);
-  }
-
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(code).then(function () {
-      melden('gekopieerd');
-    }).catch(terugvallen);
-  } else {
-    terugvallen();
-  }
-});
-
-/* Galerij op de productdetailpagina: thumbnail wisselt de hoofdfoto.
-   Werkt zonder JS ook prima — dan zie je enkel de hoofdfoto. */
-document.addEventListener('click', function (e) {
-  var t = e.target.closest('.thumb');
-  if (!t) return;
-  var hoofd = document.getElementById('galerij-hoofd');
-  var src = t.getAttribute('data-src');
-  if (!hoofd || !src) return;
-  hoofd.src = src;
-  var alle = document.querySelectorAll('.thumb');
-  for (var i = 0; i < alle.length; i++) alle[i].classList.remove('active');
-  t.classList.add('active');
-});`;
-
 /* ---------------------------------------------------------------
    RENDER — volledige pagina
 --------------------------------------------------------------- */
@@ -806,7 +705,9 @@ ${afbeelding ? `<meta property="og:image" content="${esc(afbeelding)}">` : ''}
 
 <header class="site-header">
   <div class="site-header-inner">
-    <a href="${BASE}" class="brand">Pril<span>Leven</span></a>
+    <a href="${BASE}" class="brand">
+      <img src="/pril-leven-logo.png" alt="Pril Leven" class="brand-logo">
+    </a>
     <a href="/" class="header-cta">Naar de community</a>
   </div>
 </header>
@@ -859,8 +760,6 @@ function bodyOverzicht(data, ctx) {
   </section>`}
 
   ${renderDownloads(downloads)}
-
-  ${renderPrilLeven(ctx)}
 
 </div>`;
 }

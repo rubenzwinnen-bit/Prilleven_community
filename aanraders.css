@@ -24,8 +24,8 @@ body.aanraders-page{font-family:'Poppins',sans-serif;background:var(--color-bg);
 /* ---------- header ---------- */
 .aanraders .site-header{background:var(--color-white);border-bottom:1px solid var(--color-light);position:sticky;top:0;z-index:50}
 .aanraders .site-header-inner{max-width:var(--max-width);margin:0 auto;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px}
-.aanraders .brand{font-weight:600;font-size:1.05rem;letter-spacing:-.01em}
-.aanraders .brand span{color:var(--color-primary)}
+.aanraders .brand{display:flex;align-items:center}
+.aanraders .brand-logo{height:52px;width:auto;display:block}
 .aanraders .header-cta{font-size:.85rem;font-weight:500;color:var(--color-gray);border:1px solid var(--color-light);padding:7px 14px;border-radius:999px;transition:all .25s ease}
 .aanraders .header-cta:hover{color:var(--color-primary);border-color:var(--color-primary)}
 
@@ -38,7 +38,7 @@ body.aanraders-page{font-family:'Poppins',sans-serif;background:var(--color-bg);
 
 /* ---------- hero ---------- */
 .aanraders .hero{padding:64px 0 48px;text-align:center}
-.aanraders .hero h1{font-size:2rem;font-weight:600;letter-spacing:-.03em;line-height:1.25;margin-bottom:18px}
+.aanraders .hero h1{font-size:2rem;font-weight:600;letter-spacing:-.03em;line-height:1.25;margin-bottom:18px;color:var(--color-green-text)}
 .aanraders .intro{color:var(--color-dark-light);font-size:1.02rem;line-height:1.75;max-width:60ch;margin:0 auto}
 .aanraders .intro strong{color:var(--color-dark);font-weight:500}
 
@@ -99,7 +99,7 @@ body.aanraders-page{font-family:'Poppins',sans-serif;background:var(--color-bg);
 /* ---------- categorie ---------- */
 .aanraders .cat{margin-bottom:56px}
 .aanraders .cat-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--color-light)}
-.aanraders .cat-head h3{font-size:1.15rem;font-weight:600;letter-spacing:-.01em;display:flex;align-items:center;gap:9px}
+.aanraders .cat-head h3{font-size:1.15rem;font-weight:600;letter-spacing:-.01em;display:flex;align-items:center;gap:9px;color:var(--color-green-text)}
 /* Alleen de "Alles bekijken"-link is klein en grijs. Stond hier eerder als
    .cat-head a, waardoor ook de link rond de categorienaam verkleind werd en
    gevulde categorieen een kleinere titel kregen dan lege. */
@@ -119,17 +119,6 @@ body.aanraders-page{font-family:'Poppins',sans-serif;background:var(--color-bg);
 .aanraders .dl-txt p{font-size:.83rem;color:var(--color-gray);line-height:1.5}
 .aanraders .dl-arrow{margin-left:auto;color:var(--color-gray-light);flex:none}
 
-/* ---------- pril leven CTA ---------- */
-.aanraders .pl{background:var(--color-white);border:1px solid var(--color-light);border-radius:var(--radius-lg);padding:36px 28px}
-.aanraders .pl-head{text-align:center;margin-bottom:28px}
-.aanraders .pl-head h2{font-size:1.35rem;font-weight:600;letter-spacing:-.02em;margin-bottom:8px}
-.aanraders .pl-head p{color:var(--color-gray);font-size:.9rem;max-width:52ch;margin:0 auto}
-.aanraders .pl-grid{display:grid;grid-template-columns:1fr;gap:14px}
-.aanraders .pl-item{border:1px solid var(--color-light);border-radius:var(--radius-md);padding:20px;transition:border-color .25s ease}
-.aanraders .pl-item:hover{border-color:var(--color-primary)}
-.aanraders .pl-item h4{font-size:.98rem;font-weight:600;margin-bottom:5px}
-.aanraders .pl-item p{font-size:.83rem;color:var(--color-gray);line-height:1.55;margin-bottom:12px}
-.aanraders .pl-item span{font-size:.82rem;font-weight:500;color:var(--color-primary)}
 
 /* ---------- footer ---------- */
 .aanraders .site-footer{border-top:1px solid var(--color-light);background:var(--color-white);padding:40px 0;margin-top:24px}
@@ -146,13 +135,11 @@ body.aanraders-page{font-family:'Poppins',sans-serif;background:var(--color-bg);
 @media(min-width:640px){
   .aanraders .grid{grid-template-columns:repeat(2,1fr);gap:24px}
   .aanraders .dl-grid{grid-template-columns:repeat(2,1fr)}
-  .aanraders .pl-grid{grid-template-columns:repeat(2,1fr)}
   .aanraders .hero h1{font-size:2.5rem}
   .aanraders .hero{padding:80px 0 56px}
 }
 @media(min-width:1000px){
   .aanraders .grid{grid-template-columns:repeat(3,1fr)}
-  .aanraders .pl-grid{grid-template-columns:repeat(4,1fr)}
   .aanraders .toolbar{display:flex;align-items:center;gap:20px;border-radius:999px;padding:12px 12px 12px 20px}
   .aanraders .search{flex:none;width:300px;border:0;background:none;padding:0}
   .aanraders .filters{padding-top:0;border-left:1px solid var(--color-light);padding-left:20px}
@@ -237,7 +224,7 @@ body.aanraders-page{font-family:'Poppins',sans-serif;background:var(--color-bg);
 
 /* categoriepagina kop */
 .aanraders .cat-hero{padding:26px 0 34px}
-.aanraders .cat-hero h1{font-size:1.85rem;font-weight:600;letter-spacing:-.02em;display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.aanraders .cat-hero h1{font-size:1.85rem;font-weight:600;letter-spacing:-.02em;display:flex;align-items:center;gap:10px;margin-bottom:10px;color:var(--color-green-text)}
 .aanraders .cat-hero p{color:var(--color-gray);font-size:.95rem;max-width:62ch}
 .aanraders .terug{display:inline-flex;align-items:center;gap:7px;font-size:.85rem;color:var(--color-gray);margin-top:8px}
 .aanraders .terug:hover{color:var(--color-primary)}
