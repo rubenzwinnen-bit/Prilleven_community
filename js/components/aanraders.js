@@ -17,6 +17,7 @@
 ============================================ */
 
 import * as Store from '../store.js?v=2.5.10';
+import { initAanradersFilters } from '../../aanraders-filters.js?v=1.0.0';
 
 const FRAGMENT_URL = '/api/aanraders?fragment=1';
 
@@ -88,6 +89,11 @@ async function laadInhoud(view, { scroll = false } = {}) {
     doel.innerHTML = data.html;
     view.classList.toggle('heeft-balk', Boolean(data.heeftBalk));
     if (scroll) window.scrollTo(0, 0);
+
+    /* Zoeken + filteren draait op hetzelfde bestand als de publieke pagina.
+       Die start zichzelf op body.aanraders-page; hier moet het na elke
+       injectie opnieuw, want de toolbar is dan een vers element. */
+    initAanradersFilters(doel);
 
     if (Store.isAdmin() && Admin) markeerBewerkbaar(view);
   } catch {

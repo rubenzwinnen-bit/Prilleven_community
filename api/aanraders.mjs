@@ -31,7 +31,13 @@ import { requireAdmin, AuthError } from './_lib/auth.mjs';
 const BASE = '/aanraders';
 
 /* Cache-buster voor aanraders.css — bump bij CSS-wijziging. */
-const CSS_VERSION = '3.3.3';
+const CSS_VERSION = '3.4.0';
+
+/* Cache-buster voor aanraders-filters.js — bump bij wijziging van dat
+   bestand. Staat los van CSS_VERSION zodat een CSS-tweak niet ook de JS
+   opnieuw laat downloaden. De app importeert hetzelfde bestand (zie
+   js/components/aanraders.js) en heeft daar zijn eigen ?v=. */
+const FILTER_JS_VERSION = '1.0.0';
 
 /* Transparantielabels. relatie_type is verplicht in de DB met een CHECK,
    dus onbekende waarden kunnen niet voorkomen — de fallback is defensief. */
@@ -221,11 +227,19 @@ async function fetchPaginaData() {
   if (prods.error)     throw prods.error;
   if (downloads.error) throw downloads.error;
 
-  return {
-    categorieen: cats.data || [],
-    producten:   prods.data || [],
-    downloads:   downloads.data || [],
-  };
+  const categorieen = cats.data || [];
+
+  /* Categorie-slug en -titel op het product plakken: de kaart gebruikt ze
+     als filterwaarde en als zoekterm (op iets als "slaap" zoeken hoort de
+     producten uit die categorie te vinden, ook als het woord nergens in
+     de producttekst staat). */
+  const perId = new Map(categorieen.map(c => [String(c.id), c]));
+  const producten = (prods.data || []).map(p => {
+    const c = perId.get(String(p.categorie_id));
+    return c ? { ...p, categorie_slug: c.slug, categorie_titel: c.titel } : p;
+  });
+
+  return { categorieen, producten, downloads: downloads.data || [] };
 }
 
 /** Categorie + haar zichtbare producten. null als de slug niet bestaat. */
@@ -603,8 +617,23 @@ function renderKaart(p, ctx = CTX_PUBLIEK) {
   /* data-slug laat de app een kaart terugkoppelen aan een product, zodat
      een admin hem ter plekke kan bewerken. Een slug is publieke info —
      hij staat al in de URL — en schrijven blijft achter requireAdmin. */
+  /* data-zoek is de zoekindex van de kaart: alles waarop een bezoeker
+     redelijkerwijs zoekt, in één string. Zo hoeft het filterscript niet
+     door de DOM te kruipen en telt ook de categorienaam mee, die op de
+     kaart zelf niet staat. */
+  const zoekTekst = [
+    p.titel, p.merk, p.materiaal, p.subcategorie,
+    p.korte_beschrijving, p.waarom_aanbevolen, p.categorie_titel,
+    Array.isArray(p.labels) ? p.labels.join(' ') : '',
+  ].filter(Boolean).join(' ');
+
   return `
-      <article class="card" data-slug="${esc(p.slug)}">
+      <article class="card" data-slug="${esc(p.slug)}"
+        data-zoek="${esc(zoekTekst)}"
+        data-leeftijd="${p.leeftijd_vanaf_maanden === null || p.leeftijd_vanaf_maanden === undefined ? '' : esc(p.leeftijd_vanaf_maanden)}"
+        data-cat="${esc(p.categorie_slug || '')}"
+        data-merk="${esc(p.merk || '')}"
+        data-materiaal="${esc(p.materiaal || '')}">
         <a class="card-media-link" href="${esc(detail)}"><div class="card-media">${media}${renderLabels(p)}</div></a>
         <div class="card-body">
           <div class="card-kop">
@@ -622,6 +651,107 @@ function renderKaart(p, ctx = CTX_PUBLIEK) {
           <div class="${relCls}"><i></i>${esc(RELATIE_LABELS[p.relatie_type] || '')}</div>
         </div>
       </article>`;
+}
+
+const ICON_ZOEK =
+  '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="2" ' +
+  'stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>';
+
+/**
+ * Eén pill-groep, of een lege string als de dimensie niets oplevert.
+ *
+ * Een filter is pas zinvol als minstens twee producten een waarde delen:
+ * anders krijg je knoppen die stuk voor stuk één product tonen (dat is wat
+ * de lijst zelf al doet) of — bij een lege kolom zoals materiaal nu —
+ * helemaal geen knoppen. De dimensies uit het plan (leeftijd, categorie,
+ * materiaal, merk) staan er dus allemaal in, maar ze verschijnen pas
+ * zodra de data ze rechtvaardigt. Zoeken dekt ze intussen sowieso.
+ */
+function pillGroep({ label, dim, opties, minPerOptie = 2 }) {
+  const bruikbaar = opties.filter(o => o.aantal >= minPerOptie);
+  if (bruikbaar.length < 2) return '';
+
+  const pillen = bruikbaar.map(o =>
+    `<button type="button" class="pill" data-dim="${esc(dim)}" data-val="${esc(o.val)}" ` +
+    `aria-pressed="false">${esc(o.label)}</button>`).join('');
+
+  return `
+      <div class="filter-groep">
+        <span class="filter-label">${esc(label)}</span>
+        <button type="button" class="pill active" data-dim="${esc(dim)}" data-val="" aria-pressed="true">Alles</button>
+        ${pillen}
+      </div>`;
+}
+
+/** Telt hoe vaak elke waarde voorkomt, in volgorde van eerste voorkomen. */
+function tel(producten, lees) {
+  const map = new Map();
+  for (const p of producten) {
+    const v = lees(p);
+    if (v === null || v === undefined || v === '') continue;
+    const key = String(v);
+    map.set(key, (map.get(key) || 0) + 1);
+  }
+  return map;
+}
+
+/**
+ * Zoekbalk + filters boven het overzicht. Filtert client-side op de al
+ * gerenderde kaarten (aanraders-filters.js) — geen extra request, en
+ * zonder JS blijft gewoon de volledige lijst staan.
+ */
+function renderToolbar(producten, categorieen) {
+  const leeftijden = tel(producten, p => p.leeftijd_vanaf_maanden);
+  const leeftijdOpties = Array.from(leeftijden.keys())
+    .map(Number)
+    .sort((a, b) => a - b)
+    .map(m => ({
+      val: String(m),
+      label: m === 0 ? 'Pasgeboren' : m < 24 ? `${m} mnd` : `${Math.floor(m / 12)} jaar`,
+      /* Een kindje van X maanden ziet ook alles van eerder, dus telt hier
+         alles mee met een lagere ondergrens. Anders zou "12 mnd" met één
+         product verdwijnen terwijl die keuze wel degelijk iets toont. */
+      aantal: producten.filter(p => p.leeftijd_vanaf_maanden !== null
+        && p.leeftijd_vanaf_maanden !== undefined
+        && p.leeftijd_vanaf_maanden <= m).length,
+    }));
+
+  /* Een categorie op "binnenkort" toont haar producten niet (zie
+     renderCategorie), dus een pil ervoor zou gegarandeerd nul resultaten
+     geven. Enkel categorieën waarvan er ook echt kaarten op de pagina
+     staan krijgen een knop. */
+  const catTellingen = tel(producten, p => p.categorie_id);
+  const catOpties = categorieen
+    .filter(c => !c.binnenkort && catTellingen.get(String(c.id)))
+    .map(c => ({ val: c.slug, label: c.titel, aantal: catTellingen.get(String(c.id)) }));
+
+  const merkTellingen = tel(producten, p => p.merk);
+  const merkOpties = Array.from(merkTellingen.entries())
+    .map(([val, aantal]) => ({ val, label: val, aantal }));
+
+  const matTellingen = tel(producten, p => p.materiaal);
+  const matOpties = Array.from(matTellingen.entries())
+    .map(([val, aantal]) => ({ val, label: val, aantal }));
+
+  /* Leeftijd en categorie zijn echte indelingen: daar hoort ook een keuze
+     met één product bij, anders mist de bezoeker categorieën die hij op de
+     pagina wél ziet staan. Merk en materiaal zijn producteigenschappen —
+     daar is één product per knop precies de nutteloze variant. */
+  const groepen = [
+    pillGroep({ label: 'Leeftijd kindje', dim: 'leeftijd',  opties: leeftijdOpties, minPerOptie: 1 }),
+    pillGroep({ label: 'Categorie',       dim: 'cat',       opties: catOpties,      minPerOptie: 1 }),
+    pillGroep({ label: 'Materiaal',       dim: 'materiaal', opties: matOpties }),
+    pillGroep({ label: 'Merk',            dim: 'merk',      opties: merkOpties }),
+  ].filter(Boolean).join('');
+
+  return `
+  <div class="toolbar" data-filterbalk>
+    <label class="search">
+      ${ICON_ZOEK}
+      <input type="search" data-zoekveld placeholder="Zoek op product of merk" aria-label="Zoek in de aanraders">
+    </label>
+    ${groepen ? `<div class="filters">${groepen}</div>` : ''}
+  </div>`;
 }
 
 function renderCategorie(cat, producten, ctx = CTX_PUBLIEK) {
@@ -809,6 +939,7 @@ ${body}
 </footer>
 
 <script>${INLINE_SCRIPT}</script>
+<script type="module" src="/aanraders-filters.js?v=${FILTER_JS_VERSION}"></script>
 </body>
 </html>`;
 }
@@ -838,8 +969,13 @@ function bodyOverzicht(data, ctx) {
   <section>
     <div class="soon"><b>Binnenkort</b>De eerste aanraders worden op dit moment samengesteld.</div>
   </section>` : `
+  ${renderToolbar(producten, categorieen)}
+
   <section>
     ${categorieen.map(c => renderCategorie(c, producten, ctx)).join('')}
+    <div class="soon" data-geen-resultaten hidden>
+      <b>Niets gevonden</b>Geen enkel product past bij deze zoekterm of filter. Probeer een ander woord of zet de filters terug op "Alles".
+    </div>
   </section>`}
 
   ${renderDownloads(downloads)}

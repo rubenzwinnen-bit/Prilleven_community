@@ -59,11 +59,20 @@ body.aanraders-page{font-family:'Poppins',sans-serif;background:var(--color-bg);
 .aanraders .search{display:flex;align-items:center;gap:10px;border:1px solid var(--color-light);border-radius:999px;padding:10px 16px;background:var(--color-bg)}
 .aanraders .search input{border:0;background:none;outline:none;font-family:inherit;font-size:.92rem;width:100%;color:var(--color-dark)}
 .aanraders .search svg{flex:none;stroke:var(--color-gray)}
-.aanraders .filters{display:flex;gap:8px;overflow-x:auto;padding-top:14px;scrollbar-width:none}
-.aanraders .filters::-webkit-scrollbar{display:none}
+/* Mobiel: elke filtergroep op een eigen regel die apart horizontaal
+   scrollt. Alles in één scrollrij duwt de tweede groep ver buiten beeld. */
+.aanraders .filters{display:flex;flex-direction:column;gap:12px;padding-top:14px}
+.aanraders .filter-groep{display:flex;align-items:center;gap:8px;overflow-x:auto;scrollbar-width:none}
+.aanraders .filter-groep::-webkit-scrollbar{display:none}
 .aanraders .pill{flex:none;font-family:inherit;font-size:.82rem;font-weight:500;color:var(--color-dark-light);background:var(--color-bg);border:1px solid var(--color-light);border-radius:999px;padding:7px 14px;cursor:pointer;transition:all .2s ease}
 .aanraders .pill:hover{border-color:var(--color-gray-light)}
 .aanraders .pill.active{background:var(--color-primary);border-color:var(--color-primary);color:#fff}
+/* Label blijft staan tijdens het zijwaarts scrollen, anders weet je niet
+   meer waarop je aan het filteren bent. */
+.aanraders .filter-label{position:sticky;left:0;flex:none;background:var(--color-white);padding-right:4px;font-size:.72rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--color-gray)}
+.aanraders .search input::-webkit-search-cancel-button{cursor:pointer}
+/* hidden werkt niet op flex/grid-elementen zonder deze regel */
+.aanraders [hidden]{display:none !important}
 
 /* ---------- productkaart ---------- */
 .aanraders .grid{display:grid;grid-template-columns:1fr;gap:20px}
@@ -157,9 +166,16 @@ body.aanraders-page{font-family:'Poppins',sans-serif;background:var(--color-bg);
 }
 @media(min-width:1000px){
   .aanraders .grid{grid-template-columns:repeat(3,1fr)}
-  .aanraders .toolbar{display:flex;align-items:center;gap:20px;border-radius:999px;padding:12px 12px 12px 20px}
-  .aanraders .search{flex:none;width:300px;border:0;background:none;padding:0}
-  .aanraders .filters{padding-top:0;border-left:1px solid var(--color-light);padding-left:20px}
+  /* Geen pilvorm meer op desktop: met twee filtergroepen liepen de knoppen
+     buiten beeld en een horizontale scrollbalk is daar geen goede oplossing
+     — je ziet niet dat er nog iets staat. Wrappen wel. */
+  .aanraders .toolbar{display:flex;align-items:flex-start;gap:20px;padding:14px 18px}
+  .aanraders .search{flex:none;width:280px;border:0;background:none;padding:6px 0 0}
+  .aanraders .filters{flex:1;min-width:0;padding-top:0;border-left:1px solid var(--color-light);padding-left:20px;flex-wrap:wrap;row-gap:10px;overflow:visible}
+  /* Eén regel per filtergroep, pillen wrappen daarbinnen. Anders schuift de
+     langste groep (categorie) buiten de balk. */
+  .aanraders .filter-groep{flex:1 1 100%;flex-wrap:wrap;row-gap:8px;min-width:0;overflow:visible}
+  .aanraders .filter-label{width:104px;position:static}
 }
 
 /* ============================================
