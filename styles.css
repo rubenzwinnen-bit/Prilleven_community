@@ -1287,6 +1287,30 @@ select.form-control {
   margin: 0 auto;
 }
 
+/* Boodschappenlijst in het merkgroen: de twee titels, "Terug naar
+   favorieten", de vier dagfilters, "Genereer Boodschappenlijst" en
+   "Afdrukken". Gescoped op de container, want .btn-outline en .btn-primary
+   zijn gedeelde klassen die elders terracotta blijven. */
+.shopping-list-container > h1 {
+  color: var(--color-green-text);
+}
+.shopping-list-container .btn-outline {
+  border-color: var(--color-green-text);
+  color: var(--color-green-text);
+}
+.shopping-list-container .btn-outline:hover {
+  background: var(--color-green-text);
+  color: var(--color-white);
+}
+.shopping-list-container .btn-primary {
+  background: var(--color-green-text);
+  border-color: var(--color-green-text);
+}
+.shopping-list-container .btn-primary:hover {
+  background: var(--color-green-dark);
+  border-color: var(--color-green-dark);
+}
+
 .shopping-recipe-select {
   background: var(--color-white);
   border-radius: var(--radius-lg);
@@ -1378,7 +1402,7 @@ select.form-control {
 
 .shopping-ingredient-list h3 {
   margin-bottom: 1rem;
-  color: var(--color-primary-dark);
+  color: var(--color-green-text);
 }
 
 .shopping-ingredient-list ul {
