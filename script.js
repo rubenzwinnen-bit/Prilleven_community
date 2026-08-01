@@ -39,7 +39,7 @@ import * as LearningsLibrary from './js/components/learningsLibrary.js?v=2.5.8';
 import * as LearningsDetail from './js/components/learningsDetail.js?v=2.5.8';
 import * as Profiel from './js/components/profiel.js?v=2.5.8';
 import * as Allergenen from './js/components/allergenen.js?v=2.5.8';
-import * as Aanraders from './js/components/aanraders.js?v=3.2.7';
+import * as Aanraders from './js/components/aanraders.js?v=3.4.1';
 
 /* ============================================
    RECOVERY TOKEN DETECTIE

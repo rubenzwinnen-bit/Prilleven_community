@@ -17,7 +17,7 @@
 ============================================ */
 
 import * as Store from '../store.js?v=2.5.10';
-import { initAanradersFilters } from '../../aanraders-filters.js?v=1.0.0';
+import { initAanradersFilters } from '../../aanraders-filters.js?v=1.1.0';
 
 const FRAGMENT_URL = '/api/aanraders?fragment=1';
 

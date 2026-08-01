@@ -47,9 +47,17 @@ export function initAanradersFilters(root) {
   const leeg = root.querySelector('[data-geen-resultaten]');
   const items = kaarten(root);
 
-  /* Actieve keuze per dimensie. Lege string = "Alles". */
+  /* Meerdere waarden per dimensie mogen tegelijk aan staan: binnen een
+     dimensie is dat OF (categorie A of B), tussen dimensies EN. Een lege
+     verzameling betekent "Alles".
+
+     Leeftijd is de uitzondering en blijft één keuze. Die filtert op "vanaf
+     deze leeftijd of eerder", dus twee leeftijden aanvinken levert precies
+     hetzelfde op als enkel de hoogste — een tweede knop zou dan aan staan
+     zonder iets te veranderen. */
+  const ENKELVOUDIG = { leeftijd: true };
   const keuze = Object.create(null);
-  pillen.forEach((p) => { keuze[p.getAttribute('data-dim')] = ''; });
+  pillen.forEach((p) => { keuze[p.getAttribute('data-dim')] = new Set(); });
 
   function past(kaart) {
     const term = normaliseer(zoekveld ? zoekveld.value.trim() : '');
@@ -57,20 +65,19 @@ export function initAanradersFilters(root) {
 
     for (const dim in keuze) {
       const gekozen = keuze[dim];
-      if (!gekozen) continue;
+      if (!gekozen.size) continue;
 
-      /* Leeftijd is een ondergrens, geen exacte waarde: een kindje van
-         12 maanden mag ook alles zien wat vanaf 6 maanden geschikt is.
-         Producten zonder leeftijd zijn niet leeftijdsgebonden en blijven
+      /* Producten zonder leeftijd zijn niet leeftijdsgebonden en blijven
          altijd staan. */
       if (dim === 'leeftijd') {
         const ruw = kaart.getAttribute('data-leeftijd');
         if (ruw === '' || ruw === null) continue;
-        if (Number(ruw) > Number(gekozen)) return false;
+        const grens = Math.max.apply(null, Array.from(gekozen).map(Number));
+        if (Number(ruw) > grens) return false;
         continue;
       }
 
-      if (kaart.getAttribute('data-' + dim) !== gekozen) return false;
+      if (!gekozen.has(kaart.getAttribute('data-' + dim))) return false;
     }
     return true;
   }
@@ -115,15 +122,26 @@ export function initAanradersFilters(root) {
     pil.addEventListener('click', () => {
       const dim = pil.getAttribute('data-dim');
       const val = pil.getAttribute('data-val') || '';
+      const set = keuze[dim];
 
-      /* Opnieuw klikken op een actieve pil zet de dimensie terug op Alles. */
-      keuze[dim] = (keuze[dim] === val && val !== '') ? '' : val;
+      if (!val) {
+        set.clear();                       // "Alles"
+      } else if (ENKELVOUDIG[dim]) {
+        const stondAan = set.has(val);
+        set.clear();
+        if (!stondAan) set.add(val);       // nogmaals klikken = terug naar Alles
+      } else if (set.has(val)) {
+        set.delete(val);
+      } else {
+        set.add(val);
+      }
 
       pillen.forEach((p) => {
         if (p.getAttribute('data-dim') !== dim) return;
         const eigen = p.getAttribute('data-val') || '';
-        p.classList.toggle('active', eigen === keuze[dim]);
-        p.setAttribute('aria-pressed', eigen === keuze[dim] ? 'true' : 'false');
+        const aan = eigen ? set.has(eigen) : set.size === 0;
+        p.classList.toggle('active', aan);
+        p.setAttribute('aria-pressed', aan ? 'true' : 'false');
       });
 
       toepassen();

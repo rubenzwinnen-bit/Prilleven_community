@@ -31,13 +31,13 @@ import { requireAdmin, AuthError } from './_lib/auth.mjs';
 const BASE = '/aanraders';
 
 /* Cache-buster voor aanraders.css — bump bij CSS-wijziging. */
-const CSS_VERSION = '3.4.0';
+const CSS_VERSION = '3.4.1';
 
 /* Cache-buster voor aanraders-filters.js — bump bij wijziging van dat
    bestand. Staat los van CSS_VERSION zodat een CSS-tweak niet ook de JS
    opnieuw laat downloaden. De app importeert hetzelfde bestand (zie
    js/components/aanraders.js) en heeft daar zijn eigen ?v=. */
-const FILTER_JS_VERSION = '1.0.0';
+const FILTER_JS_VERSION = '1.1.0';
 
 /* Transparantielabels. relatie_type is verplicht in de DB met een CHECK,
    dus onbekende waarden kunnen niet voorkomen — de fallback is defensief. */
@@ -676,7 +676,7 @@ function pillGroep({ label, dim, opties, minPerOptie = 2 }) {
     `aria-pressed="false">${esc(o.label)}</button>`).join('');
 
   return `
-      <div class="filter-groep">
+      <div class="filter-groep filter-groep--${esc(dim)}">
         <span class="filter-label">${esc(label)}</span>
         <button type="button" class="pill active" data-dim="${esc(dim)}" data-val="" aria-pressed="true">Alles</button>
         ${pillen}
@@ -744,13 +744,16 @@ function renderToolbar(producten, categorieen) {
     pillGroep({ label: 'Merk',            dim: 'merk',      opties: merkOpties }),
   ].filter(Boolean).join('');
 
+  /* Zoekveld en filtergroepen staan bewust als broertjes in dezelfde
+     flexbox, zonder tussenlaag: zo schuift de eerste filtergroep naast de
+     zoekbalk en blijft er geen lege kolom onder het zoekveld staan. */
   return `
   <div class="toolbar" data-filterbalk>
     <label class="search">
       ${ICON_ZOEK}
       <input type="search" data-zoekveld placeholder="Zoek op product of merk" aria-label="Zoek in de aanraders">
     </label>
-    ${groepen ? `<div class="filters">${groepen}</div>` : ''}
+    ${groepen}
   </div>`;
 }
 
