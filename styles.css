@@ -974,7 +974,7 @@ select.form-control {
 }
 
 .schedule-row-header {
-  background: var(--color-secondary);
+  background: var(--color-green-text);
   color: var(--color-white);
   font-weight: 600;
   font-size: 0.7rem;
@@ -1230,6 +1230,27 @@ select.form-control {
   padding-bottom: 0.75rem;
   border-bottom: 3px solid var(--color-green-text);
   display: inline-block;
+}
+
+/* Knoppen in de weekschema-kaart in het merkgroen. Scoped, want
+   .btn-outline is gedeeld en blijft elders terracotta. Verwijderen
+   (.btn-danger) blijft bewust rood: dat is de enige onomkeerbare actie. */
+.saved-schedule-card .btn-outline {
+  border-color: var(--color-green-text);
+  color: var(--color-green-text);
+}
+.saved-schedule-card .btn-outline:hover {
+  background: var(--color-green-text);
+  color: var(--color-white);
+}
+.saved-schedule-card .btn-activate-schedule {
+  background: var(--color-green-text);
+  border-color: var(--color-green-text);
+  color: var(--color-white);
+}
+.saved-schedule-card .btn-activate-schedule:hover {
+  background: var(--color-green-dark);
+  border-color: var(--color-green-dark);
 }
 
 .saved-schedule-card {
@@ -2131,7 +2152,7 @@ select.form-control {
 
 .active-schedule-badge {
   display: inline-block;
-  background: var(--color-secondary);
+  background: var(--color-green-text);
   color: var(--color-white);
   font-size: 0.75rem;
   font-weight: 600;

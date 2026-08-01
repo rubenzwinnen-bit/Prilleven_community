@@ -112,16 +112,16 @@ function renderScheduleCard(schedule) {
             : `<button class="btn btn-sm btn-activate-schedule" data-id="${schedule.id}">Activeren</button>`
           }
           <button class="btn btn-sm btn-outline toggle-schedule-detail" data-id="${schedule.id}">
-            &#128065; Details
+            Details
           </button>
           ${schedule.isActive
             ? `<button class="btn btn-sm btn-secondary btn-shopping" data-id="${schedule.id}">
-                &#128722; Boodschappenlijst
+                Boodschappenlijst
               </button>`
             : ''
           }
           <button class="btn btn-sm btn-danger btn-delete-schedule" data-id="${schedule.id}">
-            &#128465; Verwijderen
+            Verwijderen
           </button>
         </div>
       </div>
@@ -300,8 +300,8 @@ export async function init() {
       if (detail) {
         detail.classList.toggle('hidden');
         toggleBtn.innerHTML = detail.classList.contains('hidden')
-          ? '&#128065; Details'
-          : '&#128065; Verbergen';
+          ? 'Details'
+          : 'Verbergen';
       }
       return;
     }
