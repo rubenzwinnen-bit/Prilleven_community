@@ -60,8 +60,13 @@ body.aanraders-page{font-family:'Poppins',sans-serif;background:var(--color-bg);
 /* ---------- zoek + filters (stap 8) ---------- */
 /* Compact gehouden: de balk staat boven de hele lijst en mag geen halve
    schermhoogte kosten. Mobiel is alles een eigen regel; vanaf 1000px
-   schuiven zoekveld en eerste filtergroep op één regel (zie onderaan). */
-.aanraders .toolbar{display:flex;flex-direction:column;gap:9px;background:var(--color-white);border:1px solid var(--color-light);border-radius:var(--radius-lg);padding:11px 13px;box-shadow:var(--shadow-sm);margin-bottom:44px}
+   schuiven zoekveld en eerste filtergroep op één regel (zie onderaan).
+
+   justify-content/align-items/flex-wrap staan er expliciet in omdat
+   styles.css een eigen .toolbar heeft (met justify-content:space-between).
+   In de app worden beide stylesheets geladen; wat wij hier niet declareren
+   lekt daaruit door en duwde de leeftijdsrij naar de rechterkant. */
+.aanraders .toolbar{display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;flex-wrap:nowrap;gap:9px;background:var(--color-white);border:1px solid var(--color-light);border-radius:var(--radius-lg);padding:11px 13px;box-shadow:var(--shadow-sm);margin-bottom:44px}
 .aanraders .search{display:flex;align-items:center;gap:9px;border:1px solid var(--color-light);border-radius:999px;padding:7px 14px;background:var(--color-bg)}
 .aanraders .search input{border:0;background:none;outline:none;font-family:inherit;font-size:.86rem;width:100%;color:var(--color-dark)}
 .aanraders .search svg{flex:none;stroke:var(--color-gray)}
