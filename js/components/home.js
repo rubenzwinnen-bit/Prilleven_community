@@ -58,7 +58,6 @@ export function render() {
       desc: 'Volg de 9 standaard-allergenen per kindje — 3 introducties per allergeen.',
       href: '#/allergenen',
       accent: 'terracotta-light',
-      badge: 'BETA',
       hoverImg: '/fotos/Introduceren-allargenen.png',
     },
     {
@@ -91,7 +90,6 @@ export function render() {
         <h3 class="home-tile-title">${t.title}${t.badge ? ` <span class="home-tile-badge">${t.badge}</span>` : ''}</h3>
         <p class="home-tile-desc">${t.desc}</p>
       </div>
-      <div class="home-tile-arrow">→</div>
     </a>
   `).join('');
 
