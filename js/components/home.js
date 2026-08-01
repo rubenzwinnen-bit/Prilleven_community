@@ -69,6 +69,7 @@ export function render() {
       desc: 'Producten, materialen en tools die Anneleen zelf gebruikt en aanbeveelt.',
       href: '#/aanraders',
       accent: 'sage',
+      hoverImg: '/fotos/aanraders.png',
     },
   ];
 
