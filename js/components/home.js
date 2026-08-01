@@ -57,7 +57,7 @@ export function render() {
       title: 'Allergenen introduceren',
       desc: 'Volg de 9 standaard-allergenen per kindje — 3 introducties per allergeen.',
       href: '#/allergenen',
-      accent: 'terracotta-light',
+      accent: 'terracotta',
       hoverImg: '/fotos/Introduceren-allargenen.png',
     },
     {
