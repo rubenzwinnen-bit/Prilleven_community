@@ -94,7 +94,7 @@ body.aanraders-page{font-family:'Poppins',sans-serif;background:var(--color-bg);
 .aanraders .card-labels{position:absolute;top:12px;left:12px;display:flex;gap:6px;flex-wrap:wrap}
 .aanraders .label{font-size:.68rem;font-weight:600;letter-spacing:.02em;text-transform:uppercase;padding:4px 9px;border-radius:999px;background:rgba(255,255,255,.94);color:var(--color-dark-light)}
 .aanraders .label--fav{background:var(--color-primary);color:#fff}
-.aanraders .label--new{background:var(--color-secondary-dark);color:#fff}
+.aanraders .label--new{background:var(--color-green-text);color:#fff}
 .aanraders .card-body{padding:18px 18px 0;flex:1}
 .aanraders .card-kop{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:2px}
 .aanraders .card-brand{font-size:.72rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--color-gray)}
@@ -108,7 +108,7 @@ body.aanraders-page{font-family:'Poppins',sans-serif;background:var(--color-bg);
 .aanraders .card-foot{padding:16px 18px 18px;margin-top:16px;border-top:1px solid var(--color-light)}
 
 /* kortingscode — groen = kopieer, terracotta = ga naar winkel */
-.aanraders .code{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;font-family:inherit;text-align:left;border:1px dashed var(--color-secondary-dark);border-radius:var(--radius-md);padding:9px 12px;margin-bottom:12px;background:#f3f9f5;cursor:pointer;transition:background .2s ease,border-color .2s ease}
+.aanraders .code{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;font-family:inherit;text-align:left;border:1px dashed var(--color-green-text);border-radius:var(--radius-md);padding:9px 12px;margin-bottom:12px;background:#f3f9f5;cursor:pointer;transition:background .2s ease,border-color .2s ease}
 .aanraders .code:hover{background:#e9f4ed;border-color:var(--color-green-text)}
 .aanraders .code-val{font-family:ui-monospace,Menlo,monospace;font-size:.88rem;font-weight:600;color:var(--color-green-text);letter-spacing:.04em}
 .aanraders .code-copy{display:flex;align-items:center;gap:5px;font-size:.75rem;font-weight:500;color:var(--color-green-text);opacity:.75;flex:none}
@@ -125,7 +125,7 @@ body.aanraders-page{font-family:'Poppins',sans-serif;background:var(--color-bg);
 
 .aanraders .rel{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:.72rem;color:var(--color-gray)}
 .aanraders .rel i{width:5px;height:5px;border-radius:50%;background:var(--color-gray-light);flex:none;font-style:normal}
-.aanraders .rel--none i{background:var(--color-secondary-dark)}
+.aanraders .rel--none i{background:var(--color-green-text)}
 
 /* ---------- categorie ---------- */
 .aanraders .cat{margin-bottom:56px}
@@ -219,7 +219,7 @@ body.aanraders-page{font-family:'Poppins',sans-serif;background:var(--color-bg);
 .aanraders .facts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px}
 .aanraders .facts .chip{background:var(--color-white);padding:5px 11px;font-size:.78rem}
 .aanraders .facts .chip b{color:var(--color-dark-light);font-weight:500}
-.aanraders .why{background:var(--color-white);border:1px solid var(--color-light);border-left:3px solid var(--color-secondary-dark);border-radius:var(--radius-md);padding:18px 20px;margin-bottom:22px}
+.aanraders .why{background:var(--color-white);border:1px solid var(--color-light);border-left:3px solid var(--color-green-text);border-radius:var(--radius-md);padding:18px 20px;margin-bottom:22px}
 .aanraders .why h3{font-size:.72rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--color-green-text);margin-bottom:8px}
 .aanraders .why p{font-size:.92rem;color:var(--color-dark-light);line-height:1.7}
 .aanraders .buy .code{padding:14px 16px}
@@ -232,7 +232,7 @@ body.aanraders-page{font-family:'Poppins',sans-serif;background:var(--color-bg);
 .aanraders .buy .rel i{margin-top:6px}
 .aanraders .trust{display:flex;flex-direction:column;gap:9px;margin-top:20px;padding-top:20px;border-top:1px solid var(--color-light)}
 .aanraders .trust div{display:flex;align-items:center;gap:9px;font-size:.83rem;color:var(--color-dark-light)}
-.aanraders .trust svg{stroke:var(--color-secondary-dark);flex:none}
+.aanraders .trust svg{stroke:var(--color-green-text);flex:none}
 .aanraders .checked{font-size:.75rem;color:var(--color-gray);margin-top:14px}
 .aanraders .note-groot{margin-top:18px;font-size:.85rem;line-height:1.6;color:#8a6d3b;background:#fdf6e3;border:1px solid #f3e3bd;border-radius:var(--radius-md);padding:14px 16px}
 

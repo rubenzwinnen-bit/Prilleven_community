@@ -8,7 +8,7 @@
    5. Start de router
 ============================================ */
 
-import * as Store from './js/store.js?v=2.5.8';
+import * as Store from './js/store.js?v=3.5.2';
 import {
   checkAllowedUser,
   checkCanSignUp,
@@ -22,24 +22,24 @@ import {
   fetchSubscriptionStatus,
   subscriptionAccessMessage,
   invalidateSubscriptionCache,
-} from './js/supabase.js?v=2.5.8';
-import * as Router from './js/router.js?v=2.5.8';
-import * as Header from './js/components/header.js?v=2.9.0';
-import * as Nav from './js/components/nav.js?v=3.1.4';
-import * as Home from './js/components/home.js?v=3.4.3';
-import * as RecipeList from './js/components/recipeList.js?v=3.1.1';
-import * as RecipeDetail from './js/components/recipeDetail.js?v=3.1.3';
-import * as ImportRecipes from './js/components/importRecipes.js?v=2.5.8';
-import * as WeekSchedule from './js/components/weekSchedule.js?v=3.5.0';
-import * as Favorites from './js/components/favorites.js?v=3.5.1';
-import * as ShoppingList from './js/components/shoppingList.js?v=2.5.8';
-import * as RecipeForm from './js/components/recipeForm.js?v=2.5.8';
-import * as IngredientIcons from './js/components/ingredientIcons.js?v=2.5.8';
-import * as LearningsLibrary from './js/components/learningsLibrary.js?v=2.5.8';
-import * as LearningsDetail from './js/components/learningsDetail.js?v=2.5.8';
-import * as Profiel from './js/components/profiel.js?v=2.5.8';
-import * as Allergenen from './js/components/allergenen.js?v=2.5.8';
-import * as Aanraders from './js/components/aanraders.js?v=3.4.1';
+} from './js/supabase.js?v=3.5.2';
+import * as Router from './js/router.js?v=3.5.2';
+import * as Header from './js/components/header.js?v=3.5.2';
+import * as Nav from './js/components/nav.js?v=3.5.2';
+import * as Home from './js/components/home.js?v=3.5.2';
+import * as RecipeList from './js/components/recipeList.js?v=3.5.2';
+import * as RecipeDetail from './js/components/recipeDetail.js?v=3.5.2';
+import * as ImportRecipes from './js/components/importRecipes.js?v=3.5.2';
+import * as WeekSchedule from './js/components/weekSchedule.js?v=3.5.2';
+import * as Favorites from './js/components/favorites.js?v=3.5.2';
+import * as ShoppingList from './js/components/shoppingList.js?v=3.5.2';
+import * as RecipeForm from './js/components/recipeForm.js?v=3.5.2';
+import * as IngredientIcons from './js/components/ingredientIcons.js?v=3.5.2';
+import * as LearningsLibrary from './js/components/learningsLibrary.js?v=3.5.2';
+import * as LearningsDetail from './js/components/learningsDetail.js?v=3.5.2';
+import * as Profiel from './js/components/profiel.js?v=3.5.2';
+import * as Allergenen from './js/components/allergenen.js?v=3.5.2';
+import * as Aanraders from './js/components/aanraders.js?v=3.5.2';
 
 /* ============================================
    RECOVERY TOKEN DETECTIE
@@ -151,7 +151,7 @@ function showSubscriptionExpiredScreen(status) {
       ">Lid worden van de community</a>
       <button id="sub-refresh-btn" style="
         padding: .85rem 1.75rem;
-        background: #82BE93;
+        background: #4F7D6C;
         color: white;
         border: none;
         border-radius: 12px;

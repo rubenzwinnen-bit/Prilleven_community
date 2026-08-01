@@ -16,8 +16,8 @@
    HTML via innerHTML injecteren.
 ============================================ */
 
-import * as Store from '../store.js?v=2.5.10';
-import { initAanradersFilters } from '../../aanraders-filters.js?v=1.1.0';
+import * as Store from '../store.js?v=3.5.2';
+import { initAanradersFilters } from '../../aanraders-filters.js?v=3.5.2';
 
 const FRAGMENT_URL = '/api/aanraders?fragment=1';
 
@@ -115,7 +115,7 @@ async function laadInhoud(view, { scroll = false } = {}) {
 ---------------------------------------- */
 async function bouwBeheerbalk(view) {
   if (!Admin) {
-    Admin = await import('../aanradersAdmin.js?v=3.2.7');
+    Admin = await import('../aanradersAdmin.js?v=3.5.2');
   }
   try {
     await Admin.laadBeheerdata();

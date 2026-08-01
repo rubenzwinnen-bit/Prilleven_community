@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=3.5.1" />
+  <link rel="stylesheet" href="/styles.css?v=3.5.2" />
 
   <style>
     html, body { height: 100%; }
@@ -60,7 +60,7 @@
       justify-content: center;
       gap: .5rem;
     }
-    .btn-new-chat:hover { background: #6ea87c; box-shadow: var(--shadow-md); }
+    .btn-new-chat:hover { background: var(--color-green-dark); box-shadow: var(--shadow-md); }
 
     .conv-list {
       flex: 1;
@@ -82,7 +82,7 @@
     }
     .conv-item:hover { background: var(--color-light); }
     .conv-item.active {
-      background: rgba(130, 190, 147, .15);
+      background: rgba(79, 125, 108, 0.10);
       color: var(--color-dark);
       font-weight: 500;
     }
@@ -275,7 +275,7 @@
     textarea:focus {
       outline: none;
       border-color: var(--color-green-text);
-      box-shadow: 0 0 0 3px rgba(130, 190, 147, .2);
+      box-shadow: 0 0 0 3px rgba(79, 125, 108, 0.14);
     }
     button.btn-send {
       padding: 0 1.5rem;
@@ -374,7 +374,7 @@
       vertical-align: middle;
     }
     button.btn-send:hover:not(:disabled) {
-      background: #6ea87c;
+      background: var(--color-green-dark);
       box-shadow: var(--shadow-md);
     }
     button.btn-send:disabled {
@@ -474,7 +474,7 @@
     .modal textarea:focus {
       outline: none;
       border-color: var(--color-green-text);
-      box-shadow: 0 0 0 3px rgba(130, 190, 147, .2);
+      box-shadow: 0 0 0 3px rgba(79, 125, 108, 0.14);
     }
     .modal textarea { min-height: 60px; resize: vertical; }
 
@@ -533,7 +533,7 @@
       background: var(--color-white);
     }
     .checkbox-group label.checked {
-      background: rgba(130, 190, 147, .15);
+      background: rgba(79, 125, 108, 0.10);
       border-color: var(--color-green-text);
       color: var(--color-dark);
     }
@@ -581,7 +581,7 @@
       font-weight: 600;
       cursor: pointer;
     }
-    .btn-save:hover { background: #6ea87c; }
+    .btn-save:hover { background: var(--color-green-dark); }
     .btn-save:disabled { background: var(--color-gray-light); cursor: wait; }
 
     /* Memory-modal */
@@ -775,10 +775,10 @@
     </div>
   </div>
 
-  <script src="/js/chat.js?v=3.4.5" type="module"></script>
+  <script src="/js/chat.js?v=3.5.2" type="module"></script>
   <script type="module">
-    import { mountHeaderAvatar, attachLogoutHandler } from '/js/headerAvatarStandalone.js?v=2.9.0';
-    import { mountHeaderBell } from '/js/headerBellStandalone.js?v=2.9.0';
+    import { mountHeaderAvatar, attachLogoutHandler } from '/js/headerAvatarStandalone.js?v=3.5.2';
+    import { mountHeaderBell } from '/js/headerBellStandalone.js?v=3.5.2';
     document.addEventListener('DOMContentLoaded', () => {
       mountHeaderBell(document.getElementById('header-bell-mount'));
       mountHeaderAvatar(document.getElementById('header-avatar-mount'));

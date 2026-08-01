@@ -7,14 +7,15 @@
   --color-primary: #C98966;
   --color-primary-dark: #BE764E;
   --color-primary-light: #FFBC7D;
+  /* AFGESCHREVEN (2026-08-01). De salie-vulgroenen worden nergens meer
+     gebruikt; ze staan hier alleen nog omdat oude inline styles ze zouden
+     kunnen aanroepen. Gebruik ze niet in nieuw werk. */
   --color-secondary: #98C3A4;
   --color-secondary-dark: #82BE93;
-  /* Donkergroen voor TEKST. --color-secondary(-dark) zijn vulkleuren:
-     op #faf8f5 halen ze maar 1.9 en 2.0 contrast, te weinig om te lezen
-     (WCAG vraagt 4.5, of 3.0 voor grote koppen). Deze merkkleur haalt
-     4.42 op de pagina en 4.68 op wit: net onder de norm voor kleine
-     tekst, ruim boven de 3.0 voor koppen. Bewuste keuze van Anneleen.
-     Gebruik hem voor alle groene tekst. */
+  /* HET merkgroen: tekst én vlakken. Haalt 4.42 contrast op de paginakleur
+     #faf8f5 en 4.68 op wit — net onder de WCAG-norm van 4.5 voor kleine
+     tekst, ruim boven de 3.0 voor koppen. Bewuste keuze van Anneleen,
+     dus niet "corrigeren". Wit erop haalt 4.68, dus knoppen zijn oké. */
   --color-green-text: #4F7D6C;
   /* Donkerdere tint van het merkgroen, enkel voor hover/active van groene
      knoppen. Geen tweede merkkleur — puur een schaduw van #4F7D6C. */
@@ -544,7 +545,7 @@ select.form-control {
 }
 
 .tag-moment {
-  background: rgba(152, 195, 164, 0.2);
+  background: rgba(79, 125, 108, 0.12);
   color: var(--color-green-text);
 }
 
@@ -554,7 +555,7 @@ select.form-control {
 }
 
 .tag-time {
-  background: rgba(152, 195, 164, 0.15);
+  background: rgba(79, 125, 108, 0.10);
   color: var(--color-green-text);
 }
 
@@ -585,7 +586,7 @@ select.form-control {
   font-weight: 600;
   line-height: 1.4;
   white-space: nowrap;
-  background: rgba(152, 195, 164, 0.25);
+  background: rgba(79, 125, 108, 0.16);
   color: var(--color-green-text);
 }
 
@@ -1666,7 +1667,7 @@ select.form-control {
 }
 
 .toast-success {
-  background: var(--color-secondary-dark);
+  background: var(--color-green-text);
 }
 
 .toast-error {
@@ -2028,7 +2029,7 @@ select.form-control {
 }
 
 .icon-grid-item.has-icon {
-  border-color: var(--color-secondary);
+  border-color: var(--color-green-text);
 }
 
 .icon-grid-preview {
@@ -2147,7 +2148,7 @@ select.form-control {
    Badge, info-blok, dag-pills en selectiebalk
 ============================================ */
 .schedule-card-active {
-  border: 2px solid var(--color-secondary);
+  border: 2px solid var(--color-green-text);
 }
 
 .active-schedule-badge {
@@ -2167,7 +2168,7 @@ select.form-control {
   padding: 1rem 1.5rem;
   margin-bottom: 1.25rem;
   box-shadow: var(--shadow-sm);
-  border-left: 4px solid var(--color-secondary);
+  border-left: 4px solid var(--color-green-text);
 }
 
 .schedule-day-pills {
@@ -2179,7 +2180,7 @@ select.form-control {
 
 .schedule-day-pill {
   display: inline-block;
-  background: rgba(152, 195, 164, 0.2);
+  background: rgba(79, 125, 108, 0.12);
   color: var(--color-green-text);
   font-size: 0.8rem;
   font-weight: 500;
@@ -2383,7 +2384,7 @@ select.form-control {
   background: rgba(201, 137, 102, .15);
 }
 .home-tile--sage .home-tile-icon {
-  background: rgba(130, 190, 147, .2);
+  background: rgba(79, 125, 108, 0.14);
 }
 .home-tile--dark .home-tile-icon {
   background: rgba(23, 23, 23, .08);
@@ -2806,7 +2807,7 @@ body.is-aanraders #app-nav { display: none; }
 }
 .tl-post.is-pinned {
   border-color: var(--color-green-text);
-  box-shadow: 0 1px 4px rgba(152, 195, 164, 0.25);
+  box-shadow: 0 1px 4px rgba(79, 125, 108, 0.16);
 }
 .tl-pinned-tag {
   display: inline-block;
@@ -4640,7 +4641,7 @@ body.is-aanraders #app-nav { display: none; }
 .chatroom-input:focus, .chatroom-textarea:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(130,190,147,.2);
+  box-shadow: 0 0 0 2px rgba(79, 125, 108, 0.14);
 }
 .chatroom-new-foot { display: flex; justify-content: flex-end; }
 
@@ -4796,7 +4797,7 @@ body.is-aanraders #app-nav { display: none; }
 .reply-edit:hover {
   background: #f3f9f3;
   border-color: var(--color-primary);
-  color: var(--color-primary-dark, var(--color-secondary-dark));
+  color: var(--color-primary-dark, var(--color-green-text));
 }
 .reply-del { font-size: .75rem; padding: .15rem .5rem; }
 .reply-del:hover { background: #fcebea; border-color: #c0392b; color: #c0392b; }
@@ -4831,11 +4832,11 @@ body.is-aanraders #app-nav { display: none; }
 .topic-edit-btn:hover {
   background: #f3f9f3;
   border-color: var(--color-primary);
-  color: var(--color-primary-dark, var(--color-secondary-dark));
+  color: var(--color-primary-dark, var(--color-green-text));
 }
 .reply-card.is-editing {
   background: #f8fbf8;
-  border-color: var(--color-secondary-dark, #82be93);
+  border-color: var(--color-green-text);
 }
 .reply-edit-form {
   flex: 1;
@@ -5132,8 +5133,8 @@ body.is-aanraders #app-nav { display: none; }
 }
 
 .profiel-tag--intro {
-  background: rgba(152,195,164,.18);
-  color: var(--color-secondary-dark, #5d9870);
+  background: rgba(79, 125, 108, 0.12);
+  color: var(--color-green-text);
 }
 
 .profiel-tag--removable {
@@ -5158,7 +5159,7 @@ body.is-aanraders #app-nav { display: none; }
 
 /* ---- Formulier ---- */
 .profiel-kind-form {
-  border: 1px solid var(--color-secondary);
+  border: 1px solid var(--color-green-text);
   border-radius: 14px;
   padding: 1.25rem 1.5rem;
   margin-top: .85rem;
@@ -5292,7 +5293,7 @@ body.is-aanraders #app-nav { display: none; }
 
 .profiel-allergen-trigger:hover,
 .profiel-allergen-trigger[aria-expanded="true"] {
-  border-color: var(--color-secondary);
+  border-color: var(--color-green-text);
 }
 
 .profiel-allergen-arrow {
@@ -5335,7 +5336,7 @@ body.is-aanraders #app-nav { display: none; }
   width: 15px;
   height: 15px;
   flex-shrink: 0;
-  accent-color: var(--color-secondary);
+  accent-color: var(--color-green-text);
 }
 
 .profiel-allergen-selected-tags {
@@ -5530,7 +5531,7 @@ body.is-aanraders #app-nav { display: none; }
   transition: box-shadow .15s, border-color .15s;
 }
 .allergenen-item:hover {
-  border-color: var(--color-secondary);
+  border-color: var(--color-green-text);
 }
 .allergenen-item-head {
   display: grid;
@@ -5619,8 +5620,8 @@ body.is-aanraders #app-nav { display: none; }
 
 /* Statusvarianten */
 .allergenen-item--veilig {
-  border-color: #82BE93;
-  background: rgba(130, 190, 147, 0.06);
+  border-color: var(--color-green-text);
+  background: rgba(79, 125, 108, 0.06);
 }
 .allergenen-item--allergisch {
   border-color: #d9534f;
@@ -7081,7 +7082,7 @@ body.is-aanraders #app-nav { display: none; }
 .admin-intro-edit-btn:hover {
   background: #f3f9f3;
   border-color: var(--color-primary);
-  color: var(--color-primary-dark, var(--color-secondary-dark));
+  color: var(--color-primary-dark, var(--color-green-text));
 }
 .admin-intro-del-btn:hover {
   background: #fcebea;
@@ -7203,7 +7204,7 @@ body.is-aanraders #app-nav { display: none; }
 }
 .profiel-memory-label input {
   margin-top: .2rem;
-  accent-color: var(--color-secondary-dark);
+  accent-color: var(--color-green-text);
   flex-shrink: 0;
 }
 .profiel-memory-label strong { color: var(--color-dark); }
@@ -7428,7 +7429,7 @@ body.is-aanraders #app-nav { display: none; }
 }
 .admin-tab-btn.is-active {
   color: var(--color-green-text);
-  border-bottom-color: var(--color-secondary);
+  border-bottom-color: var(--color-green-text);
 }
 .admin-tab-btn:hover:not(.is-active) {
   color: var(--color-text);
@@ -7497,7 +7498,7 @@ body.is-aanraders #app-nav { display: none; }
 .family-avatar--rood   .family-avatar-circle { border-color: var(--color-danger); }
 .family-avatar--jong   .family-avatar-circle { border-color: var(--color-info); }
 .family-avatar--oranje .family-avatar-circle { border-color: var(--color-primary); }
-.family-avatar--ok     .family-avatar-circle { border-color: var(--color-secondary-dark); }
+.family-avatar--ok     .family-avatar-circle { border-color: var(--color-green-text); }
 
 .family-avatar-badge {
   position: absolute;
