@@ -2301,10 +2301,9 @@ select.form-control {
   color: var(--color-white);
   padding-top: calc(.9rem + 110px);
 }
-/* Tegel-titel + arrow + omschrijving in wit voor leesbaarheid op terracotta */
+/* Tegel-titel + omschrijving in wit voor leesbaarheid op terracotta */
 .home-tile .home-tile-title { color: var(--color-white); }
 .home-tile .home-tile-desc  { color: rgba(255,255,255,.88); }
-.home-tile .home-tile-arrow { color: var(--color-white); }
 
 /* Hover-foto is onderdeel van de tegel en groeit vanuit de bovenkant */
 .home-tile-hover-img {
@@ -2364,20 +2363,6 @@ select.form-control {
   line-height: 1.4;
   margin: 0;
 }
-.home-tile-arrow {
-  font-size: 1.2rem;
-  color: var(--color-gray);
-  flex-shrink: 0;
-  transition: transform .2s ease, color .2s ease;
-}
-.home-tile:hover .home-tile-arrow {
-  color: var(--color-primary);
-  transform: translateX(4px);
-}
-.home-tile--sage:hover .home-tile-arrow {
-  color: var(--color-green-text);
-}
-
 /* ============================================
    HOME HUB — bottom-nav (alleen mobile zichtbaar)
 ============================================ */
@@ -4332,7 +4317,6 @@ body.is-aanraders #app-nav { display: none; }
   color: #fff;
 }
 .home-tile--sage-deep .home-tile-desc { color: rgba(255,255,255,0.92); }
-.home-tile--sage-deep .home-tile-arrow { color: #fff; }
 
 /* Home-tile lichte terracotta variant (voor allergenen-tegel) */
 .home-tile--terracotta-light {

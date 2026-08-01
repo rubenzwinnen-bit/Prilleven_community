@@ -31,7 +31,7 @@ import { requireAdmin, AuthError } from './_lib/auth.mjs';
 const BASE = '/aanraders';
 
 /* Cache-buster voor aanraders.css — bump bij CSS-wijziging. */
-const CSS_VERSION = '3.4.2';
+const CSS_VERSION = '3.4.3';
 
 /* Cache-buster voor aanraders-filters.js — bump bij wijziging van dat
    bestand. Staat los van CSS_VERSION zodat een CSS-tweak niet ook de JS
