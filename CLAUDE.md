@@ -66,7 +66,7 @@ Node ≥ 20.
 
 ### Algemeen
 - **Taal:** alles in het **Nederlands** (UI, foutmeldingen, commit messages, comments waar nodig).
-- **Stijl:** terracotta `--color-primary` #C98966 als hoofdkleur, salie-groen `--color-secondary(-dark)` #98C3A4/#82BE93 als vulkleur, `--color-green-text` #4F7D6C (merkgroen) voor **alle groene tekst** — headers, knoppen, badges, /aanraders (de vulgroenen halen te weinig contrast). Zachte UI, ronding, subtiele schaduwen. Pas geen kleuren aan zonder bevestiging. Zie `js/CLAUDE.md §7`.
+- **Stijl:** terracotta `--color-primary` #C98966 als hoofdkleur en `--color-green-text` #4F7D6C (merkgroen) als tweede kleur — sinds 2026-08-01 voor **alles wat groen is**, tekst én vlakken: headers, knoppen, badges, chatbubbels, tabs, /aanraders. `--color-green-dark` #3F6558 is enkel de hover-tint. De oude vulgroenen `--color-secondary(-dark)` #98C3A4/#82BE93 zijn nagenoeg overal vervangen; gebruik ze niet meer voor nieuw werk. Zachte UI, ronding, subtiele schaduwen. Pas geen kleuren aan zonder bevestiging. Zie `js/CLAUDE.md §7`.
 - **Geen frameworks toevoegen.** Geen React, Vue, Tailwind, Next.js, build tools, TypeScript. Vanilla JS blijft vanilla JS.
 - **Geen overengineering.** Kleine, gerichte wijzigingen. Geen refactors "voor de zekerheid".
 
