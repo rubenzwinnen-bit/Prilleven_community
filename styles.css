@@ -1423,6 +1423,7 @@ select.form-control {
 
 .auth-modal h2 {
   text-align: center;
+  color: var(--color-green-text);
 }
 
 .auth-modal p {
@@ -1452,12 +1453,12 @@ select.form-control {
 }
 
 .auth-tab:hover {
-  color: var(--color-primary);
+  color: var(--color-green-text);
 }
 
 .auth-tab.active {
-  color: var(--color-primary);
-  border-bottom-color: var(--color-primary);
+  color: var(--color-green-text);
+  border-bottom-color: var(--color-green-text);
   font-weight: 600;
 }
 
@@ -1515,13 +1516,13 @@ select.form-control {
 }
 
 .auth-link-row a {
-  color: var(--color-primary);
+  color: var(--color-green-text);
   font-size: 0.85rem;
   text-decoration: underline;
 }
 
 .auth-link-row a:hover {
-  color: var(--color-primary-dark);
+  color: var(--color-primary);
 }
 
 /* --- Lidmaatschap-CTA onder de auth-views --- */

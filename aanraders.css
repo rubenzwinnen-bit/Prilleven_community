@@ -49,7 +49,10 @@ body.aanraders-page{font-family:'Poppins',sans-serif;background:var(--color-bg);
 .aanraders .section-head p{color:var(--color-gray);font-size:.92rem;margin-top:6px;max-width:62ch}
 
 /* ---------- hero ---------- */
-.aanraders .hero{padding:64px 0 48px;text-align:center}
+/* margin-bottom:0 — de hero is een <section> en pikte anders de algemene
+   sectiemarge van 72px mee, bovenop zijn eigen padding. Samen 120px gat
+   tussen de introtekst en de filterbalk. */
+.aanraders .hero{padding:64px 0 26px;margin-bottom:0;text-align:center}
 .aanraders .hero h1{font-size:2rem;font-weight:600;letter-spacing:-.03em;line-height:1.25;margin-bottom:18px;color:var(--color-green-text)}
 .aanraders .intro{color:var(--color-dark-light);font-size:1.02rem;line-height:1.75;max-width:60ch;margin:0 auto}
 .aanraders .intro strong{color:var(--color-dark);font-weight:500}
@@ -164,7 +167,7 @@ body.aanraders-page{font-family:'Poppins',sans-serif;background:var(--color-bg);
   .aanraders .grid{grid-template-columns:repeat(2,1fr);gap:24px}
   .aanraders .dl-grid{grid-template-columns:repeat(2,1fr)}
   .aanraders .hero h1{font-size:2.5rem}
-  .aanraders .hero{padding:80px 0 56px}
+  .aanraders .hero{padding:80px 0 32px}
 }
 @media(min-width:1000px){
   .aanraders .grid{grid-template-columns:repeat(3,1fr)}
