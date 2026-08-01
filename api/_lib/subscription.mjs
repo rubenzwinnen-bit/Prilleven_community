@@ -25,6 +25,60 @@ const cache = new Map(); // email → { status, expiresAt }
  *   - anders → toegang
  * Admins krijgen altijd toegang (is_admin=true override).
  */
+const TZ = 'Europe/Brussels';
+
+/** Kalenderdag (y/m/d + ISO-weekdag 1-7) van een datum in Brusselse tijd. */
+function brusselsDay(date) {
+  const p = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short',
+  }).formatToParts(date);
+  const get = (t) => p.find((x) => x.type === t)?.value;
+  const isoDow = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 }[get('weekday')];
+  return { y: +get('year'), m: +get('month'), d: +get('day'), isoDow };
+}
+
+/**
+ * Het werkelijke moment waarop toegang vervalt, in ms.
+ *
+ * Twee correcties op de ruwe subscription_end_date:
+ *
+ *  1. Toegang loopt tot het EINDE van de einddatum, niet tot 00:00 ervan.
+ *     Plug&Pay levert de incassodatum zonder tijd; zonder deze correctie
+ *     verliest iemand toegang op de ochtend van de dag dat hij betaalt.
+ *
+ *  2. Valt de einddatum in een weekend, dan schuift hij naar de eerstvolgende
+ *     dinsdag. SEPA-incasso's worden enkel op bankwerkdagen aangeboden: een
+ *     incasso van zaterdag of zondag wordt pas maandag verwerkt. Zonder deze
+ *     marge sluiten we betalende leden buiten voor geld dat de bank nog moet
+ *     overmaken. Dinsdag i.p.v. maandag geeft de webhook een dag speling.
+ *
+ * Geldt voor iedereen — huidige en toekomstige leden, ongeacht of de datum
+ * via de webhook, met de hand of via een import in de tabel kwam.
+ */
+export function effectiveExpiry(endDate) {
+  const raw = new Date(endDate);
+  if (Number.isNaN(raw.getTime())) return Infinity;
+
+  const { y, m, d, isoDow } = brusselsDay(raw);
+  const extra = isoDow === 6 ? 3 : isoDow === 7 ? 2 : 0; // za -> di, zo -> di
+
+  // Middernacht ná de (eventueel verschoven) laatste dag, in Brusselse tijd.
+  // Date.UTC + de offset van dat moment, zodat zomer/wintertijd klopt.
+  const naiveUtc = Date.UTC(y, m - 1, d + extra + 1);
+  const offsetMin = brusselsOffsetMinutes(new Date(naiveUtc));
+  return naiveUtc - offsetMin * 60 * 1000;
+}
+
+/** UTC-offset van Europe/Brussels op een gegeven moment, in minuten. */
+function brusselsOffsetMinutes(at) {
+  const p = new Intl.DateTimeFormat('en-US', {
+    timeZone: TZ, timeZoneName: 'longOffset',
+  }).formatToParts(at).find((x) => x.type === 'timeZoneName')?.value || 'GMT+00:00';
+  const mm = /GMT([+-])(\d{2}):(\d{2})/.exec(p);
+  if (!mm) return 0;
+  return (mm[1] === '-' ? -1 : 1) * (Number(mm[2]) * 60 + Number(mm[3]));
+}
+
 export async function getAccessStatus(email) {
   if (!email) return { active: false, reason: 'not_registered', endDate: null, cancelledAt: null, isAdmin: false };
 
@@ -66,8 +120,8 @@ export async function getAccessStatus(email) {
     return status;
   }
 
-  // Check end_date (als gezet)
-  const endExpired = endDate && new Date(endDate).getTime() < now;
+  // Check end_date (als gezet), met de weekend-marge uit effectiveExpiry()
+  const endExpired = endDate && effectiveExpiry(endDate) < now;
 
   let active = row.subscription_active === true && !endExpired;
   let reason = null;
