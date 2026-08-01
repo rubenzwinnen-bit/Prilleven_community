@@ -697,3 +697,49 @@ Cache-buster `3.1.2 → 3.3.1`. Eigen `CSS_VERSION` voor `aanraders.css` (staat 
 - ⬜ Content ontbreekt nog: productfoto's, "waarom ik dit aanbeveel"-teksten, lange beschrijvingen, downloadbestanden, Crisp-affiliatelink.
 - ⬜ Categorie **Kookboeken** staat op `binnenkort` maar bevat een zichtbaar product (Eten met Handjes) — dat blijft daardoor verborgen.
 - ⬜ **Bestaand, niet opgelost:** `supabase.js` wordt onder ~8 verschillende `?v=`-strings geladen; de dedup van token-refreshes werkt daardoor niet app-breed. Opruimen raakt tientallen bestanden.
+
+---
+
+## 2026-08-01 — Merkgroen app-breed + stap 8 van de aanraders (branch `affiliatepagina`, NOG NIET GEMERGED)
+
+Cache-buster `3.3.1 → 3.5.3` (styles.css) en `3.5.2` voor **alle** module-imports. `aanraders.css` op `3.4.4`, `aanraders-filters.js` op `1.1.0`.
+
+### Vandaag afgerond
+
+**Aanraders (stap 8 van het plan)**
+- ✅ **Zoeken + filters** op het overzicht: zoekveld (titel, merk, materiaal, subcategorie, korte beschrijving, "waarom", labels én categorienaam — accent-ongevoelig) plus pill-groepen voor leeftijd en categorie. Meervoudige selectie binnen een dimensie (OF), tussen dimensies EN.
+- ✅ **Filterlogica in één gedeeld bestand** `aanraders-filters.js` (root), gebruikt door zowel de publieke pagina als de in-app weergave — zelfde principe als `aanraders.css`.
+- ✅ **Data-gestuurde filtergroepen**: materiaal is overal leeg en merk is 1-op-1 met producten, dus die pills verschijnen pas als ≥2 producten een waarde delen. Leeftijd en categorie tonen ook keuzes met één product.
+- ✅ **Compacte filterbalk**: van ~200px naar 90px op desktop (twee regels, geen lege kolom naast het zoekveld) en 133px op mobiel (eigen scrollrij per groep met meescrollend label).
+- ✅ **Contactblok in de footer** (`hallo@prilleven.be`) + tweede headerknop "Lid worden van de community" naar de Plug&Pay-checkout.
+- ✅ Foto op de aanraders-tegel van de landingspagina.
+
+**Abonnementen / toegang**
+- ✅ **160 einddatums hersteld** uit de Plug&Pay-export (`supabase-migrations/2026-07-31-abonnementen-einddatum-uit-plugpay-export.sql`, al gedraaid). 31 betalende leden zaten buiten de community, 85 hadden een lege datum.
+- ✅ **`effectiveExpiry()`** in `api/_lib/subscription.mjs`: toegang loopt tot het einde van de einddatum, en een einddatum in het weekend schuift naar de dinsdag erna (SEPA-incasso's lopen enkel op bankwerkdagen). Geldt automatisch voor web én mobiele app — die vragen dezelfde `getAccessStatus` op.
+- ✅ 4 accounts zonder lopend abonnement afgesloten (einddatum 2026-07-30).
+
+**Merkgroen `#4F7D6C` app-breed**
+- ✅ Header-iconen, de volledige chat (`chat.html`), auth-modal, allergenen-titels en -knop, weekschema (titel, tabs, dagkiezer, "Vandaag"-tag, genereerknop), receptfilters, learnings- en favorietentitels, tijdlijn + chatruimtes (26 regels), de weekschema-kaart en de boodschappenlijst.
+- ✅ Nieuw token `--color-green-dark` #3F6558, **enkel** als hover-tint van groene knoppen.
+- ✅ Landingspagina: BETA-label weg, pijltjes uit alle functietegels (+ de bijhorende dode CSS opgeruimd), allergenen-tegel in dezelfde terracotta als de rest.
+
+**Techniek / opruim**
+- ✅ **Cache-busters gelijkgetrokken**: `utils.js` en `supabase.js` werden onder 6-8 verschillende `?v=`-strings geladen (dus meerdere kopieën naast elkaar). Alle 125 module-imports staan nu op `3.5.2`. Dit was een bekende valkuil in `js/CLAUDE.md`.
+
+### Beslissingen
+- **`#4F7D6C` is niet langer alleen tekstkleur.** Het is nu ook de vulkleur van knoppen, badges, chatbubbels en actieve elementen. `--color-secondary(-dark)` (#98C3A4 / #82BE93) is afgeschreven — nog gedefinieerd in `:root`, nergens meer gebruikt. Beide CLAUDE.md's zijn hierop bijgewerkt.
+- **Zoekbalk blijft zichtbaar** op /aanraders. Overwogen om hem in te klappen; op een pagina die om vinden draait kost dat een klik én zichtbaarheid, en met de compacte balk win je er nog maar ~35px mee.
+- **Weekendmarge in code, niet in data.** `subscription_end_date` houdt de kale incassodatum uit Plug&Pay; de marge zit in `effectiveExpiry()`. Zo geldt de regel ook voor rijen die de webhook later zelf schrijft.
+- **"Verwijderen" blijft rood** in de weekschema-kaart: enige onomkeerbare actie.
+- Gedeelde klassen (`.btn-outline`, `.btn-primary`, `.btn-secondary`) zijn per onderdeel gescoped omgezet, zodat ze elders terracotta blijven.
+
+### Niet vergeten / open
+- ⬜ **Branch `affiliatepagina` is nog niet gemerged** — 47 commits vóór op `main`. Bij merge wordt `/aanraders` publiek.
+- ⬜ **Versienummer kiezen voor de merge**: V3.6.0 of V4.0.0 (zie handover).
+- ⬜ **Plug&Pay-webhook**: de payload bevat geen cyclus, bedrag of `next_billing_date`. Vraag bij de nieuwe opzet om één workflow die bij **élke** betaling vuurt mét `next_billing_date` — dan hoeft de code niet te gokken en is `detectCycle()` overbodig. Zonder dat herhaalt het probleem van vandaag zich elke maand.
+- ⬜ **Stap 9: SEO** — `robots.txt` ontbreekt (404), sitemap, structured data.
+- ⬜ **Pad `/aanraders` is nog niet definitief** — omdopen vóór publieke lancering (constante `BASE` + twee rewrites).
+- ⬜ Content ontbreekt nog: productfoto's, lange beschrijvingen, downloadbestanden, Crisp-affiliatelink.
+- ⬜ Categorie **Kookboeken** staat op `binnenkort` maar bevat een zichtbaar product — dat blijft daardoor verborgen én krijgt geen filterpil.
+- ⬜ `.home-tile--terracotta-light` in `styles.css` is ongebruikt sinds de allergenen-tegel omging.

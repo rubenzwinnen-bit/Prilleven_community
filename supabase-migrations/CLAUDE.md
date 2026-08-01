@@ -211,3 +211,7 @@ Voedt de **publieke** pagina `/aanraders` (zie `api/CLAUDE.md`). Anon mag lezen 
 - **Geen** secrets in SQL comments of `INSERT`-statements.
 - **Niet** rechtstreeks data inserten in productie via een migratie tenzij echt nodig (en dan altijd `ON CONFLICT DO NOTHING`).
 - **Geen** wijziging van het embedding-dim (1024 = Voyage `voyage-3-large`) zonder nieuwe ingestion.
+
+## Data-fixes (geen schema)
+
+- `2026-07-31-abonnementen-einddatum-uit-plugpay-export.sql` — eenmalige UPDATE van `allowed_users.subscription_end_date` voor 160 e-mails uit een Plug&Pay-export. Aanleiding: de webhook zette geen verlengingen door, waardoor 31 betalende leden op een verlopen datum stonden. **Al uitgevoerd op productie op 2026-07-31.** De kolom bevat bewust de kale incassodatum; de weekendmarge zit in `effectiveExpiry()` in `api/_lib/subscription.mjs`.
