@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=3.4.3" />
+  <link rel="stylesheet" href="/styles.css?v=3.4.5" />
 
   <style>
     html, body { height: 100%; }
@@ -48,7 +48,7 @@
       padding: .75rem 1rem;
       border: 0;
       border-radius: var(--radius-md);
-      background: var(--color-secondary-dark);
+      background: var(--color-green-text);
       color: var(--color-white);
       font-family: inherit;
       font-weight: 600;
@@ -91,7 +91,7 @@
       position: absolute;
       left: 0; top: 10%; bottom: 10%;
       width: 3px;
-      background: var(--color-secondary-dark);
+      background: var(--color-green-text);
       border-radius: 2px;
     }
     .conv-title {
@@ -102,7 +102,7 @@
     }
     .conv-title[contenteditable="true"] {
       background: var(--color-white);
-      outline: 2px solid var(--color-secondary-dark);
+      outline: 2px solid var(--color-green-text);
       border-radius: 4px;
       padding: 2px 4px;
       white-space: normal;
@@ -221,7 +221,7 @@
       font-size: .98rem;
     }
     .msg.user {
-      background: var(--color-secondary-dark);
+      background: var(--color-green-text);
       color: var(--color-white);
       margin-left: 18%;
       border-bottom-right-radius: 4px;
@@ -274,14 +274,14 @@
     }
     textarea:focus {
       outline: none;
-      border-color: var(--color-secondary-dark);
+      border-color: var(--color-green-text);
       box-shadow: 0 0 0 3px rgba(130, 190, 147, .2);
     }
     button.btn-send {
       padding: 0 1.5rem;
       border: 0;
       border-radius: var(--radius-md);
-      background: var(--color-secondary-dark);
+      background: var(--color-green-text);
       color: var(--color-white);
       font-family: inherit;
       font-weight: 600;
@@ -304,7 +304,7 @@
       flex-shrink: 0;
     }
     .btn-attach:hover {
-      border-color: var(--color-secondary-dark);
+      border-color: var(--color-green-text);
       background: var(--color-bg);
     }
     .img-preview {
@@ -328,7 +328,7 @@
       align-items: center;
       justify-content: center;
       background: rgba(110, 168, 124, 0.18);
-      border: 3px dashed var(--color-secondary-dark, #6ea87c);
+      border: 3px dashed var(--color-green-text, #4F7D6C);
       border-radius: var(--radius-md);
       color: var(--color-dark, #333);
       font-size: 1.1rem;
@@ -473,7 +473,7 @@
     .modal input:focus,
     .modal textarea:focus {
       outline: none;
-      border-color: var(--color-secondary-dark);
+      border-color: var(--color-green-text);
       box-shadow: 0 0 0 3px rgba(130, 190, 147, .2);
     }
     .modal textarea { min-height: 60px; resize: vertical; }
@@ -534,10 +534,10 @@
     }
     .checkbox-group label.checked {
       background: rgba(130, 190, 147, .15);
-      border-color: var(--color-secondary-dark);
+      border-color: var(--color-green-text);
       color: var(--color-dark);
     }
-    .checkbox-group input { margin: 0; accent-color: var(--color-secondary-dark); }
+    .checkbox-group input { margin: 0; accent-color: var(--color-green-text); }
 
     .memory-toggle {
       display: flex;
@@ -550,7 +550,7 @@
       font-size: .85rem;
       color: var(--color-dark-light);
     }
-    .memory-toggle input { margin-top: .15rem; accent-color: var(--color-secondary-dark); }
+    .memory-toggle input { margin-top: .15rem; accent-color: var(--color-green-text); }
 
     .modal-actions {
       display: flex;
@@ -574,7 +574,7 @@
       padding: .6rem 1.3rem;
       border: 0;
       border-radius: var(--radius-md);
-      background: var(--color-secondary-dark);
+      background: var(--color-green-text);
       color: var(--color-white);
       font-family: inherit;
       font-size: .9rem;
@@ -609,7 +609,7 @@
     }
     .mem-item .badge.imp-5 { background: var(--color-danger); }
     .mem-item .badge.imp-4 { background: #e67e22; }
-    .mem-item .badge.imp-3 { background: var(--color-secondary-dark); }
+    .mem-item .badge.imp-3 { background: var(--color-green-text); }
     .mem-item .badge.imp-2 { background: var(--color-gray); }
     .mem-item .badge.imp-1 { background: var(--color-gray-light); color: var(--color-dark); }
     .mem-item .mem-text {
@@ -775,7 +775,7 @@
     </div>
   </div>
 
-  <script src="/js/chat.js?v=2.9.0" type="module"></script>
+  <script src="/js/chat.js?v=3.4.5" type="module"></script>
   <script type="module">
     import { mountHeaderAvatar, attachLogoutHandler } from '/js/headerAvatarStandalone.js?v=2.9.0';
     import { mountHeaderBell } from '/js/headerBellStandalone.js?v=2.9.0';

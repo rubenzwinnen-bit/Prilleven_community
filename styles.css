@@ -133,12 +133,12 @@ h3 { font-size: 1.15rem; }
   height: 36px;
   border-radius: 50%;
   background: var(--color-light);
-  color: var(--color-dark);
+  color: var(--color-green-text);
   text-decoration: none;
   transition: var(--transition);
 }
 .header-home-btn:hover {
-  background: var(--color-secondary-dark);
+  background: var(--color-green-text);
   color: var(--color-white);
 }
 
@@ -155,7 +155,7 @@ h3 { font-size: 1.15rem; }
   height: 36px;
 }
 .header-bell-btn.tl-bell-btn:hover {
-  background: var(--color-secondary-dark);
+  background: var(--color-green-text);
   color: var(--color-white);
 }
 
@@ -5374,7 +5374,7 @@ body.is-aanraders #app-nav { display: none; }
 }
 .allergenen-header h2 {
   margin: 0 0 .35rem 0;
-  color: var(--color-primary);
+  color: var(--color-green-text);
   font-size: 1.6rem;
 }
 .allergenen-intro {
@@ -5771,6 +5771,16 @@ body.is-aanraders #app-nav { display: none; }
   flex-wrap: wrap;
   margin-top: .75rem;
 }
+/* "Symptoom loggen" in het merkgroen. Scoped, want .btn-outline is een
+   gedeelde klasse die elders terracotta hoort te blijven. */
+.allergenen-header-actions .btn-outline {
+  border-color: var(--color-green-text);
+  color: var(--color-green-text);
+}
+.allergenen-header-actions .btn-outline:hover {
+  background: var(--color-green-text);
+  color: var(--color-white);
+}
 /* 3-koloms layout: links (volgende stap) | midden (allergenen behoudt huidige breedte) | rechts (waarschuwingen)
    De wrapper breekt uit de #app-content max-width zodat de side-koloms tegen de viewport-rand zitten. */
 .allergenen-columns {
@@ -6047,7 +6057,7 @@ body.is-aanraders #app-nav { display: none; }
   max-height: calc(100vh - 4rem);
   overflow: auto;
 }
-.eh-symptom-header h2 { margin: 0 0 .25rem 0; font-size: 1.2rem; }
+.eh-symptom-header h2 { margin: 0 0 .25rem 0; font-size: 1.2rem; color: var(--color-green-text); }
 .eh-symptom-sub { margin: 0; color: #6b6b5e; font-size: .9rem; }
 .eh-symptom-disclaimer { color: #b03a3a; }
 
