@@ -67,6 +67,10 @@ Chatruimtes (topics + replies + admin). Eén function, rewrite: `/api/chat-rooms
 - Schrijft naar `allowed_users` (upsert bij activated, update anders) **én** `subscription_events` audit-log.
 - Roept `invalidateSubscriptionCache(email)` aan na success.
 - Ook GET = health-check (returnt JSON met hint).
+- **De payload bevat géén abonnementsgegevens** (vastgesteld 2026-07-31 op de audit-tabel): het is een CRM-workflow-melding met enkel contactvelden — geen bedrag, cyclus, product of `next_billing_date`. `cycle` komt volledig uit de URL-parameter, die op één workflow staat en dus voor iedereen `monthly` is. Gevolg: `computeEndDate()` geeft élke klant +30 dagen, ook jaar- en kwartaalklanten. `detectCycle()` kent bovendien geen `quarterly`. Niet in code op te lossen — Plug&Pay moet de echte datum of de cyclus meesturen.
+
+### `_lib/subscription.mjs` — `effectiveExpiry(endDate)`
+Bepaalt wanneer toegang écht vervalt; enige plek waar dat wordt beoordeeld (`getAccessStatus` bedient web én mobiele app). Twee correcties op de ruwe `subscription_end_date`: toegang loopt tot het **einde** van die dag (Plug&Pay levert een datum zonder tijd), en een einddatum in het **weekend schuift naar de dinsdag erna** — SEPA-incasso's worden enkel op bankwerkdagen aangeboden. Daarom staat in `allowed_users.subscription_end_date` bewust de kale incassodatum, zonder marge.
 
 ### `me.mjs` — `/api/me`
 GDPR-endpoints voor de huidige user.
