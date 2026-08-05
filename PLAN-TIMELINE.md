@@ -781,3 +781,34 @@ Daarna de nieuwe sitemap indienen in Google Search Console.
 - ⬜ **Soft-404's**: de SPA-catch-all serveert `index.html` op élk pad zonder punt, dus `/wat-dan-ook` geeft 200 met het loginscherm in plaats van een 404. Nu ongevaarlijk (niets linkt ernaartoe), maar het kan na indexering soft-404's opleveren.
 - ⬜ Content: lange beschrijvingen, downloadbestanden, Crisp-affiliatelink. Productfoto's en affiliatelinks zijn intussen aangevuld (9 producten).
 - ⬜ Categorie **Kookboeken** staat op `binnenkort` maar bevat een zichtbaar product — blijft verborgen, krijgt geen filterpil, en staat niet in de sitemap.
+
+---
+
+## 2026-08-05 — V4.0.0 RELEASE (branch `affiliatepagina` → `main`, GEMERGED)
+
+Merge-commit `78d8e4f`, tag `v4.0.0`, GitHub release: https://github.com/rubenzwinnen-bit/Prilleven_community/releases/tag/v4.0.0
+Cache-buster `3.5.2`/`3.5.3` → **`4.0.0`** (44 bestanden, 137 verwijzingen). `aanraders.css` houdt zijn eigen `CSS_VERSION` (`3.4.4`), `aanraders-filters.js` zijn `FILTER_JS_VERSION` (`1.1.0`).
+
+### Wat er live ging
+54 commits: de volledige aanraderspagina (stap 1–9), het merkgroen app-breed, `effectiveExpiry()` + het herstel van 160 abonnementseinddatums, en de cache-buster-opruiming.
+
+### Pre-deploy check
+- Beide SQL-migraties geverifieerd op productie via de Supabase-MCP (niet op vertrouwen aangenomen): 3 affiliate-tabellen aanwezig, 9 zichtbare categorieën, 10 zichtbare producten, 178 leden met een `subscription_end_date`.
+- Gevoelige bestanden in de diff: `api/_lib/subscription.mjs` (billing) en `vercel.json` (rewrites). Webhook, auth, rate-limit en de chat-prompt bleven onaangeraakt.
+- `.env.example` mist nog `PLUGPAY_WEBHOOK_BEARER`, `PLUGPAY_WEBHOOK_SECRET` en `SUPABASE_ANON_KEY` — bestaand documentatiegat, op Vercel staan ze wel.
+
+### Productie geverifieerd
+`/`, `/aanraders`, `/robots.txt`, `/sitemap.xml`, `/privacy.html`, `/voorwaarden.html` → 200. Onbekend product → 404. Sitemap bevat 21 URL's. Canonical klopt, JSON-LD parseert en bevat `Organization` + `Product` + `BreadcrumbList`.
+
+### Hotfix tijdens de release — `8eb26e3`
+`/sitemap.xml` gaf na de deploy 404. **Vercel houdt bij een rewrite het originele pad in `req.url`**: het verzoek kwam binnen als `/sitemap.xml?sitemap=1`, niet als `/api/aanraders?sitemap=1`. Daardoor sloeg `isApiPad()` niet aan en viel het door naar de 404-pagina. De query komt wél mee. De check staat nu vooraan in de handler, vóór alle padlogica. Genoteerd als valkuil in `api/CLAUDE.md` — geldt voor élke nieuwe rewrite van een pad buiten `/api/*`.
+
+### Niet vergeten / open
+- ⬜ **November: domeinmigratie** naar `community.prilleven.be` (nu nog Kollab, versie 1). Checklist staat in de sectie van vandaag hierboven. `community.prilleven.be` staat nu als ongeldige configuratie in Vercel — weghalen tot dan, anders zet iemand het Combell-record om en ligt v1 eruit.
+- ⬜ **Google Search Console** nog opzetten en de sitemap indienen.
+- ⬜ **Vercel-MCP autoriseren** (`/mcp` in een interactieve sessie) — deze release is zonder build-logs gedeployd, verificatie ging via curl.
+- ⬜ Branch `affiliatepagina` mag opgeruimd worden (gemerged).
+- ⬜ **Soft-404's**: de SPA-catch-all geeft 200 met het loginscherm op élk pad zonder punt.
+- ⬜ Content: lange beschrijvingen, downloadbestanden, Crisp-affiliatelink.
+- ⬜ Categorie **Kookboeken** staat op `binnenkort` maar bevat een zichtbaar product — blijft verborgen.
+- ⬜ `.home-tile--terracotta-light` in `styles.css` is ongebruikt.
