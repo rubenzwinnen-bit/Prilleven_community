@@ -775,7 +775,7 @@ Daarna de nieuwe sitemap indienen in Google Search Console.
 
 ### Niet vergeten / open
 - ⬜ **`community.prilleven.be` weghalen uit Vercel** tot november — het staat er nu als ongeldige configuratie, en zolang het blijft staan kan iemand het "oplossen" door het Combell-record om te zetten. Dan ligt Kollab eruit.
-- ⬜ **Branch `affiliatepagina` nog niet gemerged** — 50 commits vóór op `main`. Bij merge wordt `/aanraders` publiek op `community-web.prilleven.be`.
+- ⬜ **Branch `affiliatepagina` nog niet gemerged** — 52 commits vóór op `main`. Bij merge wordt `/aanraders` publiek op `community-web.prilleven.be`.
 - ⬜ **Versienummer kiezen voor de merge**: V3.6.0 of V4.0.0.
 - ⬜ **Google Search Console** is nog niet opgezet voor het domein — nodig om de sitemap in te dienen en indexering te volgen.
 - ⬜ **Soft-404's**: de SPA-catch-all serveert `index.html` op élk pad zonder punt, dus `/wat-dan-ook` geeft 200 met het loginscherm in plaats van een 404. Nu ongevaarlijk (niets linkt ernaartoe), maar het kan na indexering soft-404's opleveren.
