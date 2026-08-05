@@ -30,6 +30,14 @@ import { requireAdmin, AuthError } from './_lib/auth.mjs';
    de link publiek deelt — daarna kost het je SEO. */
 const BASE = '/aanraders';
 
+/* Het officiële domein van de pagina. Bewust een constante en niet de host
+   van de request: canonical-tags, og:url en de sitemap moeten altijd naar
+   één versie wijzen, anders ziet Google dezelfde pagina op meerdere hosts
+   (community-web.prilleven.be, de preview-URL's) en kiest hij zelf welke
+   telt. Preview-deployments zetten hun eigen X-Robots-Tag: noindex, dus die
+   raken hier niet door in de index. */
+const CANONICAL_ORIGIN = 'https://community.prilleven.be';
+
 /* Cache-buster voor aanraders.css — bump bij CSS-wijziging. */
 const CSS_VERSION = '3.4.4';
 
@@ -106,6 +114,55 @@ function safeUrl(v) {
   } catch {
     return null;
   }
+}
+
+/**
+ * JSON-LD als <script>-blok. `<` wordt ge-escaped omdat een titel met
+ * "</script>" erin de HTML anders zou openbreken — JSON.stringify escapet
+ * dat zelf niet.
+ */
+function jsonLdScript(data) {
+  if (!data) return '';
+  const json = JSON.stringify(data).replace(/</g, '\\u003c');
+  return `<script type="application/ld+json">${json}</script>`;
+}
+
+/* Eén Organization-node, via @id hergebruikt door elke pagina. url wijst naar
+   de hoofdsite: dat is de entiteit Pril Leven, deze pagina is er een deel van. */
+const ORGANISATIE = {
+  '@type': 'Organization',
+  '@id': `${CANONICAL_ORIGIN}/#organisatie`,
+  name: 'Pril Leven',
+  url: 'https://prilleven.be',
+  logo: `${CANONICAL_ORIGIN}/pril-leven-logo.png`,
+  email: CONTACT_MAIL,
+};
+
+/** ItemList-elementen uit een productlijst — enkel naam en URL, geen prijzen. */
+function itemLijst(producten) {
+  return {
+    '@type': 'ItemList',
+    numberOfItems: producten.length,
+    itemListElement: producten.map((p, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: p.titel,
+      url: `${CANONICAL_ORIGIN}${BASE}/p/${encodeURIComponent(p.slug)}`,
+    })),
+  };
+}
+
+/** Kruimelpad. Elk item: { naam, url } — url mag ontbreken op het laatste. */
+function kruimelpad(items) {
+  return {
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((it, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: it.naam,
+      ...(it.url ? { item: it.url } : {}),
+    })),
+  };
 }
 
 /** Leeftijdslabel: 0 → "vanaf de geboorte", <24 mnd → maanden, daarna jaren. */
@@ -240,6 +297,30 @@ async function fetchPaginaData() {
   });
 
   return { categorieen, producten, downloads: downloads.data || [] };
+}
+
+/**
+ * Slugs + wijzigingsdatums voor de sitemap. Categorieën op `binnenkort`
+ * blijven eruit: die pagina's tonen enkel een "in opbouw"-kader, en zo'n
+ * lege pagina actief aanmelden bij Google levert niets op.
+ */
+async function fetchSitemapData() {
+  const [cats, prods] = await Promise.all([
+    supabase.from('affiliate_categories')
+      .select('slug, updated_at')
+      .eq('zichtbaar', true).eq('binnenkort', false)
+      .order('slug', { ascending: true }),
+
+    supabase.from('affiliate_products')
+      .select('slug, updated_at')
+      .eq('zichtbaar', true)
+      .order('slug', { ascending: true }),
+  ]);
+
+  if (cats.error)  throw cats.error;
+  if (prods.error) throw prods.error;
+
+  return { categorieen: cats.data || [], producten: prods.data || [] };
 }
 
 /** Categorie + haar zichtbare producten. null als de slug niet bestaat. */
@@ -889,7 +970,7 @@ document.addEventListener('click', function (e) {
    RENDER — volledige pagina
 --------------------------------------------------------------- */
 
-function layout({ titel, beschrijving, canonical, body, bodyClass = '', afbeelding = null }) {
+function layout({ titel, beschrijving, canonical, body, bodyClass = '', afbeelding = null, jsonld = null }) {
   return `<!DOCTYPE html>
 <html lang="nl">
 <head>
@@ -904,6 +985,9 @@ function layout({ titel, beschrijving, canonical, body, bodyClass = '', afbeeldi
 <meta property="og:url" content="${esc(canonical)}">
 ${afbeelding ? `<meta property="og:image" content="${esc(afbeelding)}">` : ''}
 <meta name="twitter:card" content="summary_large_image">
+<meta property="og:site_name" content="Pril Leven">
+<meta property="og:locale" content="nl_BE">
+${jsonLdScript(jsonld)}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -992,11 +1076,28 @@ const OVERZICHT_BESCHRIJVING =
   'aanbeveelt. Met kortingscodes en eerlijke uitleg per product.';
 
 function renderOverzicht(data, origin) {
+  const canonical = `${origin}${BASE}`;
   return layout({
     titel: OVERZICHT_TITEL,
     beschrijving: OVERZICHT_BESCHRIJVING,
-    canonical: `${origin}${BASE}`,
+    canonical,
     body: bodyOverzicht(data, CTX_PUBLIEK),
+    jsonld: {
+      '@context': 'https://schema.org',
+      '@graph': [
+        ORGANISATIE,
+        {
+          '@type': 'CollectionPage',
+          '@id': canonical,
+          url: canonical,
+          name: 'Aanraders',
+          description: OVERZICHT_BESCHRIJVING,
+          inLanguage: 'nl-BE',
+          isPartOf: { '@id': ORGANISATIE['@id'] },
+          mainEntity: itemLijst(data.producten),
+        },
+      ],
+    },
   });
 }
 
@@ -1035,10 +1136,31 @@ function categorieMeta(cat) {
 
 function renderCategoriePagina(data, origin) {
   const meta = categorieMeta(data.cat);
+  const canonical = `${origin}${BASE}/c/${encodeURIComponent(data.cat.slug)}`;
   return layout({
     ...meta,
-    canonical: `${origin}${BASE}/c/${data.cat.slug}`,
+    canonical,
     body: bodyCategorie(data, CTX_PUBLIEK),
+    jsonld: {
+      '@context': 'https://schema.org',
+      '@graph': [
+        ORGANISATIE,
+        {
+          '@type': 'CollectionPage',
+          '@id': canonical,
+          url: canonical,
+          name: data.cat.titel,
+          description: meta.beschrijving,
+          inLanguage: 'nl-BE',
+          isPartOf: { '@id': ORGANISATIE['@id'] },
+          mainEntity: itemLijst(data.producten),
+        },
+        kruimelpad([
+          { naam: 'Aanraders', url: `${origin}${BASE}` },
+          { naam: data.cat.titel },
+        ]),
+      ],
+    },
   });
 }
 
@@ -1213,18 +1335,94 @@ function heeftMobieleBalk(p) {
 }
 
 function renderProductPagina(data, origin) {
-  const { p } = data;
+  const { p, cat } = data;
   const extra = Array.isArray(p.afbeeldingen) ? p.afbeeldingen.filter(Boolean) : [];
-  const eersteFoto = [p.afbeelding_url, ...extra].filter(Boolean)[0] || null;
+  const fotos = [p.afbeelding_url, ...extra].filter(Boolean);
+  const eersteFoto = fotos[0] || null;
+
+  const canonical = `${origin}${BASE}/p/${encodeURIComponent(p.slug)}`;
+  const beschrijving = p.korte_beschrijving
+    || `${p.titel} — aanbevolen door Anneleen van Pril Leven.`;
+
+  /* Product zónder offers: er staan bewust geen prijzen op de pagina, en een
+     verzonnen prijs zetten om een rich result te forceren is precies wat
+     Google een structured-data-overtreding noemt. Naam, merk en foto's zijn
+     wél feitelijk juist en helpen de entiteitsherkenning. */
+  const product = {
+    '@type': 'Product',
+    '@id': canonical,
+    url: canonical,
+    name: p.titel,
+    description: beschrijving,
+    ...(fotos.length ? { image: fotos } : {}),
+    ...(p.merk ? { brand: { '@type': 'Brand', name: p.merk } } : {}),
+    ...(cat ? { category: cat.titel } : {}),
+  };
+
+  const kruimels = [{ naam: 'Aanraders', url: `${origin}${BASE}` }];
+  if (cat) kruimels.push({ naam: cat.titel, url: `${origin}${BASE}/c/${encodeURIComponent(cat.slug)}` });
+  kruimels.push({ naam: p.titel });
 
   return layout({
     titel: `${p.titel} — Aanraders | Pril Leven`,
-    beschrijving: p.korte_beschrijving || `${p.titel} — aanbevolen door Anneleen van Pril Leven.`,
-    canonical: `${origin}${BASE}/p/${p.slug}`,
+    beschrijving,
+    canonical,
     body: bodyProduct(data, CTX_PUBLIEK),
     bodyClass: heeftMobieleBalk(p) ? 'has-bar' : '',
     afbeelding: eersteFoto,
+    jsonld: {
+      '@context': 'https://schema.org',
+      '@graph': [ORGANISATIE, product, kruimelpad(kruimels)],
+    },
   });
+}
+
+/* ---------------------------------------------------------------
+   SITEMAP
+--------------------------------------------------------------- */
+
+/** ISO-datum zonder tijd; <lastmod> accepteert dat en het scheelt ruis. */
+function lastmod(waarde) {
+  if (!waarde) return null;
+  const d = new Date(waarde);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+}
+
+function sitemapUrl({ loc, wijziging = null, prioriteit = null }) {
+  const datum = lastmod(wijziging);
+  return `  <url>
+    <loc>${esc(loc)}</loc>${datum ? `
+    <lastmod>${datum}</lastmod>` : ''}${prioriteit ? `
+    <priority>${prioriteit}</priority>` : ''}
+  </url>`;
+}
+
+/**
+ * Sitemap voor het publieke deel van de site. Bevat enkel /aanraders en
+ * wat eronder hangt plus de twee juridische pagina's — de rest van de site
+ * is een hash-router achter login en heeft geen indexeerbare URL's.
+ */
+function renderSitemap({ categorieen, producten }) {
+  const urls = [
+    sitemapUrl({ loc: `${CANONICAL_ORIGIN}${BASE}`, prioriteit: '1.0' }),
+    ...categorieen.map(c => sitemapUrl({
+      loc: `${CANONICAL_ORIGIN}${BASE}/c/${encodeURIComponent(c.slug)}`,
+      wijziging: c.updated_at,
+      prioriteit: '0.8',
+    })),
+    ...producten.map(p => sitemapUrl({
+      loc: `${CANONICAL_ORIGIN}${BASE}/p/${encodeURIComponent(p.slug)}`,
+      wijziging: p.updated_at,
+      prioriteit: '0.6',
+    })),
+    sitemapUrl({ loc: `${CANONICAL_ORIGIN}/privacy.html`, prioriteit: '0.2' }),
+    sitemapUrl({ loc: `${CANONICAL_ORIGIN}/voorwaarden.html`, prioriteit: '0.2' }),
+  ];
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls.join('\n')}
+</urlset>`;
 }
 
 function renderNotFound(origin) {
@@ -1298,16 +1496,19 @@ async function handleFragment(req, res, url) {
   });
 }
 
-function getOrigin(req) {
-  const proto = req.headers['x-forwarded-proto'] || 'https';
-  const host = req.headers['x-forwarded-host'] || req.headers.host || 'community-web.prilleven.be';
-  return `${proto}://${host}`;
+function sendXml(res, xml) {
+  res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
+  res.statusCode = 200;
+  res.end(xml);
 }
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') { res.statusCode = 204; return res.end(); }
 
-  const origin = getOrigin(req);
+  /* Altijd het canonieke domein in de HTML, niet de host waarop de request
+     binnenkwam — zie CANONICAL_ORIGIN. */
+  const origin = CANONICAL_ORIGIN;
   const { route, params } = matchRoute(req);
 
   /* ---- admin: JSON, achter requireAdmin ---- */
@@ -1335,6 +1536,19 @@ export default async function handler(req, res) {
      maar zonder <html>/header/footer en met hash-links. */
   if (isApiPad(req)) {
     const url = new URL(req.url, 'http://x');
+
+    /* /sitemap.xml komt hier binnen via een rewrite met ?sitemap=1 — de
+       query overleeft een rewrite betrouwbaarder dan het pad. */
+    if (url.searchParams.get('sitemap') === '1') {
+      try {
+        return sendXml(res, renderSitemap(await fetchSitemapData()));
+      } catch (err) {
+        console.error('[aanraders sitemap]', err);
+        res.statusCode = 500;
+        return res.end('Kon de sitemap niet opbouwen.');
+      }
+    }
+
     if (url.searchParams.get('fragment') === '1') {
       try {
         return await handleFragment(req, res, url);

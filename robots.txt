@@ -1,0 +1,17 @@
+# Pril Leven community
+#
+# De community zelf zit achter een login en is een hash-router: daar valt
+# niets te indexeren. Wat wel publiek is, is /aanraders en de twee
+# juridische pagina's. De rest blokkeren we niet actief — een crawler krijgt
+# er toch enkel het loginscherm te zien — behalve de API en de pagina's die
+# nooit in een zoekresultaat thuishoren.
+
+User-agent: *
+Allow: /
+
+Disallow: /api/
+Disallow: /chat.html
+Disallow: /admin-chat.html
+Disallow: /delete-account.html
+
+Sitemap: https://community.prilleven.be/sitemap.xml

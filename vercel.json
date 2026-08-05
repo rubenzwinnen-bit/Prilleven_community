@@ -12,6 +12,7 @@
     { "source": "/api/aanraders/:path*", "destination": "/api/aanraders" },
     { "source": "/aanraders", "destination": "/api/aanraders" },
     { "source": "/aanraders/:path*", "destination": "/api/aanraders" },
+    { "source": "/sitemap.xml", "destination": "/api/aanraders?sitemap=1" },
     { "source": "/((?!api/)(?!.*\\.).*)", "destination": "/index.html" }
   ],
   "functions": {
