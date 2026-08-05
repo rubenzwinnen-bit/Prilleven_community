@@ -1517,6 +1517,21 @@ export default async function handler(req, res) {
   const origin = CANONICAL_ORIGIN;
   const { route, params } = matchRoute(req);
 
+  /* /sitemap.xml komt hier binnen via een rewrite met ?sitemap=1. Bewust
+     vóór alle padlogica: Vercel houdt bij een rewrite het ORIGINELE pad in
+     req.url (dus /sitemap.xml, niet /api/aanraders), waardoor zowel
+     isApiPad() als matchRoute() hier niets van herkennen. De query komt wel
+     mee, en dat is de enige betrouwbare hint. */
+  if (req.url && new URL(req.url, 'http://x').searchParams.get('sitemap') === '1') {
+    try {
+      return sendXml(res, renderSitemap(await fetchSitemapData()));
+    } catch (err) {
+      console.error('[aanraders sitemap]', err);
+      res.statusCode = 500;
+      return res.end('Kon de sitemap niet opbouwen.');
+    }
+  }
+
   /* ---- admin: JSON, achter requireAdmin ---- */
   if (route.startsWith('admin.')) {
     try {
@@ -1542,18 +1557,6 @@ export default async function handler(req, res) {
      maar zonder <html>/header/footer en met hash-links. */
   if (isApiPad(req)) {
     const url = new URL(req.url, 'http://x');
-
-    /* /sitemap.xml komt hier binnen via een rewrite met ?sitemap=1 — de
-       query overleeft een rewrite betrouwbaarder dan het pad. */
-    if (url.searchParams.get('sitemap') === '1') {
-      try {
-        return sendXml(res, renderSitemap(await fetchSitemapData()));
-      } catch (err) {
-        console.error('[aanraders sitemap]', err);
-        res.statusCode = 500;
-        return res.end('Kon de sitemap niet opbouwen.');
-      }
-    }
 
     if (url.searchParams.get('fragment') === '1') {
       try {
