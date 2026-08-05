@@ -743,3 +743,41 @@ Cache-buster `3.3.1 → 3.5.3` (styles.css) en `3.5.2` voor **alle** module-impo
 - ⬜ Content ontbreekt nog: productfoto's, lange beschrijvingen, downloadbestanden, Crisp-affiliatelink.
 - ⬜ Categorie **Kookboeken** staat op `binnenkort` maar bevat een zichtbaar product — dat blijft daardoor verborgen én krijgt geen filterpil.
 - ⬜ `.home-tile--terracotta-light` in `styles.css` is ongebruikt sinds de allergenen-tegel omging.
+
+---
+
+## 2026-08-05 — Stap 9: SEO voor de aanraders + URL-strategie (branch `affiliatepagina`, NOG NIET GEMERGED)
+
+Commits `381b740`, `d975343`, `635322b`. Geen cache-buster-bump nodig: enkel server-gerenderde HTML en een nieuw statisch bestand, geen wijziging aan JS of CSS.
+
+### Vandaag afgerond
+- ✅ **`robots.txt`** (statisch in de root). Alles toegestaan behalve `/api/`, `chat.html`, `admin-chat.html` en `delete-account.html`, plus een `Sitemap:`-regel. Werkt zonder rewrite: de SPA-catch-all `/((?!api/)(?!.*\.).*)` slaat paden mét punt over.
+- ✅ **`/sitemap.xml`** — gegenereerd uit Supabase via de rewrite `→ /api/aanraders?sitemap=1` (query overleeft een rewrite betrouwbaarder dan het pad), afgehandeld vóór de fragment-check in de `isApiPad()`-tak. Bevat overzicht, zichtbare categorieën, zichtbare producten en de twee juridische pagina's, met `lastmod` uit `updated_at`.
+- ✅ **JSON-LD** via `layout({ jsonld })`: `CollectionPage` + `ItemList` op overzicht en categorie, `Product` + `BreadcrumbList` op productpagina's, overal met één gedeelde `ORGANISATIE`-node via `@id`.
+- ✅ **`CANONICAL_ORIGIN`-constante** vervangt `getOrigin(req)`. Canonical, `og:url` en de sitemap gebruiken niet langer de host van de request.
+- ✅ Getest met een gestubde Supabase: sitemap-XML, drie paginatypes (200 + juiste canonical + parsebare JSON-LD), 404-route en de in-app fragment-modus.
+
+### Beslissingen
+- **Domein wordt `community.prilleven.be`, maar pas in november.** Die hostnaam draait nu **Kollab** — versie 1 van de community, extern platform via `clientportal.ludicrous.cloud` (Cloudflare, live, zet sessie-cookies). Het CNAME in Combell is bewust **niet** aangeraakt: omzetten haalt v1 offline voor de leden die er nu op zitten.
+- **Pad blijft `/aanraders`.** Nederlands, precies wat het is, botst met niets. `/shop` afgevallen omdat het suggereert dat je bij Pril Leven koopt — het zijn affiliatelinks naar derden, en dat wringt met de transparantie die het uitgangspunt van de pagina is.
+- **Route 1 gekozen: nu publiceren op `community-web`, in november verhuizen.** De overstap van Kollab ligt maanden weg en de affiliatelinks zijn intussen aangevuld (9 producten), dus wachten kost te veel. Een domeinverhuis met 301's is een bekend pad.
+- **`Product` zonder `offers`.** Er staan bewust geen prijzen op de pagina; een prijs verzinnen om een rich result te forceren is een structured-data-overtreding.
+- **Categorieën op `binnenkort` staan niet in de sitemap** — die tonen enkel een "in opbouw"-kader.
+- **`jsonLdScript()` escapet elke `<` naar `<`**: `JSON.stringify` doet dat niet, en een producttitel met `</script>` erin zou de pagina openbreken. Geverifieerd met een fixture.
+
+### November — checklist domeinmigratie (Kollab → deze app)
+Doe deze vier samen, in deze volgorde:
+1. `community.prilleven.be` toevoegen aan Vercel-project `pril_leven_community` (Production), CNAME in Combell omzetten van `clientportal.ludicrous.cloud` naar de waarde die Vercel toont.
+2. `CANONICAL_ORIGIN` in `api/aanraders.mjs` → `https://community.prilleven.be`.
+3. `Sitemap:`-regel in `robots.txt` → hetzelfde domein.
+4. `community-web.prilleven.be` in Vercel op **Redirect to Another Domain (301)** naar de nieuwe host, zodat bestaande links en indexering meeverhuizen.
+Daarna de nieuwe sitemap indienen in Google Search Console.
+
+### Niet vergeten / open
+- ⬜ **`community.prilleven.be` weghalen uit Vercel** tot november — het staat er nu als ongeldige configuratie, en zolang het blijft staan kan iemand het "oplossen" door het Combell-record om te zetten. Dan ligt Kollab eruit.
+- ⬜ **Branch `affiliatepagina` nog niet gemerged** — 50 commits vóór op `main`. Bij merge wordt `/aanraders` publiek op `community-web.prilleven.be`.
+- ⬜ **Versienummer kiezen voor de merge**: V3.6.0 of V4.0.0.
+- ⬜ **Google Search Console** is nog niet opgezet voor het domein — nodig om de sitemap in te dienen en indexering te volgen.
+- ⬜ **Soft-404's**: de SPA-catch-all serveert `index.html` op élk pad zonder punt, dus `/wat-dan-ook` geeft 200 met het loginscherm in plaats van een 404. Nu ongevaarlijk (niets linkt ernaartoe), maar het kan na indexering soft-404's opleveren.
+- ⬜ Content: lange beschrijvingen, downloadbestanden, Crisp-affiliatelink. Productfoto's en affiliatelinks zijn intussen aangevuld (9 producten).
+- ⬜ Categorie **Kookboeken** staat op `binnenkort` maar bevat een zichtbaar product — blijft verborgen, krijgt geen filterpil, en staat niet in de sitemap.
