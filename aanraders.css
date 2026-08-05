@@ -1,0 +1,310 @@
+/* ============================================
+   AANRADERS — publieke affiliatepagina
+   Server-rendered door api/aanraders.mjs.
+   Staat los van styles.css: die is voor de app
+   achter login en is veel te groot voor een
+   publieke landingspagina.
+   Tokens hieronder zijn overgenomen uit
+   styles.css :root zodat de look identiek is.
+============================================ */
+.aanraders{
+  --color-primary:#C98966; --color-primary-dark:#BE764E; --color-primary-light:#FFBC7D;
+  --color-secondary:#98C3A4; --color-secondary-dark:#82BE93; --color-green-text:#4F7D6C;
+  --color-dark:#171717; --color-dark-light:#3d3d3d; --color-gray:#7a7a7a; --color-gray-light:#c5c5c5;
+  --color-light:#f0ebe6; --color-white:#fff; --color-bg:#faf8f5;
+  --shadow-sm:0 1px 4px rgba(0,0,0,.06); --shadow-md:0 4px 12px rgba(0,0,0,.08);
+  --radius-sm:4px; --radius-md:12px; --radius-lg:20px;
+  --max-width:1140px;
+}
+.aanraders *, .aanraders *::before, .aanraders *::after{box-sizing:border-box;margin:0;padding:0}
+body.aanraders-page{font-family:'Poppins',sans-serif;background:var(--color-bg);color:var(--color-dark);line-height:1.6;font-weight:400}
+.aanraders a{color:inherit;text-decoration:none}
+.aanraders img{max-width:100%;display:block}
+
+/* ---------- header ---------- */
+.aanraders .site-header{background:var(--color-white);border-bottom:1px solid var(--color-light);position:sticky;top:0;z-index:50}
+.aanraders .site-header-inner{max-width:var(--max-width);margin:0 auto;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.aanraders .brand{display:flex;align-items:center}
+.aanraders .brand-logo{height:64px;width:auto;display:block}
+.aanraders .header-cta{font-size:.85rem;font-weight:500;color:var(--color-gray);border:1px solid var(--color-light);padding:7px 14px;border-radius:999px;transition:all .25s ease}
+.aanraders .header-cta:hover{color:var(--color-primary);border-color:var(--color-primary)}
+/* Twee knoppen naast het logo passen op mobiel enkel met kortere labels;
+   de header is sticky, dus wrappen naar twee rijen kost te veel hoogte. */
+.aanraders .header-actions{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+.aanraders .cta-lang{display:none}
+.aanraders .cta-kort{display:inline}
+@media(min-width:640px){
+  .aanraders .header-actions{gap:10px}
+  .aanraders .cta-lang{display:inline}
+  .aanraders .cta-kort{display:none}
+}
+.aanraders .header-cta--join{background:var(--color-primary);border-color:var(--color-primary);color:#fff;font-weight:600}
+.aanraders .header-cta--join:hover{background:var(--color-primary-dark);border-color:var(--color-primary-dark);color:#fff}
+
+/* ---------- layout ---------- */
+.aanraders .wrap{max-width:var(--max-width);margin:0 auto;padding:0 20px}
+.aanraders section{margin-bottom:72px}
+.aanraders .section-head{margin-bottom:24px}
+.aanraders .section-head h2{font-size:1.45rem;font-weight:600;letter-spacing:-.02em;display:flex;align-items:center;gap:10px}
+.aanraders .section-head p{color:var(--color-gray);font-size:.92rem;margin-top:6px;max-width:62ch}
+
+/* ---------- hero ---------- */
+/* margin-bottom:0 — de hero is een <section> en pikte anders de algemene
+   sectiemarge van 72px mee, bovenop zijn eigen padding. Samen 120px gat
+   tussen de introtekst en de filterbalk. */
+.aanraders .hero{padding:64px 0 26px;margin-bottom:0;text-align:center}
+.aanraders .hero h1{font-size:2rem;font-weight:600;letter-spacing:-.03em;line-height:1.25;margin-bottom:18px;color:var(--color-green-text)}
+.aanraders .intro{color:var(--color-dark-light);font-size:1.02rem;line-height:1.75;max-width:60ch;margin:0 auto}
+.aanraders .intro strong{color:var(--color-dark);font-weight:500}
+
+/* ---------- zoek + filters (stap 8) ---------- */
+/* Compact gehouden: de balk staat boven de hele lijst en mag geen halve
+   schermhoogte kosten. Mobiel is alles een eigen regel; vanaf 1000px
+   schuiven zoekveld en eerste filtergroep op één regel (zie onderaan).
+
+   justify-content/align-items/flex-wrap staan er expliciet in omdat
+   styles.css een eigen .toolbar heeft (met justify-content:space-between).
+   In de app worden beide stylesheets geladen; wat wij hier niet declareren
+   lekt daaruit door en duwde de leeftijdsrij naar de rechterkant. */
+.aanraders .toolbar{display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;flex-wrap:nowrap;gap:9px;background:var(--color-white);border:1px solid var(--color-light);border-radius:var(--radius-lg);padding:11px 13px;box-shadow:var(--shadow-sm);margin-bottom:44px}
+.aanraders .search{display:flex;align-items:center;gap:9px;border:1px solid var(--color-light);border-radius:999px;padding:7px 14px;background:var(--color-bg)}
+.aanraders .search input{border:0;background:none;outline:none;font-family:inherit;font-size:.86rem;width:100%;color:var(--color-dark)}
+.aanraders .search svg{flex:none;stroke:var(--color-gray)}
+/* Elke filtergroep een eigen regel die apart horizontaal scrollt. Alles in
+   één scrollrij duwt de volgende groep ver buiten beeld. */
+.aanraders .filter-groep{display:flex;align-items:center;gap:6px;overflow-x:auto;scrollbar-width:none}
+.aanraders .filter-groep::-webkit-scrollbar{display:none}
+.aanraders .pill{flex:none;font-family:inherit;font-size:.78rem;font-weight:500;line-height:1.35;color:var(--color-dark-light);background:var(--color-bg);border:1px solid var(--color-light);border-radius:999px;padding:4px 11px;cursor:pointer;transition:background .2s ease,border-color .2s ease,color .2s ease}
+.aanraders .pill:hover{border-color:var(--color-gray-light)}
+.aanraders .pill.active{background:var(--color-primary);border-color:var(--color-primary);color:#fff}
+/* Label blijft staan tijdens het zijwaarts scrollen, anders weet je niet
+   meer waarop je aan het filteren bent. */
+.aanraders .filter-label{position:sticky;left:0;flex:none;background:var(--color-white);padding-right:4px;font-size:.68rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--color-gray)}
+.aanraders .search input::-webkit-search-cancel-button{cursor:pointer}
+/* hidden werkt niet op flex/grid-elementen zonder deze regel */
+.aanraders [hidden]{display:none !important}
+
+/* ---------- productkaart ---------- */
+.aanraders .grid{display:grid;grid-template-columns:1fr;gap:20px}
+.aanraders .card{background:var(--color-white);border:1px solid var(--color-light);border-radius:var(--radius-lg);overflow:hidden;display:flex;flex-direction:column;transition:box-shadow .25s ease,transform .25s ease}
+.aanraders .card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}
+.aanraders .card-media{aspect-ratio:4/3;background:linear-gradient(135deg,#f4efe9,#eae2da);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.aanraders .card-media img{width:100%;height:100%;object-fit:cover}
+.aanraders .card-media .ph{font-size:2.4rem;opacity:.35}
+.aanraders .card-labels{position:absolute;top:12px;left:12px;display:flex;gap:6px;flex-wrap:wrap}
+.aanraders .label{font-size:.68rem;font-weight:600;letter-spacing:.02em;text-transform:uppercase;padding:4px 9px;border-radius:999px;background:rgba(255,255,255,.94);color:var(--color-dark-light)}
+.aanraders .label--fav{background:var(--color-primary);color:#fff}
+.aanraders .label--new{background:var(--color-green-text);color:#fff}
+.aanraders .card-body{padding:18px 18px 0;flex:1}
+.aanraders .card-kop{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:2px}
+.aanraders .card-brand{font-size:.72rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--color-gray)}
+.aanraders .card-title{font-size:1.08rem;font-weight:600;letter-spacing:-.01em;margin:4px 0 8px}
+.aanraders .card-desc{font-size:.88rem;color:var(--color-dark-light);line-height:1.6}
+.aanraders .card-why{margin-top:14px;padding:12px 14px;background:var(--color-bg);border-radius:var(--radius-md);font-size:.83rem;color:var(--color-dark-light);line-height:1.6}
+.aanraders .card-why b{display:block;font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--color-green-text);margin-bottom:4px}
+.aanraders .card-meta{display:flex;flex-wrap:wrap;gap:6px}
+.aanraders .chip{font-size:.75rem;color:var(--color-gray);background:var(--color-bg);border:1px solid var(--color-light);border-radius:var(--radius-sm);padding:3px 9px}
+.aanraders .card-note{margin-top:12px;font-size:.78rem;line-height:1.55;color:#8a6d3b;background:#fdf6e3;border:1px solid #f3e3bd;border-radius:var(--radius-md);padding:10px 12px}
+.aanraders .card-foot{padding:16px 18px 18px;margin-top:16px;border-top:1px solid var(--color-light)}
+
+/* kortingscode — groen = kopieer, terracotta = ga naar winkel */
+.aanraders .code{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;font-family:inherit;text-align:left;border:1px dashed var(--color-green-text);border-radius:var(--radius-md);padding:9px 12px;margin-bottom:12px;background:#f3f9f5;cursor:pointer;transition:background .2s ease,border-color .2s ease}
+.aanraders .code:hover{background:#e9f4ed;border-color:var(--color-green-text)}
+.aanraders .code-val{font-family:ui-monospace,Menlo,monospace;font-size:.88rem;font-weight:600;color:var(--color-green-text);letter-spacing:.04em}
+.aanraders .code-copy{display:flex;align-items:center;gap:5px;font-size:.75rem;font-weight:500;color:var(--color-green-text);opacity:.75;flex:none}
+.aanraders .code-copy svg{stroke:currentColor}
+.aanraders .code.is-copied{background:#e9f4ed;border-style:solid}
+
+.aanraders .btn{display:flex;align-items:center;justify-content:center;gap:7px;text-align:center;background:var(--color-primary);color:#fff;font-weight:500;font-size:.9rem;padding:11px;border-radius:999px;transition:background .25s ease}
+.aanraders .btn:hover{background:var(--color-primary-dark);color:#fff}
+.aanraders .btn svg{stroke:currentColor;flex:none}
+.aanraders .btn--ghost{background:transparent;border:1px solid var(--color-light);color:var(--color-dark-light)}
+.aanraders .btn--ghost:hover{background:var(--color-light);color:var(--color-dark)}
+.aanraders .btn--disabled{background:var(--color-bg);border:1px solid var(--color-light);color:var(--color-gray);cursor:default}
+.aanraders .btn--disabled:hover{background:var(--color-bg);color:var(--color-gray)}
+
+.aanraders .rel{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:.72rem;color:var(--color-gray)}
+.aanraders .rel i{width:5px;height:5px;border-radius:50%;background:var(--color-gray-light);flex:none;font-style:normal}
+.aanraders .rel--none i{background:var(--color-green-text)}
+
+/* ---------- categorie ---------- */
+.aanraders .cat{margin-bottom:56px}
+.aanraders .cat-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--color-light)}
+.aanraders .cat-head h3{font-size:1.15rem;font-weight:600;letter-spacing:-.01em;display:flex;align-items:center;gap:9px;color:var(--color-green-text)}
+/* Alleen de "Alles bekijken"-link is klein en grijs. Stond hier eerder als
+   .cat-head a, waardoor ook de link rond de categorienaam verkleind werd en
+   gevulde categorieen een kleinere titel kregen dan lege. */
+.aanraders .cat-head h3 a{color:inherit}
+.aanraders .cat-head h3 a:hover{color:var(--color-primary)}
+.aanraders .cat-meer{font-size:.82rem;color:var(--color-gray);flex:none}
+.aanraders .cat-meer:hover{color:var(--color-primary)}
+.aanraders .soon{background:var(--color-white);border:1px dashed var(--color-gray-light);border-radius:var(--radius-lg);padding:32px 24px;text-align:center;color:var(--color-gray);font-size:.9rem}
+.aanraders .soon b{display:block;color:var(--color-dark-light);font-weight:500;margin-bottom:4px}
+
+/* ---------- downloads ---------- */
+.aanraders .dl-grid{display:grid;grid-template-columns:1fr;gap:14px}
+.aanraders .dl{display:flex;align-items:center;gap:16px;background:var(--color-white);border:1px solid var(--color-light);border-radius:var(--radius-lg);padding:18px;transition:box-shadow .25s ease}
+.aanraders .dl:hover{box-shadow:var(--shadow-sm)}
+.aanraders .dl-ico{width:46px;height:46px;border-radius:var(--radius-md);background:var(--color-light);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex:none}
+.aanraders .dl-txt h4{font-size:.97rem;font-weight:600;margin-bottom:2px}
+.aanraders .dl-txt p{font-size:.83rem;color:var(--color-gray);line-height:1.5}
+.aanraders .dl-arrow{margin-left:auto;color:var(--color-gray-light);flex:none}
+
+
+/* ---------- footer ---------- */
+.aanraders .site-footer{border-top:1px solid var(--color-light);background:var(--color-white);padding:40px 0;margin-top:24px}
+.aanraders .site-footer .wrap{text-align:center}
+.aanraders .site-footer p{font-size:.8rem;color:var(--color-gray);line-height:1.7;max-width:64ch;margin:0 auto 14px}
+.aanraders .site-footer nav{display:flex;gap:18px;justify-content:center;font-size:.82rem;color:var(--color-gray);flex-wrap:wrap}
+.aanraders .site-footer nav a:hover{color:var(--color-primary)}
+.aanraders .footer-contact{border-bottom:1px solid var(--color-light);padding-bottom:26px;margin-bottom:26px}
+.aanraders .footer-contact h2{font-size:1.05rem;font-weight:600;color:var(--color-green-text);margin-bottom:6px}
+.aanraders .footer-contact p{font-size:.87rem;color:var(--color-gray);margin-bottom:12px}
+.aanraders .footer-mail{display:inline-block;font-size:1rem;font-weight:600;color:var(--color-green-text);border-bottom:1px solid rgba(79,125,108,.35);padding-bottom:2px;transition:color .2s ease,border-color .2s ease}
+.aanraders .footer-mail:hover{color:var(--color-primary);border-bottom-color:var(--color-primary)}
+
+/* ---------- leeg / fout ---------- */
+.aanraders .empty{text-align:center;padding:80px 20px}
+.aanraders .empty h1{font-size:1.5rem;font-weight:600;margin-bottom:10px}
+.aanraders .empty p{color:var(--color-gray);font-size:.95rem;margin-bottom:24px}
+
+@media(min-width:640px){
+  .aanraders .grid{grid-template-columns:repeat(2,1fr);gap:24px}
+  .aanraders .dl-grid{grid-template-columns:repeat(2,1fr)}
+  .aanraders .hero h1{font-size:2.5rem}
+  .aanraders .hero{padding:80px 0 32px}
+}
+@media(min-width:1000px){
+  .aanraders .grid{grid-template-columns:repeat(3,1fr)}
+  /* Geen pilvorm meer op desktop: met twee filtergroepen liepen de knoppen
+     buiten beeld en een horizontale scrollbalk is daar geen goede oplossing
+     — je ziet niet dat er nog iets staat. Wrappen wel. */
+  /* Zoekveld en de eerste filtergroep delen regel 1; verdere groepen krijgen
+     een eigen volle regel. Zo blijft er geen lege kolom onder het zoekveld
+     staan, wat de balk een halve schermhoogte scheelde. */
+  .aanraders .toolbar{flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:10px 14px}
+  .aanraders .search{flex:0 0 240px;padding:5px 12px}
+  .aanraders .filter-groep{flex:0 1 auto;flex-wrap:wrap;row-gap:6px;min-width:0;overflow:visible;padding-left:16px;border-left:1px solid var(--color-light)}
+  /* Volgende groepen beginnen links, niet uitgelijnd onder de eerste: die
+     inspringing kostte 256px en duwde de categorierij naar een derde regel. */
+  .aanraders .filter-groep ~ .filter-groep{flex:1 1 100%;padding-left:0;border-left:0}
+  .aanraders .filter-label{position:static}
+}
+
+/* ============================================
+   PRODUCTDETAIL + CATEGORIEPAGINA
+============================================ */
+
+/* kruimelpad */
+.aanraders .crumbs{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--color-gray);padding:22px 0 4px;flex-wrap:wrap}
+.aanraders .crumbs a:hover{color:var(--color-primary)}
+.aanraders .crumbs em{color:var(--color-gray-light);font-style:normal}
+
+/* hoofdblok detail */
+.aanraders .product{display:grid;grid-template-columns:1fr;gap:32px;padding:20px 0 56px}
+.aanraders .gallery-main{aspect-ratio:1/1;background:linear-gradient(135deg,#f4efe9,#eae2da);border-radius:var(--radius-lg);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.aanraders .gallery-main img{width:100%;height:100%;object-fit:cover}
+.aanraders .gallery-main .ph{font-size:5rem;opacity:.35}
+.aanraders .gallery-labels{position:absolute;top:16px;left:16px;display:flex;gap:6px;flex-wrap:wrap}
+.aanraders .thumbs{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px}
+.aanraders .thumb{aspect-ratio:1/1;background:linear-gradient(135deg,#f4efe9,#eae2da);border-radius:var(--radius-md);overflow:hidden;padding:0;border:2px solid transparent;cursor:pointer;transition:border-color .2s ease,opacity .2s ease;opacity:.6}
+.aanraders .thumb img{width:100%;height:100%;object-fit:cover}
+.aanraders .thumb:hover{opacity:.9}
+.aanraders .thumb.active{opacity:1;border-color:var(--color-primary)}
+
+/* koopblok */
+.aanraders .buy-brand{font-size:.75rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--color-gray)}
+.aanraders .buy h1{font-size:1.75rem;font-weight:600;letter-spacing:-.02em;line-height:1.25;margin:6px 0 14px}
+.aanraders .buy-lead{font-size:.98rem;color:var(--color-dark-light);margin-bottom:20px}
+.aanraders .facts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px}
+.aanraders .facts .chip{background:var(--color-white);padding:5px 11px;font-size:.78rem}
+.aanraders .facts .chip b{color:var(--color-dark-light);font-weight:500}
+.aanraders .why{background:var(--color-white);border:1px solid var(--color-light);border-left:3px solid var(--color-green-text);border-radius:var(--radius-md);padding:18px 20px;margin-bottom:22px}
+.aanraders .why h3{font-size:.72rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--color-green-text);margin-bottom:8px}
+.aanraders .why p{font-size:.92rem;color:var(--color-dark-light);line-height:1.7}
+.aanraders .buy .code{padding:14px 16px}
+.aanraders .buy .code-val{font-size:1.05rem}
+.aanraders .buy .code-copy{font-size:.8rem;opacity:1}
+.aanraders .code-left{display:flex;flex-direction:column;gap:1px;min-width:0}
+.aanraders .code-lbl{font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--color-green-text);opacity:.8}
+.aanraders .buy .btn{padding:14px;font-size:.95rem}
+.aanraders .buy .rel{align-items:flex-start;font-size:.78rem;line-height:1.5;margin-top:14px}
+.aanraders .buy .rel i{margin-top:6px}
+.aanraders .trust{display:flex;flex-direction:column;gap:9px;margin-top:20px;padding-top:20px;border-top:1px solid var(--color-light)}
+.aanraders .trust div{display:flex;align-items:center;gap:9px;font-size:.83rem;color:var(--color-dark-light)}
+.aanraders .trust svg{stroke:var(--color-green-text);flex:none}
+.aanraders .checked{font-size:.75rem;color:var(--color-gray);margin-top:14px}
+.aanraders .note-groot{margin-top:18px;font-size:.85rem;line-height:1.6;color:#8a6d3b;background:#fdf6e3;border:1px solid #f3e3bd;border-radius:var(--radius-md);padding:14px 16px}
+
+/* secties op detail */
+.aanraders .sec{padding:44px 0;border-top:1px solid var(--color-light)}
+.aanraders .sec h2{font-size:1.3rem;font-weight:600;letter-spacing:-.02em;margin-bottom:18px}
+.aanraders .prose{max-width:70ch}
+.aanraders .prose p{font-size:.95rem;color:var(--color-dark-light);line-height:1.8;margin-bottom:14px}
+.aanraders .prose p:last-child{margin-bottom:0}
+
+/* voor- en nadelen */
+.aanraders .pros-cons{display:grid;grid-template-columns:1fr;gap:18px;max-width:900px}
+.aanraders .pc{background:var(--color-white);border:1px solid var(--color-light);border-radius:var(--radius-lg);padding:22px 24px}
+.aanraders .pc h3{font-size:.95rem;font-weight:600;margin-bottom:14px}
+.aanraders .pc ul{list-style:none}
+.aanraders .pc li{position:relative;padding-left:24px;font-size:.9rem;color:var(--color-dark-light);line-height:1.65;margin-bottom:10px}
+.aanraders .pc li:last-child{margin-bottom:0}
+.aanraders .pc li::before{position:absolute;left:0;top:0;font-weight:700}
+.aanraders .pc--pro li::before{content:"+";color:var(--color-green-text)}
+.aanraders .pc--con li::before{content:"–";color:var(--color-primary-dark)}
+.aanraders .pc--con{background:#fdfbf9}
+
+/* faq */
+.aanraders .faq{max-width:800px;border-top:1px solid var(--color-light)}
+.aanraders .faq details{border-bottom:1px solid var(--color-light)}
+.aanraders .faq summary{cursor:pointer;list-style:none;padding:18px 34px 18px 0;font-size:.95rem;font-weight:500;position:relative}
+.aanraders .faq summary::-webkit-details-marker{display:none}
+.aanraders .faq summary::after{content:"+";position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:1.3rem;font-weight:400;color:var(--color-gray)}
+.aanraders .faq details[open] summary::after{content:"–"}
+.aanraders .faq p{padding:0 34px 20px 0;font-size:.9rem;color:var(--color-dark-light);line-height:1.75}
+
+/* klikbare kaarttitel + media */
+.aanraders .card-media-link{display:block;position:relative}
+.aanraders .card-title a:hover{color:var(--color-primary)}
+
+/* categoriepagina kop */
+.aanraders .cat-hero{padding:26px 0 34px}
+.aanraders .cat-hero h1{font-size:1.85rem;font-weight:600;letter-spacing:-.02em;display:flex;align-items:center;gap:10px;margin-bottom:10px;color:var(--color-green-text)}
+.aanraders .cat-hero p{color:var(--color-gray);font-size:.95rem;max-width:62ch}
+.aanraders .terug{display:inline-flex;align-items:center;gap:7px;font-size:.85rem;color:var(--color-gray);margin-top:8px}
+.aanraders .terug:hover{color:var(--color-primary)}
+
+/* mobiele actiebalk op detail */
+.aanraders .mobile-bar{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.97);backdrop-filter:blur(8px);border-top:1px solid var(--color-light);padding:12px 16px calc(12px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:12px;z-index:60}
+.aanraders .mobile-bar .code{margin-bottom:0;flex:1;min-width:0;padding:10px}
+.aanraders .mobile-bar .code-val{font-size:.85rem}
+.aanraders .mobile-bar .code-copy{display:none}
+.aanraders .mobile-bar .btn{flex:1;padding:12px;font-size:.88rem}
+body.aanraders-page.has-bar{padding-bottom:84px}
+
+@media(min-width:700px){
+  .aanraders .pros-cons{grid-template-columns:1fr 1fr}
+}
+@media(min-width:940px){
+  .aanraders .product{grid-template-columns:1fr 1fr;gap:52px;padding:20px 0 64px}
+  .aanraders .buy{position:sticky;top:92px;align-self:start}
+  .aanraders .buy h1{font-size:2rem}
+  .aanraders .mobile-bar{display:none}
+  body.aanraders-page.has-bar{padding-bottom:0}
+}
+
+/* ============================================
+   IN-APP WEERGAVE (SPA-route #/aanraders)
+   De sticky header en de sticky koopkolom van de
+   publieke pagina moeten binnen de app onder de
+   app-header blijven, niet erbovenop.
+============================================ */
+.aanraders-laden { padding: 4rem 1rem; text-align: center; color: #7a7a7a; font-size: .95rem; }
+.aanraders .wrap { padding-left: 0; padding-right: 0; }
+.aanraders .hero { padding-top: 1.5rem; }
+.aanraders .buy { top: 1.5rem; }
+.aanraders.heeft-balk { padding-bottom: 84px; }
+@media (min-width: 940px) {
+  .aanraders.heeft-balk { padding-bottom: 0; }
+}

@@ -16,12 +16,12 @@
    - generateSchedule/refreshSlot werken op de cache (generator sub-tab)
 ============================================ */
 
-import * as Store from '../store.js?v=3.0.1';
-import * as Router from '../router.js?v=3.0.1';
+import * as Store from '../store.js?v=4.0.0';
+import * as Router from '../router.js?v=4.0.0';
 import {
   showToast, escapeHtml, promptInput, renderStarsDisplay, ALLERGENS, WEEKDAYS,
   SCHEDULE_SLOTS, slotToMealMoment, getSlotLabel, getAllergenLabel, normalizeAllergen
-} from '../utils.js?v=3.0.1';
+} from '../utils.js?v=4.0.0';
 
 /* ----------------------------------------
    STATE
@@ -125,7 +125,7 @@ function capitalize(s) {
 export function render() {
   return `
     <div id="schedule-page">
-      <h1 style="margin-bottom:1rem">Weekschema</h1>
+      <h1 class="page-title" style="margin-bottom:1rem">Weekschema</h1>
       <div class="empty-state">
         <div class="empty-state-icon">&#9203;</div>
         <h3>Laden...</h3>
@@ -142,7 +142,7 @@ function buildPageHtml() {
   const subtab = loadSubtab();
 
   return `
-    <h1 style="margin-bottom:1rem">Weekschema</h1>
+    <h1 class="page-title" style="margin-bottom:1rem">Weekschema</h1>
     <div class="subtab-bar" role="tablist">
       <button class="subtab-btn ${subtab === 'active' ? 'active' : ''}"
               data-subtab="active" role="tab" type="button">

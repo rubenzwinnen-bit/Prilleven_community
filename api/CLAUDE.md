@@ -67,6 +67,10 @@ Chatruimtes (topics + replies + admin). Eén function, rewrite: `/api/chat-rooms
 - Schrijft naar `allowed_users` (upsert bij activated, update anders) **én** `subscription_events` audit-log.
 - Roept `invalidateSubscriptionCache(email)` aan na success.
 - Ook GET = health-check (returnt JSON met hint).
+- **De payload bevat géén abonnementsgegevens** (vastgesteld 2026-07-31 op de audit-tabel): het is een CRM-workflow-melding met enkel contactvelden — geen bedrag, cyclus, product of `next_billing_date`. `cycle` komt volledig uit de URL-parameter, die op één workflow staat en dus voor iedereen `monthly` is. Gevolg: `computeEndDate()` geeft élke klant +30 dagen, ook jaar- en kwartaalklanten. `detectCycle()` kent bovendien geen `quarterly`. Niet in code op te lossen — Plug&Pay moet de echte datum of de cyclus meesturen.
+
+### `_lib/subscription.mjs` — `effectiveExpiry(endDate)`
+Bepaalt wanneer toegang écht vervalt; enige plek waar dat wordt beoordeeld (`getAccessStatus` bedient web én mobiele app). Twee correcties op de ruwe `subscription_end_date`: toegang loopt tot het **einde** van die dag (Plug&Pay levert een datum zonder tijd), en een einddatum in het **weekend schuift naar de dinsdag erna** — SEPA-incasso's worden enkel op bankwerkdagen aangeboden. Daarom staat in `allowed_users.subscription_end_date` bewust de kale incassodatum, zonder marge.
 
 ### `me.mjs` — `/api/me`
 GDPR-endpoints voor de huidige user.
@@ -96,6 +100,23 @@ GDPR-endpoints voor de huidige user.
 
 ### `admin.mjs` — GET `/api/admin?section=…`
 Admin dashboard. Vereist `requireAdmin`. Sections: `global`, `users`, `queries`, `events`, `conversations` (per email), `chunks` (per ids), `fallbacks`.
+
+### `aanraders.mjs` — `/aanraders*` (catch-all, **publiek, server-rendered HTML**)
+De affiliatepagina. Wijkt bewust af van elk ander endpoint hier:
+- **Geen auth.** Enige publieke, niet-ingelogde pagina van de site. Dat is het punt: SEO-indexeerbaar en deelbaar.
+- **Geeft HTML terug, geen JSON.** Nodig omdat de rest van de site een hash-router achter login is en Google `#/`-URL's niet indexeert.
+- **Rewrites in `vercel.json`** (`/aanraders` + `/aanraders/:path*`) staan **vóór** de SPA-catch-all — Vercel neemt de eerste match.
+- Routes in `matchRoute()`: `overzicht`, `categorie` (`/c/:slug`), `product` (`/p/:slug`). Onbekend → echte 404-pagina, geen leeg skelet.
+- Styling via `/aanraders.css` (eigen bestand, tokens uit `styles.css`) met eigen `CSS_VERSION`-constante als cache-buster — **niet** de app-versie in de HTML-bestanden.
+- `esc()` op elke DB-waarde, `safeUrl()` laat enkel http(s) door als href.
+- Affiliate-links: altijd `rel="sponsored nofollow noopener"` + `target="_blank"`.
+- `Cache-Control: s-maxage=300, stale-while-revalidate=86400`. Vercel consumeert `s-maxage` op de edge en stuurt de browser `max-age=0` — dat is correct, geen bug.
+- Het pad staat in de constante `BASE`; omdopen = `BASE` + de twee rewrites, en alleen doen vóór publieke lancering.
+- **`CANONICAL_ORIGIN` = `https://community-web.prilleven.be`** — canonical, `og:url` en de sitemap gebruiken altijd die constante, nooit de request-host. Anders leeft dezelfde pagina ook op elke preview-URL. **Verhuist later naar `community.prilleven.be`**: dat is de gewenste eindnaam, maar daar draait nu nog Kollab (versie 1 van de community, via `clientportal.ludicrous.cloud`). Zet de constante pas om tijdens die migratie, samen met de `Sitemap:`-regel in `robots.txt` en een 301 van `community-web` naar de nieuwe host.
+- **SEO (stap 9)**: `/robots.txt` is een statisch bestand in de root (de SPA-catch-all slaat paden mét punt over, dus die wordt gewoon geserveerd). `/sitemap.xml` loopt via de rewrite `→ /api/aanraders?sitemap=1` — de query overleeft een rewrite betrouwbaarder dan het pad — en wordt afgehandeld vóór de fragment-check in de `isApiPad()`-tak. Categorieën op `binnenkort` staan bewust niet in de sitemap.
+- **JSON-LD** via `layout({ jsonld })`: overzicht en categorie krijgen `CollectionPage` + `ItemList`, product krijgt `Product` + `BreadcrumbList`, overal met de gedeelde `ORGANISATIE`-node via `@id`. **`Product` heeft bewust geen `offers`** — er staan geen prijzen op de pagina en een verzonnen prijs is een structured-data-overtreding. `jsonLdScript()` escapet elke `<` naar `<`, anders breekt een titel met `</script>` erin de pagina open.
+- **Zoeken + filters (stap 8)**: `renderToolbar()` zet een zoekveld en pill-groepen boven het overzicht. Een dimensie (leeftijd, categorie, materiaal, merk) verschijnt pas als de data hem rechtvaardigt — `pillGroep({minPerOptie})`: 1 voor leeftijd/categorie (echte indelingen), 2 voor merk/materiaal (anders één product per knop). Categorieën op `binnenkort` krijgen geen pil, want hun producten worden niet gerenderd. Het filteren zelf gebeurt client-side in `/aanraders-filters.js` (eigen `FILTER_JS_VERSION`), gedeeld met de in-app weergave.
+- Contactadres = `CONTACT_MAIL` (footer). De Plug&Pay-checkout staat als `CHECKOUT_URL` hier én hardcoded in `index.html` (auth-modal) en `script.js` (verlopen-scherm) — bij wijziging alle drie aanpassen.
 
 ---
 
@@ -216,12 +237,15 @@ Er is **geen lokale dev-server** voor Vercel Functions in dit project (`.claude/
 
 ---
 
-## 9. Vercel Hobby functie-limiet
+## 9. Functie-opzet (catch-alls)
 
-Je zit op de Hobby tier met max 12 functions per deployment. Daarom:
+**Sinds 2026-07-29: Vercel Pro.** De oude Hobby-limiet van 12 functions per deployment
+geldt niet meer. Bestaande samenvoegingen blijven wel staan:
 - `community.mjs` is een catch-all (had anders 15+ files moeten worden).
 - `me.mjs` doet GET (export) + DELETE (forget) in één file.
 - `memory.mjs` idem (GET + DELETE all + DELETE one).
 - `admin.mjs` dispatched op `?section=...`.
 
-**Voeg geen nieuwe `.mjs` toe als het bij een bestaand endpoint kan via een query-param of catch-all.**
+Splits deze niet op zonder reden — ze zijn nu samengevoegd omdat de routes bij elkaar
+horen, niet meer omwille van een limiet. Een nieuw `.mjs` toevoegen mag voortaan wel
+wanneer het een echt losstaand endpoint is.

@@ -5,10 +5,10 @@
    - Mobile: één pane tegelijk, sticky bottom-tabs onderaan om te switchen
 ============================================ */
 
-import * as Store from '../store.js?v=2.5.10';
-import * as Router from '../router.js?v=2.5.10';
-import * as Timeline from './timeline.js?v=2.9.0';
-import * as ChatRooms from './chatRooms.js?v=2.5.10';
+import * as Store from '../store.js?v=4.0.0';
+import * as Router from '../router.js?v=4.0.0';
+import * as Timeline from './timeline.js?v=4.0.0';
+import * as ChatRooms from './chatRooms.js?v=4.0.0';
 
 const ACTIVE_PANE_KEY = 'home:active-pane';
 
@@ -57,9 +57,18 @@ export function render() {
       title: 'Allergenen introduceren',
       desc: 'Volg de 9 standaard-allergenen per kindje — 3 introducties per allergeen.',
       href: '#/allergenen',
-      accent: 'terracotta-light',
-      badge: 'BETA',
+      accent: 'terracotta',
       hoverImg: '/fotos/Introduceren-allargenen.png',
+    },
+    {
+      /* Hash-route: blijft binnen de app. De inhoud is dezelfde als op de
+         publieke pagina /aanraders — de server levert die als fragment. */
+      id: 'aanraders',
+      title: 'Aanraders',
+      desc: 'Producten, materialen en tools die Anneleen zelf gebruikt en aanbeveelt.',
+      href: '#/aanraders',
+      accent: 'sage',
+      hoverImg: '/fotos/aanraders.png',
     },
   ];
 
@@ -81,7 +90,6 @@ export function render() {
         <h3 class="home-tile-title">${t.title}${t.badge ? ` <span class="home-tile-badge">${t.badge}</span>` : ''}</h3>
         <p class="home-tile-desc">${t.desc}</p>
       </div>
-      <div class="home-tile-arrow">→</div>
     </a>
   `).join('');
 

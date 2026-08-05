@@ -165,6 +165,17 @@ Voedt de app-icoon-push (APNs/FCM via Expo Push) en de server-side badge-bereken
 - **`push_tokens`** — `token (PK, Expo-push-token), user_id (FK auth.users), platform ('ios'|'android'), updated_at`. Index op `user_id`. RLS owner-only ("own tokens" op `auth.uid() = user_id`). Upsert bij (her)login vanuit de app; delete bij uitloggen. Server leest deze om pushes te sturen wanneer de app dicht is.
 - **`user_badge_state`** — `user_id (PK, FK auth.users), timeline_seen_at timestamptz, chatrooms_seen_at timestamptz, topic_reads jsonb (default '{}')`. RLS owner-only ("own badge state"). Server-spiegel van de "laatst gezien"-tijdstippen die de app pusht via `PUT /api/community/badge-state`; hergebruikt door `_lib/badges.mjs::computeTotalBadge` om het absolute app-icoon-getal per ontvanger te berekenen bij een push.
 
+### Aanraders / affiliatepagina (V3.2 — `2026-07-29-affiliate-aanraders.sql`)
+Voedt de **publieke** pagina `/aanraders` (zie `api/CLAUDE.md`). Anon mag lezen waar `zichtbaar = true`; schrijven uitsluitend via service-role in `api/aanraders.mjs`.
+- **`affiliate_categories`** — `id, slug (unique), titel, emoji, omschrijving, volgorde, zichtbaar (default true), binnenkort`. `binnenkort = true` toont een placeholder **in plaats van** de producten — ook als er zichtbare producten in zitten. Policy: `"publiek leesbaar"` op `zichtbaar = true`.
+- **`affiliate_products`** — alle inhoud van kaart én detailpagina. Belangrijk: `relatie_type` (NOT NULL, CHECK op `affiliate_korting | affiliate | enkel_korting | geen_samenwerking`) bepaalt het transparantielabel; `zichtbaar` **default false** zodat een nieuw product nooit per ongeluk live staat; `favoriet_anneleen` zet enkel het label "Favoriet" (de aparte favorieten-sectie is verwijderd). `prijs_indicatie` bestaat nog maar wordt nergens meer gezet of getoond.
+- **`affiliate_downloads`** — `slug, titel, omschrijving, bestand_url, afbeelding_url, emoji, volgorde, zichtbaar`.
+- **Sorteren:** altijd `order by volgorde, titel`. Zonder die tweede sleutel is de volgorde bij gelijke `volgorde` willekeurig en kan hij per query verschillen.
+- Triggers gebruiken de bestaande `public.touch_updated_at()` — géén eigen functie.
+
+### Storage buckets — aanvulling
+- **`affiliate-images`** — productfoto's, publiek leesbaar (zoals `recipe-images`). Alleen een SELECT-policy; schrijven gaat server-side met de service-role via een signed upload-URL.
+
 ### Views
 - **`community_posts_view`** — post + nickname + avatar_path + likes_count + replies_count + has_poll. `security_invoker = true`.
 - **`community_admin_user_ids`** — resolveert admin user_ids via email-join `auth.users ↔ allowed_users.is_admin`. `security_invoker = true`. Bevat ook email + nickname (na `2026-05-03-community-admin-view-email.sql`).
@@ -200,3 +211,7 @@ Voedt de app-icoon-push (APNs/FCM via Expo Push) en de server-side badge-bereken
 - **Geen** secrets in SQL comments of `INSERT`-statements.
 - **Niet** rechtstreeks data inserten in productie via een migratie tenzij echt nodig (en dan altijd `ON CONFLICT DO NOTHING`).
 - **Geen** wijziging van het embedding-dim (1024 = Voyage `voyage-3-large`) zonder nieuwe ingestion.
+
+## Data-fixes (geen schema)
+
+- `2026-07-31-abonnementen-einddatum-uit-plugpay-export.sql` — eenmalige UPDATE van `allowed_users.subscription_end_date` voor 160 e-mails uit een Plug&Pay-export. Aanleiding: de webhook zette geen verlengingen door, waardoor 31 betalende leden op een verlopen datum stonden. **Al uitgevoerd op productie op 2026-07-31.** De kolom bevat bewust de kale incassodatum; de weekendmarge zit in `effectiveExpiry()` in `api/_lib/subscription.mjs`.

@@ -1,5 +1,6 @@
-// Admin dashboard endpoints — samengevoegd in 1 file om onder Vercel Hobby
-// function-limit te blijven. Dispatches op ?section=... query param.
+// Admin dashboard endpoints — samengevoegd in 1 file (destijds voor de Vercel Hobby
+// function-limit; sinds Vercel Pro geen harde noodzaak meer, maar de opzet blijft).
+// Dispatches op ?section=... query param.
 //
 //   GET /api/admin?section=global            → globale statistieken
 //   GET /api/admin?section=users             → per-user aggregaat (30 dagen)

@@ -7,8 +7,19 @@
   --color-primary: #C98966;
   --color-primary-dark: #BE764E;
   --color-primary-light: #FFBC7D;
+  /* AFGESCHREVEN (2026-08-01). De salie-vulgroenen worden nergens meer
+     gebruikt; ze staan hier alleen nog omdat oude inline styles ze zouden
+     kunnen aanroepen. Gebruik ze niet in nieuw werk. */
   --color-secondary: #98C3A4;
   --color-secondary-dark: #82BE93;
+  /* HET merkgroen: tekst én vlakken. Haalt 4.42 contrast op de paginakleur
+     #faf8f5 en 4.68 op wit — net onder de WCAG-norm van 4.5 voor kleine
+     tekst, ruim boven de 3.0 voor koppen. Bewuste keuze van Anneleen,
+     dus niet "corrigeren". Wit erop haalt 4.68, dus knoppen zijn oké. */
+  --color-green-text: #4F7D6C;
+  /* Donkerdere tint van het merkgroen, enkel voor hover/active van groene
+     knoppen. Geen tweede merkkleur — puur een schaduw van #4F7D6C. */
+  --color-green-dark: #3F6558;
   --color-danger: #c0392b;
   --color-danger-dark: #a93226;
   --color-warning: #f1c40f;
@@ -109,7 +120,7 @@ h3 { font-size: 1.15rem; }
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   text-decoration: none;
 }
 .header-title:hover { opacity: 0.8; }
@@ -126,12 +137,12 @@ h3 { font-size: 1.15rem; }
   height: 36px;
   border-radius: 50%;
   background: var(--color-light);
-  color: var(--color-dark);
+  color: var(--color-green-text);
   text-decoration: none;
   transition: var(--transition);
 }
 .header-home-btn:hover {
-  background: var(--color-secondary-dark);
+  background: var(--color-green-text);
   color: var(--color-white);
 }
 
@@ -143,12 +154,12 @@ h3 { font-size: 1.15rem; }
 .header-bell-btn.tl-bell-btn {
   background: var(--color-light);
   border: none;
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   width: 36px;
   height: 36px;
 }
 .header-bell-btn.tl-bell-btn:hover {
-  background: var(--color-secondary-dark);
+  background: var(--color-green-text);
   color: var(--color-white);
 }
 
@@ -205,12 +216,12 @@ h3 { font-size: 1.15rem; }
 }
 
 .nav-link:hover {
-  color: var(--color-primary);
+  color: var(--color-green-text);
 }
 
 .nav-link.active {
-  color: var(--color-primary);
-  border-bottom-color: var(--color-primary);
+  color: var(--color-green-text);
+  border-bottom-color: var(--color-green-text);
   font-weight: 600;
 }
 
@@ -327,12 +338,12 @@ h3 { font-size: 1.15rem; }
 }
 
 .btn-secondary {
-  background: var(--color-secondary);
+  background: var(--color-green-text);
   color: var(--color-white);
 }
 
 .btn-secondary:hover {
-  background: var(--color-secondary-dark);
+  background: var(--color-green-dark);
 }
 
 .btn-danger {
@@ -534,8 +545,8 @@ select.form-control {
 }
 
 .tag-moment {
-  background: rgba(152, 195, 164, 0.2);
-  color: #4a7c59;
+  background: rgba(79, 125, 108, 0.12);
+  color: var(--color-green-text);
 }
 
 .tag-allergen {
@@ -544,8 +555,8 @@ select.form-control {
 }
 
 .tag-time {
-  background: rgba(152, 195, 164, 0.15);
-  color: #4a7c59;
+  background: rgba(79, 125, 108, 0.10);
+  color: var(--color-green-text);
 }
 
 .tag-portions {
@@ -575,8 +586,8 @@ select.form-control {
   font-weight: 600;
   line-height: 1.4;
   white-space: nowrap;
-  background: rgba(152, 195, 164, 0.25);
-  color: #4a7c59;
+  background: rgba(79, 125, 108, 0.16);
+  color: var(--color-green-text);
 }
 
 .recipe-age-badge--lg {
@@ -964,7 +975,7 @@ select.form-control {
 }
 
 .schedule-row-header {
-  background: var(--color-secondary);
+  background: var(--color-green-text);
   color: var(--color-white);
   font-weight: 600;
   font-size: 0.7rem;
@@ -1191,6 +1202,22 @@ select.form-control {
   opacity: 0.35;
 }
 
+/* Paginatitel van een functie, bv. "Weekschema" */
+.page-title {
+  color: var(--color-green-text);
+}
+
+/* "Genereer Weekschema" in het merkgroen. Scoped op de id, want
+   .btn-primary is gedeeld en blijft elders terracotta. */
+#btn-generate {
+  background: var(--color-green-text);
+  border-color: var(--color-green-text);
+}
+#btn-generate:hover {
+  background: var(--color-green-dark);
+  border-color: var(--color-green-dark);
+}
+
 /* ============================================
    FAVORIETEN PAGINA
 ============================================ */
@@ -1199,10 +1226,32 @@ select.form-control {
 }
 
 .favorites-section h2 {
+  color: var(--color-green-text);
   margin-bottom: 1rem;
   padding-bottom: 0.75rem;
-  border-bottom: 3px solid var(--color-primary);
+  border-bottom: 3px solid var(--color-green-text);
   display: inline-block;
+}
+
+/* Knoppen in de weekschema-kaart in het merkgroen. Scoped, want
+   .btn-outline is gedeeld en blijft elders terracotta. Verwijderen
+   (.btn-danger) blijft bewust rood: dat is de enige onomkeerbare actie. */
+.saved-schedule-card .btn-outline {
+  border-color: var(--color-green-text);
+  color: var(--color-green-text);
+}
+.saved-schedule-card .btn-outline:hover {
+  background: var(--color-green-text);
+  color: var(--color-white);
+}
+.saved-schedule-card .btn-activate-schedule {
+  background: var(--color-green-text);
+  border-color: var(--color-green-text);
+  color: var(--color-white);
+}
+.saved-schedule-card .btn-activate-schedule:hover {
+  background: var(--color-green-dark);
+  border-color: var(--color-green-dark);
 }
 
 .saved-schedule-card {
@@ -1236,6 +1285,30 @@ select.form-control {
 .shopping-list-container {
   max-width: 100%;
   margin: 0 auto;
+}
+
+/* Boodschappenlijst in het merkgroen: de twee titels, "Terug naar
+   favorieten", de vier dagfilters, "Genereer Boodschappenlijst" en
+   "Afdrukken". Gescoped op de container, want .btn-outline en .btn-primary
+   zijn gedeelde klassen die elders terracotta blijven. */
+.shopping-list-container > h1 {
+  color: var(--color-green-text);
+}
+.shopping-list-container .btn-outline {
+  border-color: var(--color-green-text);
+  color: var(--color-green-text);
+}
+.shopping-list-container .btn-outline:hover {
+  background: var(--color-green-text);
+  color: var(--color-white);
+}
+.shopping-list-container .btn-primary {
+  background: var(--color-green-text);
+  border-color: var(--color-green-text);
+}
+.shopping-list-container .btn-primary:hover {
+  background: var(--color-green-dark);
+  border-color: var(--color-green-dark);
 }
 
 .shopping-recipe-select {
@@ -1329,7 +1402,7 @@ select.form-control {
 
 .shopping-ingredient-list h3 {
   margin-bottom: 1rem;
-  color: var(--color-primary-dark);
+  color: var(--color-green-text);
 }
 
 .shopping-ingredient-list ul {
@@ -1416,6 +1489,7 @@ select.form-control {
 
 .auth-modal h2 {
   text-align: center;
+  color: var(--color-green-text);
 }
 
 .auth-modal p {
@@ -1445,12 +1519,12 @@ select.form-control {
 }
 
 .auth-tab:hover {
-  color: var(--color-primary);
+  color: var(--color-green-text);
 }
 
 .auth-tab.active {
-  color: var(--color-primary);
-  border-bottom-color: var(--color-primary);
+  color: var(--color-green-text);
+  border-bottom-color: var(--color-green-text);
   font-weight: 600;
 }
 
@@ -1487,7 +1561,7 @@ select.form-control {
 }
 
 .auth-success {
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   font-size: 0.8rem;
   margin-bottom: 0.75rem;
   line-height: 1.4;
@@ -1508,20 +1582,40 @@ select.form-control {
 }
 
 .auth-link-row a {
-  color: var(--color-primary);
+  color: var(--color-green-text);
   font-size: 0.85rem;
   text-decoration: underline;
 }
 
 .auth-link-row a:hover {
-  color: var(--color-primary-dark);
+  color: var(--color-primary);
+}
+
+/* --- Lidmaatschap-CTA onder de auth-views --- */
+.auth-cta {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-light);
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--color-gray);
+}
+
+.auth-cta a {
+  color: var(--color-green-text);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.auth-cta a:hover {
+  color: var(--color-primary);
 }
 
 /* --- Uitlogknop in header --- */
 .btn-logout {
   background: transparent;
-  color: var(--color-secondary-dark);
-  border: 1px solid var(--color-secondary-dark);
+  color: var(--color-green-text);
+  border: 1px solid var(--color-green-text);
   padding: 0.25rem 0.7rem;
   border-radius: var(--radius-sm);
   font-size: 0.75rem;
@@ -1531,9 +1625,9 @@ select.form-control {
 }
 
 .btn-logout:hover {
-  background: var(--color-secondary-dark);
+  background: var(--color-green-text);
   color: var(--color-white);
-  border-color: var(--color-secondary-dark);
+  border-color: var(--color-green-text);
 }
 
 /* ============================================
@@ -1597,7 +1691,7 @@ select.form-control {
 }
 
 .toast-success {
-  background: var(--color-secondary-dark);
+  background: var(--color-green-text);
 }
 
 .toast-error {
@@ -1687,7 +1781,7 @@ select.form-control {
 
 .filter-select:focus {
   outline: none;
-  border-color: var(--color-primary);
+  border-color: var(--color-green-text);
 }
 
 /* ============================================
@@ -1715,11 +1809,11 @@ select.form-control {
 }
 
 .allergen-filter-btn:hover {
-  border-color: var(--color-primary);
+  border-color: var(--color-green-text);
 }
 
 .allergen-filter-btn[aria-expanded="true"] {
-  border-color: var(--color-primary);
+  border-color: var(--color-green-text);
 }
 
 .allergen-filter-count {
@@ -1861,13 +1955,13 @@ select.form-control {
 }
 
 .age-pill:hover {
-  border-color: var(--color-secondary);
+  border-color: var(--color-green-text);
 }
 
 .age-pill.active {
-  background: var(--color-secondary);
-  border-color: var(--color-secondary);
-  color: #2f5d3f;
+  background: var(--color-green-text);
+  border-color: var(--color-green-text);
+  color: var(--color-white);
   font-weight: 600;
 }
 
@@ -1959,7 +2053,7 @@ select.form-control {
 }
 
 .icon-grid-item.has-icon {
-  border-color: var(--color-secondary);
+  border-color: var(--color-green-text);
 }
 
 .icon-grid-preview {
@@ -2078,12 +2172,12 @@ select.form-control {
    Badge, info-blok, dag-pills en selectiebalk
 ============================================ */
 .schedule-card-active {
-  border: 2px solid var(--color-secondary);
+  border: 2px solid var(--color-green-text);
 }
 
 .active-schedule-badge {
   display: inline-block;
-  background: var(--color-secondary);
+  background: var(--color-green-text);
   color: var(--color-white);
   font-size: 0.75rem;
   font-weight: 600;
@@ -2098,7 +2192,7 @@ select.form-control {
   padding: 1rem 1.5rem;
   margin-bottom: 1.25rem;
   box-shadow: var(--shadow-sm);
-  border-left: 4px solid var(--color-secondary);
+  border-left: 4px solid var(--color-green-text);
 }
 
 .schedule-day-pills {
@@ -2110,8 +2204,8 @@ select.form-control {
 
 .schedule-day-pill {
   display: inline-block;
-  background: rgba(152, 195, 164, 0.2);
-  color: #4a7c59;
+  background: rgba(79, 125, 108, 0.12);
+  color: var(--color-green-text);
   font-size: 0.8rem;
   font-weight: 500;
   padding: 0.25rem 0.65rem;
@@ -2126,9 +2220,9 @@ select.form-control {
 
 .day-selector-btn {
   padding: 0.35rem 0.8rem;
-  border: 2px solid var(--color-primary);
+  border: 2px solid var(--color-green-text);
   background: transparent;
-  color: var(--color-primary);
+  color: var(--color-green-text);
   font-size: 0.8rem;
   font-weight: 500;
   font-family: 'Poppins', sans-serif;
@@ -2137,11 +2231,11 @@ select.form-control {
 }
 
 .day-selector-btn:hover {
-  background: rgba(201, 137, 102, 0.1);
+  background: rgba(79, 125, 108, 0.1);
 }
 
 .day-selector-btn.active {
-  background: var(--color-primary);
+  background: var(--color-green-text);
   color: var(--color-white);
 }
 
@@ -2240,7 +2334,7 @@ select.form-control {
 }
 .home-pane-title {
   font-size: 1.05rem;
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   margin: 0;
   font-weight: 700;
   letter-spacing: .2px;
@@ -2273,10 +2367,9 @@ select.form-control {
   color: var(--color-white);
   padding-top: calc(.9rem + 110px);
 }
-/* Tegel-titel + arrow + omschrijving in wit voor leesbaarheid op terracotta */
+/* Tegel-titel + omschrijving in wit voor leesbaarheid op terracotta */
 .home-tile .home-tile-title { color: var(--color-white); }
 .home-tile .home-tile-desc  { color: rgba(255,255,255,.88); }
-.home-tile .home-tile-arrow { color: var(--color-white); }
 
 /* Hover-foto is onderdeel van de tegel en groeit vanuit de bovenkant */
 .home-tile-hover-img {
@@ -2315,7 +2408,7 @@ select.form-control {
   background: rgba(201, 137, 102, .15);
 }
 .home-tile--sage .home-tile-icon {
-  background: rgba(130, 190, 147, .2);
+  background: rgba(79, 125, 108, 0.14);
 }
 .home-tile--dark .home-tile-icon {
   background: rgba(23, 23, 23, .08);
@@ -2336,20 +2429,6 @@ select.form-control {
   line-height: 1.4;
   margin: 0;
 }
-.home-tile-arrow {
-  font-size: 1.2rem;
-  color: var(--color-gray);
-  flex-shrink: 0;
-  transition: transform .2s ease, color .2s ease;
-}
-.home-tile:hover .home-tile-arrow {
-  color: var(--color-primary);
-  transform: translateX(4px);
-}
-.home-tile--sage:hover .home-tile-arrow {
-  color: var(--color-secondary-dark);
-}
-
 /* ============================================
    HOME HUB — bottom-nav (alleen mobile zichtbaar)
 ============================================ */
@@ -2374,7 +2453,7 @@ select.form-control {
   transition: color .15s ease;
 }
 .home-bottom-nav-tab.is-active {
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
 }
 .home-bottom-nav-icon {
   font-size: 1.2rem;
@@ -2453,6 +2532,7 @@ body.is-hub .header-home-btn { display: none; }
 body.is-learnings #app-nav { display: none; }
 body.is-profiel #app-nav { display: none; }
 body.is-allergenen #app-nav { display: none; }
+body.is-aanraders #app-nav { display: none; }
 
 /* Logo op het inlog-scherm */
 .auth-logo {
@@ -2492,12 +2572,12 @@ body.is-allergenen #app-nav { display: none; }
 }
 
 .subtab-btn:hover {
-  color: var(--color-primary);
+  color: var(--color-green-text);
 }
 
 .subtab-btn.active {
-  color: var(--color-primary);
-  border-bottom-color: var(--color-primary);
+  color: var(--color-green-text);
+  border-bottom-color: var(--color-green-text);
 }
 
 /* Per-dag blok in "Actief weekschema" viewer */
@@ -2525,7 +2605,7 @@ body.is-allergenen #app-nav { display: none; }
 }
 
 .active-day-today-badge {
-  background: var(--color-primary);
+  background: var(--color-green-text);
   color: var(--color-white, #fff);
   font-size: 0.7rem;
   font-weight: 500;
@@ -2605,7 +2685,7 @@ body.is-allergenen #app-nav { display: none; }
   padding: 2rem;
 }
 .nickname-modal h2 {
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   margin-bottom: 0.5rem;
 }
 .nickname-modal-desc {
@@ -2671,7 +2751,7 @@ body.is-allergenen #app-nav { display: none; }
 }
 .tl-composer-title {
   font-weight: 600;
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   font-size: 1rem;
 }
 .tl-composer-head-right {
@@ -2750,12 +2830,12 @@ body.is-allergenen #app-nav { display: none; }
   box-shadow: 0 1px 2px rgba(0,0,0,0.03);
 }
 .tl-post.is-pinned {
-  border-color: var(--color-secondary);
-  box-shadow: 0 1px 4px rgba(152, 195, 164, 0.25);
+  border-color: var(--color-green-text);
+  box-shadow: 0 1px 4px rgba(79, 125, 108, 0.16);
 }
 .tl-pinned-tag {
   display: inline-block;
-  background: var(--color-secondary);
+  background: var(--color-green-text);
   color: var(--color-white);
   font-size: 0.7rem;
   font-weight: 600;
@@ -3018,9 +3098,9 @@ body.is-allergenen #app-nav { display: none; }
   color: var(--color-dark);
 }
 .tl-filter-chip.is-active {
-  background: var(--color-secondary-dark);
+  background: var(--color-green-text);
   color: var(--color-white);
-  border-color: var(--color-secondary-dark);
+  border-color: var(--color-green-text);
 }
 
 /* Categorie-chip op postkaart */
@@ -3154,7 +3234,7 @@ body.is-allergenen #app-nav { display: none; }
   margin-bottom: 0.5rem;
 }
 .tl-poll-builder-head strong {
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   font-size: 0.9rem;
 }
 .tl-poll-remove {
@@ -3234,7 +3314,7 @@ body.is-allergenen #app-nav { display: none; }
   transition: var(--transition);
 }
 .tl-poll-vote-btn:hover:not(:disabled) {
-  border-color: var(--color-secondary-dark);
+  border-color: var(--color-green-text);
   background: var(--color-light);
 }
 .tl-poll-vote-btn:disabled {
@@ -3253,12 +3333,12 @@ body.is-allergenen #app-nav { display: none; }
   font-size: 0.9rem;
 }
 .tl-poll-result.is-mine {
-  border-color: var(--color-secondary-dark);
+  border-color: var(--color-green-text);
 }
 .tl-poll-bar {
   position: absolute;
   inset: 0 auto 0 0;
-  background: var(--color-secondary);
+  background: var(--color-green-text);
   opacity: 0.35;
   transition: width 0.4s ease;
 }
@@ -3390,7 +3470,7 @@ body.is-allergenen #app-nav { display: none; }
   position: absolute;
   left: 0; top: 6px; bottom: 6px;
   width: 3px;
-  background: var(--color-secondary-dark);
+  background: var(--color-green-text);
   border-radius: 2px;
 }
 
@@ -3400,7 +3480,7 @@ body.is-allergenen #app-nav { display: none; }
 
 .tl-admin-bar {
   background: var(--color-white);
-  border: 1px dashed var(--color-secondary);
+  border: 1px dashed var(--color-green-text);
   border-radius: 10px;
   padding: 0.5rem 0.85rem;
   display: flex;
@@ -3410,7 +3490,7 @@ body.is-allergenen #app-nav { display: none; }
 }
 .tl-admin-label {
   font-size: 0.85rem;
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   font-weight: 600;
 }
 
@@ -3432,7 +3512,7 @@ body.is-allergenen #app-nav { display: none; }
 }
 .tl-reports-head h2 {
   margin: 0;
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
 }
 .tl-reports-head .tl-photo-remove {
   position: static;
@@ -3467,7 +3547,7 @@ body.is-allergenen #app-nav { display: none; }
   margin-bottom: 0.5rem;
 }
 .tl-report-type {
-  background: var(--color-secondary);
+  background: var(--color-green-text);
   color: var(--color-white);
   padding: 0.15rem 0.55rem;
   border-radius: 999px;
@@ -3573,7 +3653,7 @@ body.is-allergenen #app-nav { display: none; }
   background: var(--color-bg);
 }
 .tl-bell-head strong {
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   font-size: 0.9rem;
 }
 .tl-bell-mark-read {
@@ -3745,8 +3825,8 @@ body.is-allergenen #app-nav { display: none; }
   display: inline-flex;
   align-items: center;
   background: transparent;
-  color: var(--color-secondary-dark);
-  border: 1px solid var(--color-secondary-dark);
+  color: var(--color-green-text);
+  border: 1px solid var(--color-green-text);
   padding: 0.1rem 0.6rem;
   border-radius: 999px;
   font-size: 0.7rem;
@@ -3792,7 +3872,7 @@ body.is-allergenen #app-nav { display: none; }
 .tl-poll-multi-label input[type="checkbox"] {
   width: 16px;
   height: 16px;
-  accent-color: var(--color-secondary-dark);
+  accent-color: var(--color-green-text);
   cursor: pointer;
 }
 
@@ -3810,10 +3890,10 @@ body.is-allergenen #app-nav { display: none; }
   color: var(--color-gray);
 }
 .tl-poll-vote-btn.is-checked .tl-poll-checkbox {
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
 }
 .tl-poll-vote-btn.is-checked {
-  border-color: var(--color-secondary-dark);
+  border-color: var(--color-green-text);
   background: #f0f7f2;
 }
 .tl-poll-vote-label {
@@ -3877,7 +3957,7 @@ body.is-allergenen #app-nav { display: none; }
 .learnings-title {
   font-size: 1.75rem;
   font-weight: 700;
-  color: var(--color-dark, #171717);
+  color: var(--color-green-text);
   margin: 0 0 .25rem;
 }
 .learnings-subtitle {
@@ -4303,7 +4383,6 @@ body.is-allergenen #app-nav { display: none; }
   color: #fff;
 }
 .home-tile--sage-deep .home-tile-desc { color: rgba(255,255,255,0.92); }
-.home-tile--sage-deep .home-tile-arrow { color: #fff; }
 
 /* Home-tile lichte terracotta variant (voor allergenen-tegel) */
 .home-tile--terracotta-light {
@@ -4397,7 +4476,7 @@ body.is-allergenen #app-nav { display: none; }
 .rooms-pane-header { margin-bottom: .85rem; }
 .rooms-pane-title {
   font-size: 1.05rem;
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   margin: 0;
   font-weight: 700;
   letter-spacing: .2px;
@@ -4412,13 +4491,13 @@ body.is-allergenen #app-nav { display: none; }
   font-family: inherit;
   font-size: .85rem;
   font-weight: 600;
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   cursor: pointer;
   text-align: left;
 }
 .rooms-back-timeline:hover {
   background: #f3f9f3;
-  border-color: var(--color-secondary-dark, #82be93);
+  border-color: var(--color-green-text);
 }
 
 .rooms-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .35rem; }
@@ -4440,15 +4519,15 @@ body.is-allergenen #app-nav { display: none; }
 }
 .rooms-list-btn:hover {
   background: #f3f9f3;
-  border-color: var(--color-secondary-dark, #82be93);
+  border-color: var(--color-green-text);
 }
 .rooms-list-item.is-active .rooms-list-btn {
-  background: var(--color-secondary-dark, #82BE93);
-  border-color: var(--color-secondary-dark, #82BE93);
-  box-shadow: 0 2px 8px rgba(130,190,147,0.35);
+  background: var(--color-green-text);
+  border-color: var(--color-green-text);
+  box-shadow: 0 2px 8px rgba(79,125,108,0.35);
 }
 .rooms-list-item.is-active .rooms-list-btn:hover {
-  background: var(--color-secondary-dark, #82BE93);
+  background: var(--color-green-text);
 }
 .rooms-list-item.is-active .rooms-list-title {
   color: var(--color-white, #fff);
@@ -4456,7 +4535,7 @@ body.is-allergenen #app-nav { display: none; }
 .rooms-list-title {
   font-weight: 600;
   font-size: .85rem;
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
 }
 /* Beschrijving niet tonen — alleen titels in de tegels. */
 .rooms-list-desc { display: none; }
@@ -4502,7 +4581,7 @@ body.is-allergenen #app-nav { display: none; }
   border: 0;
   font-size: 1.3rem;
   cursor: pointer;
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   padding: .15rem .35rem;
   line-height: 1;
   flex-shrink: 0;
@@ -4512,7 +4591,7 @@ body.is-allergenen #app-nav { display: none; }
 .chatroom-title, .topic-detail-title {
   font-size: 1.15rem;
   font-weight: 700;
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   margin: 0;
   flex: 1;
   min-width: 0;
@@ -4538,8 +4617,8 @@ body.is-allergenen #app-nav { display: none; }
 }
 .chatroom-intro-edit-btn:hover {
   background: #f3f9f3;
-  border-color: var(--color-secondary-dark, #82be93);
-  color: var(--color-secondary-dark);
+  border-color: var(--color-green-text);
+  color: var(--color-green-text);
 }
 /* Inline edit-form voor de room-intro (admin) */
 .chatroom-header--editing { flex-direction: row; align-items: flex-start; }
@@ -4586,7 +4665,7 @@ body.is-allergenen #app-nav { display: none; }
 .chatroom-input:focus, .chatroom-textarea:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(130,190,147,.2);
+  box-shadow: 0 0 0 2px rgba(79, 125, 108, 0.14);
 }
 .chatroom-new-foot { display: flex; justify-content: flex-end; }
 
@@ -4620,7 +4699,7 @@ body.is-allergenen #app-nav { display: none; }
 .topic-title {
   font-size: 1rem;
   font-weight: 700;
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   margin: 0 0 .25rem 0;
   padding-right: 1.5rem;
 }
@@ -4669,7 +4748,7 @@ body.is-allergenen #app-nav { display: none; }
   margin-bottom: .25rem;
   font-size: .78rem;
 }
-.reply-author { font-weight: 700; color: var(--color-secondary-dark); }
+.reply-author { font-weight: 700; color: var(--color-green-text); }
 .reply-date   { color: var(--color-gray); flex: 1; }
 .reply-del {
   background: transparent;
@@ -4742,7 +4821,7 @@ body.is-allergenen #app-nav { display: none; }
 .reply-edit:hover {
   background: #f3f9f3;
   border-color: var(--color-primary);
-  color: var(--color-primary-dark, var(--color-secondary-dark));
+  color: var(--color-primary-dark, var(--color-green-text));
 }
 .reply-del { font-size: .75rem; padding: .15rem .5rem; }
 .reply-del:hover { background: #fcebea; border-color: #c0392b; color: #c0392b; }
@@ -4777,11 +4856,11 @@ body.is-allergenen #app-nav { display: none; }
 .topic-edit-btn:hover {
   background: #f3f9f3;
   border-color: var(--color-primary);
-  color: var(--color-primary-dark, var(--color-secondary-dark));
+  color: var(--color-primary-dark, var(--color-green-text));
 }
 .reply-card.is-editing {
   background: #f8fbf8;
-  border-color: var(--color-secondary-dark, #82be93);
+  border-color: var(--color-green-text);
 }
 .reply-edit-form {
   flex: 1;
@@ -5078,8 +5157,8 @@ body.is-allergenen #app-nav { display: none; }
 }
 
 .profiel-tag--intro {
-  background: rgba(152,195,164,.18);
-  color: var(--color-secondary-dark, #5d9870);
+  background: rgba(79, 125, 108, 0.12);
+  color: var(--color-green-text);
 }
 
 .profiel-tag--removable {
@@ -5104,7 +5183,7 @@ body.is-allergenen #app-nav { display: none; }
 
 /* ---- Formulier ---- */
 .profiel-kind-form {
-  border: 1px solid var(--color-secondary);
+  border: 1px solid var(--color-green-text);
   border-radius: 14px;
   padding: 1.25rem 1.5rem;
   margin-top: .85rem;
@@ -5238,7 +5317,7 @@ body.is-allergenen #app-nav { display: none; }
 
 .profiel-allergen-trigger:hover,
 .profiel-allergen-trigger[aria-expanded="true"] {
-  border-color: var(--color-secondary);
+  border-color: var(--color-green-text);
 }
 
 .profiel-allergen-arrow {
@@ -5281,7 +5360,7 @@ body.is-allergenen #app-nav { display: none; }
   width: 15px;
   height: 15px;
   flex-shrink: 0;
-  accent-color: var(--color-secondary);
+  accent-color: var(--color-green-text);
 }
 
 .profiel-allergen-selected-tags {
@@ -5361,7 +5440,7 @@ body.is-allergenen #app-nav { display: none; }
 }
 .allergenen-header h2 {
   margin: 0 0 .35rem 0;
-  color: var(--color-primary);
+  color: var(--color-green-text);
   font-size: 1.6rem;
 }
 .allergenen-intro {
@@ -5476,7 +5555,7 @@ body.is-allergenen #app-nav { display: none; }
   transition: box-shadow .15s, border-color .15s;
 }
 .allergenen-item:hover {
-  border-color: var(--color-secondary);
+  border-color: var(--color-green-text);
 }
 .allergenen-item-head {
   display: grid;
@@ -5565,8 +5644,8 @@ body.is-allergenen #app-nav { display: none; }
 
 /* Statusvarianten */
 .allergenen-item--veilig {
-  border-color: #82BE93;
-  background: rgba(130, 190, 147, 0.06);
+  border-color: var(--color-green-text);
+  background: rgba(79, 125, 108, 0.06);
 }
 .allergenen-item--allergisch {
   border-color: #d9534f;
@@ -5757,6 +5836,16 @@ body.is-allergenen #app-nav { display: none; }
   gap: .5rem;
   flex-wrap: wrap;
   margin-top: .75rem;
+}
+/* "Symptoom loggen" in het merkgroen. Scoped, want .btn-outline is een
+   gedeelde klasse die elders terracotta hoort te blijven. */
+.allergenen-header-actions .btn-outline {
+  border-color: var(--color-green-text);
+  color: var(--color-green-text);
+}
+.allergenen-header-actions .btn-outline:hover {
+  background: var(--color-green-text);
+  color: var(--color-white);
 }
 /* 3-koloms layout: links (volgende stap) | midden (allergenen behoudt huidige breedte) | rechts (waarschuwingen)
    De wrapper breekt uit de #app-content max-width zodat de side-koloms tegen de viewport-rand zitten. */
@@ -6034,7 +6123,7 @@ body.is-allergenen #app-nav { display: none; }
   max-height: calc(100vh - 4rem);
   overflow: auto;
 }
-.eh-symptom-header h2 { margin: 0 0 .25rem 0; font-size: 1.2rem; }
+.eh-symptom-header h2 { margin: 0 0 .25rem 0; font-size: 1.2rem; color: var(--color-green-text); }
 .eh-symptom-sub { margin: 0; color: #6b6b5e; font-size: .9rem; }
 .eh-symptom-disclaimer { color: #b03a3a; }
 
@@ -6981,7 +7070,7 @@ body.is-allergenen #app-nav { display: none; }
 }
 .admin-intro-author {
   font-weight: 700;
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
 }
 .admin-intro-date {
   color: var(--color-gray);
@@ -7017,7 +7106,7 @@ body.is-allergenen #app-nav { display: none; }
 .admin-intro-edit-btn:hover {
   background: #f3f9f3;
   border-color: var(--color-primary);
-  color: var(--color-primary-dark, var(--color-secondary-dark));
+  color: var(--color-primary-dark, var(--color-green-text));
 }
 .admin-intro-del-btn:hover {
   background: #fcebea;
@@ -7139,7 +7228,7 @@ body.is-allergenen #app-nav { display: none; }
 }
 .profiel-memory-label input {
   margin-top: .2rem;
-  accent-color: var(--color-secondary-dark);
+  accent-color: var(--color-green-text);
   flex-shrink: 0;
 }
 .profiel-memory-label strong { color: var(--color-dark); }
@@ -7195,7 +7284,7 @@ body.is-allergenen #app-nav { display: none; }
   width: .55rem;
   height: .55rem;
   border-radius: 50%;
-  background: var(--color-secondary);
+  background: var(--color-green-text);
   margin-left: auto;
   flex-shrink: 0;
 }
@@ -7215,10 +7304,10 @@ body.is-allergenen #app-nav { display: none; }
   align-items: center;
   gap: .3rem;
   padding: .3rem .75rem;
-  border: 1.5px solid var(--color-secondary);
+  border: 1.5px solid var(--color-green-text);
   border-radius: var(--radius);
   background: transparent;
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   font-size: .82rem;
   font-weight: 600;
   cursor: pointer;
@@ -7226,17 +7315,17 @@ body.is-allergenen #app-nav { display: none; }
   white-space: nowrap;
 }
 .follow-btn:hover {
-  background: var(--color-secondary);
+  background: var(--color-green-text);
   color: #fff;
 }
 .follow-btn.is-followed {
-  background: var(--color-secondary);
+  background: var(--color-green-text);
   color: #fff;
-  border-color: var(--color-secondary);
+  border-color: var(--color-green-text);
 }
 .follow-btn.is-followed:hover {
-  background: var(--color-secondary-dark);
-  border-color: var(--color-secondary-dark);
+  background: var(--color-green-text);
+  border-color: var(--color-green-text);
 }
 .follow-btn--sm {
   padding: .2rem .55rem;
@@ -7257,7 +7346,7 @@ body.is-allergenen #app-nav { display: none; }
 
 /* --- Chatroom-kaart in tijdlijn --- */
 .tl-post--chatroom {
-  border-left: 3px solid var(--color-secondary);
+  border-left: 3px solid var(--color-green-text);
 }
 
 .tl-chatroom-source {
@@ -7265,7 +7354,7 @@ body.is-allergenen #app-nav { display: none; }
   align-items: center;
   gap: .3rem;
   padding: .25rem .6rem;
-  background: var(--color-secondary);
+  background: var(--color-green-text);
   color: #fff;
   font-size: .75rem;
   font-weight: 600;
@@ -7277,7 +7366,7 @@ body.is-allergenen #app-nav { display: none; }
   line-height: 1.3;
 }
 .tl-chatroom-source:hover {
-  background: var(--color-secondary-dark);
+  background: var(--color-green-text);
 }
 
 .tl-chatroom-topic-title {
@@ -7300,16 +7389,16 @@ body.is-allergenen #app-nav { display: none; }
   gap: .4rem;
   padding: .35rem .8rem;
   background: var(--color-light);
-  border: 1px solid var(--color-secondary);
+  border: 1px solid var(--color-green-text);
   border-radius: var(--radius);
-  color: var(--color-secondary-dark);
+  color: var(--color-green-text);
   font-size: .83rem;
   font-weight: 600;
   cursor: pointer;
   transition: background .15s;
 }
 .tl-chatroom-open-btn:hover {
-  background: var(--color-secondary);
+  background: var(--color-green-text);
   color: #fff;
 }
 
@@ -7363,8 +7452,8 @@ body.is-allergenen #app-nav { display: none; }
   transition: color .15s, border-color .15s;
 }
 .admin-tab-btn.is-active {
-  color: var(--color-secondary-dark);
-  border-bottom-color: var(--color-secondary);
+  color: var(--color-green-text);
+  border-bottom-color: var(--color-green-text);
 }
 .admin-tab-btn:hover:not(.is-active) {
   color: var(--color-text);
@@ -7433,7 +7522,7 @@ body.is-allergenen #app-nav { display: none; }
 .family-avatar--rood   .family-avatar-circle { border-color: var(--color-danger); }
 .family-avatar--jong   .family-avatar-circle { border-color: var(--color-info); }
 .family-avatar--oranje .family-avatar-circle { border-color: var(--color-primary); }
-.family-avatar--ok     .family-avatar-circle { border-color: var(--color-secondary-dark); }
+.family-avatar--ok     .family-avatar-circle { border-color: var(--color-green-text); }
 
 .family-avatar-badge {
   position: absolute;
@@ -7549,4 +7638,205 @@ body.is-allergenen #app-nav { display: none; }
   font-size: 0.78rem;
   color: var(--color-gray);
   margin-top: 0.8rem;
+}
+
+/* ============================================
+   AANRADERS-BEHEER — formulier-onderdelen
+   Gebruikt door de editor-overlay op de
+   aanraders-pagina zelf. Zie js/aanradersAdmin.js.
+   (Stond eerder in een admin-dashboard-tabblad;
+   dat is verplaatst naar de pagina zelf.)
+============================================ */
+.aa-tabel-wrap { overflow-x: auto; }
+.aa-tabel { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.aa-tabel th {
+  text-align: left; font-weight: 600; font-size: .75rem; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--color-gray);
+  padding: .5rem .6rem; border-bottom: 1px solid var(--color-light);
+}
+.aa-tabel td { padding: .7rem .6rem; border-bottom: 1px solid var(--color-light); vertical-align: middle; }
+.aa-tabel tr:last-child td { border-bottom: 0; }
+
+.aa-badge {
+  display: inline-block; font-size: .72rem; font-weight: 600; padding: 3px 9px;
+  border-radius: 999px; white-space: nowrap;
+}
+.aa-badge--aan { background: #eaf4ee; color: var(--color-green-text); }
+.aa-badge--uit { background: var(--color-light); color: var(--color-gray); }
+
+.aa-btn {
+  font-family: inherit; font-size: .82rem; font-weight: 500; cursor: pointer;
+  padding: .38rem .8rem; border-radius: var(--radius-md);
+  border: 1px solid var(--color-gray-light); background: var(--color-white);
+  color: var(--color-dark-light); transition: var(--transition);
+}
+.aa-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.aa-btn--primair {
+  background: var(--color-primary); border-color: var(--color-primary); color: #fff;
+}
+.aa-btn--primair:hover { background: var(--color-primary-dark); border-color: var(--color-primary-dark); color: #fff; }
+.aa-btn--stil { background: transparent; }
+.aa-btn--rood { color: var(--color-danger); border-color: #e6c9c5; }
+.aa-btn--rood:hover { background: var(--color-danger); border-color: var(--color-danger); color: #fff; }
+
+.aa-sectie {
+  font-size: .75rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--color-primary); margin: 1.75rem 0 .85rem;
+  padding-bottom: .4rem; border-bottom: 1px solid var(--color-light);
+}
+.aa-sectie:first-of-type { margin-top: .25rem; }
+
+.aa-veld { display: block; margin-bottom: 1rem; }
+.aa-veld > span {
+  display: block; font-size: .82rem; font-weight: 500;
+  color: var(--color-dark-light); margin-bottom: .3rem;
+}
+.aa-veld small { display: block; margin-top: .25rem; font-size: .75rem; }
+.aa-veld--check { display: flex; align-items: flex-end; padding-bottom: .5rem; }
+
+.aa-input {
+  width: 100%; font-family: inherit; font-size: .9rem; color: var(--color-dark);
+  padding: .55rem .75rem; border: 1px solid var(--color-gray-light);
+  border-radius: var(--radius-md); background: var(--color-white);
+}
+.aa-input:focus { outline: none; border-color: var(--color-primary); }
+textarea.aa-input { resize: vertical; line-height: 1.55; }
+
+.aa-rij { display: grid; grid-template-columns: 1fr; gap: 0 1rem; }
+@media (min-width: 700px) { .aa-rij { grid-template-columns: 1fr 1fr; } }
+
+.aa-checks { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; margin-bottom: 1rem; }
+.aa-check {
+  display: inline-flex; align-items: center; gap: .4rem;
+  font-size: .87rem; color: var(--color-dark-light); cursor: pointer;
+}
+.aa-check input { cursor: pointer; }
+
+.aa-foto-blok { display: flex; gap: 1.25rem; align-items: flex-start; margin-bottom: 1rem; flex-wrap: wrap; }
+.aa-foto-preview {
+  width: 130px; height: 130px; flex: none; border-radius: var(--radius-md);
+  background: var(--color-light); display: flex; align-items: center; justify-content: center;
+  overflow: hidden; font-size: .78rem;
+}
+.aa-foto-preview img { width: 100%; height: 100%; object-fit: cover; }
+
+.aa-acties {
+  display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
+  margin-top: 1.75rem; padding-top: 1.25rem; border-top: 1px solid var(--color-light);
+}
+.aa-acties .muted { font-size: .82rem; }
+
+/* ============================================
+   AANRADERS — BEHEERLAAG OP DE PAGINA ZELF
+   Alleen zichtbaar voor admins. Ligt bovenop de
+   server-gerenderde tegels; geen tweede weergave.
+============================================ */
+.aanraders .aa-beheerbalk {
+  background: #2b2b2b;
+  color: #e8e8e8;
+  border-radius: var(--radius-lg);
+  margin-bottom: 2rem;
+  box-shadow: var(--shadow-md);
+}
+/* Eigen padding: .wrap heeft binnen .aanraders geen zijpadding, dus
+   daarop leunen zou de tekst tegen de afgeronde rand duwen. */
+.aanraders .aa-beheerbalk-inner {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem 2rem; flex-wrap: wrap;
+  padding: 1.35rem 1.75rem;
+}
+.aanraders .aa-beheer-links { display: flex; flex-direction: column; gap: .2rem; min-width: 0; }
+.aanraders .aa-beheer-titel {
+  display: inline-flex; align-items: center; gap: .5rem;
+  font-size: .72rem; font-weight: 700; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--color-primary-light);
+}
+.aanraders .aa-beheer-titel::before {
+  content: ""; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--color-primary-light); flex: none;
+}
+.aanraders .aa-beheer-info { font-size: .85rem; color: #9d9d9d; }
+
+.aanraders .aa-beheer-acties { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+/* Knoppen in de balk krijgen meer lucht dan de standaard .aa-btn */
+.aanraders .aa-beheerbalk .aa-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: .6rem 1.15rem; font-size: .85rem; border-radius: 999px; white-space: nowrap;
+}
+
+@media (max-width: 700px) {
+  .aanraders .aa-beheerbalk-inner { padding: 1.1rem 1.25rem; }
+  .aanraders .aa-beheer-acties { width: 100%; }
+  .aanraders .aa-beheerbalk .aa-btn { flex: 1 1 auto; justify-content: center; text-align: center; }
+}
+
+/* Uitlegblok in de beheer-overlays */
+.aanraders .aa-uitleg {
+  background: var(--color-bg); border: 1px solid var(--color-light);
+  border-radius: var(--radius-md); padding: .9rem 1.1rem; margin-bottom: 1.1rem;
+}
+.aa-uitleg p { font-size: .84rem; line-height: 1.6; color: var(--color-dark-light); margin: 0 0 .5rem; }
+.aa-uitleg p:last-child { margin-bottom: 0; }
+.aa-uitleg strong { color: var(--color-dark); font-weight: 600; }
+.aanraders .aa-uitleg-let { color: var(--color-gray) !important; font-style: italic; }
+.aanraders .aa-beheerbalk .aa-btn { background: transparent; color: #e8e8e8; border-color: #555; }
+.aa-beheerbalk .aa-btn:hover { border-color: var(--color-primary-light); color: var(--color-primary-light); }
+.aanraders .aa-beheerbalk .aa-btn--primair {
+  background: var(--color-primary); border-color: var(--color-primary); color: #fff;
+}
+.aa-beheerbalk .aa-btn--primair:hover { background: var(--color-primary-dark); color: #fff; }
+
+/* Bewerkknoppen op een tegel */
+.aanraders .aa-bewerkbaar { position: relative; outline: 2px dashed rgba(201,137,102,.45); outline-offset: 3px; }
+.aanraders .aa-kaart-knoppen {
+  display: flex; gap: .4rem; padding: .6rem .9rem .9rem;
+  border-top: 1px dashed var(--color-light);
+}
+.aanraders .aa-kaart-knop {
+  flex: 1; font-family: inherit; font-size: .78rem; font-weight: 500; cursor: pointer;
+  padding: .35rem .6rem; border-radius: var(--radius-md);
+  border: 1px solid var(--color-gray-light); background: var(--color-white);
+  color: var(--color-dark-light); transition: var(--transition);
+}
+.aanraders .aa-kaart-knop:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.aanraders .aa-kaart-knop:disabled { opacity: .5; cursor: default; }
+
+/* Verborgen producten — staan niet in de publieke HTML */
+.aanraders .aa-verborgen { margin: 3rem 0; }
+.aanraders .aa-verborgen-lijst { display: flex; flex-direction: column; gap: .6rem; }
+.aanraders .aa-verborgen-item {
+  display: flex; align-items: center; gap: .75rem;
+  background: var(--color-white); border: 1px dashed var(--color-gray-light);
+  border-radius: var(--radius-md); padding: .75rem 1rem;
+}
+.aanraders .aa-verborgen-item > div:first-child { flex: 1; min-width: 0; }
+.aanraders .aa-verborgen-item .aa-kaart-knop { flex: none; }
+
+/* Editor-overlay */
+.aa-overlay {
+  position: fixed; inset: 0; z-index: 2000;
+  background: rgba(0,0,0,.45);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 2rem 1rem; overflow-y: auto;
+}
+body.aa-overlay-open { overflow: hidden; }
+.aa-editor {
+  background: var(--color-white); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg); width: 100%; max-width: 820px;
+  max-height: calc(100vh - 4rem); display: flex; flex-direction: column; overflow: hidden;
+}
+.aa-editor-kop {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 1.1rem 1.4rem; border-bottom: 1px solid var(--color-light);
+}
+.aa-editor-kop h2 { font-size: 1.1rem; margin: 0; }
+.aa-sluit {
+  margin-left: auto; border: 0; background: var(--color-light); border-radius: 50%;
+  width: 34px; height: 34px; cursor: pointer; font-size: 1.2rem; color: var(--color-dark);
+}
+.aa-sluit:hover { background: var(--color-gray-light); }
+.aa-editor-body { padding: 1.25rem 1.4rem; overflow-y: auto; flex: 1; }
+.aa-editor-voet {
+  display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
+  padding: 1rem 1.4rem; border-top: 1px solid var(--color-light); background: var(--color-bg);
 }

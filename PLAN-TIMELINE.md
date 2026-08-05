@@ -663,3 +663,121 @@ Merge-commit `63e81f6`. Cache-buster `3.1.0 → 3.1.3`.
 ### Niet vergeten / open
 - ⬜ Feature-branch `toevoegen-badge-recepten-leeftijd-categorie` mag opgeruimd worden (gemerged).
 - ⬜ De twee SQL-migraties van 2026-06-03 nog steeds open indien nog niet gedraaid.
+
+---
+
+## 2026-07-31 — Affiliatepagina "Aanraders" (branch `affiliatepagina`, NOG NIET GEMERGED)
+
+Cache-buster `3.1.2 → 3.3.1`. Eigen `CSS_VERSION` voor `aanraders.css` (staat los van de app-versie, zit in `api/aanraders.mjs`).
+
+### Vandaag afgerond
+- ✅ **Publieke, server-rendered affiliatepagina** `/aanraders` — géén login, echte URL's per categorie (`/c/:slug`) en product (`/p/:slug`), meta/OG-tags + canonical. Eén nieuwe function `api/aanraders.mjs` met drie soorten output: publieke HTML, fragment voor de app, admin-JSON.
+- ✅ **Supabase**: `affiliate_categories`, `affiliate_products`, `affiliate_downloads` + bucket `affiliate-images` (migratie `2026-07-29-affiliate-aanraders.sql`, al toegepast op productie). 9 categorieën + 8 startpartners geseed.
+- ✅ **In-app weergave** `#/aanraders` binnen de community: tegel in de Functies-kolom, nav-tabs verborgen (`body.is-aanraders`). Gebruikt hetzelfde render-pad als de publieke pagina via fragment-modus — geen tweede renderer.
+- ✅ **Beheer op de pagina zelf** (niet in een dashboard-tabblad): beheerbalk + bewerkknop op elke tegel, editor-overlay met alle velden, foto-upload, categorie- en downloadbeheer, blok "Nog niet zichtbaar" bovenaan.
+- ✅ **"Admin dashboard" uit het recepten-dropdown** in `nav.js` — dat menu is enkel voor receptenboek/weekschema; het algemene dashboard staat op `/admin-chat.html`.
+- ✅ **Tekstgroen als design-token**: `--color-green-text` (#4F7D6C, merkkleur van Anneleen) in `:root`. Alle 26 plekken die de vulkleur `--color-secondary-dark` als tékstkleur gebruikten zijn omgezet — headers, "Uitloggen", landingspagina-koppen, chatruimte-titels, Admin-badge, recept- en weekschema-tags.
+- ✅ **Docs**: `CLAUDE.md` (Pro-tiers, project-ID's, kleurregel, `/aanraders`-valkuil), `api/CLAUDE.md` (endpoint + §9 herschreven), `js/CLAUDE.md` (§7 kleur, twee nieuwe modules, twee valkuilen), `supabase-migrations/CLAUDE.md` (tabellen + bucket).
+
+### Beslissingen
+- **Server-rendered, niet client-side.** De app is een hash-router achter login; `#/`-URL's worden niet geïndexeerd. De publieke pagina moest daarom náást de SPA leven.
+- **Eén renderer, twee weergaves.** De in-app versie haalt exact dezelfde HTML op als fragment (`?fragment=1`), alleen zonder header/footer en met hash-links. Bewust: twee renderers voor dezelfde data lopen na verloop van tijd uit elkaar.
+- **Géén aparte test-database.** De migratie was puur additief (drie nieuwe tabellen) en alles stond op `zichtbaar = false`; een Supabase-branch was daarvoor te veel omhaal. Preview en productie delen dus dezelfde DB.
+- **Beheer op de pagina, niet in het admin-dashboard.** Visueel en functioneel logischer: je ziet meteen wat je aanpast. Eén login (de bestaande community-sessie), twee sloten: `Store.isAdmin()` verbergt (cosmetisch), `requireAdmin()` blokkeert (echt).
+- **Prijsindicatie volledig geschrapt** uit formulier, detailpagina en servervalidatie. Kolom en bestaande waarden blijven staan, worden nergens meer gebruikt.
+- **Favorieten-sectie verwijderd**: elke categorie is al een selectie van Anneleen, en de drie producten stonden dubbel op de pagina. `favoriet_anneleen` zet nu enkel nog het label "Favoriet".
+- **Sectie "Van Pril Leven zelf" verwijderd**, inclusief de hardcoded lijst.
+- **`#4F7D6C` haalt 4.42 contrast** op de paginakleur — net onder de WCAG-norm van 4.5 voor kleine tekst, ruim boven de 3.0 voor koppen. Bewuste merkkeuze, genoteerd bij de variabele zodat het niet per ongeluk "gecorrigeerd" wordt.
+
+### Niet vergeten / open
+- ⬜ **Stap 8: filters + zoekfunctie** (leeftijd, categorie, materiaal, merk; zoeken op merk/product/trefwoord). De `.toolbar`-stijlen staan al in `aanraders.css`, de HTML nog niet.
+- ⬜ **Stap 9: SEO-afwerking** — `robots.txt` ontbreekt (404), sitemap, structured data.
+- ⬜ **Pad `/aanraders` is nog niet definitief.** Omdopen kost 5 minuten (constante `BASE` + twee rewrites in `vercel.json`) maar moet vóór publieke lancering; daarna verlies je SEO.
+- ⬜ **Branch nog niet gemerged.** Zodra dat gebeurt is `/aanraders` publiek op community-web.prilleven.be — de producten staan al op `zichtbaar = true`.
+- ⬜ Content ontbreekt nog: productfoto's, "waarom ik dit aanbeveel"-teksten, lange beschrijvingen, downloadbestanden, Crisp-affiliatelink.
+- ⬜ Categorie **Kookboeken** staat op `binnenkort` maar bevat een zichtbaar product (Eten met Handjes) — dat blijft daardoor verborgen.
+- ⬜ **Bestaand, niet opgelost:** `supabase.js` wordt onder ~8 verschillende `?v=`-strings geladen; de dedup van token-refreshes werkt daardoor niet app-breed. Opruimen raakt tientallen bestanden.
+
+---
+
+## 2026-08-01 — Merkgroen app-breed + stap 8 van de aanraders (branch `affiliatepagina`, NOG NIET GEMERGED)
+
+Cache-buster `3.3.1 → 3.5.3` (styles.css) en `3.5.2` voor **alle** module-imports. `aanraders.css` op `3.4.4`, `aanraders-filters.js` op `1.1.0`.
+
+### Vandaag afgerond
+
+**Aanraders (stap 8 van het plan)**
+- ✅ **Zoeken + filters** op het overzicht: zoekveld (titel, merk, materiaal, subcategorie, korte beschrijving, "waarom", labels én categorienaam — accent-ongevoelig) plus pill-groepen voor leeftijd en categorie. Meervoudige selectie binnen een dimensie (OF), tussen dimensies EN.
+- ✅ **Filterlogica in één gedeeld bestand** `aanraders-filters.js` (root), gebruikt door zowel de publieke pagina als de in-app weergave — zelfde principe als `aanraders.css`.
+- ✅ **Data-gestuurde filtergroepen**: materiaal is overal leeg en merk is 1-op-1 met producten, dus die pills verschijnen pas als ≥2 producten een waarde delen. Leeftijd en categorie tonen ook keuzes met één product.
+- ✅ **Compacte filterbalk**: van ~200px naar 90px op desktop (twee regels, geen lege kolom naast het zoekveld) en 133px op mobiel (eigen scrollrij per groep met meescrollend label).
+- ✅ **Contactblok in de footer** (`hallo@prilleven.be`) + tweede headerknop "Lid worden van de community" naar de Plug&Pay-checkout.
+- ✅ Foto op de aanraders-tegel van de landingspagina.
+
+**Abonnementen / toegang**
+- ✅ **160 einddatums hersteld** uit de Plug&Pay-export (`supabase-migrations/2026-07-31-abonnementen-einddatum-uit-plugpay-export.sql`, al gedraaid). 31 betalende leden zaten buiten de community, 85 hadden een lege datum.
+- ✅ **`effectiveExpiry()`** in `api/_lib/subscription.mjs`: toegang loopt tot het einde van de einddatum, en een einddatum in het weekend schuift naar de dinsdag erna (SEPA-incasso's lopen enkel op bankwerkdagen). Geldt automatisch voor web én mobiele app — die vragen dezelfde `getAccessStatus` op.
+- ✅ 4 accounts zonder lopend abonnement afgesloten (einddatum 2026-07-30).
+
+**Merkgroen `#4F7D6C` app-breed**
+- ✅ Header-iconen, de volledige chat (`chat.html`), auth-modal, allergenen-titels en -knop, weekschema (titel, tabs, dagkiezer, "Vandaag"-tag, genereerknop), receptfilters, learnings- en favorietentitels, tijdlijn + chatruimtes (26 regels), de weekschema-kaart en de boodschappenlijst.
+- ✅ Nieuw token `--color-green-dark` #3F6558, **enkel** als hover-tint van groene knoppen.
+- ✅ Landingspagina: BETA-label weg, pijltjes uit alle functietegels (+ de bijhorende dode CSS opgeruimd), allergenen-tegel in dezelfde terracotta als de rest.
+
+**Techniek / opruim**
+- ✅ **Cache-busters gelijkgetrokken**: `utils.js` en `supabase.js` werden onder 6-8 verschillende `?v=`-strings geladen (dus meerdere kopieën naast elkaar). Alle 125 module-imports staan nu op `3.5.2`. Dit was een bekende valkuil in `js/CLAUDE.md`.
+
+### Beslissingen
+- **`#4F7D6C` is niet langer alleen tekstkleur.** Het is nu ook de vulkleur van knoppen, badges, chatbubbels en actieve elementen. `--color-secondary(-dark)` (#98C3A4 / #82BE93) is afgeschreven — nog gedefinieerd in `:root`, nergens meer gebruikt. Beide CLAUDE.md's zijn hierop bijgewerkt.
+- **Zoekbalk blijft zichtbaar** op /aanraders. Overwogen om hem in te klappen; op een pagina die om vinden draait kost dat een klik én zichtbaarheid, en met de compacte balk win je er nog maar ~35px mee.
+- **Weekendmarge in code, niet in data.** `subscription_end_date` houdt de kale incassodatum uit Plug&Pay; de marge zit in `effectiveExpiry()`. Zo geldt de regel ook voor rijen die de webhook later zelf schrijft.
+- **"Verwijderen" blijft rood** in de weekschema-kaart: enige onomkeerbare actie.
+- Gedeelde klassen (`.btn-outline`, `.btn-primary`, `.btn-secondary`) zijn per onderdeel gescoped omgezet, zodat ze elders terracotta blijven.
+
+### Niet vergeten / open
+- ⬜ **Branch `affiliatepagina` is nog niet gemerged** — 47 commits vóór op `main`. Bij merge wordt `/aanraders` publiek.
+- ⬜ **Versienummer kiezen voor de merge**: V3.6.0 of V4.0.0 (zie handover).
+- ⬜ **Plug&Pay-webhook**: de payload bevat geen cyclus, bedrag of `next_billing_date`. Vraag bij de nieuwe opzet om één workflow die bij **élke** betaling vuurt mét `next_billing_date` — dan hoeft de code niet te gokken en is `detectCycle()` overbodig. Zonder dat herhaalt het probleem van vandaag zich elke maand.
+- ⬜ **Stap 9: SEO** — `robots.txt` ontbreekt (404), sitemap, structured data.
+- ⬜ **Pad `/aanraders` is nog niet definitief** — omdopen vóór publieke lancering (constante `BASE` + twee rewrites).
+- ⬜ Content ontbreekt nog: productfoto's, lange beschrijvingen, downloadbestanden, Crisp-affiliatelink.
+- ⬜ Categorie **Kookboeken** staat op `binnenkort` maar bevat een zichtbaar product — dat blijft daardoor verborgen én krijgt geen filterpil.
+- ⬜ `.home-tile--terracotta-light` in `styles.css` is ongebruikt sinds de allergenen-tegel omging.
+
+---
+
+## 2026-08-05 — Stap 9: SEO voor de aanraders + URL-strategie (branch `affiliatepagina`, NOG NIET GEMERGED)
+
+Commits `381b740`, `d975343`, `635322b`. Geen cache-buster-bump nodig: enkel server-gerenderde HTML en een nieuw statisch bestand, geen wijziging aan JS of CSS.
+
+### Vandaag afgerond
+- ✅ **`robots.txt`** (statisch in de root). Alles toegestaan behalve `/api/`, `chat.html`, `admin-chat.html` en `delete-account.html`, plus een `Sitemap:`-regel. Werkt zonder rewrite: de SPA-catch-all `/((?!api/)(?!.*\.).*)` slaat paden mét punt over.
+- ✅ **`/sitemap.xml`** — gegenereerd uit Supabase via de rewrite `→ /api/aanraders?sitemap=1` (query overleeft een rewrite betrouwbaarder dan het pad), afgehandeld vóór de fragment-check in de `isApiPad()`-tak. Bevat overzicht, zichtbare categorieën, zichtbare producten en de twee juridische pagina's, met `lastmod` uit `updated_at`.
+- ✅ **JSON-LD** via `layout({ jsonld })`: `CollectionPage` + `ItemList` op overzicht en categorie, `Product` + `BreadcrumbList` op productpagina's, overal met één gedeelde `ORGANISATIE`-node via `@id`.
+- ✅ **`CANONICAL_ORIGIN`-constante** vervangt `getOrigin(req)`. Canonical, `og:url` en de sitemap gebruiken niet langer de host van de request.
+- ✅ Getest met een gestubde Supabase: sitemap-XML, drie paginatypes (200 + juiste canonical + parsebare JSON-LD), 404-route en de in-app fragment-modus.
+
+### Beslissingen
+- **Domein wordt `community.prilleven.be`, maar pas in november.** Die hostnaam draait nu **Kollab** — versie 1 van de community, extern platform via `clientportal.ludicrous.cloud` (Cloudflare, live, zet sessie-cookies). Het CNAME in Combell is bewust **niet** aangeraakt: omzetten haalt v1 offline voor de leden die er nu op zitten.
+- **Pad blijft `/aanraders`.** Nederlands, precies wat het is, botst met niets. `/shop` afgevallen omdat het suggereert dat je bij Pril Leven koopt — het zijn affiliatelinks naar derden, en dat wringt met de transparantie die het uitgangspunt van de pagina is.
+- **Route 1 gekozen: nu publiceren op `community-web`, in november verhuizen.** De overstap van Kollab ligt maanden weg en de affiliatelinks zijn intussen aangevuld (9 producten), dus wachten kost te veel. Een domeinverhuis met 301's is een bekend pad.
+- **`Product` zonder `offers`.** Er staan bewust geen prijzen op de pagina; een prijs verzinnen om een rich result te forceren is een structured-data-overtreding.
+- **Categorieën op `binnenkort` staan niet in de sitemap** — die tonen enkel een "in opbouw"-kader.
+- **`jsonLdScript()` escapet elke `<` naar `<`**: `JSON.stringify` doet dat niet, en een producttitel met `</script>` erin zou de pagina openbreken. Geverifieerd met een fixture.
+
+### November — checklist domeinmigratie (Kollab → deze app)
+Doe deze vier samen, in deze volgorde:
+1. `community.prilleven.be` toevoegen aan Vercel-project `pril_leven_community` (Production), CNAME in Combell omzetten van `clientportal.ludicrous.cloud` naar de waarde die Vercel toont.
+2. `CANONICAL_ORIGIN` in `api/aanraders.mjs` → `https://community.prilleven.be`.
+3. `Sitemap:`-regel in `robots.txt` → hetzelfde domein.
+4. `community-web.prilleven.be` in Vercel op **Redirect to Another Domain (301)** naar de nieuwe host, zodat bestaande links en indexering meeverhuizen.
+Daarna de nieuwe sitemap indienen in Google Search Console.
+
+### Niet vergeten / open
+- ⬜ **`community.prilleven.be` weghalen uit Vercel** tot november — het staat er nu als ongeldige configuratie, en zolang het blijft staan kan iemand het "oplossen" door het Combell-record om te zetten. Dan ligt Kollab eruit.
+- ⬜ **Branch `affiliatepagina` nog niet gemerged** — 52 commits vóór op `main`. Bij merge wordt `/aanraders` publiek op `community-web.prilleven.be`.
+- ⬜ **Versienummer kiezen voor de merge**: V3.6.0 of V4.0.0.
+- ⬜ **Google Search Console** is nog niet opgezet voor het domein — nodig om de sitemap in te dienen en indexering te volgen.
+- ⬜ **Soft-404's**: de SPA-catch-all serveert `index.html` op élk pad zonder punt, dus `/wat-dan-ook` geeft 200 met het loginscherm in plaats van een 404. Nu ongevaarlijk (niets linkt ernaartoe), maar het kan na indexering soft-404's opleveren.
+- ⬜ Content: lange beschrijvingen, downloadbestanden, Crisp-affiliatelink. Productfoto's en affiliatelinks zijn intussen aangevuld (9 producten).
+- ⬜ Categorie **Kookboeken** staat op `binnenkort` maar bevat een zichtbaar product — blijft verborgen, krijgt geen filterpil, en staat niet in de sitemap.

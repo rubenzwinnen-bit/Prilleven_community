@@ -375,11 +375,11 @@ export function formatRelativeTime(isoString) {
 ---------------------------------------- */
 const _AVATAR_COLORS = [
   'var(--color-primary)',
-  'var(--color-secondary-dark)',
+  'var(--color-green-text)',
   'var(--color-info)',
   'var(--color-warning)',
   'var(--color-primary-dark)',
-  'var(--color-secondary)',
+  'var(--color-green-dark)',
 ];
 export function colorFromSeed(seed) {
   const s = String(seed || '');

@@ -8,7 +8,7 @@
    5. Start de router
 ============================================ */
 
-import * as Store from './js/store.js?v=2.5.8';
+import * as Store from './js/store.js?v=4.0.0';
 import {
   checkAllowedUser,
   checkCanSignUp,
@@ -22,23 +22,24 @@ import {
   fetchSubscriptionStatus,
   subscriptionAccessMessage,
   invalidateSubscriptionCache,
-} from './js/supabase.js?v=2.5.8';
-import * as Router from './js/router.js?v=2.5.8';
-import * as Header from './js/components/header.js?v=2.9.0';
-import * as Nav from './js/components/nav.js?v=2.5.8';
-import * as Home from './js/components/home.js?v=2.9.0';
-import * as RecipeList from './js/components/recipeList.js?v=3.1.1';
-import * as RecipeDetail from './js/components/recipeDetail.js?v=3.1.3';
-import * as ImportRecipes from './js/components/importRecipes.js?v=2.5.8';
-import * as WeekSchedule from './js/components/weekSchedule.js?v=2.5.8';
-import * as Favorites from './js/components/favorites.js?v=3.1.1';
-import * as ShoppingList from './js/components/shoppingList.js?v=2.5.8';
-import * as RecipeForm from './js/components/recipeForm.js?v=2.5.8';
-import * as IngredientIcons from './js/components/ingredientIcons.js?v=2.5.8';
-import * as LearningsLibrary from './js/components/learningsLibrary.js?v=2.5.8';
-import * as LearningsDetail from './js/components/learningsDetail.js?v=2.5.8';
-import * as Profiel from './js/components/profiel.js?v=2.5.8';
-import * as Allergenen from './js/components/allergenen.js?v=2.5.8';
+} from './js/supabase.js?v=4.0.0';
+import * as Router from './js/router.js?v=4.0.0';
+import * as Header from './js/components/header.js?v=4.0.0';
+import * as Nav from './js/components/nav.js?v=4.0.0';
+import * as Home from './js/components/home.js?v=4.0.0';
+import * as RecipeList from './js/components/recipeList.js?v=4.0.0';
+import * as RecipeDetail from './js/components/recipeDetail.js?v=4.0.0';
+import * as ImportRecipes from './js/components/importRecipes.js?v=4.0.0';
+import * as WeekSchedule from './js/components/weekSchedule.js?v=4.0.0';
+import * as Favorites from './js/components/favorites.js?v=4.0.0';
+import * as ShoppingList from './js/components/shoppingList.js?v=4.0.0';
+import * as RecipeForm from './js/components/recipeForm.js?v=4.0.0';
+import * as IngredientIcons from './js/components/ingredientIcons.js?v=4.0.0';
+import * as LearningsLibrary from './js/components/learningsLibrary.js?v=4.0.0';
+import * as LearningsDetail from './js/components/learningsDetail.js?v=4.0.0';
+import * as Profiel from './js/components/profiel.js?v=4.0.0';
+import * as Allergenen from './js/components/allergenen.js?v=4.0.0';
+import * as Aanraders from './js/components/aanraders.js?v=4.0.0';
 
 /* ============================================
    RECOVERY TOKEN DETECTIE
@@ -137,7 +138,7 @@ function showSubscriptionExpiredScreen(status) {
       <div style="font-size: 3rem; margin-bottom: 1rem;">🌿</div>
       <h1 style="color: var(--color-primary, #C98966); margin-bottom: 1rem;">Je lidmaatschap is verlopen</h1>
       <p style="color: var(--color-dark-light, #3d3d3d); line-height: 1.6; margin-bottom: 2rem;">${message}</p>
-      <a href="https://prilleven.be" style="
+      <a href="https://prillenbe.plugandpay.com/checkout/pril-leven-community" target="_blank" rel="noopener" style="
         display: inline-block;
         padding: .85rem 1.75rem;
         background: var(--color-primary, #C98966);
@@ -147,10 +148,10 @@ function showSubscriptionExpiredScreen(status) {
         font-weight: 600;
         margin-right: .5rem;
         margin-bottom: .5rem;
-      ">Verleng op prilleven.be</a>
+      ">Lid worden van de community</a>
       <button id="sub-refresh-btn" style="
         padding: .85rem 1.75rem;
-        background: #82BE93;
+        background: #4F7D6C;
         color: white;
         border: none;
         border-radius: 12px;
@@ -527,6 +528,9 @@ function setupApp() {
     // Verberg nav op de allergenen-pagina
     const isAllergenen = Router.getCurrentPath() === 'allergenen';
     document.body.classList.toggle('is-allergenen', isAllergenen);
+    // Verberg nav op de aanraders-pagina's (eigen opbouw, geen recepten-tabs)
+    const isAanraders = Router.getCurrentPath().split('/')[0] === 'aanraders';
+    document.body.classList.toggle('is-aanraders', isAanraders);
     if (initFn) await initFn();
 
     /* Scroll-positie herstellen als we terugkomen op een eerder bezochte
@@ -623,6 +627,22 @@ function setupApp() {
   /* --- Allergenen introduceren --- */
   Router.on('allergenen', async () => {
     await renderPage(Allergenen.render(), Allergenen.init);
+  });
+
+  /* --- Aanraders: overzicht, categorie, product ---
+     Dezelfde inhoud als de publieke pagina /aanraders, maar binnen de app
+     zodat de gebruiker de community niet verlaat. De HTML komt van de
+     server (fragment-modus), dus er is maar één renderer. */
+  Router.on('aanraders', async () => {
+    await renderPage(Aanraders.render(), () => Aanraders.init('overzicht'));
+  });
+
+  Router.on('aanraders/c/:slug', async (params) => {
+    await renderPage(Aanraders.render(), () => Aanraders.init('categorie', params.slug));
+  });
+
+  Router.on('aanraders/p/:slug', async (params) => {
+    await renderPage(Aanraders.render(), () => Aanraders.init('product', params.slug));
   });
 
   /* --- 404 pagina --- */

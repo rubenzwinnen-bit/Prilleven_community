@@ -12,13 +12,13 @@
      gecached zodat het schema-detail snel rendert
 ============================================ */
 
-import * as Store from '../store.js?v=2.5.10';
-import * as Router from '../router.js?v=2.5.10';
-import * as RecipeCard from './recipeCard.js?v=3.1.1';
+import * as Store from '../store.js?v=4.0.0';
+import * as Router from '../router.js?v=4.0.0';
+import * as RecipeCard from './recipeCard.js?v=4.0.0';
 import {
   showToast, confirm, promptInput, escapeHtml, formatDateShort, renderStarsDisplay,
   WEEKDAYS, SCHEDULE_SLOTS, getSlotLabel
-} from '../utils.js?v=2.5.10';
+} from '../utils.js?v=4.0.0';
 
 /* Module-level cache zodat re-renders en handlers de data delen */
 let cachedFavRecipes = [];
@@ -112,16 +112,16 @@ function renderScheduleCard(schedule) {
             : `<button class="btn btn-sm btn-activate-schedule" data-id="${schedule.id}">Activeren</button>`
           }
           <button class="btn btn-sm btn-outline toggle-schedule-detail" data-id="${schedule.id}">
-            &#128065; Details
+            Details
           </button>
           ${schedule.isActive
             ? `<button class="btn btn-sm btn-secondary btn-shopping" data-id="${schedule.id}">
-                &#128722; Boodschappenlijst
+                Boodschappenlijst
               </button>`
             : ''
           }
           <button class="btn btn-sm btn-danger btn-delete-schedule" data-id="${schedule.id}">
-            &#128465; Verwijderen
+            Verwijderen
           </button>
         </div>
       </div>
@@ -300,8 +300,8 @@ export async function init() {
       if (detail) {
         detail.classList.toggle('hidden');
         toggleBtn.innerHTML = detail.classList.contains('hidden')
-          ? '&#128065; Details'
-          : '&#128065; Verbergen';
+          ? 'Details'
+          : 'Verbergen';
       }
       return;
     }

@@ -1,6 +1,7 @@
 // Catch-all router voor alle /api/community/* endpoints.
 // Wordt door Vercel als ÉÉN serverless function geteld i.p.v. één per pad.
-// Dit houdt ons onder de Hobby-limiet (12 functions per deployment).
+// Ontstond onder de Hobby-limiet (12 functions); sinds Vercel Pro niet meer nodig,
+// maar de catch-all blijft omdat alle community-routes bij elkaar horen.
 //
 // Vercel routet hier naartoe via een rewrite in vercel.json:
 //   /api/community/(.*) → /api/community
