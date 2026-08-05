@@ -33,10 +33,16 @@ const BASE = '/aanraders';
 /* Het officiële domein van de pagina. Bewust een constante en niet de host
    van de request: canonical-tags, og:url en de sitemap moeten altijd naar
    één versie wijzen, anders ziet Google dezelfde pagina op meerdere hosts
-   (community-web.prilleven.be, de preview-URL's) en kiest hij zelf welke
-   telt. Preview-deployments zetten hun eigen X-Robots-Tag: noindex, dus die
-   raken hier niet door in de index. */
-const CANONICAL_ORIGIN = 'https://community.prilleven.be';
+   (de preview-URL's) en kiest hij zelf welke telt. Preview-deployments
+   zetten hun eigen X-Robots-Tag: noindex, dus die raken niet in de index.
+
+   LET OP — dit verhuist later naar https://community.prilleven.be. Die naam
+   is nu nog bezet door Kollab, de eerste versie van de community. Zet deze
+   constante pas om op het moment dat die migratie gebeurt, en tegelijk met
+   robots.txt (de Sitemap-regel) en een 301 van community-web naar de
+   nieuwe host. Eerder omzetten wijst de canonical naar een site die deze
+   pagina niet bevat. */
+const CANONICAL_ORIGIN = 'https://community-web.prilleven.be';
 
 /* Cache-buster voor aanraders.css — bump bij CSS-wijziging. */
 const CSS_VERSION = '3.4.4';

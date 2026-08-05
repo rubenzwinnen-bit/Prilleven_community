@@ -14,4 +14,6 @@ Disallow: /chat.html
 Disallow: /admin-chat.html
 Disallow: /delete-account.html
 
-Sitemap: https://community.prilleven.be/sitemap.xml
+# Verhuist mee met CANONICAL_ORIGIN in api/aanraders.mjs zodra de community
+# naar community.prilleven.be gaat (nu nog Kollab, versie 1).
+Sitemap: https://community-web.prilleven.be/sitemap.xml
