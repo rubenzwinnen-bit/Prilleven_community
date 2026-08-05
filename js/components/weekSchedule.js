@@ -16,12 +16,12 @@
    - generateSchedule/refreshSlot werken op de cache (generator sub-tab)
 ============================================ */
 
-import * as Store from '../store.js?v=3.5.2';
-import * as Router from '../router.js?v=3.5.2';
+import * as Store from '../store.js?v=4.0.0';
+import * as Router from '../router.js?v=4.0.0';
 import {
   showToast, escapeHtml, promptInput, renderStarsDisplay, ALLERGENS, WEEKDAYS,
   SCHEDULE_SLOTS, slotToMealMoment, getSlotLabel, getAllergenLabel, normalizeAllergen
-} from '../utils.js?v=3.5.2';
+} from '../utils.js?v=4.0.0';
 
 /* ----------------------------------------
    STATE
