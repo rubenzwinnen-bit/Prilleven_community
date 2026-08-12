@@ -61,13 +61,20 @@ Chatruimtes (topics + replies + admin). Eén function, rewrite: `/api/chat-rooms
 
 ### `webhooks/plugpay.mjs` — POST `/api/webhooks/plugpay`
 **KRITISCH endpoint — NOOIT aanpassen zonder expliciete bevestiging.** Foutieve wijziging = users zonder toegang.
-- Authenticatie: HMAC-SHA256 (`PLUGPAY_WEBHOOK_SECRET`) **OF** Bearer token (`PLUGPAY_WEBHOOK_BEARER`). Als beide leeg → trust-mode (dev only, met warning log).
-- Type-bepaling 3-traps: URL `?type=` → body `event/event_type/type/action` → heuristiek.
+- **Bron sinds 2026-08-12: Plug&Pay zelf** (Instellingen → Koppelingen → universele koppeling). Daarvóór liep dit via het CRM van Joemen, dat enkel contactvelden meestuurde; die route is uit de code.
+- Twee regels in Plug&Pay, elk met een eigen URL:
+  - trigger **"Bestelling betaald"** → `?type=activated&key=<secret>`
+  - trigger **"Abonnement geëindigd"** → `?type=expired&key=<secret>`
+- **VALKUIL — vink "Regel ook uitvoeren bij automatische incasso's van abonnementen en termijnbetalingen" aan** op de eerste regel. Zonder dat vinkje vuurt hij alleen bij de eerste aankoop en schuift de einddatum bij een verlenging nooit op. Precies die storing zorgde dat er tussen juni en augustus 2026 nauwelijks nog `activated`-events binnenkwamen en 160 einddatums met de hand hersteld moesten worden.
+- Authenticatie: gedeeld geheim `PLUGPAY_WEBHOOK_BEARER` als **`?key=`** in de URL óf als `Authorization: Bearer`. Plug&Pay laat bij een webhook-actie enkel een URL instellen, geen headers — vandaar de query-variant. HMAC (`PLUGPAY_WEBHOOK_SECRET`) blijft als alternatief. Beide leeg → trust-mode (dev only).
+- Type-bepaling: URL `?type=` → body `trigger_type/event/event_type/type/action`. `classifyEvent()` herkent ook Nederlandse termen ("betaald", "geëindigd").
 - Categorieën: `activated` | `cancelled` | `expired` | `unknown`.
-- Schrijft naar `allowed_users` (upsert bij activated, update anders) **én** `subscription_events` audit-log.
-- Roept `invalidateSubscriptionCache(email)` aan na success.
+- Body mag **JSON of form-urlencoded** zijn; `parseForm()` klapt bracket-notatie (`data[customer][email]`) uit tot een genest object.
+- **Elke** call wordt gelogd in `subscription_events`, ook bij auth- of parsefout (`error: 'auth_geweigerd'` / `'body_niet_parsebaar'`). Anders is een verkeerd ingestelde webhook-URL onzichtbaar.
+- `?dryrun=1` → logt en returnt wat er geschreven zóu worden, zonder `allowed_users` aan te raken. Gebruik dit op een preview-deploy: die praat met dezelfde productie-database.
+- `pickNextDate()` haalt de echte incassodatum uit de payload. Ontbreekt die, dan valt `fallbackEndDate(cycle)` terug op +30 dagen / +3 maanden / +1 jaar en komt er `fallback_datum:<cycle>` in de `error`-kolom van de audit-log — grep daarop om te zien of Plug&Pay de datum werkelijk meestuurt.
+- Schrijft naar `allowed_users` (upsert bij activated, update anders) en roept `invalidateSubscriptionCache(email)` aan na success.
 - Ook GET = health-check (returnt JSON met hint).
-- **De payload bevat géén abonnementsgegevens** (vastgesteld 2026-07-31 op de audit-tabel): het is een CRM-workflow-melding met enkel contactvelden — geen bedrag, cyclus, product of `next_billing_date`. `cycle` komt volledig uit de URL-parameter, die op één workflow staat en dus voor iedereen `monthly` is. Gevolg: `computeEndDate()` geeft élke klant +30 dagen, ook jaar- en kwartaalklanten. `detectCycle()` kent bovendien geen `quarterly`. Niet in code op te lossen — Plug&Pay moet de echte datum of de cyclus meesturen.
 
 ### `_lib/subscription.mjs` — `effectiveExpiry(endDate)`
 Bepaalt wanneer toegang écht vervalt; enige plek waar dat wordt beoordeeld (`getAccessStatus` bedient web én mobiele app). Twee correcties op de ruwe `subscription_end_date`: toegang loopt tot het **einde** van die dag (Plug&Pay levert een datum zonder tijd), en een einddatum in het **weekend schuift naar de dinsdag erna** — SEPA-incasso's worden enkel op bankwerkdagen aangeboden. Daarom staat in `allowed_users.subscription_end_date` bewust de kale incassodatum, zonder marge.
