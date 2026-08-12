@@ -275,11 +275,17 @@ export default async function handler(req, res) {
   let note = null;
 
   if (category === 'activated') {
-    if (!nextDate) note = `fallback_datum:${cycle || 'monthly'}`;
+    // Grendel: iemand die zonet betaald heeft mag nooit een einddatum in het verleden
+    // krijgen — dan sluit zijn eigen betaling hem buiten. Pakken we per ongeluk een
+    // verkeerd veld (een orderdatum, een vorige periode), dan valt hij hier weg.
+    const datumIsVerleden = nextDate && new Date(nextDate).getTime() < Date.now();
+    const eindDatum = (!nextDate || datumIsVerleden) ? fallbackEndDate(cycle) : nextDate;
+    if (datumIsVerleden) note = `datum_in_verleden_genegeerd:${nextDate}`;
+    else if (!nextDate) note = `fallback_datum:${cycle || 'monthly'}`;
     update = {
       subscription_active: true,
       cancelled_at: null,
-      subscription_end_date: nextDate || fallbackEndDate(cycle),
+      subscription_end_date: eindDatum,
     };
     if (customerId) update.plugpay_customer_id = String(customerId);
     wantInsert = true;
