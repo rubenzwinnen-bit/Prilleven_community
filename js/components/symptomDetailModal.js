@@ -6,8 +6,8 @@
      klik = detail (zelfde modal swap).
 ============================================ */
 
-import { escapeHtml } from '../utils.js?v=4.0.5';
-import { SYMPTOMS, getSymptom } from '../content/eersteHapjes-symptoms.js?v=4.0.5';
+import { escapeHtml } from '../utils.js?v=4.0.6';
+import { SYMPTOMS, getSymptom } from '../content/eersteHapjes-symptoms.js?v=4.0.6';
 
 /**
  * @param {object} opts

@@ -8,7 +8,7 @@
    omdat dit een lokale voorkeur is.
 ============================================ */
 
-import { supabaseFetch, supabaseStorageDelete } from './supabase.js?v=4.0.5';
+import { supabaseFetch, supabaseStorageDelete } from './supabase.js?v=4.0.6';
 
 /* ============================================
    IN-MEMORY CACHE LAAG
@@ -126,7 +126,7 @@ export async function refreshAdminStatus() {
     return false;
   }
   try {
-    const { fetchSubscriptionStatus } = await import('./supabase.js?v=4.0.5');
+    const { fetchSubscriptionStatus } = await import('./supabase.js?v=4.0.6');
     const status = await fetchSubscriptionStatus(user);
     const v = !!status?.is_admin;
     _adminCache = { email: user, value: v, loaded: true };
@@ -234,26 +234,27 @@ export async function getRecipesByIds(ids) {
   if (!ids || ids.length === 0) return [];
 
   /* Eerst kijken wat er al in cache zit */
-  const result = [];
   const missing = [];
   for (const id of ids) {
     const cached = _cacheGet(`recipe:${id}`);
-    if (cached) result.push(cached);
-    else missing.push(id);
+    if (!cached && !missing.includes(id)) missing.push(id);
   }
-  if (missing.length === 0) return result;
 
-  /* PostgREST in-filter: id=in.("rec-1","rec-2") */
-  const filter = missing.map(id => `"${id}"`).join(',');
-  const data = await supabaseFetch(
-    `/rest/v1/recipes?id=in.(${filter})&select=*`
-  );
-  for (const row of (data || [])) {
-    const recipe = dbToRecipe(row);
-    _cacheSet(`recipe:${recipe.id}`, recipe);
-    result.push(recipe);
+  if (missing.length > 0) {
+    /* PostgREST in-filter: id=in.("rec-1","rec-2") */
+    const filter = missing.map(id => `"${id}"`).join(',');
+    const data = await supabaseFetch(
+      `/rest/v1/recipes?id=in.(${filter})&select=*`
+    );
+    for (const row of (data || [])) {
+      const recipe = dbToRecipe(row);
+      _cacheSet(`recipe:${recipe.id}`, recipe);
+    }
   }
-  return result;
+
+  /* Een PostgREST `in`-query garandeert geen rijvolgorde. Bouw daarom altijd
+     opnieuw op volgens de aangeleverde ID's, ongeacht wat al gecached was. */
+  return ids.map(id => _cacheGet(`recipe:${id}`)).filter(Boolean);
 }
 
 /** Voeg een nieuw recept toe */
@@ -496,7 +497,8 @@ export async function getFavoriteRecipeIds() {
   if (cached) return cached;
 
   const data = await supabaseFetch(
-    `/rest/v1/favorites?user_name=eq.${encodeURIComponent(user)}&select=recipe_id`,
+    `/rest/v1/favorites?user_name=eq.${encodeURIComponent(user)}` +
+    `&select=recipe_id&order=created_at.asc`,
     { headers: { 'Range-Unit': 'items', 'Range': '0-9999' } }
   );
   const ids = (data || []).map(f => f.recipe_id);

@@ -16,13 +16,13 @@
    - generateSchedule/refreshSlot werken op de cache (generator sub-tab)
 ============================================ */
 
-import * as Store from '../store.js?v=4.0.5';
-import * as Router from '../router.js?v=4.0.5';
+import * as Store from '../store.js?v=4.0.6';
+import * as Router from '../router.js?v=4.0.6';
 import {
   showToast, escapeHtml, renderStarsDisplay, ALLERGENS, WEEKDAYS,
   SCHEDULE_SLOTS, slotToMealMoment, getSlotLabel, getAllergenLabel, normalizeAllergen
-} from '../utils.js?v=4.0.5';
-import { promptScheduleDetails } from './scheduleDetailsDialog.js?v=4.0.5';
+} from '../utils.js?v=4.0.6';
+import { promptScheduleDetails } from './scheduleDetailsDialog.js?v=4.0.6';
 
 /* ----------------------------------------
    STATE
@@ -305,12 +305,9 @@ function buildActiveTabHtml() {
   const preset = loadActivePreset();
 
   return `
-    <div class="schedule-controls">
+    <div class="schedule-controls active-schedule-toolbar">
       <h3>${escapeHtml(activeSchedule.name || 'Actief weekschema')}</h3>
-      <p class="text-muted mb-2" style="font-size:0.85rem">
-        Kies welke dagen je wilt zien. Je keuze wordt onthouden.
-      </p>
-      <div class="day-selector-bar" id="active-preset-bar">
+      <div class="day-selector-bar" id="active-preset-bar" role="group" aria-label="Dagen tonen">
         <button class="day-selector-btn ${preset === 'today' ? 'active' : ''}"
                 data-preset="today" type="button">
           Vandaag
@@ -328,7 +325,7 @@ function buildActiveTabHtml() {
 
     ${buildCookingRhythmHtml()}
 
-    <div id="active-days-view">
+    <div class="active-days-view" id="active-days-view">
       ${renderActiveDays(preset)}
     </div>
   `;
@@ -344,46 +341,55 @@ function renderActiveDays(preset) {
     const dayData = activeSchedule.days[day] || {};
     const isToday = day === today;
 
-    const rows = SCHEDULE_SLOTS.map(slot => {
+    const tiles = SCHEDULE_SLOTS.map(slot => {
       const recipeId = dayData[slot.id];
       const recipe = recipeId ? recipeMap.get(recipeId) : null;
+      const slotLabel = getSlotLabel(slot.id);
 
       if (!recipe) {
         return `
-          <div class="active-day-row">
-            <span class="active-day-slot">${getSlotLabel(slot.id)}</span>
-            <span class="active-day-recipe-empty">—</span>
+          <div class="active-meal-card is-empty" aria-label="${escapeHtml(slotLabel)}: geen recept">
+            <div class="active-meal-media active-meal-media-placeholder">
+              <span>Geen foto</span>
+            </div>
+            <div class="active-meal-body">
+              <span class="active-meal-slot">${escapeHtml(slotLabel)}</span>
+              <span class="active-meal-empty">Geen recept gepland</span>
+            </div>
           </div>
         `;
       }
 
-      const userRating = cachedUserRatings[recipe.id] || 0;
       const isCooked = Store.isScheduleMealCooked(
         activeSchedule.id, day, slot.id, recipe.id
       );
+      const imageHtml = recipe.image
+        ? `<img class="active-meal-image" src="${escapeHtml(recipe.image)}" alt="" loading="lazy">`
+        : '<span class="active-meal-image-placeholder">Geen foto</span>';
+
       return `
-        <div class="active-day-row ${isCooked ? 'is-cooked' : ''}">
-          <span class="active-day-slot">${getSlotLabel(slot.id)}</span>
-          <a href="#/recipe/${recipe.id}" class="active-day-recipe ${isCooked ? 'is-cooked' : ''}" target="_blank" rel="noopener"
-             title="Bekijk recept (opent in nieuw tabblad)">
-            <span class="active-day-recipe-name">${escapeHtml(recipe.name)}</span>
-            ${isCooked
-              ? '<span class="active-day-cooked" aria-label="Gerecht gemaakt">&#10003;</span>'
-              : (userRating ? `<span class="active-day-rating">${renderStarsDisplay(userRating)}</span>` : '')
-            }
-          </a>
-        </div>
+        <a href="#/recipe/${recipe.id}" class="active-meal-card ${isCooked ? 'is-cooked' : ''}"
+           target="_blank" rel="noopener" title="Bekijk recept (opent in nieuw tabblad)">
+          <div class="active-meal-media">
+            ${imageHtml}
+            ${isCooked ? '<span class="active-meal-cooked" aria-label="Gerecht gemaakt">&#10003;</span>' : ''}
+          </div>
+          <div class="active-meal-body">
+            <span class="active-meal-slot">${escapeHtml(slotLabel)}</span>
+            <strong class="active-meal-name">${escapeHtml(recipe.name)}</strong>
+          </div>
+        </a>
       `;
     }).join('');
 
     return `
-      <div class="active-day-block ${isToday ? 'active-day-block-today' : ''}">
+      <section class="active-day-block ${isToday ? 'active-day-block-today' : ''}">
         <h4 class="active-day-header">
           ${capitalize(day)}
           ${isToday ? '<span class="active-day-today-badge">Vandaag</span>' : ''}
         </h4>
-        ${rows}
-      </div>
+        <div class="active-day-meals">${tiles}</div>
+      </section>
     `;
   }).join('');
 

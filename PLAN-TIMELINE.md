@@ -976,7 +976,7 @@ interactie volgen later in een aparte fase.
   `localStorage['prilleven_cooked_meals_<user>']`; geen databasewijziging en dus
   nog niet cross-device. `storage`-events houden een open weekschema in een ander
   tabblad synchroon.
-- ✅ App-cachebuster volledig gelijkgetrokken naar **`4.0.5`** (alle HTML/JS-imports)
+- ✅ App-cachebuster volledig gelijkgetrokken naar **`4.0.6`** (alle HTML/JS-imports)
   om dubbele module-instanties te vermijden.
 - ✅ De Favorieten-pagina herontworpen als rustige bewaarbibliotheek zonder de oude
   emoji/pictogrammen. Favoriete recepten hebben een eigen tekstuele kaartvariant;
@@ -1004,6 +1004,15 @@ interactie volgen later in een aparte fase.
 - ✅ De boodschappenlijst verandert alleen na een expliciete klik op “Genereren” of
   “Hergenereren”. Een gewijzigde selectie markeert de getoonde lijst als verouderd,
   maar past de ingrediënten niet stilzwijgend aan.
+- ✅ De actieve weekschemaweergave is visueel en compacter: de grote filterkaart is
+  vervangen door één lage titel-/segmentbalk zonder overbodige uitleg. Iedere dag
+  toont vijf compacte fototegels met eetmoment en receptnaam; Cooked it verschijnt
+  als subtiel groen vinkje op de foto. Vandaag/morgen en de hele week hergebruiken
+  dezelfde tegelstructuur.
+- ✅ Favoriete recepten behouden voortaan hun oorspronkelijke bewaarvolgorde
+  (`favorites.created_at.asc`). De batch-fetch bouwt resultaten altijd terug op in
+  de aangeleverde ID-volgorde, zodat een wissel tussen cachehits en netwerkresultaten
+  de kaarten niet meer herschikt.
 - ✅ Echte ChatGPT/Codex repo-skills `start-sessie` en `eind-sessie` toegevoegd in
   `.agents/skills/`, met UI-metadata voor de skill-/slashlijst. De oude
   `source-command-*`-migratiewrappers voor deze twee commando's zijn verwijderd;
@@ -1037,6 +1046,10 @@ interactie volgen later in een aparte fase.
 - ✅ Boodschappenlijst gecontroleerd: na genereren wordt de knop “Hergenereren”; een
   gewijzigde selectie toont een waarschuwing terwijl de bestaande lijst zichtbaar en
   ongewijzigd blijft.
+- ✅ Actieve dag visueel gecontroleerd als vijf fototegels; “Vandaag en morgen” geeft
+  2 dagen/10 tegels en “Heel weekschema” 7 dagen/35 tegels.
+- ✅ Favorieten driemaal via verschillende routes herladen; alle zes recepten bleven
+  iedere keer in exact dezelfde volgorde staan.
 
 ### Beslissingen voor vervolg
 - Eerst deze ene lus testen op gevoel en gebruik; pas daarna beslissen over

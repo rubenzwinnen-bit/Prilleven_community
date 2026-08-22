@@ -2213,18 +2213,23 @@ select.form-control {
 
 .day-selector-bar {
   display: flex;
-  gap: 0.4rem;
+  gap: 0.2rem;
   flex-wrap: wrap;
-  margin-top: 0.5rem;
+  margin: 0;
+  padding: 0.25rem;
+  background: var(--color-bg);
+  border: 1px solid var(--color-light);
+  border-radius: 12px;
 }
 
 .day-selector-btn {
-  padding: 0.35rem 0.8rem;
-  border: 2px solid var(--color-green-text);
+  padding: 0.48rem 0.75rem;
+  border: 0;
+  border-radius: 9px;
   background: transparent;
   color: var(--color-green-text);
-  font-size: 0.8rem;
-  font-weight: 500;
+  font-size: 0.76rem;
+  font-weight: 600;
   font-family: 'Poppins', sans-serif;
   cursor: pointer;
   transition: var(--transition);
@@ -2237,6 +2242,7 @@ select.form-control {
 .day-selector-btn.active {
   background: var(--color-green-text);
   color: var(--color-white);
+  box-shadow: 0 3px 10px rgba(79, 125, 108, 0.16);
 }
 
 /* ============================================
@@ -2580,18 +2586,42 @@ body.is-aanraders #app-nav { display: none; }
   border-bottom-color: var(--color-green-text);
 }
 
-/* Per-dag blok in "Actief weekschema" viewer */
+/* Compacte titel- en filterbalk in de actieve weekschemaweergave. */
+.active-schedule-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.2rem;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(79, 125, 108, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 5px 16px rgba(48, 68, 60, 0.045);
+}
+
+.active-schedule-toolbar h3 {
+  margin: 0;
+  font-size: 1.08rem;
+  line-height: 1.3;
+}
+
+.active-days-view {
+  display: grid;
+  gap: 1rem;
+}
+
+/* Per-dag blok met vijf visuele recepttegels. */
 .active-day-block {
   background: var(--color-white, #fff);
-  border: 1px solid var(--color-border, #e5e5e5);
-  border-radius: 8px;
-  padding: 1rem 1.25rem;
-  margin-top: 1rem;
+  border: 1px solid rgba(79, 125, 108, 0.14);
+  border-radius: 18px;
+  padding: 1rem;
+  box-shadow: 0 8px 22px rgba(48, 68, 60, 0.055);
 }
 
 .active-day-block-today {
   border-color: var(--color-primary);
-  border-width: 2px;
+  box-shadow: 0 9px 24px rgba(201, 137, 102, 0.08);
 }
 
 .active-day-header {
@@ -2615,57 +2645,100 @@ body.is-aanraders #app-nav { display: none; }
   letter-spacing: 0.5px;
 }
 
-.active-day-row {
-  display: flex;
-  align-items: center;
+.active-day-meals {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0.75rem;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--color-border, #eee);
 }
 
-.active-day-row:last-child {
-  border-bottom: none;
-}
-
-.active-day-slot {
-  flex: 0 0 130px;
-  font-weight: 500;
-  color: var(--color-text-muted, #666);
-  font-size: 0.9rem;
-}
-
-.active-day-recipe {
-  flex: 1 1 auto;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.5rem;
+.active-meal-card {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-dark);
+  background: var(--color-white);
+  border: 1px solid rgba(79, 125, 108, 0.16);
+  border-radius: 13px;
   text-decoration: none;
-  color: var(--color-text, #333);
-  padding: 0.3rem 0.6rem;
-  border-radius: 6px;
-  transition: var(--transition);
+  box-shadow: 0 5px 14px rgba(48, 68, 60, 0.055);
+  transition: transform 170ms ease, border-color 170ms ease, box-shadow 170ms ease;
 }
 
-.active-day-recipe:hover {
-  background: rgba(201, 137, 102, 0.1);
-  color: var(--color-primary);
+.active-meal-card:hover,
+.active-meal-card:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(79, 125, 108, 0.38);
+  box-shadow: 0 9px 20px rgba(48, 68, 60, 0.1);
+  outline: none;
 }
 
-.active-day-recipe-name {
+.active-meal-media {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 10;
+  background: rgba(79, 125, 108, 0.075);
+}
+
+.active-meal-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 240ms ease;
+}
+
+.active-meal-card:hover .active-meal-image,
+.active-meal-card:focus-visible .active-meal-image {
+  transform: scale(1.025);
+}
+
+.active-meal-media-placeholder,
+.active-meal-image-placeholder {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: var(--color-gray);
+  font-size: 0.7rem;
+}
+
+.active-meal-body {
+  display: grid;
+  align-content: start;
+  gap: 0.25rem;
+  min-height: 72px;
+  padding: 0.7rem 0.75rem 0.8rem;
+}
+
+.active-meal-slot {
+  color: var(--color-green-text);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+}
+
+.active-meal-name,
+.active-meal-empty {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--color-dark);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.active-meal-name {
+  font-weight: 650;
+}
+
+.active-meal-empty {
+  color: var(--color-gray);
   font-weight: 500;
 }
 
-.active-day-rating {
-  font-size: 0.85rem;
-  flex-shrink: 0;
-}
-
-.active-day-recipe-empty {
-  flex: 1 1 auto;
-  color: var(--color-text-muted, #999);
-  font-style: italic;
-  padding: 0.3rem 0.6rem;
+.active-meal-card.is-empty {
+  box-shadow: none;
 }
 
 /* Subtiele weekvoortgang: drie unieke kookdagen vormen één Pril Ritme. */
@@ -2727,11 +2800,19 @@ body.is-aanraders #app-nav { display: none; }
   background: var(--color-green-text);
 }
 
-.active-day-row.is-cooked .active-day-recipe-name {
+.active-meal-card.is-cooked {
+  border-color: rgba(79, 125, 108, 0.5);
+  background: rgba(79, 125, 108, 0.055);
+}
+
+.active-meal-card.is-cooked .active-meal-name {
   color: var(--color-green-text);
 }
 
-.active-day-cooked {
+.active-meal-cooked {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
   width: 1.8rem;
   height: 1.8rem;
   display: inline-flex;
@@ -2741,6 +2822,7 @@ body.is-aanraders #app-nav { display: none; }
   border-radius: 50%;
   color: var(--color-white, #fff);
   background: var(--color-green-text);
+  box-shadow: 0 3px 10px rgba(48, 68, 60, 0.22);
   font-size: 0.85rem;
   font-weight: 700;
 }
@@ -2959,10 +3041,36 @@ body.is-aanraders #app-nav { display: none; }
   100% { opacity: 0; transform: translateY(-2.8rem) rotate(35deg); }
 }
 
+@media (max-width: 900px) {
+  .active-day-meals {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 600px) {
-  .active-day-slot {
-    flex: 0 0 100px;
-    font-size: 0.85rem;
+  .active-schedule-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 0.9rem;
+  }
+
+  .day-selector-bar {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .day-selector-btn {
+    min-width: 0;
+    padding-inline: 0.35rem;
+    font-size: 0.68rem;
+  }
+
+  .active-day-block {
+    padding: 0.85rem;
+  }
+
+  .active-day-meals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .cooking-rhythm,

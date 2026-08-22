@@ -9,8 +9,8 @@
 // cosmetisch; het echte slot zit in api/aanraders.mjs (requireAdmin →
 // allowed_users.is_admin).
 
-import { sessionRefreshIfNeeded } from './supabase.js?v=4.0.5';
-import { escapeHtml, processImageForUpload, showToast, confirm as confirmDialog } from './utils.js?v=4.0.5';
+import { sessionRefreshIfNeeded } from './supabase.js?v=4.0.6';
+import { escapeHtml, processImageForUpload, showToast, confirm as confirmDialog } from './utils.js?v=4.0.6';
 
 const API = '/api/aanraders/admin';
 
