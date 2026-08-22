@@ -9,9 +9,9 @@
    - Video: "Bewaar tijdcode" knop bij actieve notitie.
 ============================================ */
 
-import * as Router from '../router.js?v=4.0.3';
-import { showToast } from '../utils.js?v=4.0.3';
-import { sessionGet, sessionRefreshIfNeeded } from '../supabase.js?v=4.0.3';
+import * as Router from '../router.js?v=4.0.4';
+import { showToast } from '../utils.js?v=4.0.4';
+import { sessionGet, sessionRefreshIfNeeded } from '../supabase.js?v=4.0.4';
 
 let abort = null;
 let item = null;

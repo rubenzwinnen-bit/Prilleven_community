@@ -976,7 +976,7 @@ interactie volgen later in een aparte fase.
   `localStorage['prilleven_cooked_meals_<user>']`; geen databasewijziging en dus
   nog niet cross-device. `storage`-events houden een open weekschema in een ander
   tabblad synchroon.
-- ✅ App-cachebuster volledig gelijkgetrokken naar **`4.0.3`** (137 HTML/JS-imports)
+- ✅ App-cachebuster volledig gelijkgetrokken naar **`4.0.4`** (137 HTML/JS-imports)
   om dubbele module-instanties te vermijden.
 - ✅ De Favorieten-pagina herontworpen als rustige bewaarbibliotheek zonder de oude
   emoji/pictogrammen. Favoriete recepten hebben een eigen tekstuele kaartvariant;
@@ -984,6 +984,11 @@ interactie volgen later in een aparte fase.
   acties. De redundante zeven dag-/maaltijdtegels zijn verwijderd; de concrete
   planning verschijnt pas via “Details bekijken”. De gedeelde receptkaarten elders
   in de app blijven ongewijzigd.
+- ✅ De teltegels “recepten” en “weekschema's” in “Jouw favorieten” functioneren nu
+  als toegankelijke tabs met toetsenbordnavigatie. Slechts één collectie staat
+  tegelijk in beeld, zodat opgeslagen weekschema's ook bij veel favoriete recepten
+  direct bereikbaar blijven. De dubbele zichtbare sectiekoppen, beschrijvingen en
+  aantallen zijn verwijderd, net als de overbodige hero-zin over “rustig verzameld”.
 - ✅ Echte ChatGPT/Codex repo-skills `start-sessie` en `eind-sessie` toegevoegd in
   `.agents/skills/`, met UI-metadata voor de skill-/slashlijst. De oude
   `source-command-*`-migratiewrappers voor deze twee commando's zijn verwijderd;

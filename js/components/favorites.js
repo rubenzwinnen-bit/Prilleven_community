@@ -12,12 +12,12 @@
      gecached zodat het schema-detail snel rendert
 ============================================ */
 
-import * as Store from '../store.js?v=4.0.3';
-import * as Router from '../router.js?v=4.0.3';
+import * as Store from '../store.js?v=4.0.4';
+import * as Router from '../router.js?v=4.0.4';
 import {
   showToast, confirm, promptInput, escapeHtml, formatDateShort,
   getMealMomentLabel, getRecipeAgeLabel, WEEKDAYS, SCHEDULE_SLOTS, getSlotLabel
-} from '../utils.js?v=4.0.3';
+} from '../utils.js?v=4.0.4';
 
 /* Module-level cache zodat re-renders en handlers de data delen */
 let cachedFavRecipes = [];
@@ -25,6 +25,7 @@ let cachedSchedules = [];
 let cachedRatings = {};
 let cachedUserRatings = {};
 let recipeMap = new Map();
+let activeFavoritesTab = 'recipes';
 
 /* ----------------------------------------
    RENDER
@@ -51,6 +52,7 @@ export function render() {
 function buildFavoritesHtml() {
   const recipeCount = cachedFavRecipes.length;
   const scheduleCount = cachedSchedules.length;
+  const recipesActive = activeFavoritesTab === 'recipes';
 
   return `
     <div class="favorites-page">
@@ -58,30 +60,29 @@ function buildFavoritesHtml() {
         <div class="favorites-hero-copy">
           <span class="favorites-eyebrow">Voor later bewaard</span>
           <h1>Jouw favorieten</h1>
-          <p>Je favoriete recepten en weekschema's, rustig verzameld op één plek.</p>
         </div>
-        <div class="favorites-summary" aria-label="Overzicht van je favorieten">
-          <div class="favorites-summary-item">
+        <div class="favorites-summary" role="tablist" aria-label="Favorieten tonen">
+          <button class="favorites-summary-item" id="favorites-tab-recipes" type="button"
+                  role="tab" data-favorites-tab="recipes"
+                  aria-selected="${recipesActive}" aria-controls="favorites-panel-recipes"
+                  tabindex="${recipesActive ? '0' : '-1'}">
             <strong>${recipeCount}</strong>
             <span>${recipeCount === 1 ? 'recept' : 'recepten'}</span>
-          </div>
-          <div class="favorites-summary-item">
+          </button>
+          <button class="favorites-summary-item" id="favorites-tab-schedules" type="button"
+                  role="tab" data-favorites-tab="schedules"
+                  aria-selected="${!recipesActive}" aria-controls="favorites-panel-schedules"
+                  tabindex="${recipesActive ? '-1' : '0'}">
             <strong>${scheduleCount}</strong>
             <span>${scheduleCount === 1 ? 'weekschema' : "weekschema's"}</span>
-          </div>
+          </button>
         </div>
       </header>
 
     <!-- ======== FAVORIETE RECEPTEN ======== -->
-    <section class="favorites-section" aria-labelledby="favorite-recipes-title">
-      <div class="favorites-section-header">
-        <div>
-          <span class="favorites-section-kicker">Receptenboek</span>
-          <h2 id="favorite-recipes-title">Favoriete recepten</h2>
-          <p>Recepten die je graag wilt bewaren of opnieuw wilt maken.</p>
-        </div>
-        <span class="favorites-count">${recipeCount} bewaard</span>
-      </div>
+    <section class="favorites-section favorites-panel" id="favorites-panel-recipes"
+             role="tabpanel" aria-labelledby="favorites-tab-recipes" ${recipesActive ? '' : 'hidden'}>
+      <h2 class="sr-only">Favoriete recepten</h2>
       ${recipeCount > 0
         ? `<div class="favorites-recipe-grid">${cachedFavRecipes.map(renderFavoriteRecipeCard).join('')}</div>`
         : `<div class="favorites-empty-state">
@@ -93,15 +94,9 @@ function buildFavoritesHtml() {
     </section>
 
     <!-- ======== OPGESLAGEN WEEKSCHEMA'S ======== -->
-    <section class="favorites-section" aria-labelledby="saved-schedules-title">
-      <div class="favorites-section-header">
-        <div>
-          <span class="favorites-section-kicker">Weekplanning</span>
-          <h2 id="saved-schedules-title">Opgeslagen weekschema's</h2>
-          <p>Herbekijk een planning, activeer ze opnieuw of open de boodschappenlijst.</p>
-        </div>
-        <span class="favorites-count">${scheduleCount} bewaard</span>
-      </div>
+    <section class="favorites-section favorites-panel" id="favorites-panel-schedules"
+             role="tabpanel" aria-labelledby="favorites-tab-schedules" ${recipesActive ? 'hidden' : ''}>
+      <h2 class="sr-only">Opgeslagen weekschema's</h2>
       ${scheduleCount > 0
         ? `<div class="saved-schedules-list">${cachedSchedules.map(renderScheduleCard).join('')}</div>`
         : `<div class="favorites-empty-state">
@@ -113,6 +108,26 @@ function buildFavoritesHtml() {
     </section>
     </div>
   `;
+}
+
+/* ----------------------------------------
+   FAVORIETEN TAB ACTIVEREN
+---------------------------------------- */
+function setActiveFavoritesTab(tabName, focusTab = false) {
+  if (!['recipes', 'schedules'].includes(tabName)) return;
+  activeFavoritesTab = tabName;
+
+  document.querySelectorAll('[data-favorites-tab]').forEach(button => {
+    const selected = button.dataset.favoritesTab === tabName;
+    button.setAttribute('aria-selected', String(selected));
+    button.tabIndex = selected ? 0 : -1;
+    if (selected && focusTab) button.focus();
+  });
+
+  const recipesPanel = document.getElementById('favorites-panel-recipes');
+  const schedulesPanel = document.getElementById('favorites-panel-schedules');
+  if (recipesPanel) recipesPanel.hidden = tabName !== 'recipes';
+  if (schedulesPanel) schedulesPanel.hidden = tabName !== 'schedules';
 }
 
 /* ----------------------------------------
@@ -332,6 +347,13 @@ export async function init() {
   const content = document.getElementById('app-content');
 
   content.addEventListener('click', async (e) => {
+    /* Wissel tussen favoriete recepten en opgeslagen weekschema's */
+    const favoritesTab = e.target.closest('[data-favorites-tab]');
+    if (favoritesTab) {
+      setActiveFavoritesTab(favoritesTab.dataset.favoritesTab);
+      return;
+    }
+
     /* Favoriet toggle op receptkaarten */
     const favBtn = e.target.closest('.favorite-recipe-remove');
     if (favBtn) {
@@ -407,6 +429,24 @@ export async function init() {
     if (deleteBtn) {
       await handleDeleteSchedule(deleteBtn.dataset.id);
     }
+  }, { signal: favAbort.signal });
+
+  content.addEventListener('keydown', (e) => {
+    const currentTab = e.target.closest('[data-favorites-tab]');
+    if (!currentTab) return;
+
+    const tabs = [...content.querySelectorAll('[data-favorites-tab]')];
+    const currentIndex = tabs.indexOf(currentTab);
+    let nextIndex = currentIndex;
+
+    if (e.key === 'ArrowRight') nextIndex = (currentIndex + 1) % tabs.length;
+    else if (e.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+    else if (e.key === 'Home') nextIndex = 0;
+    else if (e.key === 'End') nextIndex = tabs.length - 1;
+    else return;
+
+    e.preventDefault();
+    setActiveFavoritesTab(tabs[nextIndex].dataset.favoritesTab, true);
   }, { signal: favAbort.signal });
 }
 

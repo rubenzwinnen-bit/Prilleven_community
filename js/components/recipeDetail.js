@@ -12,9 +12,9 @@
    - init() haalt alle data parallel op via Promise.all
 ============================================ */
 
-import * as Store from '../store.js?v=4.0.3';
-import * as Router from '../router.js?v=4.0.3';
-import { getChildren } from '../childrenApi.js?v=4.0.3';
+import * as Store from '../store.js?v=4.0.4';
+import * as Router from '../router.js?v=4.0.4';
+import { getChildren } from '../childrenApi.js?v=4.0.4';
 import {
   showToast, escapeHtml, formatDate,
   renderStarsDisplay, renderStarsInteractive,
@@ -22,7 +22,7 @@ import {
   normalizeAllergen, ageInMonths, getRecipeMinAge, getRecipeAgeLabel,
   initialsFromName, colorFromSeed,
   WEEKDAYS, SCHEDULE_SLOTS
-} from '../utils.js?v=4.0.3';
+} from '../utils.js?v=4.0.4';
 
 /* ----------------------------------------
    ALGEMENE BABYHAPJE-UITLEG
