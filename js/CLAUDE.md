@@ -64,7 +64,7 @@ Pril Leven heeft historisch **twee** parallel-lopende auth-systemen. Begrijp het
 | `recipeCard.js`, `recipeList.js`, `recipeDetail.js`, `recipeForm.js` | Recepten. Leeftijd-badge (groen ovaal `.recipe-age-badge`, "vanaf X mnd" uit `getRecipeAgeLabel`) staat naast de titel op de kaart en rechts naast de "Informatie"-titel op het detail (`--lg`-variant). `recipeList.js` heeft een multi-select leeftijdsfilter (pills `.age-pill`, state `selectedAges`, matcht op `getRecipeMinAge`). `recipeDetail.js` toont bij een recept uit het actieve weekschema de zachte Cooked it-veegactie; bij herhaling kiest die eerst een ongekookt slot van vandaag, daarna het reeds afgeronde slot van vandaag (voor zichtbare undo), en pas zonder voorkomen vandaag het eerste ongekookte slot. |
 | `weekSchedule.js` | Weekschema (5 slots × 7 dagen). Het actieve schema toont de lokale Cooked it-status per slot en `Pril Ritme` op basis van unieke kookdagen (doel: 3). Luistert ook naar de `storage`-event zodat een in een ander tabblad afgerond gerecht zichtbaar wordt. |
 | `shoppingList.js` | Boodschappenlijst gegenereerd uit actief schema. |
-| `favorites.js` | Favoriete recepten. |
+| `favorites.js` | Favoriete recepten en opgeslagen weekschema's. Gebruikt op deze pagina een eigen rustige receptkaart zonder emoji/pictogrammen (dus niet de gedeelde `recipeCard.js`), met tekstuele metadata en apart gegroepeerde weekschema-acties. |
 | `importRecipes.js` | Bulk JSON import (admin). |
 | `ingredientIcons.js` | Beheer van ingrediënt-iconen (admin). |
 | `timeline.js`, `timelinePost.js` | Community-feed pagina + losse post-detail. |
@@ -176,7 +176,7 @@ Vervang ALLE voorkomens van de huidige versie (bv. `?v=2.1.0`) met de nieuwe (bv
 3. Alle bestanden in `/js/*.js` en `/js/components/*.js` met imports.
 
 Snelle check: `grep -rn "?v=" --include="*.js" --include="*.html" | grep -v <huidige versie>` — dat hoort niets op te leveren.
-**Huidige versie: `4.0.1` voor alle module-imports en `styles.css`.** `aanraders.css` en `aanraders-filters.js` hebben eigen versies (`CSS_VERSION` / `FILTER_JS_VERSION` in `api/aanraders.mjs`) omdat de publieke pagina ze los uitlevert.
+**Huidige versie: `4.0.2` voor alle module-imports en `styles.css`.** `aanraders.css` en `aanraders-filters.js` hebben eigen versies (`CSS_VERSION` / `FILTER_JS_VERSION` in `api/aanraders.mjs`) omdat de publieke pagina ze los uitlevert.
 Een vind-vervang over alle bestanden tegelijk werkt prima.
 
 ---

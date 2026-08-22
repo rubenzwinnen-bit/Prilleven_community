@@ -12,18 +12,16 @@
      gecached zodat het schema-detail snel rendert
 ============================================ */
 
-import * as Store from '../store.js?v=4.0.1';
-import * as Router from '../router.js?v=4.0.1';
-import * as RecipeCard from './recipeCard.js?v=4.0.1';
+import * as Store from '../store.js?v=4.0.2';
+import * as Router from '../router.js?v=4.0.2';
 import {
-  showToast, confirm, promptInput, escapeHtml, formatDateShort, renderStarsDisplay,
-  WEEKDAYS, SCHEDULE_SLOTS, getSlotLabel
-} from '../utils.js?v=4.0.1';
+  showToast, confirm, promptInput, escapeHtml, formatDateShort,
+  getMealMomentLabel, getRecipeAgeLabel, WEEKDAYS, SCHEDULE_SLOTS, getSlotLabel
+} from '../utils.js?v=4.0.2';
 
 /* Module-level cache zodat re-renders en handlers de data delen */
 let cachedFavRecipes = [];
 let cachedSchedules = [];
-let cachedFavIds = [];
 let cachedRatings = {};
 let cachedUserRatings = {};
 let recipeMap = new Map();
@@ -36,10 +34,11 @@ let recipeMap = new Map();
 export function render() {
   return `
     <div id="favorites-content">
-      <div class="empty-state">
-        <div class="empty-state-icon">&#9203;</div>
-        <h3>Favorieten laden...</h3>
-        <p>Een ogenblik geduld.</p>
+      <div class="favorites-loading" aria-live="polite">
+        <span class="favorites-loading-bar favorites-loading-bar--title"></span>
+        <span class="favorites-loading-bar"></span>
+        <span class="favorites-loading-bar favorites-loading-bar--short"></span>
+        <span class="sr-only">Favorieten laden...</span>
       </div>
     </div>
   `;
@@ -50,32 +49,123 @@ export function render() {
    Wordt aangeroepen na het laden van data
 ---------------------------------------- */
 function buildFavoritesHtml() {
+  const recipeCount = cachedFavRecipes.length;
+  const scheduleCount = cachedSchedules.length;
+
   return `
+    <div class="favorites-page">
+      <header class="favorites-hero">
+        <div class="favorites-hero-copy">
+          <span class="favorites-eyebrow">Voor later bewaard</span>
+          <h1>Jouw favorieten</h1>
+          <p>Je favoriete recepten en weekschema's, rustig verzameld op één plek.</p>
+        </div>
+        <div class="favorites-summary" aria-label="Overzicht van je favorieten">
+          <div class="favorites-summary-item">
+            <strong>${recipeCount}</strong>
+            <span>${recipeCount === 1 ? 'recept' : 'recepten'}</span>
+          </div>
+          <div class="favorites-summary-item">
+            <strong>${scheduleCount}</strong>
+            <span>${scheduleCount === 1 ? 'weekschema' : "weekschema's"}</span>
+          </div>
+        </div>
+      </header>
+
     <!-- ======== FAVORIETE RECEPTEN ======== -->
-    <div class="favorites-section">
-      <h2>&#10084;&#65039; Favoriete Recepten (${cachedFavRecipes.length})</h2>
-      ${cachedFavRecipes.length > 0
-        ? `<div class="recipe-grid">${cachedFavRecipes.map(r => RecipeCard.render(r, cachedFavIds, cachedRatings)).join('')}</div>`
-        : `<div class="empty-state">
-            <div class="empty-state-icon">&#9825;</div>
+    <section class="favorites-section" aria-labelledby="favorite-recipes-title">
+      <div class="favorites-section-header">
+        <div>
+          <span class="favorites-section-kicker">Receptenboek</span>
+          <h2 id="favorite-recipes-title">Favoriete recepten</h2>
+          <p>Recepten die je graag wilt bewaren of opnieuw wilt maken.</p>
+        </div>
+        <span class="favorites-count">${recipeCount} bewaard</span>
+      </div>
+      ${recipeCount > 0
+        ? `<div class="favorites-recipe-grid">${cachedFavRecipes.map(renderFavoriteRecipeCard).join('')}</div>`
+        : `<div class="favorites-empty-state">
+            <span class="favorites-empty-label">Nog leeg</span>
             <h3>Geen favoriete recepten</h3>
-            <p>Klik op het hartje bij een recept om het als favoriet te markeren.</p>
+            <p>Bewaar een recept vanuit het receptenboek en je vindt het hier meteen terug.</p>
           </div>`
       }
-    </div>
+    </section>
 
     <!-- ======== OPGESLAGEN WEEKSCHEMA'S ======== -->
-    <div class="favorites-section">
-      <h2>&#128197; Opgeslagen Weekschema's (${cachedSchedules.length})</h2>
-      ${cachedSchedules.length > 0
-        ? cachedSchedules.map(schedule => renderScheduleCard(schedule)).join('')
-        : `<div class="empty-state">
-            <div class="empty-state-icon">&#128197;</div>
+    <section class="favorites-section" aria-labelledby="saved-schedules-title">
+      <div class="favorites-section-header">
+        <div>
+          <span class="favorites-section-kicker">Weekplanning</span>
+          <h2 id="saved-schedules-title">Opgeslagen weekschema's</h2>
+          <p>Herbekijk een planning, activeer ze opnieuw of open de boodschappenlijst.</p>
+        </div>
+        <span class="favorites-count">${scheduleCount} bewaard</span>
+      </div>
+      ${scheduleCount > 0
+        ? `<div class="saved-schedules-list">${cachedSchedules.map(renderScheduleCard).join('')}</div>`
+        : `<div class="favorites-empty-state">
+            <span class="favorites-empty-label">Nog leeg</span>
             <h3>Geen opgeslagen weekschema's</h3>
-            <p>Genereer een weekschema en sla het op om het hier te zien.</p>
+            <p>Sla een weekschema op en je kunt het hier later opnieuw activeren.</p>
           </div>`
       }
+    </section>
     </div>
+  `;
+}
+
+/* ----------------------------------------
+   FAVORIET RECEPT RENDEREN
+   Eigen, rustige variant voor deze pagina:
+   geen emoji's of pictogrammen in de kaart.
+---------------------------------------- */
+function renderFavoriteRecipeCard(recipe) {
+  const imageHtml = recipe.image
+    ? `<img class="favorite-recipe-image" src="${escapeHtml(recipe.image)}" alt="${escapeHtml(recipe.name)}" loading="lazy" onerror="this.outerHTML='<div class=\'favorite-recipe-image-placeholder\'>Geen foto beschikbaar</div>'">`
+    : `<div class="favorite-recipe-image-placeholder">Geen foto beschikbaar</div>`;
+  const mealMoments = (recipe.mealMoments || [])
+    .map(moment => `<span>${escapeHtml(getMealMomentLabel(moment))}</span>`)
+    .join('');
+  const ageLabel = getRecipeAgeLabel(recipe);
+  const { average = 0, count = 0 } = cachedRatings[recipe.id] || {};
+  const ratingLabel = count > 0
+    ? `${Number(average).toFixed(1).replace('.', ',')} op 5 · ${count} ${count === 1 ? 'beoordeling' : 'beoordelingen'}`
+    : 'Nog niet beoordeeld';
+
+  return `
+    <article class="favorite-recipe-card" data-recipe-id="${recipe.id}">
+      <div class="favorite-recipe-media">
+        ${imageHtml}
+        <button class="favorite-recipe-remove" data-fav-id="${recipe.id}" type="button">
+          Verwijderen
+        </button>
+      </div>
+      <div class="favorite-recipe-body">
+        <div class="favorite-recipe-heading">
+          <div>
+            <span class="favorite-recipe-label">Bewaard recept</span>
+            <h3>${escapeHtml(recipe.name)}</h3>
+          </div>
+          ${ageLabel ? `<span class="favorite-recipe-age">${escapeHtml(ageLabel)}</span>` : ''}
+        </div>
+        ${mealMoments ? `<div class="favorite-recipe-moments">${mealMoments}</div>` : ''}
+        <dl class="favorite-recipe-facts">
+          <div>
+            <dt>Bereiding</dt>
+            <dd>${escapeHtml(String(recipe.cookingTime || '—'))}${recipe.cookingTime ? ' min' : ''}</dd>
+          </div>
+          <div>
+            <dt>Porties</dt>
+            <dd>${escapeHtml(String(recipe.portions || 1))}</dd>
+          </div>
+        </dl>
+        <div class="favorite-recipe-footer">
+          <span>${ratingLabel}</span>
+          <button class="favorite-recipe-open" type="button">Bekijk recept</button>
+        </div>
+      </div>
+    </article>
   `;
 }
 
@@ -95,46 +185,59 @@ function renderScheduleCard(schedule) {
   const daysPreview = WEEKDAYS.map(day => {
     const dayData = schedule.days?.[day] || {};
     const mealCount = SCHEDULE_SLOTS.filter(s => dayData[s.id]).length;
-    return `<span class="tag tag-moment" title="${day}">${day.substring(0, 2).toUpperCase()} (${mealCount})</span>`;
+    return `
+      <div class="saved-schedule-day" title="${day}">
+        <span>${day.substring(0, 2).toUpperCase()}</span>
+        <strong>${mealCount}</strong>
+        <small>${mealCount === 1 ? 'maaltijd' : 'maaltijden'}</small>
+      </div>
+    `;
   }).join('');
 
   return `
-    <div class="saved-schedule-card ${schedule.isActive ? 'schedule-card-active' : ''}" data-schedule-id="${schedule.id}">
+    <article class="saved-schedule-card ${schedule.isActive ? 'schedule-card-active' : ''}" data-schedule-id="${schedule.id}">
       <div class="saved-schedule-header">
-        <div>
-          <span class="saved-schedule-name">${escapeHtml(schedule.name)}</span>
-          <span class="saved-schedule-date">${formatDateShort(schedule.createdAt)}</span>
-          ${schedule.isActive ? `<span class="active-schedule-badge">Actief &middot; ${schedule.persons} personen</span>` : ''}
+        <div class="saved-schedule-heading">
+          <div class="saved-schedule-label-row">
+            <span class="saved-schedule-label">Weekschema</span>
+            ${schedule.isActive ? `<span class="active-schedule-badge">Actief</span>` : ''}
+          </div>
+          <h3 class="saved-schedule-name">${escapeHtml(schedule.name)}</h3>
+          <span class="saved-schedule-date">Opgeslagen ${formatDateShort(schedule.createdAt)}</span>
         </div>
-        <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+        <dl class="saved-schedule-facts">
+          <div><dt>Maaltijden</dt><dd>${totalMeals}</dd></div>
+          <div><dt>Personen</dt><dd>${schedule.persons || 4}</dd></div>
+        </dl>
+      </div>
+
+      <div class="saved-schedule-days" aria-label="Maaltijden per dag">
+        ${daysPreview}
+      </div>
+
+      <div class="saved-schedule-actions">
+        <div class="saved-schedule-main-actions">
           ${schedule.isActive
-            ? `<button class="btn btn-sm btn-outline btn-deactivate-schedule" data-id="${schedule.id}">Deactiveren</button>`
-            : `<button class="btn btn-sm btn-activate-schedule" data-id="${schedule.id}">Activeren</button>`
+            ? `<button class="favorites-action favorites-action--primary btn-shopping" data-id="${schedule.id}">Boodschappenlijst</button>`
+            : `<button class="favorites-action favorites-action--primary btn-activate-schedule" data-id="${schedule.id}">Activeren</button>`
           }
-          <button class="btn btn-sm btn-outline toggle-schedule-detail" data-id="${schedule.id}">
-            Details
+          <button class="favorites-action favorites-action--secondary toggle-schedule-detail"
+                  data-id="${schedule.id}" aria-expanded="false" aria-controls="schedule-detail-${schedule.id}">
+            Details bekijken
           </button>
           ${schedule.isActive
-            ? `<button class="btn btn-sm btn-secondary btn-shopping" data-id="${schedule.id}">
-                Boodschappenlijst
-              </button>`
+            ? `<button class="favorites-action favorites-action--secondary btn-deactivate-schedule" data-id="${schedule.id}">Deactiveren</button>`
             : ''
           }
-          <button class="btn btn-sm btn-danger btn-delete-schedule" data-id="${schedule.id}">
-            Verwijderen
-          </button>
         </div>
-      </div>
-      <div style="display:flex;gap:0.35rem;flex-wrap:wrap">
-        ${daysPreview}
-        <span class="text-muted" style="font-size:0.8rem;align-self:center;margin-left:0.5rem">${totalMeals} maaltijden</span>
+        <button class="favorites-delete-action btn-delete-schedule" data-id="${schedule.id}">Verwijderen</button>
       </div>
 
       <!-- Detail weergave (verborgen) -->
       <div class="schedule-detail-view hidden" id="schedule-detail-${schedule.id}">
         ${renderScheduleDetail(schedule)}
       </div>
-    </div>
+    </article>
   `;
 }
 
@@ -167,7 +270,7 @@ function renderScheduleDetail(schedule) {
                 title="Bekijk recept (opent in nieuw tabblad)">
             <div class="schedule-recipe-overlay">
               <span class="schedule-recipe-name">${escapeHtml(recipe.name)}</span>
-              ${userRating ? `<span class="schedule-recipe-rating">${renderStarsDisplay(userRating)}</span>` : ''}
+              ${userRating ? `<span class="schedule-recipe-rating">${userRating} op 5</span>` : ''}
             </div>
           </a>
         </td>
@@ -204,23 +307,21 @@ export async function init() {
 
   /* ---- Data parallel ophalen ---- */
   try {
-    const [favRecipes, schedules, favIds, ratingsMap, userRatings] = await Promise.all([
+    const [favRecipes, schedules, ratingsMap, userRatings] = await Promise.all([
       Store.getFavoriteRecipes(),
       Store.getSavedSchedules(),
-      Store.getFavoriteRecipeIds(),
       Store.getAllRatings(),
       Store.getAllUserRatings(),
     ]);
 
     cachedFavRecipes = favRecipes;
     cachedSchedules = schedules;
-    cachedFavIds = favIds;
     cachedRatings = ratingsMap;
     cachedUserRatings = userRatings;
   } catch (err) {
     container.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-state-icon">&#9888;</div>
+      <div class="favorites-empty-state favorites-empty-state--error">
+        <span class="favorites-empty-label">Laden mislukt</span>
         <h3>Fout bij laden</h3>
         <p>${err.message}</p>
       </div>`;
@@ -260,7 +361,7 @@ export async function init() {
 
   content.addEventListener('click', async (e) => {
     /* Favoriet toggle op receptkaarten */
-    const favBtn = e.target.closest('.fav-btn');
+    const favBtn = e.target.closest('.favorite-recipe-remove');
     if (favBtn) {
       e.stopPropagation();
       /* Voorkom dubbel-klikken die race conditions veroorzaken */
@@ -273,9 +374,10 @@ export async function init() {
         showToast('Verwijderd uit favorieten');
         /* Herlaad de favorieten-pagina */
         container.innerHTML = `
-          <div class="empty-state">
-            <div class="empty-state-icon">&#9203;</div>
-            <p>Vernieuwen...</p>
+          <div class="favorites-loading" aria-live="polite">
+            <span class="favorites-loading-bar favorites-loading-bar--title"></span>
+            <span class="favorites-loading-bar"></span>
+            <span class="sr-only">Favorieten vernieuwen...</span>
           </div>`;
         await init();
       } catch (err) {
@@ -286,7 +388,7 @@ export async function init() {
     }
 
     /* Klik op receptkaart */
-    const card = e.target.closest('.recipe-card');
+    const card = e.target.closest('.favorite-recipe-card');
     if (card) {
       Router.navigate('recipe/' + card.dataset.recipeId);
       return;
@@ -299,9 +401,9 @@ export async function init() {
       const detail = document.getElementById('schedule-detail-' + id);
       if (detail) {
         detail.classList.toggle('hidden');
-        toggleBtn.innerHTML = detail.classList.contains('hidden')
-          ? 'Details'
-          : 'Verbergen';
+        const isHidden = detail.classList.contains('hidden');
+        toggleBtn.textContent = isHidden ? 'Details bekijken' : 'Details verbergen';
+        toggleBtn.setAttribute('aria-expanded', String(!isHidden));
       }
       return;
     }
@@ -362,9 +464,10 @@ async function handleActivateSchedule(scheduleId) {
     const container = document.getElementById('favorites-content');
     if (container) {
       container.innerHTML = `
-        <div class="empty-state">
-          <div class="empty-state-icon">&#9203;</div>
-          <p>Vernieuwen...</p>
+        <div class="favorites-loading" aria-live="polite">
+          <span class="favorites-loading-bar favorites-loading-bar--title"></span>
+          <span class="favorites-loading-bar"></span>
+          <span class="sr-only">Favorieten vernieuwen...</span>
         </div>`;
       await init();
     }
@@ -384,9 +487,10 @@ async function handleDeactivateSchedule(scheduleId) {
     const container = document.getElementById('favorites-content');
     if (container) {
       container.innerHTML = `
-        <div class="empty-state">
-          <div class="empty-state-icon">&#9203;</div>
-          <p>Vernieuwen...</p>
+        <div class="favorites-loading" aria-live="polite">
+          <span class="favorites-loading-bar favorites-loading-bar--title"></span>
+          <span class="favorites-loading-bar"></span>
+          <span class="sr-only">Favorieten vernieuwen...</span>
         </div>`;
       await init();
     }
@@ -409,9 +513,10 @@ async function handleDeleteSchedule(scheduleId) {
     const container = document.getElementById('favorites-content');
     if (container) {
       container.innerHTML = `
-        <div class="empty-state">
-          <div class="empty-state-icon">&#9203;</div>
-          <p>Vernieuwen...</p>
+        <div class="favorites-loading" aria-live="polite">
+          <span class="favorites-loading-bar favorites-loading-bar--title"></span>
+          <span class="favorites-loading-bar"></span>
+          <span class="sr-only">Favorieten vernieuwen...</span>
         </div>`;
       await init();
     }

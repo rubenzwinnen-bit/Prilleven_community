@@ -976,13 +976,18 @@ interactie volgen later in een aparte fase.
   `localStorage['prilleven_cooked_meals_<user>']`; geen databasewijziging en dus
   nog niet cross-device. `storage`-events houden een open weekschema in een ander
   tabblad synchroon.
-- ✅ App-cachebuster volledig gelijkgetrokken naar **`4.0.1`** (137 HTML/JS-imports)
+- ✅ App-cachebuster volledig gelijkgetrokken naar **`4.0.2`** (137 HTML/JS-imports)
   om dubbele module-instanties te vermijden.
+- ✅ De Favorieten-pagina herontworpen als rustige bewaarbibliotheek zonder de oude
+  emoji/pictogrammen. Favoriete recepten hebben een eigen tekstuele kaartvariant;
+  opgeslagen weekschema's tonen status, aantallen per dag en logisch gegroepeerde
+  acties. De gedeelde receptkaarten elders in de app blijven ongewijzigd.
 
 ### Gewijzigde kernbestanden
 - `js/store.js` — kookregistratie, weekstart op maandag, unieke-dagtelling.
 - `js/components/recipeDetail.js` — Cooked it-flow en slotkeuze.
 - `js/components/weekSchedule.js` — Pril Ritme en afgeronde slots.
+- `js/components/favorites.js` — Favorieten-overzicht, receptkaarten en schema-acties.
 - `styles.css` — responsive, subtiele groene feedback en reduced-motion.
 
 ### Verificatie
@@ -995,6 +1000,8 @@ interactie volgen later in een aparte fase.
 - ✅ Desktopweergave visueel gecontroleerd in de bestaande website-opmaak. Tijdens
   de test een herhaalrecept/undo-randgeval gevonden en opgelost: een voorkomen van
   vandaag blijft prioritair en verborgen succesfeedback is niet klik- of focusbaar.
+- ✅ Favorieten lokaal ingelogd gecontroleerd: receptkaart opent het juiste recept,
+  weekschema-details openen en sluiten met correcte knoptekst en `aria-expanded`.
 
 ### Beslissingen voor vervolg
 - Eerst deze ene lus testen op gevoel en gebruik; pas daarna beslissen over
