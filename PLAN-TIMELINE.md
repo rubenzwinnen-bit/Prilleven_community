@@ -976,12 +976,18 @@ interactie volgen later in een aparte fase.
   `localStorage['prilleven_cooked_meals_<user>']`; geen databasewijziging en dus
   nog niet cross-device. `storage`-events houden een open weekschema in een ander
   tabblad synchroon.
-- ✅ App-cachebuster volledig gelijkgetrokken naar **`4.0.2`** (137 HTML/JS-imports)
+- ✅ App-cachebuster volledig gelijkgetrokken naar **`4.0.3`** (137 HTML/JS-imports)
   om dubbele module-instanties te vermijden.
 - ✅ De Favorieten-pagina herontworpen als rustige bewaarbibliotheek zonder de oude
   emoji/pictogrammen. Favoriete recepten hebben een eigen tekstuele kaartvariant;
-  opgeslagen weekschema's tonen status, aantallen per dag en logisch gegroepeerde
-  acties. De gedeelde receptkaarten elders in de app blijven ongewijzigd.
+  opgeslagen weekschema's tonen alleen nog status, personen en logisch gegroepeerde
+  acties. De redundante zeven dag-/maaltijdtegels zijn verwijderd; de concrete
+  planning verschijnt pas via “Details bekijken”. De gedeelde receptkaarten elders
+  in de app blijven ongewijzigd.
+- ✅ Echte ChatGPT/Codex repo-skills `start-sessie` en `eind-sessie` toegevoegd in
+  `.agents/skills/`, met UI-metadata voor de skill-/slashlijst. De oude
+  `source-command-*`-migratiewrappers voor deze twee commando's zijn verwijderd;
+  de vier Claude-commando's in `.claude/commands/` blijven bestaan.
 
 ### Gewijzigde kernbestanden
 - `js/store.js` — kookregistratie, weekstart op maandag, unieke-dagtelling.
@@ -1008,3 +1014,97 @@ interactie volgen later in een aparte fase.
   Supabase-opslag, langere streaks of extra gamificationoppervlakken.
 - Definitieve opslag vereist later een Supabase-tabel met RLS; niet stilzwijgend
   de localStorage-preview als productiebron blijven gebruiken.
+
+### Volledig gamificatieplan
+
+Dit is het richtinggevende productplan. Alleen **fase 1** is momenteel gebouwd;
+latere fasen zijn kandidaten en worden pas uitgevoerd na evaluatie en expliciete
+goedkeuring van eventuele database-, analytics- of mobiele wijzigingen.
+
+#### Productprincipes
+- Beloon betekenisvol gedrag dat de gebruiker toch al uitvoert, niet het openen van
+  de app, doorklikken of zoeken naar een aparte bevestigingsknop.
+- De feedback blijft zacht en kort: aangename micro-animatie, kleur en duidelijke
+  voortgang, zonder puntenregen, permanente badgewand of publieke ranglijst.
+- Geen schuldgevoel bij jonge ouders: een gemiste dag mag niet aanvoelen als falen.
+  Daarom start Pril Ritme als weekdoel met unieke kookdagen, niet als harde dagelijkse
+  login-streak.
+- Eén echte actie telt één keer. Meerdere gerechten op dezelfde kalenderdag mogen
+  zichtbaar afgerond zijn, maar verhogen het weekritme slechts één stap.
+- Eerst websitegedrag valideren; mobiele gebaren, haptics, boodschappenlijst en
+  notificaties volgen pas daarna.
+
+#### Wat wel en niet beloningswaardig is
+- **Kernactie:** een gerecht uit het actieve weekschema daadwerkelijk als bereid
+  afronden. Dit is de sterkste koppeling tussen planning en gezinsgedrag.
+- **Contextuele mijlpalen (later te testen):** eerste gerecht bereid, drie unieke
+  kookdagen in één week, vijf verschillende recepten werkelijk bereid, en een
+  beoordeling plaatsen ná een bereid gerecht.
+- **Mobiele kandidaat:** automatisch een klein succesmoment wanneer meerdere echte
+  boodschappen zijn afgevinkt of een relevante lijstsectie klaar is; geen aparte
+  “lijst voltooid”-knop.
+- **Niet belonen:** alleen een recept bekijken, de app dagelijks openen, lukraak
+  favorieten opslaan of veel klikken. Dat stimuleert gebruik van de interface in
+  plaats van het gewenste resultaat.
+- “Eerste recept bewaard” of “eerste beoordeling” is dus niet automatisch een badge.
+  Als zo'n moment wordt gebruikt, verschijnt het contextueel en eenmalig; een
+  klassieke badgecollectie komt er alleen als een gebruikerstest daar waarde voor
+  aantoont.
+
+#### Gefaseerde uitbouw
+
+1. **Websitepreview — gebouwd**
+   - Cooked it op geplande receptdetails, undo, groene bevestiging en vinkje op het
+     actieve weekschema.
+   - Pril Ritme: doel van drie unieke kookdagen binnen de kalenderweek.
+   - Lokale opslag per gebruiker/week om interactie en gevoel te testen zonder
+     database-impact.
+
+2. **Websitepilot en observatie**
+   - Testen of gebruikers de Cooked it-actie spontaan begrijpen en of de feedback
+     voldoende plezierig maar niet opdringerig is.
+   - Letten op mis-klikken/undo, herhaalrecepten, gemiste slots en de vraag of drie
+     dagen voor verschillende gezinnen een realistisch standaarddoel is.
+   - Alleen minimale, privacybewuste productevents toevoegen als vooraf duidelijk is
+     welke beslissing elke meting ondersteunt.
+
+3. **Definitieve cross-device basis**
+   - Na goedkeuring een Supabase-model met RLS ontwerpen voor kookevents/progressie;
+     localStorage wordt dan uitsluitend cache/fallback en niet de bron van waarheid.
+   - Definities vastleggen voor kalenderweek, Europe/Brussels-tijdzone, huishouden,
+     herhaalde recepten, undo en wisselen van actief weekschema.
+   - Website en latere mobiele app moeten exact dezelfde events en telling gebruiken.
+
+4. **Zachte mijlpalen en langer ritme**
+   - Eerst contextuele momenten testen: eerste Cooked it, eerste volle Pril Ritme-week,
+     vijf verschillende bereide recepten en beoordeling na bereiding.
+   - Pas daarna een week-op-week ritme overwegen. Een onderbreking krijgt een zachte
+     herstart of herstelmechanisme, geen rode waarschuwing of verliesaversie.
+   - Een persoonlijk weekdoel van bijvoorbeeld 2, 3 of 4 dagen pas aanbieden als de
+     pilot toont dat één vast doel onvoldoende past.
+
+5. **Mobiele app**
+   - Op een gerecht uit het actieve weekschema: natuurlijke swipe/pull-down naar
+     “Cooked it!”, korte groene feedback en eventueel subtiele haptic feedback.
+   - Boodschappenvoortgang afleiden uit bestaande vinkjes; geen extra bevestigingsflow.
+   - Optionele herinneringen alleen contextueel en opt-in, bijvoorbeeld rond een
+     gepland eetmoment; nooit een generieke dagelijkse streakmelding.
+
+6. **Evaluatie en gefaseerde uitrol**
+   - Kernmetingen: aandeel actieve weekschema's met minstens één Cooked it, unieke
+     kookdagen per week, weken met herhaald gebruik, snelle undo-ratio en gebruik van
+     “Details bekijken”/boodschappenlijst na progressie.
+   - Secundair: beoordelingen na bereiding en vijf verschillende bereide recepten;
+     niet optimaliseren op schermtijd of ruwe klikvolumes.
+   - Eerst intern/kleine pilot, daarna bredere uitrol. Een nieuwe beloningslus blijft
+     alleen behouden als ze begrijpelijk is en hergebruik verbetert zonder irritatie.
+
+#### Open productbeslissingen vóór fase 3
+- Blijft drie dagen het vaste doel of mag een gezin 2/3/4 kiezen?
+- Telt progressie per account of per huishouden wanneer meerdere ouders dezelfde
+  planning gebruiken?
+- Hoe lang blijft undo mogelijk en hoe corrigeren we een fout na weekafsluiting?
+- Welke minimale events zijn nodig om effect te beoordelen, en hoe worden die in
+  privacydocumentatie en consent verwerkt?
+- Welke mijlpalen voelen motiverend zonder alsnog een zichtbare badgecollectie te
+  worden?

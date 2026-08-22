@@ -177,7 +177,7 @@ Op Vercel zelf staan deze al ingesteld via project settings.
 
 ---
 
-## 7b. Tooling — MCP's en slash commands
+## 7b. Tooling — MCP's en sessiecommando's
 
 **MCP-servers** (geconfigureerd in `.mcp.json`, gitignored — zie `.mcp.json.example` als template):
 - **Supabase MCP** — schrijftoegang (sinds 2026-07-25, `--read-only` verwijderd), project-scoped op `ynrdoxukevhzupjvcjuw`. Voor schema-introspectie, RLS-checks, queries én data-fixes. Let op: dit is de **productie**-DB, er is geen staging — schrijfacties altijd eerst tonen en laten bevestigen.
@@ -187,11 +187,12 @@ Op Vercel zelf staan deze al ingesteld via project settings.
 
 **Plan-tier:** sinds 2026-07-29 zowel **Vercel Pro** als **Supabase Pro**. De Hobby function-limiet (12 per deployment) geldt niet meer — zie `api/AGENTS.md §9`. Supabase pauzeert niet meer bij inactiviteit.
 
-**Slash commands** (in `.Codex/commands/`):
-- `/start-sessie` — leest PLAN-TIMELINE + git, vat status samen, stelt voor wat te doen.
-- `/eind-sessie` — sync docs, update PLAN-TIMELINE, genereer handover-prompt.
-- `/update-docs` — sync AGENTS.md's met sessie-wijzigingen.
-- `/deploy-check` — pre-deploy sanity check (cache-buster, migraties, env-vars, gevoelige bestanden).
+**ChatGPT/Codex repo-skills** (in `.agents/skills/`, via de slashlijst of `$skill-naam`):
+- `start-sessie` — leest PLAN-TIMELINE + git, vat status samen en stelt één vervolgstap voor.
+- `eind-sessie` — synchroniseert assistentdocs + PLAN-TIMELINE en genereert een handover.
+
+**Claude slash commands** blijven apart in `.claude/commands/`: `/start-sessie`,
+`/eind-sessie`, `/update-docs` en `/deploy-check`.
 
 ---
 

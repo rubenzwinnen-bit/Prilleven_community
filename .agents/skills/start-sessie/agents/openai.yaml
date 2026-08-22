@@ -1,0 +1,4 @@
+interface:
+  display_name: "Start sessie"
+  short_description: "Lees projectstatus en hervat gericht"
+  default_prompt: "Gebruik $start-sessie om de actuele projectstatus samen te vatten en één volgende stap voor te stellen."

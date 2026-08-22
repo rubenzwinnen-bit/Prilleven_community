@@ -12,12 +12,12 @@
      gecached zodat het schema-detail snel rendert
 ============================================ */
 
-import * as Store from '../store.js?v=4.0.2';
-import * as Router from '../router.js?v=4.0.2';
+import * as Store from '../store.js?v=4.0.3';
+import * as Router from '../router.js?v=4.0.3';
 import {
   showToast, confirm, promptInput, escapeHtml, formatDateShort,
   getMealMomentLabel, getRecipeAgeLabel, WEEKDAYS, SCHEDULE_SLOTS, getSlotLabel
-} from '../utils.js?v=4.0.2';
+} from '../utils.js?v=4.0.3';
 
 /* Module-level cache zodat re-renders en handlers de data delen */
 let cachedFavRecipes = [];
@@ -173,27 +173,6 @@ function renderFavoriteRecipeCard(recipe) {
    WEEKSCHEMA KAART RENDEREN
 ---------------------------------------- */
 function renderScheduleCard(schedule) {
-  /* Tel het totaal aantal recepten in het schema */
-  let totalMeals = 0;
-  WEEKDAYS.forEach(day => {
-    SCHEDULE_SLOTS.forEach(slot => {
-      if (schedule.days?.[day]?.[slot.id]) totalMeals++;
-    });
-  });
-
-  /* Compacte dagweergave */
-  const daysPreview = WEEKDAYS.map(day => {
-    const dayData = schedule.days?.[day] || {};
-    const mealCount = SCHEDULE_SLOTS.filter(s => dayData[s.id]).length;
-    return `
-      <div class="saved-schedule-day" title="${day}">
-        <span>${day.substring(0, 2).toUpperCase()}</span>
-        <strong>${mealCount}</strong>
-        <small>${mealCount === 1 ? 'maaltijd' : 'maaltijden'}</small>
-      </div>
-    `;
-  }).join('');
-
   return `
     <article class="saved-schedule-card ${schedule.isActive ? 'schedule-card-active' : ''}" data-schedule-id="${schedule.id}">
       <div class="saved-schedule-header">
@@ -205,14 +184,7 @@ function renderScheduleCard(schedule) {
           <h3 class="saved-schedule-name">${escapeHtml(schedule.name)}</h3>
           <span class="saved-schedule-date">Opgeslagen ${formatDateShort(schedule.createdAt)}</span>
         </div>
-        <dl class="saved-schedule-facts">
-          <div><dt>Maaltijden</dt><dd>${totalMeals}</dd></div>
-          <div><dt>Personen</dt><dd>${schedule.persons || 4}</dd></div>
-        </dl>
-      </div>
-
-      <div class="saved-schedule-days" aria-label="Maaltijden per dag">
-        ${daysPreview}
+        <span class="saved-schedule-persons">${schedule.persons || 4} personen</span>
       </div>
 
       <div class="saved-schedule-actions">

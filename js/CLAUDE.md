@@ -176,7 +176,7 @@ Vervang ALLE voorkomens van de huidige versie (bv. `?v=2.1.0`) met de nieuwe (bv
 3. Alle bestanden in `/js/*.js` en `/js/components/*.js` met imports.
 
 Snelle check: `grep -rn "?v=" --include="*.js" --include="*.html" | grep -v <huidige versie>` — dat hoort niets op te leveren.
-**Huidige versie: `4.0.2` voor alle module-imports en `styles.css`.** `aanraders.css` en `aanraders-filters.js` hebben eigen versies (`CSS_VERSION` / `FILTER_JS_VERSION` in `api/aanraders.mjs`) omdat de publieke pagina ze los uitlevert.
+**Huidige versie: `4.0.3` voor alle module-imports en `styles.css`.** `aanraders.css` en `aanraders-filters.js` hebben eigen versies (`CSS_VERSION` / `FILTER_JS_VERSION` in `api/aanraders.mjs`) omdat de publieke pagina ze los uitlevert.
 Een vind-vervang over alle bestanden tegelijk werkt prima.
 
 ---

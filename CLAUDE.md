@@ -177,7 +177,7 @@ Op Vercel zelf staan deze al ingesteld via project settings.
 
 ---
 
-## 7b. Tooling — MCP's en slash commands
+## 7b. Tooling — MCP's en sessiecommando's
 
 **MCP-servers** (geconfigureerd in `.mcp.json`, gitignored — zie `.mcp.json.example` als template):
 - **Supabase MCP** — schrijftoegang (sinds 2026-07-25, `--read-only` verwijderd), project-scoped op `ynrdoxukevhzupjvcjuw`. Voor schema-introspectie, RLS-checks, queries én data-fixes. Let op: dit is de **productie**-DB, er is geen staging — schrijfacties altijd eerst tonen en laten bevestigen.
@@ -192,6 +192,9 @@ Op Vercel zelf staan deze al ingesteld via project settings.
 - `/eind-sessie` — sync docs, update PLAN-TIMELINE, genereer handover-prompt.
 - `/update-docs` — sync CLAUDE.md's met sessie-wijzigingen.
 - `/deploy-check` — pre-deploy sanity check (cache-buster, migraties, env-vars, gevoelige bestanden).
+
+**ChatGPT/Codex** heeft daarnaast repo-skills in `.agents/skills/`: `start-sessie`
+en `eind-sessie` (via de slashlijst of `$skill-naam`).
 
 ---
 

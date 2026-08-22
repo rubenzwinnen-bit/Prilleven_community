@@ -1,0 +1,4 @@
+interface:
+  display_name: "Eind sessie"
+  short_description: "Documenteer voortgang en maak een handover"
+  default_prompt: "Gebruik $eind-sessie om de voortgang te documenteren en een handover voor de volgende chat te maken."
