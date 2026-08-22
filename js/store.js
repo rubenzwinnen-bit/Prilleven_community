@@ -8,7 +8,7 @@
    omdat dit een lokale voorkeur is.
 ============================================ */
 
-import { supabaseFetch, supabaseStorageDelete } from './supabase.js?v=4.0.4';
+import { supabaseFetch, supabaseStorageDelete } from './supabase.js?v=4.0.5';
 
 /* ============================================
    IN-MEMORY CACHE LAAG
@@ -126,7 +126,7 @@ export async function refreshAdminStatus() {
     return false;
   }
   try {
-    const { fetchSubscriptionStatus } = await import('./supabase.js?v=4.0.4');
+    const { fetchSubscriptionStatus } = await import('./supabase.js?v=4.0.5');
     const status = await fetchSubscriptionStatus(user);
     const v = !!status?.is_admin;
     _adminCache = { email: user, value: v, loaded: true };
@@ -760,6 +760,33 @@ export async function saveSchedule(schedule) {
     isActive: s.is_active || false,
     createdAt: s.created_at,
   };
+}
+
+/** Werk de naam en/of het aantal personen van een opgeslagen weekschema bij */
+export async function updateSchedule(scheduleId, updates = {}) {
+  const user = getCurrentUser();
+  if (!user) {
+    throw new Error('Geen gebruikersnaam ingesteld. Vul bovenaan je naam in.');
+  }
+
+  const body = {};
+  if (typeof updates.name === 'string' && updates.name.trim()) {
+    body.name = updates.name.trim();
+  }
+  if (Number.isInteger(updates.persons) && updates.persons >= 1) {
+    body.persons = updates.persons;
+  }
+  if (Object.keys(body).length === 0) return;
+
+  await supabaseFetch(
+    `/rest/v1/schedules?id=eq.${encodeURIComponent(scheduleId)}` +
+    `&user_name=eq.${encodeURIComponent(user)}`,
+    { method: 'PATCH', body, prefer: 'return=minimal' }
+  );
+
+  _cacheInvalidate('schedules:');
+  _cacheInvalidate('schedule:');
+  _cacheInvalidate('active_schedule:');
 }
 
 /** Haal een enkel weekschema op (gecached) */

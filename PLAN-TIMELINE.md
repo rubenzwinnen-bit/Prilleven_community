@@ -976,7 +976,7 @@ interactie volgen later in een aparte fase.
   `localStorage['prilleven_cooked_meals_<user>']`; geen databasewijziging en dus
   nog niet cross-device. `storage`-events houden een open weekschema in een ander
   tabblad synchroon.
-- ✅ App-cachebuster volledig gelijkgetrokken naar **`4.0.4`** (137 HTML/JS-imports)
+- ✅ App-cachebuster volledig gelijkgetrokken naar **`4.0.5`** (alle HTML/JS-imports)
   om dubbele module-instanties te vermijden.
 - ✅ De Favorieten-pagina herontworpen als rustige bewaarbibliotheek zonder de oude
   emoji/pictogrammen. Favoriete recepten hebben een eigen tekstuele kaartvariant;
@@ -989,6 +989,21 @@ interactie volgen later in een aparte fase.
   tegelijk in beeld, zodat opgeslagen weekschema's ook bij veel favoriete recepten
   direct bereikbaar blijven. De dubbele zichtbare sectiekoppen, beschrijvingen en
   aantallen zijn verwijderd, net als de overbodige hero-zin over “rustig verzameld”.
+- ✅ Opgeslagen weekschema's hebben één rustige actie “Bewerken” voor zowel naam als
+  aantal personen. Hetzelfde compacte formulier wordt gebruikt wanneer een nieuw
+  gegenereerd schema wordt opgeslagen, zodat het niet eerst stilzwijgend op vier
+  personen hoeft te staan. Een actief schema en zijn volgende boodschappenlijst
+  gebruiken de gewijzigde gegevens meteen.
+- ✅ De generator heeft de optie “Gebruik mijn favoriete recepten”. Bij 1–2 geldige
+  favorieten zijn maximaal 2 voorkeursplekken voorzien, bij 3–5 maximaal 4 en vanaf
+  6 maximaal 7. Een favoriet wordt in de voorkeursselectie maximaal tweemaal gebruikt;
+  allergenen en eetmoment blijven altijd harde filters. Als een eetmoment minder dan
+  4 niet-favoriete alternatieven overhoudt, vervalt het onderscheid voor dat eetmoment
+  en kiest de generator gevarieerd uit de volledige geldige pool. Zo blijven ook
+  situaties met 80–100% favorieten volledig en niet-repetitief.
+- ✅ De boodschappenlijst verandert alleen na een expliciete klik op “Genereren” of
+  “Hergenereren”. Een gewijzigde selectie markeert de getoonde lijst als verouderd,
+  maar past de ingrediënten niet stilzwijgend aan.
 - ✅ Echte ChatGPT/Codex repo-skills `start-sessie` en `eind-sessie` toegevoegd in
   `.agents/skills/`, met UI-metadata voor de skill-/slashlijst. De oude
   `source-command-*`-migratiewrappers voor deze twee commando's zijn verwijderd;
@@ -999,6 +1014,8 @@ interactie volgen later in een aparte fase.
 - `js/components/recipeDetail.js` — Cooked it-flow en slotkeuze.
 - `js/components/weekSchedule.js` — Pril Ritme en afgeronde slots.
 - `js/components/favorites.js` — Favorieten-overzicht, receptkaarten en schema-acties.
+- `js/components/scheduleDetailsDialog.js` — gedeeld formulier voor naam en personen.
+- `js/components/shoppingList.js` — expliciet genereren/hergenereren zonder auto-update.
 - `styles.css` — responsive, subtiele groene feedback en reduced-motion.
 
 ### Verificatie
@@ -1013,6 +1030,13 @@ interactie volgen later in een aparte fase.
   vandaag blijft prioritair en verborgen succesfeedback is niet klik- of focusbaar.
 - ✅ Favorieten lokaal ingelogd gecontroleerd: receptkaart opent het juiste recept,
   weekschema-details openen en sluiten met correcte knoptekst en `aria-expanded`.
+- ✅ Nieuwe generator lokaal ingelogd gecontroleerd met 6 echte favorieten: 7 van de
+  35 plekken kregen een favoriet en geen favoriet verscheen meer dan tweemaal.
+- ✅ Opslaan- en bewerkdialoog visueel gecontroleerd met vooraf ingevulde naam en
+  personen; de test is geannuleerd zodat productiegegevens niet zijn gewijzigd.
+- ✅ Boodschappenlijst gecontroleerd: na genereren wordt de knop “Hergenereren”; een
+  gewijzigde selectie toont een waarschuwing terwijl de bestaande lijst zichtbaar en
+  ongewijzigd blijft.
 
 ### Beslissingen voor vervolg
 - Eerst deze ene lus testen op gevoel en gebruik; pas daarna beslissen over

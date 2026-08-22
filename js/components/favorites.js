@@ -12,12 +12,13 @@
      gecached zodat het schema-detail snel rendert
 ============================================ */
 
-import * as Store from '../store.js?v=4.0.4';
-import * as Router from '../router.js?v=4.0.4';
+import * as Store from '../store.js?v=4.0.5';
+import * as Router from '../router.js?v=4.0.5';
 import {
   showToast, confirm, promptInput, escapeHtml, formatDateShort,
   getMealMomentLabel, getRecipeAgeLabel, WEEKDAYS, SCHEDULE_SLOTS, getSlotLabel
-} from '../utils.js?v=4.0.4';
+} from '../utils.js?v=4.0.5';
+import { promptScheduleDetails } from './scheduleDetailsDialog.js?v=4.0.5';
 
 /* Module-level cache zodat re-renders en handlers de data delen */
 let cachedFavRecipes = [];
@@ -211,6 +212,9 @@ function renderScheduleCard(schedule) {
           <button class="favorites-action favorites-action--secondary toggle-schedule-detail"
                   data-id="${schedule.id}" aria-expanded="false" aria-controls="schedule-detail-${schedule.id}">
             Details bekijken
+          </button>
+          <button class="favorites-action favorites-action--secondary btn-edit-schedule" data-id="${schedule.id}">
+            Bewerken
           </button>
           ${schedule.isActive
             ? `<button class="favorites-action favorites-action--secondary btn-deactivate-schedule" data-id="${schedule.id}">Deactiveren</button>`
@@ -410,6 +414,13 @@ export async function init() {
       return;
     }
 
+    /* Naam en aantal personen bewerken */
+    const editBtn = e.target.closest('.btn-edit-schedule');
+    if (editBtn) {
+      await handleEditSchedule(editBtn.dataset.id);
+      return;
+    }
+
     /* Weekschema activeren */
     const activateBtn = e.target.closest('.btn-activate-schedule');
     if (activateBtn) {
@@ -448,6 +459,40 @@ export async function init() {
     e.preventDefault();
     setActiveFavoritesTab(tabs[nextIndex].dataset.favoritesTab, true);
   }, { signal: favAbort.signal });
+}
+
+/* ----------------------------------------
+   WEEKSCHEMA BEWERKEN
+---------------------------------------- */
+async function handleEditSchedule(scheduleId) {
+  const schedule = cachedSchedules.find(s => s.id === scheduleId);
+  if (!schedule) return;
+
+  const details = await promptScheduleDetails({
+    title: 'Weekschema bewerken',
+    name: schedule.name,
+    persons: schedule.persons || 4,
+    submitLabel: 'Wijzigingen opslaan',
+  });
+  if (!details) return;
+
+  try {
+    await Store.updateSchedule(scheduleId, details);
+    showToast('Weekschema bijgewerkt');
+
+    const container = document.getElementById('favorites-content');
+    if (container) {
+      container.innerHTML = `
+        <div class="favorites-loading" aria-live="polite">
+          <span class="favorites-loading-bar favorites-loading-bar--title"></span>
+          <span class="favorites-loading-bar"></span>
+          <span class="sr-only">Favorieten vernieuwen...</span>
+        </div>`;
+      await init();
+    }
+  } catch (err) {
+    showToast('Fout: ' + err.message, 'error');
+  }
 }
 
 /* ----------------------------------------
