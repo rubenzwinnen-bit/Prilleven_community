@@ -1,6 +1,6 @@
-# CLAUDE.md — Pril Leven
+# AGENTS.md — Pril Leven
 
-Dit bestand geeft Claude Code (en andere AI-assistenten) de context om effectief in dit project te werken. Lees dit ALTIJD eerst voordat je code wijzigt.
+Dit bestand geeft Codex (en andere AI-assistenten) de context om effectief in dit project te werken. Lees dit ALTIJD eerst voordat je code wijzigt.
 
 ---
 
@@ -66,7 +66,7 @@ Node ≥ 20.
 
 ### Algemeen
 - **Taal:** alles in het **Nederlands** (UI, foutmeldingen, commit messages, comments waar nodig).
-- **Stijl:** terracotta `--color-primary` #C98966 als hoofdkleur en `--color-green-text` #4F7D6C (merkgroen) als tweede kleur — sinds 2026-08-01 voor **alles wat groen is**, tekst én vlakken: headers, knoppen, badges, chatbubbels, tabs, /aanraders. `--color-green-dark` #3F6558 is enkel de hover-tint. De oude vulgroenen `--color-secondary(-dark)` #98C3A4/#82BE93 zijn nagenoeg overal vervangen; gebruik ze niet meer voor nieuw werk. Zachte UI, ronding, subtiele schaduwen. Pas geen kleuren aan zonder bevestiging. Zie `js/CLAUDE.md §7`.
+- **Stijl:** terracotta `--color-primary` #C98966 als hoofdkleur en `--color-green-text` #4F7D6C (merkgroen) als tweede kleur — sinds 2026-08-01 voor **alles wat groen is**, tekst én vlakken: headers, knoppen, badges, chatbubbels, tabs, /aanraders. `--color-green-dark` #3F6558 is enkel de hover-tint. De oude vulgroenen `--color-secondary(-dark)` #98C3A4/#82BE93 zijn nagenoeg overal vervangen; gebruik ze niet meer voor nieuw werk. Zachte UI, ronding, subtiele schaduwen. Pas geen kleuren aan zonder bevestiging. Zie `js/AGENTS.md §7`.
 - **Geen frameworks toevoegen.** Geen React, Vue, Tailwind, Next.js, build tools, TypeScript. Vanilla JS blijft vanilla JS.
 - **Geen overengineering.** Kleine, gerichte wijzigingen. Geen refactors "voor de zekerheid".
 
@@ -97,25 +97,25 @@ Node ≥ 20.
 
 ---
 
-## 5. Werkwijze met Claude
+## 5. Werkwijze met Codex
 
-### Wat Claude WEL mag doen zonder vragen
+### Wat Codex WEL mag doen zonder vragen
 - Bestaande bugs fixen die duidelijk zijn.
 - Bestanden lezen om context op te bouwen.
 - Kleine UI-tweaks die ik expliciet vraag.
 - SQL migratie schrijven volgens bestaand patroon.
-- geef deze sql altijd in de Claude code chat zodat ik deze meteen kan kopiëren.
+- geef deze sql altijd in de Codex chat zodat ik deze meteen kan kopiëren.
 - Cache-buster bumpen na JS/CSS wijziging.
-- **CLAUDE.md's automatisch bijwerken** wanneer er iets wijzigt dat toekomstige sessies moet kennen: nieuwe tabel/endpoint/conventie, nieuwe env-var, nieuwe valkuil, of gedrag dat afwijkt van wat er nu in CLAUDE.md staat. Update de meest specifieke (submap-)CLAUDE.md, niet de root, tenzij het écht project-breed is. Wees beknopt — voeg één regel of bullet toe, geen lange uitleg.
+- **AGENTS.md's automatisch bijwerken** wanneer er iets wijzigt dat toekomstige sessies moet kennen: nieuwe tabel/endpoint/conventie, nieuwe env-var, nieuwe valkuil, of gedrag dat afwijkt van wat er nu in AGENTS.md staat. Update de meest specifieke (submap-)AGENTS.md, niet de root, tenzij het écht project-breed is. Wees beknopt — voeg één regel of bullet toe, geen lange uitleg.
 - **Waarschuwen wanneer het tijd is voor `/eind-sessie`.** Triggers waarop ik proactief moet melden "tijd voor `/eind-sessie`":
   - De sessie is lang en heeft veel file-edits / tool-calls gehad (sessie voelt "vol").
   - Een feature of taak is volledig afgerond en er ligt een logisch afsluitpunt.
-  - Er zijn meerdere CLAUDE.md-waardige learnings opgestapeld die nog niet zijn gesynct.
+  - Er zijn meerdere AGENTS.md-waardige learnings opgestapeld die nog niet zijn gesynct.
   - Ik merk dat antwoorden trager worden of context verloren raakt.
   - De gebruiker zegt iets als "morgen verder", "even pauze", "voor vandaag genoeg".
   Bij een trigger: één korte zin, bv. *"Tip: dit is een goed moment voor `/eind-sessie` — feature X is afgerond en er staan een paar learnings klaar voor de docs."* Niet pushen — gewoon één keer melden en dan doorwerken als de gebruiker het negeert.
 
-### Wat Claude EERST moet vragen
+### Wat Codex EERST moet vragen
 - Nieuwe dependency toevoegen aan `package.json`.
 - Database schema wijzigingen die bestaande data raken.
 - Wijzigingen aan auth/login flow.
@@ -124,7 +124,7 @@ Node ≥ 20.
 - Nieuwe API endpoints toevoegen.
 - Kleuren of design-systeem aanpassen.
 
-### Wat Claude NOOIT doet
+### Wat Codex NOOIT doet
 - Een framework introduceren of een build step toevoegen.
 - TypeScript introduceren.
 - `node_modules` of lockfile met de hand wijzigen.
@@ -185,12 +185,12 @@ Op Vercel zelf staan deze al ingesteld via project settings.
 
 **Vercel-context:** Team = `prilleven-community`. Projecten: `pril_leven_community` (productie, https://community-web.prilleven.be, `prj_zkMG5BjCYbKrdByD9MMQPs5gg2XM`) en `pril-leven-web` (`prj_9Xb3RYWEe8D4OdvDou8vkaOwMqxq` — **leeg**: geen deployments, geen domeinen, nooit live gegaan). Team-ID: `team_IMBOlGe5B7550tDd1S1aFywJ`.
 
-**Plan-tier:** sinds 2026-07-29 zowel **Vercel Pro** als **Supabase Pro**. De Hobby function-limiet (12 per deployment) geldt niet meer — zie `api/CLAUDE.md §9`. Supabase pauzeert niet meer bij inactiviteit.
+**Plan-tier:** sinds 2026-07-29 zowel **Vercel Pro** als **Supabase Pro**. De Hobby function-limiet (12 per deployment) geldt niet meer — zie `api/AGENTS.md §9`. Supabase pauzeert niet meer bij inactiviteit.
 
-**Slash commands** (in `.claude/commands/`):
+**Slash commands** (in `.Codex/commands/`):
 - `/start-sessie` — leest PLAN-TIMELINE + git, vat status samen, stelt voor wat te doen.
 - `/eind-sessie` — sync docs, update PLAN-TIMELINE, genereer handover-prompt.
-- `/update-docs` — sync CLAUDE.md's met sessie-wijzigingen.
+- `/update-docs` — sync AGENTS.md's met sessie-wijzigingen.
 - `/deploy-check` — pre-deploy sanity check (cache-buster, migraties, env-vars, gevoelige bestanden).
 
 ---
@@ -200,13 +200,12 @@ Op Vercel zelf staan deze al ingesteld via project settings.
 - **Cache-buster vergeten** = gebruikers zien oude JS/CSS. Altijd bumpen.
 - **HTML cache headers staan op no-cache, JS/CSS op s-maxage 1 jaar** (zie `vercel.json`). Daarom is de cache-buster query string essentieel.
 - **`allowed_users` vs `subscriptions`**: `allowed_users` is de huidige toegang, `subscriptions` houdt de geschiedenis bij. Webhook update beide.
-- **Toegangsverlening loopt sinds 2026-08-12 rechtstreeks via Plug&Pay**, niet meer via het CRM van Joemen. Dat CRM stuurde enkel contactvelden en vuurde nooit bij een verlenging — tussen juni en augustus 2026 kwamen er 2 `activated`-events binnen tegenover 39 `expired`, en moesten 160 einddatums met de hand hersteld worden. Zie `api/CLAUDE.md` voor de twee Plug&Pay-regels en het incasso-vinkje.
 - **RLS-fouten verschijnen als lege response** — niet als error. Bij "data komt niet binnen": eerst RLS-policy checken.
 - **Community routes** lopen via 1 catch-all rewrite naar `/api/community` — die functie doet zelf de routing.
 - **Admin-detectie** heeft een fallback (zie commit `845bd27`); breek deze niet.
 - **App-breedte** wordt globaal geclampt door `#app-content { max-width: var(--max-width) /* 1140px */ }`. De landing-page (3-koloms hub) overschrijft dat via `#app-content:has(.home-hub--tri) { max-width: none }` en `body.is-hub .header-inner { max-width: none }`. Gebruik dezelfde `body.is-hub` of `:has()`-hook als je later andere pagina's de volle browserbreedte wilt geven.
 - **Chatruimtes** (`/api/chat-rooms/*`) lopen via 1 catch-all rewrite, vergelijkbaar met community. Routing zit in `api/chat-rooms.mjs::matchRoute()`.
-- **`/aanraders` is publiek en server-rendered** (`api/aanraders.mjs`) — géén SPA-route, géén login, eigen `aanraders.css` met eigen cache-buster (`CSS_VERSION` in de function, niet de app-versie). De rewrites staan vóór de SPA-catch-all in `vercel.json`; zet nieuwe publieke pagina's daar ook vóór. Zie `api/CLAUDE.md`.
+- **`/aanraders` is publiek en server-rendered** (`api/aanraders.mjs`) — géén SPA-route, géén login, eigen `aanraders.css` met eigen cache-buster (`CSS_VERSION` in de function, niet de app-versie). De rewrites staan vóór de SPA-catch-all in `vercel.json`; zet nieuwe publieke pagina's daar ook vóór. Zie `api/AGENTS.md`.
 - **Publieke URL staat op twee plekken**: `CANONICAL_ORIGIN` in `api/aanraders.mjs` en de `Sitemap:`-regel in `robots.txt` — bij een domeinwijziging altijd beide. Nu `community-web.prilleven.be`; de bedoeling is `community.prilleven.be`, maar daar draait nog **Kollab** (versie 1 van de community, extern platform via `clientportal.ludicrous.cloud`). Die naam pas overnemen bij de migratie van v1 naar deze app, niet eerder. `/robots.txt` is statisch, `/sitemap.xml` loopt via een rewrite naar `/api/aanraders?sitemap=1`.
 - **`eerste_hapjes_allergen_doses`** heeft UNIQUE `(child_id, allergen_key, dose_number)` + CHECK `dose_number BETWEEN 1 AND 3`. Bij bulk-rename/merge van allergen-keys (bv. `ei-geel`+`ei-wit` → `kippen-ei`) eerst constraint droppen, dedup-delete uitvoeren, dan constraint herstellen — een tijdelijke `dose_number`-offset is onmogelijk.
 - **Eetmomenten** moeten altijd de filter-namen zijn (`ochtend, fruit moment, middag, snack, avond` — zie `MEAL_MOMENTS`). CSV-import normaliseert via `normalizeMealMoment()` (utils.js): synoniemen (`lunch → middag`) worden gemapt, onbekende waarden gedropt. Een afwijkende waarde in `recipes.meal_moments` krijgt geen min-age-fallback en toont een ruw label.

@@ -40,7 +40,7 @@ Pril Leven heeft historisch **twee** parallel-lopende auth-systemen. Begrijp het
 
 | Bestand | Rol |
 |---|---|
-| `store.js` | Legacy data-laag (receptenboek, ratings, comments, favorites, schedules). Heeft eigen 30s in-memory cache. Bevat `getCurrentUser`, `setCurrentUser`, `isAdmin`, `refreshAdminStatus`. Roept Supabase rechtstreeks aan via `supabaseFetch()`. |
+| `store.js` | Legacy data-laag (receptenboek, ratings, comments, favorites, schedules) + lokale Cooked it-previewstate. Heeft eigen 30s in-memory cache. Bevat `getCurrentUser`, `setCurrentUser`, `isAdmin`, `refreshAdminStatus`. Roept Supabase rechtstreeks aan via `supabaseFetch()`. |
 | `supabase.js` | Supabase REST + Storage + Auth helpers. Hardcoded `SUPABASE_URL` + `SUPABASE_ANON_KEY` (publiek = OK). Bevat: `supabaseFetch`, storage helpers (`supabaseStorageUpload`, `uploadIngredientIcon`, …), auth (`authSignUp`, `authSignIn`, `authResetPassword`, `authUpdatePassword`, `markUserRegistered`, `checkAllowedUser`, `checkCanSignUp`), sessie (`sessionGet/Set/Clear/RefreshIfNeeded`), subscription-status fetcher. |
 | `router.js` | Hash-gebaseerde SPA-router. `on(path, handler)`, `navigate(path)`, `init()`, `getCurrentPath()`, `hasHistory()`. Bewaart scroll-positie in `sessionStorage` per pad. |
 | `utils.js` | Helpers: `showToast`, `confirm`, `promptInput`, datum-formatters, sterren-render, `escapeHtml`, `nl2br`, `formatRelativeTime`, `colorFromSeed`, `initialsFromName`, `processImageForUpload` (EXIF strip + resize naar max 1920px JPEG q=0.85). Leeftijd-helpers: `getRecipeMinAge(recipe)` (expliciete `minAgeMonths` óf min van de eetmoment-minima), `getRecipeAgeLabel(recipe)` ("vanaf X mnd" of `null`), `AGE_FILTER_OPTIONS` (unieke minima `[6,7,9,10]`). Constanten: `ALLERGENS`, `MEAL_MOMENTS`, `MEAL_MOMENT_MIN_AGE` (ochtend 9, fruit moment 7, middag 6, snack 10, avond 6), `SCHEDULE_SLOTS`, `WEEKDAYS`. |
@@ -61,8 +61,8 @@ Pril Leven heeft historisch **twee** parallel-lopende auth-systemen. Begrijp het
 | `header.js` | Header met logo + avatar-pill + uitlogknop + notificatie-bel. Cachet community-profiel in `localStorage['community.profile.cache.v1']` om email-flicker bij navigatie te vermijden. Bel-logica (polling, badge, dropdown) zit inline in dit component; losse pagina's gebruiken `headerBellStandalone.js`. |
 | `nav.js` | Hoofdnavigatie. ADMIN_ITEMS ondersteunt zowel `path` (hash-route via Router) als `href` (externe/standalone link, bv. `/admin-chat.html`). |
 | `home.js` | Landingspagina (hub). |
-| `recipeCard.js`, `recipeList.js`, `recipeDetail.js`, `recipeForm.js` | Recepten. Leeftijd-badge (groen ovaal `.recipe-age-badge`, "vanaf X mnd" uit `getRecipeAgeLabel`) staat naast de titel op de kaart en rechts naast de "Informatie"-titel op het detail (`--lg`-variant). `recipeList.js` heeft een multi-select leeftijdsfilter (pills `.age-pill`, state `selectedAges`, matcht op `getRecipeMinAge`). |
-| `weekSchedule.js` | Weekschema (5 slots × 7 dagen). |
+| `recipeCard.js`, `recipeList.js`, `recipeDetail.js`, `recipeForm.js` | Recepten. Leeftijd-badge (groen ovaal `.recipe-age-badge`, "vanaf X mnd" uit `getRecipeAgeLabel`) staat naast de titel op de kaart en rechts naast de "Informatie"-titel op het detail (`--lg`-variant). `recipeList.js` heeft een multi-select leeftijdsfilter (pills `.age-pill`, state `selectedAges`, matcht op `getRecipeMinAge`). `recipeDetail.js` toont bij een recept uit het actieve weekschema de zachte Cooked it-veegactie; bij herhaling kiest die eerst een ongekookt slot van vandaag, daarna het reeds afgeronde slot van vandaag (voor zichtbare undo), en pas zonder voorkomen vandaag het eerste ongekookte slot. |
+| `weekSchedule.js` | Weekschema (5 slots × 7 dagen). Het actieve schema toont de lokale Cooked it-status per slot en `Pril Ritme` op basis van unieke kookdagen (doel: 3). Luistert ook naar de `storage`-event zodat een in een ander tabblad afgerond gerecht zichtbaar wordt. |
 | `shoppingList.js` | Boodschappenlijst gegenereerd uit actief schema. |
 | `favorites.js` | Favoriete recepten. |
 | `importRecipes.js` | Bulk JSON import (admin). |
@@ -121,6 +121,7 @@ const res = await fetch('/api/profile', {
 - `Store.refreshAdminStatus()` → fetch + cache. Roep aan na login.
 - `Store.clearAdminCache()` → bij logout.
 - `Store.clearCache()` → wis alle in-memory caches (bv. na een grote import).
+- Cooked it-preview: `Store.markScheduleMealCooked()`, `unmarkScheduleMealCooked()`, `isScheduleMealCooked()` en `getCookingWeekProgress()`. Opslag is `localStorage['prilleven_cooked_meals_<user>']`, per maandag-startende kalenderweek; meerdere gerechten op één datum tellen als één kookdag. Dit is bewust nog geen Supabase/cross-device state.
 
 ### 4.5 Sessie
 - `sessionGet()` → het volledige sessie-object of `null`.
@@ -175,7 +176,7 @@ Vervang ALLE voorkomens van de huidige versie (bv. `?v=2.1.0`) met de nieuwe (bv
 3. Alle bestanden in `/js/*.js` en `/js/components/*.js` met imports.
 
 Snelle check: `grep -rn "?v=" --include="*.js" --include="*.html" | grep -v <huidige versie>` — dat hoort niets op te leveren.
-**Huidige versie: `3.5.2` voor alle module-imports, `3.5.3` voor `styles.css`.** `aanraders.css` en `aanraders-filters.js` hebben eigen versies (`CSS_VERSION` / `FILTER_JS_VERSION` in `api/aanraders.mjs`) omdat de publieke pagina ze los uitlevert.
+**Huidige versie: `4.0.1` voor alle module-imports en `styles.css`.** `aanraders.css` en `aanraders-filters.js` hebben eigen versies (`CSS_VERSION` / `FILTER_JS_VERSION` in `api/aanraders.mjs`) omdat de publieke pagina ze los uitlevert.
 Een vind-vervang over alle bestanden tegelijk werkt prima.
 
 ---

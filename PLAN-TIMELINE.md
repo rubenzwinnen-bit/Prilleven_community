@@ -812,3 +812,192 @@ Cache-buster `3.5.2`/`3.5.3` → **`4.0.0`** (44 bestanden, 137 verwijzingen). `
 - ⬜ Content: lange beschrijvingen, downloadbestanden, Crisp-affiliatelink.
 - ⬜ Categorie **Kookboeken** staat op `binnenkort` maar bevat een zichtbaar product — blijft verborgen.
 - ⬜ `.home-tile--terracotta-light` in `styles.css` is ongebruikt.
+
+---
+
+## 2026-08-05 (vervolg) — URL-strategie na de release, en de overgang weg bij Joemen
+
+Geen code deze fase — alleen beslissingen en verkenning. Vastgelegd omdat het de planning voor november bepaalt.
+
+### Wat we hebben uitgezocht
+- **`prilleven.be` draait WordPress op nginx** (bij Combell, `188.208.37.198`), gebouwd en beheerd door **Joemen**. `wp-json` antwoordt; `/community` en `/aanraders` bestaan er nog niet (enkel de www→non-www 301, daarna 404). Die paden zijn dus vrij.
+- **`community.prilleven.be` draait Kollab** — wit-label klantenportaal/community, geleverd via Ludicrous (`clientportal.ludicrous.cloud`), onderliggend platform ClientClub/Revex. De naam "Kollab" komt uit het `manifest.json` van de app zelf; Joemen verkoopt het mogelijk onder een andere naam.
+- **`link.prilleven.be` → `brand.ludicrous.cloud`** — zelfde leverancier, functie onbekend. Uit te vragen bij Joemen vóór de overgang.
+- **Er staat al een `google-site-verification`-TXT op `prilleven.be`.** Iemand heeft dus al een Search Console-property; waarschijnlijk Joemen. Overdracht vragen is meer waard dan zelf vanaf nul beginnen.
+- **Alle 10 live productpagina's hebben een werkende `og:image`** (plus titel en beschrijving). Gedeelde links tonen dus een nette preview — belangrijk, want het verkeer komt voorlopig van Instagram.
+
+### Beslissingen
+- **Geen reverse proxy, wel redirects.** `prilleven.be/aanraders` op het hoofddomein zou een reverse proxy vereisen (DNS kent geen paden); op gedeelde Combell-hosting is dat vrijwel zeker niet mogelijk. De hele app onder `/community` hangen is bovendien een brede refactor: 137 absolute paden, `vercel.json`-rewrites, hash-router, en `/api/*` zou botsen met WordPress. Niet doen. In plaats daarvan twee redirects in WordPress.
+- **Redirects voorlopig als 302, niet 301.** Het doel verandert in november; een 301 wordt hardnekkig gecachet door browsers en krijg je er niet meer uit. Na de domeinmigratie omzetten naar 301.
+- **`/community`-redirect nog niet instellen** zolang leden verdeeld zijn over Kollab en de nieuwe app — anders stuur je een deel van je leden naar een app waar ze geen account hebben. Openstaande vraag: welke community gebruiken de leden vandaag?
+- **Search Console uitgesteld tot november.** Anneleen heeft er geen account voor, en het is een meetinstrument — Google indexeert ook zonder. Opzetten samen met de domeinmigratie, dan staat meteen de juiste URL erin. De SEO uit stap 9 blijft intussen gewoon werken en kost niets.
+- **Domeinmigratie vergt géén reverse proxy.** Een hostnaam wijst naar één plek; `community.prilleven.be` overnemen is één CNAME wijzigen in Combell. Bevestigd dat Combell de zone beheert (de records in het paneel komen overeen met wat publiek resolvet). Het echte werk zit in de leveranciersovergang, niet in de DNS.
+
+### Meeting met Joemen (gepland 2026-08-06) — te vragen
+Volgorde bewust: begin met de datavraag, niet met de mededeling dat jullie stoppen.
+1. **Tot welke datum toegang tot Kollab na de laatste betaling?** Schriftelijk laten bevestigen. Grootste risico van de hele overgang.
+2. Welke data is exporteerbaar en in welk formaat — ledenlijst met e-mailadressen, posts, bestanden, cursusmateriaal?
+3. Wat gebeurt er met onze data na beëindiging, en wanneer wordt die verwijderd?
+4. Opzegtermijn — wanneer moet formeel opgezegd worden om november te halen?
+5. Hangt er aan jullie kant nog iets aan `community.prilleven.be` (SSL, mail, integraties)?
+6. Wat is `link.prilleven.be` / `brand.ludicrous.cloud`?
+7. Adminaccount op WordPress, of willen zij de twee redirects instellen?
+8. Blijft de WordPress-site na november bij Joemen, of nemen we die ook over?
+9. Op wiens hostingaccount draait de site, en zitten er betaalde plugin-/themalicenties van Joemen op?
+10. Ondersteunt de hosting een reverse proxy? (Bepaalt of `/aanraders` ooit écht op het hoofddomein kan.)
+11. Van wie is de bestaande Google Search Console-property, en kan die overgedragen worden?
+12. Bestaan er Analytics-/Pixel-accounts, en op wiens naam?
+13. Op wiens naam staan domeinregistratie en Combell-account?
+14. Wie licht de leden in over de overstap, en wanneer?
+
+### Volgende stappen
+1. **Meeting met Joemen** — bovenstaande vragen, met schriftelijke bevestiging van de einddatum en de data-export.
+2. **`community.prilleven.be` weghalen uit Vercel** (staat er nu als ongeldige configuratie; blijft het staan, dan kan iemand het "repareren" via Combell en ligt Kollab eruit).
+3. **Redirect `prilleven.be/aanraders` → `community-web.prilleven.be/aanraders`** (302) laten instellen zodra er WordPress-toegang is.
+
+### Open vragen
+- ⬜ **Welke community gebruiken de leden vandaag** — Kollab, de nieuwe app, of beide? Bepaalt of en waarheen de `/community`-redirect wijst.
+- ⬜ Ondersteunt de Combell-hosting een reverse proxy? (Vraag 10 hierboven.)
+- ⬜ Bestaat er een overdraagbare Search Console-property? (Vraag 11.)
+
+---
+
+## 2026-08-12 — Betaalwebhook weg bij Joemen, rechtstreeks van Plug&Pay
+
+Commits `0b121e9` (merge) en de grendel erna. Geen cache-buster-bump: enkel backend.
+
+### Wat de aanleiding was
+De audit-tabel legde een eenrichtingsklep bloot. Per maand `activated` / `expired`:
+april 34/12, mei 37/13, juni **1**/14, juli **1**/9, augustus **0**/16. De
+"toegang weg"-workflow bleef vuren, de betaalkant niet. Verlengingen kwamen dus
+nooit binnen — precies waarom op 31 juli 160 einddatums met de hand hersteld
+moesten worden. Dat zou elke maand terugkomen.
+
+Oorzaak: de webhook kwam niet van Plug&Pay maar uit het CRM van Joemen
+(`workflow: "Community toegang Weg"`, `customData: {email}`, `triggerData`).
+Één bruikbaar veld — het e-mailadres. Geen bedrag, cyclus of incassodatum.
+
+### Vandaag afgerond
+- ✅ **`api/webhooks/plugpay.mjs` herschreven** tot een echte Plug&Pay-ontvanger.
+  Alles wat op Joemens CRM-payload was afgestemd is eruit.
+- ✅ **Beveiligd.** `PLUGPAY_WEBHOOK_BEARER` als `?key=` in de URL (Plug&Pay laat bij
+  een webhook-actie geen eigen headers toe) of als Bearer-header.
+- ✅ **JSON én form-urlencoded**, met bracket-notatie (`data[customer][email]`)
+  uitgeklapt tot een genest object — we wisten vooraf niet welk formaat komt.
+- ✅ **Elke call wordt gelogd**, ook bij auth- of parsefout. Voorheen gaf een
+  verkeerd formaat een 400 vóór de logregel: geen enkel spoor.
+- ✅ **`pickNextDate()`** haalt de echte incassodatum op; ontbreekt die, dan
+  fallback per cyclus met `fallback_datum:<cyclus>` in de audit-log.
+- ✅ **Grendel tegen een datum in het verleden** bij een betaling — anders sluit
+  een lid zich met zijn eigen betaling buiten.
+- ✅ **`?dryrun=1`** om te testen zonder `allowed_users` te raken.
+- ✅ Getest met tien nagebootste payloads (echte datum, form-encoded, ontbrekende
+  datum, jaarcyclus, geëindigd abonnement, foute sleutel, ontbrekende e-mail,
+  type uit de body, datum in verleden en toekomst). Na de deploy op productie
+  geverifieerd: POST zonder of met foute sleutel geeft 401 en belandt in
+  `subscription_events` met `error: auth_geweigerd`.
+- ✅ **Twee regels aangemaakt in Plug&Pay** (Instellingen → Koppelingen):
+  "Bestelling betaald" → `?type=activated`, en "Abonnement geëindigd" → `?type=expired`.
+
+### Het endpoint stond open
+`PLUGPAY_WEBHOOK_BEARER` stond **helemaal niet** op Vercel — het project had enkel
+vijf variabelen. Zonder secret valt de code terug op trust-mode en accepteert hij
+élke POST. `/api/webhooks/plugpay` is publiek en gaf 200. Wie de URL kende, kon
+zichzelf een abonnement geven of dat van een ander intrekken. Niet uitgeprobeerd
+(dat zou echte data wijzigen); vastgesteld uit de ontbrekende variabele plus de
+trust-mode-tak in de code. Inmiddels gezet als Sensitive, Production + Preview.
+
+### Beslissingen
+- **Plug&Pay als bron, niet MailBlue.** MailBlue weet alleen wat Plug&Pay ernaartoe
+  duwt; elke tussenschakel is een plek waar data verdwijnt — precies hoe de payload
+  via Joemen tot één veld was uitgedund. Plug&Pay is de kassa. (Plug&Pay heeft
+  overigens ActiveCampaign als directe actie: de omweg via Joemen was nooit nodig.)
+- **Niet in de MailBlue-onboarding hangen.** Die automation start één keer per
+  contact; verlengingen zouden er nooit doorheen komen. Zou dezelfde storing
+  opnieuw bouwen, alleen bij een andere leverancier.
+- **Stripe afgevallen.** Dat is een betaalprovider, geen laag erboven. Overstappen
+  betekent 157 lopende SEPA-machtigingen opnieuw laten afsluiten. Een
+  bedrijfsbeslissing over de kassa, geen oplossing voor een webhook.
+- **Klassieke "Webhook", niet "Webhook V2".** V2 stuurt enkel `trigger_type` +
+  een id en dwingt een API-call terug naar Plug&Pay (extra sleutel, extra faalpunt).
+  Omkeerbaar: het is één dropdown.
+- **Geen testbestelling mogelijk** — de admin-optie staat op de checkoutpagina zelf
+  (alleen zichtbaar voor ingelogde beheerders), niet in het beheerscherm, en kwam
+  er niet uit. Daarom de grendel tegen een datum in het verleden: de gevaarlijkste
+  faalmodus afgedekt zonder test.
+- **`dryrun` asymmetrisch ingezet.** Van de betalingsregel gaat hij eraf: de
+  slechtste uitkomst is de +30-dagen-fallback, exact wat het oude systeem deed.
+  Op de `expired`-regel blijft hij staan: daar is de slechtste uitkomst dat een
+  betalend lid zijn toegang verliest, en we weten nog niet in welke gevallen
+  Plug&Pay "Abonnement geëindigd" afvuurt (bij een wissel van abonnementsvorm?).
+
+### Volgende stappen
+1. **`&dryrun=1` weghalen** uit de URL van de regel "Bestelling betaald".
+2. **Eerste echte betaling afwachten** — die is de test. De volledige payload komt
+   in `subscription_events`; daaruit blijkt of Plug&Pay de incassodatum meestuurt.
+   Grep op `fallback_datum:` — komt dat voor, dan zit de datum er niet in en moeten
+   we alsnog naar Webhook V2 + de API (sleutel via Instellingen → Ontwikkelaars).
+3. **Joemens workflows uitzetten aan hún kant.** Ze krijgen sinds 12/08 een 401;
+   elke poging staat in de log als `auth_geweigerd`, dus daaraan zie je of ze nog vuren.
+
+### Niet vergeten / open
+- ⬜ **`dryrun` staat nog op de betalingsregel** — zolang dat zo is krijgt niemand
+  automatisch toegang en moet je nieuwe leden met de hand toevoegen.
+- ⬜ **`dryrun` op de `expired`-regel** bewust laten staan tot we in de log zien
+  wanneer die trigger vuurt en bij wie.
+- ⬜ **Novemberchecklist aanvullen**: de toegangsverlening hing tot vandaag aan
+  Joemen. Dat staat er nog niet in en is een harde afhankelijkheid bij de overgang.
+- ⬜ **Vraag 6 aan Joemen blijft staan**: wat is `link.prilleven.be` /
+  `brand.ludicrous.cloud`?
+- ⬜ `SUPABASE_ANON_KEY` ontbreekt op Vercel — geen probleem (`auth.mjs` valt terug
+  op de service-role key), maar het verklaart het documentatiegat uit V4.0.0.
+- ⬜ Project `pril-leven-web` heeft drie variabelen op "Needs Attention". Het is leeg
+  en nooit live geweest; opruimen mag.
+
+---
+
+## 2026-08-22 — Pril Ritme / Cooked it frontend-preview
+
+Branch: **`codex/pril-ritme-gamification`**. Eerste afgebakende gamificationlus;
+bewust nog geen punten, badges, leaderboard of boodschappenlijst.
+Deze fase betreft uitsluitend de **website**; de mobiele app en native swipe-down-
+interactie volgen later in een aparte fase.
+
+### Gebouwd
+- ✅ Recepten uit het actieve weekschema krijgen na de bereidingswijze een zachte
+  veegactie: **“Veeg om af te ronden” → “Cooked it!”**, met korte groene feedback
+  en een knop om ongedaan te maken.
+- ✅ Het actieve weekschema toont een groen vinkje op afgeronde slots en een compact
+  **Pril Ritme** van 3 unieke kookdagen. Meerdere gerechten op dezelfde dag tellen
+  maar één keer.
+- ✅ Bij een recept dat meermaals in het schema staat kiest de actie eerst een
+  ongekookt slot van vandaag, anders het eerste nog ongekookte slot.
+- ✅ State staat voorlopig per gebruiker en kalenderweek in
+  `localStorage['prilleven_cooked_meals_<user>']`; geen databasewijziging en dus
+  nog niet cross-device. `storage`-events houden een open weekschema in een ander
+  tabblad synchroon.
+- ✅ App-cachebuster volledig gelijkgetrokken naar **`4.0.1`** (137 HTML/JS-imports)
+  om dubbele module-instanties te vermijden.
+
+### Gewijzigde kernbestanden
+- `js/store.js` — kookregistratie, weekstart op maandag, unieke-dagtelling.
+- `js/components/recipeDetail.js` — Cooked it-flow en slotkeuze.
+- `js/components/weekSchedule.js` — Pril Ritme en afgeronde slots.
+- `styles.css` — responsive, subtiele groene feedback en reduced-motion.
+
+### Verificatie
+- ✅ `node --check` op de gewijzigde JS-bestanden.
+- ✅ Store-test: markeren, twee gerechten op één dag = één kookdag, ongedaan maken.
+- ✅ `git diff --check` schoon.
+- ✅ Ingelogde lokale websitecontrole met een echt actief weekschema: gepland gerecht
+  openen, afronden, vinkje in schema, `0 → 1 van 3`, twee gerechten op dezelfde dag
+  blijven `1 van 3`, en beide afrondingen via de UI ongedaan gemaakt.
+- ✅ Desktopweergave visueel gecontroleerd in de bestaande website-opmaak. Tijdens
+  de test een herhaalrecept/undo-randgeval gevonden en opgelost: een voorkomen van
+  vandaag blijft prioritair en verborgen succesfeedback is niet klik- of focusbaar.
+
+### Beslissingen voor vervolg
+- Eerst deze ene lus testen op gevoel en gebruik; pas daarna beslissen over
+  Supabase-opslag, langere streaks of extra gamificationoppervlakken.
+- Definitieve opslag vereist later een Supabase-tabel met RLS; niet stilzwijgend
+  de localStorage-preview als productiebron blijven gebruiken.

@@ -12,9 +12,9 @@
    - init() haalt alle data parallel op via Promise.all
 ============================================ */
 
-import * as Store from '../store.js?v=4.0.0';
-import * as Router from '../router.js?v=4.0.0';
-import { getChildren } from '../childrenApi.js?v=4.0.0';
+import * as Store from '../store.js?v=4.0.1';
+import * as Router from '../router.js?v=4.0.1';
+import { getChildren } from '../childrenApi.js?v=4.0.1';
 import {
   showToast, escapeHtml, formatDate,
   renderStarsDisplay, renderStarsInteractive,
@@ -22,7 +22,7 @@ import {
   normalizeAllergen, ageInMonths, getRecipeMinAge, getRecipeAgeLabel,
   initialsFromName, colorFromSeed,
   WEEKDAYS, SCHEDULE_SLOTS
-} from '../utils.js?v=4.0.0';
+} from '../utils.js?v=4.0.1';
 
 /* ----------------------------------------
    ALGEMENE BABYHAPJE-UITLEG
@@ -125,24 +125,41 @@ export async function init(recipeId) {
   /* ---- Actief schema info bouwen ---- */
   let activeInfo = null;
   if (activeSchedule) {
-    const daySlots = [];
+    const scheduleEntries = [];
     WEEKDAYS.forEach(day => {
       SCHEDULE_SLOTS.forEach(slot => {
         if (activeSchedule.days?.[day]?.[slot.id] === recipeId) {
           const dayLabel = day.charAt(0).toUpperCase() + day.slice(1);
-          daySlots.push(`${dayLabel} - ${getSlotLabel(slot.id)}`);
+          scheduleEntries.push({
+            day,
+            slot: slot.id,
+            label: `${dayLabel} - ${getSlotLabel(slot.id)}`,
+          });
         }
       });
     });
 
-    if (daySlots.length > 0) {
+    if (scheduleEntries.length > 0) {
+      const today = WEEKDAYS[(new Date().getDay() + 6) % 7];
+      const isEntryCooked = entry => Store.isScheduleMealCooked(
+        activeSchedule.id, entry.day, entry.slot, recipeId
+      );
+      const todayEntries = scheduleEntries.filter(entry => entry.day === today);
+      const cookEntry =
+        todayEntries.find(entry => !isEntryCooked(entry)) ||
+        todayEntries[0] ||
+        scheduleEntries.find(entry => !isEntryCooked(entry)) ||
+        scheduleEntries[0];
       const X = Math.max(1, Math.ceil(activeSchedule.persons / (recipe.portions || 1)));
       activeInfo = {
+        scheduleId: activeSchedule.id,
         persons: activeSchedule.persons,
         portions: recipe.portions || 1,
         X,
-        occurrences: daySlots.length,
-        daySlots,
+        occurrences: scheduleEntries.length,
+        daySlots: scheduleEntries.map(entry => entry.label),
+        cookEntry,
+        isCooked: isEntryCooked(cookEntry),
         selectedDays: 1,
       };
     }
@@ -253,6 +270,68 @@ function buildFamilyLayerHtml(recipe, children = []) {
       <p class="text-muted family-layer-note">
         Informatief, geen medisch advies.
       </p>
+    </div>
+  `;
+}
+
+function cookingRhythmFeedback(progress) {
+  if (progress.days >= progress.target + 1) {
+    return 'Je houdt je Pril Ritme mooi vast.';
+  }
+  if (progress.days >= progress.target) {
+    return 'Je derde kookdag deze week — je Pril Ritme is rond.';
+  }
+  if (progress.days === 2) {
+    return 'Twee kookdagen deze week — nog één voor je Pril Ritme.';
+  }
+  return 'Je eerste kookdag van deze week.';
+}
+
+function buildCookingCompletionHtml(activeInfo) {
+  if (!activeInfo?.cookEntry) return '';
+
+  const progress = Store.getCookingWeekProgress();
+  const cookedClass = activeInfo.isCooked ? ' is-cooked' : '';
+  const progressValue = activeInfo.isCooked ? 100 : 0;
+
+  return `
+    <div class="recipe-section recipe-cook-section${cookedClass}" id="recipe-cook-section">
+      <div class="recipe-cook-heading">
+        <div>
+          <h3>Klaar met koken?</h3>
+          <p>Rond het gerecht af met één beweging.</p>
+        </div>
+        <span class="recipe-cook-slot">${escapeHtml(activeInfo.cookEntry.label)}</span>
+      </div>
+
+      <div class="recipe-cook-slider${cookedClass}" id="recipe-cook-slider"
+           style="--cook-progress:${progressValue}%">
+        <span class="recipe-cook-slider-label" id="recipe-cook-slider-label">
+          ${activeInfo.isCooked ? 'Cooked it! &#10003;' : 'Veeg om af te ronden &#8594;'}
+        </span>
+        <span class="recipe-cook-knob" id="recipe-cook-knob" aria-hidden="true">
+          ${activeInfo.isCooked ? '&#10003;' : '&#8594;'}
+        </span>
+        <input id="recipe-cook-range" type="range" min="0" max="100"
+               value="${progressValue}"
+               aria-label="Veeg naar rechts om dit gerecht als gemaakt te markeren"
+               ${activeInfo.isCooked ? 'disabled' : ''}>
+      </div>
+
+      <div class="recipe-cook-success${activeInfo.isCooked ? ' is-visible' : ''}"
+           id="recipe-cook-success" aria-live="polite"
+           aria-hidden="${activeInfo.isCooked ? 'false' : 'true'}">
+        <span class="recipe-cook-success-icon" aria-hidden="true">&#10003;</span>
+        <div>
+          <strong>Cooked it!</strong>
+          <small id="recipe-cook-feedback">${escapeHtml(cookingRhythmFeedback(progress))}</small>
+        </div>
+        <button class="recipe-cook-undo" id="recipe-cook-undo" type="button">Ongedaan maken</button>
+      </div>
+
+      <span class="recipe-cook-spark" aria-hidden="true">&#9670;</span>
+      <span class="recipe-cook-spark" aria-hidden="true">&#9670;</span>
+      <span class="recipe-cook-spark" aria-hidden="true">&#9670;</span>
     </div>
   `;
 }
@@ -412,6 +491,8 @@ function buildDetailHtml(recipe, isFav, avgRating, userRating, comments, activeI
         ${BABY_PREP_HTML}
       </div>
 
+      ${buildCookingCompletionHtml(activeInfo)}
+
       <div class="recipe-section">
         <h3>Beoordeling</h3>
         <div class="mb-2">
@@ -513,6 +594,80 @@ function attachListeners(recipeId, initialRating = 0, recipe = null, activeInfo 
         }
       });
     });
+  }
+
+  /* Cooked it — alleen zichtbaar wanneer dit recept in het actieve
+     weekschema staat. De preview bewaart de afronding lokaal. */
+  if (activeInfo?.cookEntry) {
+    const section = document.getElementById('recipe-cook-section');
+    const slider = document.getElementById('recipe-cook-slider');
+    const range = document.getElementById('recipe-cook-range');
+    const label = document.getElementById('recipe-cook-slider-label');
+    const knob = document.getElementById('recipe-cook-knob');
+    const success = document.getElementById('recipe-cook-success');
+    const feedback = document.getElementById('recipe-cook-feedback');
+    const undo = document.getElementById('recipe-cook-undo');
+    const entry = activeInfo.cookEntry;
+    let isCooked = activeInfo.isCooked;
+
+    const meal = {
+      scheduleId: activeInfo.scheduleId,
+      day: entry.day,
+      slot: entry.slot,
+      recipeId,
+    };
+
+    const setSliderProgress = value => {
+      const safeValue = Math.max(0, Math.min(100, Number(value) || 0));
+      slider?.style.setProperty('--cook-progress', `${safeValue}%`);
+    };
+
+    const syncCookedState = () => {
+      const progress = Store.getCookingWeekProgress();
+      section?.classList.toggle('is-cooked', isCooked);
+      slider?.classList.toggle('is-cooked', isCooked);
+      success?.classList.toggle('is-visible', isCooked);
+      success?.setAttribute('aria-hidden', String(!isCooked));
+      if (label) label.innerHTML = isCooked ? 'Cooked it! &#10003;' : 'Veeg om af te ronden &#8594;';
+      if (knob) knob.innerHTML = isCooked ? '&#10003;' : '&#8594;';
+      if (feedback) feedback.textContent = cookingRhythmFeedback(progress);
+      if (range) {
+        range.disabled = isCooked;
+        range.value = isCooked ? '100' : '0';
+      }
+      setSliderProgress(isCooked ? 100 : 0);
+    };
+
+    const completeMeal = () => {
+      if (isCooked) return;
+      Store.markScheduleMealCooked(meal);
+      isCooked = true;
+      syncCookedState();
+      section?.classList.remove('is-celebrating');
+      void section?.offsetWidth;
+      section?.classList.add('is-celebrating');
+      window.setTimeout(() => section?.classList.remove('is-celebrating'), 900);
+    };
+
+    range?.addEventListener('input', () => {
+      setSliderProgress(range.value);
+      if (Number(range.value) >= 88) completeMeal();
+    });
+
+    range?.addEventListener('change', () => {
+      if (!isCooked) {
+        range.value = '0';
+        setSliderProgress(0);
+      }
+    });
+
+    undo?.addEventListener('click', () => {
+      Store.unmarkScheduleMealCooked(meal);
+      isCooked = false;
+      syncCookedState();
+    });
+
+    syncCookedState();
   }
 
   /* Favoriet toggle */

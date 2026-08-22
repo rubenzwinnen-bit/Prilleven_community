@@ -8,7 +8,7 @@
    omdat dit een lokale voorkeur is.
 ============================================ */
 
-import { supabaseFetch, supabaseStorageDelete } from './supabase.js?v=4.0.0';
+import { supabaseFetch, supabaseStorageDelete } from './supabase.js?v=4.0.1';
 
 /* ============================================
    IN-MEMORY CACHE LAAG
@@ -126,7 +126,7 @@ export async function refreshAdminStatus() {
     return false;
   }
   try {
-    const { fetchSubscriptionStatus } = await import('./supabase.js?v=4.0.0');
+    const { fetchSubscriptionStatus } = await import('./supabase.js?v=4.0.1');
     const status = await fetchSubscriptionStatus(user);
     const v = !!status?.is_admin;
     _adminCache = { email: user, value: v, loaded: true };
@@ -584,6 +584,116 @@ export async function getFavoriteCountsMap() {
   }
   _cacheSet(key, map);
   return map;
+}
+
+/* ============================================
+   GEKOOKTE GERECHTEN (FRONTEND-PREVIEW)
+   Lokaal per gebruiker en per kalenderweek.
+   Zo kan de Cooked it-flow getest worden zonder
+   al productiedata of een nieuwe tabel toe te voegen.
+============================================ */
+const COOKED_MEALS_KEY_PREFIX = 'prilleven_cooked_meals_';
+export const COOKING_RHYTHM_TARGET = 3;
+
+function localDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function currentWeekStart(date = new Date()) {
+  const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const daysSinceMonday = (monday.getDay() + 6) % 7;
+  monday.setDate(monday.getDate() - daysSinceMonday);
+  return localDateKey(monday);
+}
+
+export function getCookingStateStorageKey() {
+  return `${COOKED_MEALS_KEY_PREFIX}${getCurrentUser() || 'anoniem'}`;
+}
+
+function readCookedMeals() {
+  try {
+    const raw = localStorage.getItem(getCookingStateStorageKey());
+    const meals = raw ? JSON.parse(raw) : [];
+    return Array.isArray(meals) ? meals : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCookedMeals(meals) {
+  localStorage.setItem(getCookingStateStorageKey(), JSON.stringify(meals));
+  window.dispatchEvent(new CustomEvent('prilleven:cooking-state-changed'));
+}
+
+/** Gekookte gerechten van de lopende week. */
+export function getCurrentWeekCookedMeals() {
+  const weekStart = currentWeekStart();
+  return readCookedMeals().filter(meal => meal.weekStart === weekStart);
+}
+
+/** Controleer één concrete plaats in het actieve weekschema. */
+export function isScheduleMealCooked(scheduleId, day, slot, recipeId) {
+  return getCurrentWeekCookedMeals().some(meal =>
+    meal.scheduleId === scheduleId &&
+    meal.day === day &&
+    meal.slot === slot &&
+    meal.recipeId === recipeId
+  );
+}
+
+/** Markeer één gerecht als gemaakt. Meerdere gerechten op dezelfde dag
+ *  tellen voor het weekritme samen als één kookdag. */
+export function markScheduleMealCooked({ scheduleId, day, slot, recipeId }) {
+  const meals = readCookedMeals();
+  const weekStart = currentWeekStart();
+  const alreadyCooked = meals.some(meal =>
+    meal.weekStart === weekStart &&
+    meal.scheduleId === scheduleId &&
+    meal.day === day &&
+    meal.slot === slot &&
+    meal.recipeId === recipeId
+  );
+  if (alreadyCooked) return;
+
+  meals.push({
+    scheduleId,
+    day,
+    slot,
+    recipeId,
+    weekStart,
+    completedDate: localDateKey(),
+    completedAt: new Date().toISOString(),
+  });
+  saveCookedMeals(meals);
+}
+
+/** Maak de afronding van één gerecht in de lopende week ongedaan. */
+export function unmarkScheduleMealCooked({ scheduleId, day, slot, recipeId }) {
+  const weekStart = currentWeekStart();
+  const meals = readCookedMeals().filter(meal => !(
+    meal.weekStart === weekStart &&
+    meal.scheduleId === scheduleId &&
+    meal.day === day &&
+    meal.slot === slot &&
+    meal.recipeId === recipeId
+  ));
+  saveCookedMeals(meals);
+}
+
+/** Weekvoortgang op basis van unieke kookdagen, niet het aantal gerechten. */
+export function getCookingWeekProgress() {
+  const completedDates = [...new Set(
+    getCurrentWeekCookedMeals().map(meal => meal.completedDate).filter(Boolean)
+  )];
+  return {
+    days: completedDates.length,
+    target: COOKING_RHYTHM_TARGET,
+    completedDates,
+    isComplete: completedDates.length >= COOKING_RHYTHM_TARGET,
+  };
 }
 
 /* ============================================

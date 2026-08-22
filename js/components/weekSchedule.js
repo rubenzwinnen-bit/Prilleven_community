@@ -16,12 +16,12 @@
    - generateSchedule/refreshSlot werken op de cache (generator sub-tab)
 ============================================ */
 
-import * as Store from '../store.js?v=4.0.0';
-import * as Router from '../router.js?v=4.0.0';
+import * as Store from '../store.js?v=4.0.1';
+import * as Router from '../router.js?v=4.0.1';
 import {
   showToast, escapeHtml, promptInput, renderStarsDisplay, ALLERGENS, WEEKDAYS,
   SCHEDULE_SLOTS, slotToMealMoment, getSlotLabel, getAllergenLabel, normalizeAllergen
-} from '../utils.js?v=4.0.0';
+} from '../utils.js?v=4.0.1';
 
 /* ----------------------------------------
    STATE
@@ -31,6 +31,7 @@ let activeSchedule = null;    // actief schema uit DB (active sub-tab)
 let cachedRecipes = [];
 let cachedUserRatings = {};
 let recipeMap = new Map();
+let cookingStateListenersAttached = false;
 
 /* ----------------------------------------
    PERSISTENT PER-GEBRUIKER KEYS
@@ -117,6 +118,39 @@ function getDaysForPreset(preset) {
 
 function capitalize(s) {
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function cookingRhythmMessage(progress) {
+  if (progress.days >= progress.target) {
+    return 'Mooi ritme — drie betekenisvolle kookdagen deze week.';
+  }
+  if (progress.days === 2) {
+    return 'Nog één kookdag en je weekritme is rond.';
+  }
+  if (progress.days === 1) {
+    return 'Een rustige start — nog twee kookdagen voor je weekritme.';
+  }
+  return 'Je weekritme start zodra je een gepland gerecht afrondt.';
+}
+
+function buildCookingRhythmHtml() {
+  const progress = Store.getCookingWeekProgress();
+  const visibleDays = Math.min(progress.days, progress.target);
+  const dots = Array.from({ length: progress.target }, (_, index) => `
+    <span class="cooking-rhythm-dot ${index < visibleDays ? 'is-done' : ''}"
+          aria-hidden="true">${index < visibleDays ? '&#10003;' : index + 1}</span>
+  `).join('');
+
+  return `
+    <section class="cooking-rhythm ${progress.isComplete ? 'is-complete' : ''}"
+             aria-label="Pril Ritme: ${visibleDays} van ${progress.target} kookdagen">
+      <div class="cooking-rhythm-copy">
+        <strong>Pril Ritme &middot; ${visibleDays} van ${progress.target} kookdagen</strong>
+        <span>${escapeHtml(cookingRhythmMessage(progress))}</span>
+      </div>
+      <div class="cooking-rhythm-dots">${dots}</div>
+    </section>
+  `;
 }
 
 /* ----------------------------------------
@@ -272,6 +306,8 @@ function buildActiveTabHtml() {
       </div>
     </div>
 
+    ${buildCookingRhythmHtml()}
+
     <div id="active-days-view">
       ${renderActiveDays(preset)}
     </div>
@@ -302,13 +338,19 @@ function renderActiveDays(preset) {
       }
 
       const userRating = cachedUserRatings[recipe.id] || 0;
+      const isCooked = Store.isScheduleMealCooked(
+        activeSchedule.id, day, slot.id, recipe.id
+      );
       return `
-        <div class="active-day-row">
+        <div class="active-day-row ${isCooked ? 'is-cooked' : ''}">
           <span class="active-day-slot">${getSlotLabel(slot.id)}</span>
-          <a href="#/recipe/${recipe.id}" class="active-day-recipe" target="_blank" rel="noopener"
+          <a href="#/recipe/${recipe.id}" class="active-day-recipe ${isCooked ? 'is-cooked' : ''}" target="_blank" rel="noopener"
              title="Bekijk recept (opent in nieuw tabblad)">
             <span class="active-day-recipe-name">${escapeHtml(recipe.name)}</span>
-            ${userRating ? `<span class="active-day-rating">${renderStarsDisplay(userRating)}</span>` : ''}
+            ${isCooked
+              ? '<span class="active-day-cooked" aria-label="Gerecht gemaakt">&#10003;</span>'
+              : (userRating ? `<span class="active-day-rating">${renderStarsDisplay(userRating)}</span>` : '')
+            }
           </a>
         </div>
       `;
@@ -433,6 +475,7 @@ export async function init() {
 
   /* ---- Event listeners ---- */
   attachListeners();
+  attachCookingStateListeners();
 }
 
 /* ----------------------------------------
@@ -503,6 +546,20 @@ function rerenderPage() {
   if (!page) return;
   page.innerHTML = buildPageHtml();
   attachListeners();
+}
+
+function attachCookingStateListeners() {
+  if (cookingStateListenersAttached) return;
+  cookingStateListenersAttached = true;
+
+  const refreshCookingState = event => {
+    if (event.type === 'storage' && event.key !== Store.getCookingStateStorageKey()) return;
+    if (!document.getElementById('schedule-page') || !activeSchedule) return;
+    rerenderPage();
+  };
+
+  window.addEventListener('storage', refreshCookingState);
+  window.addEventListener('prilleven:cooking-state-changed', refreshCookingState);
 }
 
 /* ----------------------------------------
