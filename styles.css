@@ -2748,10 +2748,95 @@ body.is-aanraders #app-nav { display: none; }
   justify-content: space-between;
   gap: 1.25rem;
   padding: 1rem 1.15rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0;
   border: 1px solid rgba(79, 125, 108, 0.14);
   border-radius: var(--radius-md);
   background: rgba(79, 125, 108, 0.08);
+}
+
+.cooking-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(16rem, 0.8fr);
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.cooking-next-milestone {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.18rem;
+  min-width: 0;
+  padding: 0.9rem 1rem;
+  overflow: hidden;
+  border: 1px solid rgba(201, 137, 102, 0.2);
+  border-radius: var(--radius-md);
+  background: rgba(201, 137, 102, 0.08);
+}
+
+.cooking-next-label {
+  color: var(--color-primary-dark);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cooking-next-milestone strong {
+  color: var(--color-dark);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.cooking-next-milestone > span:not(.cooking-next-label, .cooking-next-complete) {
+  color: var(--color-text-muted, #666);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.cooking-next-progress {
+  height: 0.28rem;
+  margin-top: 0.4rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(201, 137, 102, 0.18);
+}
+
+.cooking-next-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-primary);
+}
+
+.cooking-next-milestone small {
+  align-self: flex-end;
+  color: var(--color-primary-dark);
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.cooking-next-milestone.is-complete {
+  padding-right: 3.25rem;
+  border-color: rgba(79, 125, 108, 0.18);
+  background: rgba(79, 125, 108, 0.07);
+}
+
+.cooking-next-complete {
+  position: absolute;
+  top: 50%;
+  right: 1rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--color-white);
+  background: var(--color-green-text);
+  font-size: 0.78rem;
+  transform: translateY(-50%);
 }
 
 .cooking-rhythm-copy {
@@ -3015,10 +3100,134 @@ body.is-aanraders #app-nav { display: none; }
   cursor: pointer;
 }
 
+.recipe-cook-milestone[hidden],
+.recipe-cook-review[hidden] {
+  display: none;
+}
+
+.recipe-cook-milestone {
+  margin-top: 0.85rem;
+}
+
+.recipe-cook-milestone-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem;
+  border: 1px solid rgba(201, 137, 102, 0.22);
+  border-radius: var(--radius-md);
+  background: rgba(201, 137, 102, 0.09);
+}
+
+.recipe-cook-milestone-item + .recipe-cook-milestone-item {
+  margin-top: 0.55rem;
+}
+
+.recipe-cook-milestone-check,
+.recipe-cook-review-mark {
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--color-white);
+  background: var(--color-primary);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.recipe-cook-milestone-item small,
+.recipe-cook-milestone-item strong,
+.recipe-cook-milestone-item span {
+  display: block;
+}
+
+.recipe-cook-milestone-item small {
+  color: var(--color-primary-dark);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.recipe-cook-milestone-item strong {
+  margin-top: 0.05rem;
+  color: var(--color-dark);
+  font-size: 0.9rem;
+}
+
+.recipe-cook-milestone-item span {
+  margin-top: 0.05rem;
+  color: var(--color-text-muted, #666);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.recipe-cook-milestone-item .recipe-cook-milestone-check {
+  margin-top: 0;
+  color: var(--color-white);
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.recipe-cook-review {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.7rem;
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(79, 125, 108, 0.14);
+}
+
+.recipe-cook-review-mark {
+  color: var(--color-green-text);
+  background: rgba(79, 125, 108, 0.12);
+  font-size: 0.5rem;
+}
+
+.recipe-cook-review strong,
+.recipe-cook-review small {
+  display: block;
+}
+
+.recipe-cook-review strong {
+  color: var(--color-green-text);
+  font-size: 0.86rem;
+}
+
+.recipe-cook-review small {
+  margin-top: 0.05rem;
+  color: var(--color-text-muted, #666);
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.recipe-cook-review-button {
+  border: 1px solid var(--color-green-text);
+  padding: 0.42rem 0.72rem;
+  border-radius: 999px;
+  color: var(--color-green-text);
+  background: var(--color-white);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.recipe-cook-review-button:hover,
+.recipe-cook-review-button:focus-visible {
+  color: var(--color-white);
+  background: var(--color-green-text);
+}
+
 .recipe-cook-spark {
   position: absolute;
   right: 12%;
-  bottom: 1.8rem;
+  top: 7rem;
   color: var(--color-green-text);
   font-size: 0.45rem;
   opacity: 0;
@@ -3042,6 +3251,10 @@ body.is-aanraders #app-nav { display: none; }
 }
 
 @media (max-width: 900px) {
+  .cooking-overview {
+    grid-template-columns: 1fr;
+  }
+
   .active-day-meals {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -3087,10 +3300,19 @@ body.is-aanraders #app-nav { display: none; }
     grid-template-columns: auto minmax(0, 1fr);
   }
 
-  .recipe-cook-undo {
+  .recipe-cook-review {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .recipe-cook-undo,
+  .recipe-cook-review-button {
     grid-column: 2;
     justify-self: start;
     padding-left: 0;
+  }
+
+  .recipe-cook-review-button {
+    padding-left: 0.72rem;
   }
 }
 

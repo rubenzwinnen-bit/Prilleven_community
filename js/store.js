@@ -8,7 +8,7 @@
    omdat dit een lokale voorkeur is.
 ============================================ */
 
-import { supabaseFetch, supabaseStorageDelete } from './supabase.js?v=4.0.6';
+import { supabaseFetch, supabaseStorageDelete } from './supabase.js?v=4.0.7';
 
 /* ============================================
    IN-MEMORY CACHE LAAG
@@ -126,7 +126,7 @@ export async function refreshAdminStatus() {
     return false;
   }
   try {
-    const { fetchSubscriptionStatus } = await import('./supabase.js?v=4.0.6');
+    const { fetchSubscriptionStatus } = await import('./supabase.js?v=4.0.7');
     const status = await fetchSubscriptionStatus(user);
     const v = !!status?.is_admin;
     _adminCache = { email: user, value: v, loaded: true };
@@ -651,6 +651,7 @@ export function isScheduleMealCooked(scheduleId, day, slot, recipeId) {
 export function markScheduleMealCooked({ scheduleId, day, slot, recipeId }) {
   const meals = readCookedMeals();
   const weekStart = currentWeekStart();
+  const progressBefore = getCookingMilestoneProgressFromMeals(meals);
   const alreadyCooked = meals.some(meal =>
     meal.weekStart === weekStart &&
     meal.scheduleId === scheduleId &&
@@ -658,7 +659,9 @@ export function markScheduleMealCooked({ scheduleId, day, slot, recipeId }) {
     meal.slot === slot &&
     meal.recipeId === recipeId
   );
-  if (alreadyCooked) return;
+  if (alreadyCooked) {
+    return { added: false, progress: progressBefore, newlyReached: [] };
+  }
 
   meals.push({
     scheduleId,
@@ -670,6 +673,18 @@ export function markScheduleMealCooked({ scheduleId, day, slot, recipeId }) {
     completedAt: new Date().toISOString(),
   });
   saveCookedMeals(meals);
+
+  const progress = getCookingMilestoneProgressFromMeals(meals);
+  const reachedBefore = new Set(
+    progressBefore.milestones.filter(milestone => milestone.isReached).map(milestone => milestone.id)
+  );
+  return {
+    added: true,
+    progress,
+    newlyReached: progress.milestones.filter(
+      milestone => milestone.isReached && !reachedBefore.has(milestone.id)
+    ),
+  };
 }
 
 /** Maak de afronding van één gerecht in de lopende week ongedaan. */
@@ -696,6 +711,69 @@ export function getCookingWeekProgress() {
     completedDates,
     isComplete: completedDates.length >= COOKING_RHYTHM_TARGET,
   };
+}
+
+function getCookingMilestoneProgressFromMeals(meals) {
+  const uniqueRecipeIds = new Set(
+    meals.map(meal => meal.recipeId).filter(recipeId => recipeId != null)
+  );
+  const completedDatesByWeek = new Map();
+
+  meals.forEach(meal => {
+    if (!meal.weekStart || !meal.completedDate) return;
+    if (!completedDatesByWeek.has(meal.weekStart)) {
+      completedDatesByWeek.set(meal.weekStart, new Set());
+    }
+    completedDatesByWeek.get(meal.weekStart).add(meal.completedDate);
+  });
+
+  const completedRhythmWeeks = [...completedDatesByWeek.values()].filter(
+    dates => dates.size >= COOKING_RHYTHM_TARGET
+  ).length;
+  const currentWeekDays = completedDatesByWeek.get(currentWeekStart())?.size || 0;
+  const milestones = [
+    {
+      id: 'first-cooked',
+      title: 'Je eerste Cooked it',
+      description: 'Je kookverhaal is begonnen.',
+      nextDescription: 'Rond je eerste geplande gerecht af.',
+      current: Math.min(meals.length, 1),
+      target: 1,
+      isReached: meals.length >= 1,
+    },
+    {
+      id: 'first-rhythm',
+      title: 'Je eerste volle Pril Ritme-week',
+      description: 'Drie betekenisvolle kookdagen in één week.',
+      nextDescription: 'Kook op drie verschillende dagen in één week.',
+      current: completedRhythmWeeks > 0
+        ? COOKING_RHYTHM_TARGET
+        : Math.min(currentWeekDays, COOKING_RHYTHM_TARGET),
+      target: COOKING_RHYTHM_TARGET,
+      isReached: completedRhythmWeeks > 0,
+    },
+    {
+      id: 'five-recipes',
+      title: 'Vijf verschillende gerechten',
+      description: 'Je bracht al vijf verschillende gerechten op tafel.',
+      nextDescription: 'Breng vijf verschillende gerechten op tafel.',
+      current: Math.min(uniqueRecipeIds.size, 5),
+      target: 5,
+      isReached: uniqueRecipeIds.size >= 5,
+    },
+  ];
+
+  return {
+    totalCookedMeals: meals.length,
+    uniqueRecipes: uniqueRecipeIds.size,
+    completedRhythmWeeks,
+    milestones,
+  };
+}
+
+/** Zachte mijlpalen over alle lokaal bewaarde Cooked it-weken heen. */
+export function getCookingMilestoneProgress() {
+  return getCookingMilestoneProgressFromMeals(readCookedMeals());
 }
 
 /* ============================================

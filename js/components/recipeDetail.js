@@ -12,9 +12,9 @@
    - init() haalt alle data parallel op via Promise.all
 ============================================ */
 
-import * as Store from '../store.js?v=4.0.6';
-import * as Router from '../router.js?v=4.0.6';
-import { getChildren } from '../childrenApi.js?v=4.0.6';
+import * as Store from '../store.js?v=4.0.7';
+import * as Router from '../router.js?v=4.0.7';
+import { getChildren } from '../childrenApi.js?v=4.0.7';
 import {
   showToast, escapeHtml, formatDate,
   renderStarsDisplay, renderStarsInteractive,
@@ -22,7 +22,7 @@ import {
   normalizeAllergen, ageInMonths, getRecipeMinAge, getRecipeAgeLabel,
   initialsFromName, colorFromSeed,
   WEEKDAYS, SCHEDULE_SLOTS
-} from '../utils.js?v=4.0.6';
+} from '../utils.js?v=4.0.7';
 
 /* ----------------------------------------
    ALGEMENE BABYHAPJE-UITLEG
@@ -287,7 +287,7 @@ function cookingRhythmFeedback(progress) {
   return 'Je eerste kookdag van deze week.';
 }
 
-function buildCookingCompletionHtml(activeInfo) {
+function buildCookingCompletionHtml(activeInfo, userRating = 0) {
   if (!activeInfo?.cookEntry) return '';
 
   const progress = Store.getCookingWeekProgress();
@@ -327,6 +327,21 @@ function buildCookingCompletionHtml(activeInfo) {
           <small id="recipe-cook-feedback">${escapeHtml(cookingRhythmFeedback(progress))}</small>
         </div>
         <button class="recipe-cook-undo" id="recipe-cook-undo" type="button">Ongedaan maken</button>
+      </div>
+
+      <div class="recipe-cook-milestone" id="recipe-cook-milestone"
+           aria-live="polite" hidden></div>
+
+      <div class="recipe-cook-review" id="recipe-cook-review"
+           ${activeInfo.isCooked && userRating === 0 ? '' : 'hidden'}>
+        <span class="recipe-cook-review-mark" aria-hidden="true">&#9670;</span>
+        <div>
+          <strong>Hoe smaakte het?</strong>
+          <small>Nu je dit gerecht maakte, is dit een fijn moment om het te beoordelen.</small>
+        </div>
+        <button class="recipe-cook-review-button" id="recipe-cook-review-button" type="button">
+          Beoordeel
+        </button>
       </div>
 
       <span class="recipe-cook-spark" aria-hidden="true">&#9670;</span>
@@ -491,9 +506,9 @@ function buildDetailHtml(recipe, isFav, avgRating, userRating, comments, activeI
         ${BABY_PREP_HTML}
       </div>
 
-      ${buildCookingCompletionHtml(activeInfo)}
+      ${buildCookingCompletionHtml(activeInfo, userRating)}
 
-      <div class="recipe-section">
+      <div class="recipe-section" id="recipe-rating-section">
         <h3>Beoordeling</h3>
         <div class="mb-2">
           <strong>Gemiddelde:</strong>
@@ -607,6 +622,9 @@ function attachListeners(recipeId, initialRating = 0, recipe = null, activeInfo 
     const success = document.getElementById('recipe-cook-success');
     const feedback = document.getElementById('recipe-cook-feedback');
     const undo = document.getElementById('recipe-cook-undo');
+    const milestone = document.getElementById('recipe-cook-milestone');
+    const reviewPrompt = document.getElementById('recipe-cook-review');
+    const reviewButton = document.getElementById('recipe-cook-review-button');
     const entry = activeInfo.cookEntry;
     let isCooked = activeInfo.isCooked;
 
@@ -635,14 +653,31 @@ function attachListeners(recipeId, initialRating = 0, recipe = null, activeInfo 
         range.disabled = isCooked;
         range.value = isCooked ? '100' : '0';
       }
+      if (reviewPrompt) reviewPrompt.hidden = !isCooked || currentUserRating > 0;
       setSliderProgress(isCooked ? 100 : 0);
+    };
+
+    const showReachedMilestones = milestones => {
+      if (!milestone || milestones.length === 0) return;
+      milestone.innerHTML = milestones.map(item => `
+        <div class="recipe-cook-milestone-item">
+          <span class="recipe-cook-milestone-check" aria-hidden="true">&#10003;</span>
+          <div>
+            <small>Zacht moment bereikt</small>
+            <strong>${escapeHtml(item.title)}</strong>
+            <span>${escapeHtml(item.description)}</span>
+          </div>
+        </div>
+      `).join('');
+      milestone.hidden = false;
     };
 
     const completeMeal = () => {
       if (isCooked) return;
-      Store.markScheduleMealCooked(meal);
+      const result = Store.markScheduleMealCooked(meal);
       isCooked = true;
       syncCookedState();
+      showReachedMilestones(result?.newlyReached || []);
       section?.classList.remove('is-celebrating');
       void section?.offsetWidth;
       section?.classList.add('is-celebrating');
@@ -664,7 +699,19 @@ function attachListeners(recipeId, initialRating = 0, recipe = null, activeInfo 
     undo?.addEventListener('click', () => {
       Store.unmarkScheduleMealCooked(meal);
       isCooked = false;
+      if (milestone) {
+        milestone.hidden = true;
+        milestone.innerHTML = '';
+      }
       syncCookedState();
+    });
+
+    reviewButton?.addEventListener('click', () => {
+      const ratingSection = document.getElementById('recipe-rating-section');
+      ratingSection?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      window.setTimeout(() => {
+        ratingSection?.querySelector('.stars-interactive .star')?.focus();
+      }, 350);
     });
 
     syncCookedState();
@@ -699,6 +746,8 @@ function attachListeners(recipeId, initialRating = 0, recipe = null, activeInfo 
         await Store.rateRecipe(rid, rating);
         /* Werk de lokale state bij zodat mouseleave geen call hoeft */
         currentUserRating = rating;
+        const reviewPrompt = document.getElementById('recipe-cook-review');
+        if (reviewPrompt) reviewPrompt.hidden = true;
 
         /* Update sterren visueel */
         container.querySelectorAll('.star').forEach(s => {

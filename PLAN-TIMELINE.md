@@ -1017,6 +1017,16 @@ interactie volgen later in een aparte fase.
   `.agents/skills/`, met UI-metadata voor de skill-/slashlijst. De oude
   `source-command-*`-migratiewrappers voor deze twee commando's zijn verwijderd;
   de vier Claude-commando's in `.claude/commands/` blijven bestaan.
+- ✅ Zachte mijlpalen zijn als lokale visuele preview toegevoegd. Het actieve
+  weekschema toont altijd precies het volgende zachte moment: eerste Cooked it,
+  eerste volle Pril Ritme-week en daarna vijf verschillende bereide recepten.
+- ✅ Wanneer een Cooked it werkelijk een grens bereikt, verschijnt in het
+  receptdetail een korte contextuele mijlpaalkaart. Er is geen puntenstelsel of
+  permanente badgewand.
+- ✅ Na een bereid gerecht zonder eigen beoordeling verschijnt een rustige
+  uitnodiging “Hoe smaakte het?”. De knop scrolt naar de bestaande ratingflow en
+  focust de eerste ster; de uitnodiging verdwijnt zodra er beoordeeld is.
+- ✅ App-cachebuster opnieuw volledig gelijkgetrokken naar **`4.0.7`**.
 
 ### Gewijzigde kernbestanden
 - `js/store.js` — kookregistratie, weekstart op maandag, unieke-dagtelling.
@@ -1050,18 +1060,27 @@ interactie volgen later in een aparte fase.
   2 dagen/10 tegels en “Heel weekschema” 7 dagen/35 tegels.
 - ✅ Favorieten driemaal via verschillende routes herladen; alle zes recepten bleven
   iedere keer in exact dezelfde volgorde staan.
+- ✅ Lokale mijlpaaltest: eerste Cooked it, drie unieke kookdagen en vijf unieke
+  recepten bereiken elk uitsluitend hun eigen grens; alle gewijzigde JS-bestanden
+  blijven syntactisch geldig en `git diff --check` is schoon.
+- ✅ Zachte momenten visueel en interactief gecontroleerd in de ingelogde lokale app
+  op desktop en mobiel: geen horizontale overflow, beoordeling focust de eerste ster,
+  animatie blijft vrij van de copy en undo herstelt de lokale teststate volledig.
 
 ### Beslissingen voor vervolg
 - Eerst deze ene lus testen op gevoel en gebruik; pas daarna beslissen over
   Supabase-opslag, langere streaks of extra gamificationoppervlakken.
+- Eerst alle zachte momenten lokaal en visueel laten kloppen. Definitieve opslag en
+  meetevents blijven uitgesteld tot het productgevoel expliciet is goedgekeurd.
 - Definitieve opslag vereist later een Supabase-tabel met RLS; niet stilzwijgend
   de localStorage-preview als productiebron blijven gebruiken.
 
 ### Volledig gamificatieplan
 
-Dit is het richtinggevende productplan. Alleen **fase 1** is momenteel gebouwd;
-latere fasen zijn kandidaten en worden pas uitgevoerd na evaluatie en expliciete
-goedkeuring van eventuele database-, analytics- of mobiele wijzigingen.
+Dit is het richtinggevende productplan. Alleen de **websitepreview uit fase 1** is
+momenteel gebouwd, inclusief de lokale visualisatie van de drie zachte momenten;
+definitieve opslag en latere fasen blijven kandidaten en worden pas uitgevoerd na
+evaluatie en expliciete goedkeuring van database-, analytics- of mobiele wijzigingen.
 
 #### Productprincipes
 - Beloon betekenisvol gedrag dat de gebruiker toch al uitvoert, niet het openen van
@@ -1099,6 +1118,10 @@ goedkeuring van eventuele database-, analytics- of mobiele wijzigingen.
    - Cooked it op geplande receptdetails, undo, groene bevestiging en vinkje op het
      actieve weekschema.
    - Pril Ritme: doel van drie unieke kookdagen binnen de kalenderweek.
+   - Contextuele mijlpaalkaart bij eerste Cooked it, eerste volle ritmeweek en vijf
+     verschillende recepten; daarnaast steeds één volgend zacht moment in beeld.
+   - Rustige beoordelingsuitnodiging na een bereid gerecht, gekoppeld aan de bestaande
+     ratingflow.
    - Lokale opslag per gebruiker/week om interactie en gevoel te testen zonder
      database-impact.
 
@@ -1117,9 +1140,10 @@ goedkeuring van eventuele database-, analytics- of mobiele wijzigingen.
      herhaalde recepten, undo en wisselen van actief weekschema.
    - Website en latere mobiele app moeten exact dezelfde events en telling gebruiken.
 
-4. **Zachte mijlpalen en langer ritme**
-   - Eerst contextuele momenten testen: eerste Cooked it, eerste volle Pril Ritme-week,
-     vijf verschillende bereide recepten en beoordeling na bereiding.
+4. **Definitieve zachte mijlpalen en langer ritme**
+   - De lokale visualisatie testen en pas na de cross-device basis beslissen welke
+     contextuele momenten definitief blijven: eerste Cooked it, eerste volle Pril
+     Ritme-week, vijf verschillende recepten en beoordeling na bereiding.
    - Pas daarna een week-op-week ritme overwegen. Een onderbreking krijgt een zachte
      herstart of herstelmechanisme, geen rode waarschuwing of verliesaversie.
    - Een persoonlijk weekdoel van bijvoorbeeld 2, 3 of 4 dagen pas aanbieden als de
@@ -1150,3 +1174,11 @@ goedkeuring van eventuele database-, analytics- of mobiele wijzigingen.
   privacydocumentatie en consent verwerkt?
 - Welke mijlpalen voelen motiverend zonder alsnog een zichtbare badgecollectie te
   worden?
+
+#### Concrete vervolgstappen
+1. De Vercel-preview op desktop en mobiel intern gebruiken en concrete feedback
+   verzamelen over Cooked it, Pril Ritme en de visuele weekschemategels.
+2. Na de pilot beslissen of drie unieke kookdagen het juiste vaste weekdoel is en
+   welke zachte mijlpalen voldoende waarde hebben voor een volgende fase.
+3. Alleen na expliciete goedkeuring het cross-device Supabase-model met RLS
+   ontwerpen en de migratie eerst ter beoordeling in de chat tonen.
