@@ -4,14 +4,14 @@
    Route: #/profiel
 ============================================ */
 
-import * as Store from '../store.js?v=4.0.10';
-import { sessionGet, sessionRefreshIfNeeded, sessionClear } from '../supabase.js?v=4.0.10';
-import { escapeHtml, showToast, processImageForUpload, initialsFromName, colorFromSeed } from '../utils.js?v=4.0.10';
-import * as Api from '../childrenApi.js?v=4.0.10';
-import * as FamilyApi from '../familyApi.js?v=4.0.10';
-import * as CommunityApi from '../communityApi.js?v=4.0.10';
-import { ALLERGEN_FLOW } from '../content/eersteHapjes-allergen-flow.js?v=4.0.10';
-import { patchEhState, loadEhState } from '../eersteHapjesStateApi.js?v=4.0.10';
+import * as Store from '../store.js?v=4.0.11';
+import { sessionGet, sessionRefreshIfNeeded, sessionClear } from '../supabase.js?v=4.0.11';
+import { escapeHtml, showToast, processImageForUpload, initialsFromName, colorFromSeed } from '../utils.js?v=4.0.11';
+import * as Api from '../childrenApi.js?v=4.0.11';
+import * as FamilyApi from '../familyApi.js?v=4.0.11';
+import * as CommunityApi from '../communityApi.js?v=4.0.11';
+import { ALLERGEN_FLOW } from '../content/eersteHapjes-allergen-flow.js?v=4.0.11';
+import { patchEhState, loadEhState } from '../eersteHapjesStateApi.js?v=4.0.11';
 
 /* ----------------------------------------
    ALLERGEENLIJST (13 standaard-allergenen, identiek aan tracker)

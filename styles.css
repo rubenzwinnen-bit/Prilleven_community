@@ -7175,11 +7175,11 @@ body.is-aanraders #app-nav { display: none; }
 /* Allergenenpad — zachte voortgang per kindje */
 .allergenen-path {
   margin-bottom: 1rem;
-  padding: 1.15rem;
+  padding: 1rem 1.1rem;
   background: var(--color-white);
   border: 1px solid rgba(79, 125, 108, .22);
-  border-radius: 18px;
-  box-shadow: 0 8px 24px rgba(55, 78, 66, .07);
+  border-radius: 16px;
+  box-shadow: 0 5px 18px rgba(55, 78, 66, .06);
 }
 .allergenen-path-head {
   display: flex;
@@ -7199,15 +7199,7 @@ body.is-aanraders #app-nav { display: none; }
 .allergenen-path h3 {
   margin: 0;
   color: var(--color-dark);
-  font-size: 1.12rem;
-}
-.allergenen-path-head p {
-  margin: .3rem 0 0;
-  color: var(--color-dark-light);
-  font-size: .86rem;
-}
-.allergenen-path-head p strong {
-  color: var(--color-dark);
+  font-size: 1.05rem;
 }
 .allergenen-path-count {
   display: flex;
@@ -7223,146 +7215,119 @@ body.is-aanraders #app-nav { display: none; }
   font-size: .88rem;
   font-weight: 700;
 }
-.allergenen-path-progress {
-  height: .4rem;
-  margin: .9rem 0 1rem;
-  overflow: hidden;
-  background: #edf0ec;
-  border-radius: 999px;
-}
-.allergenen-path-progress span {
-  display: block;
-  height: 100%;
-  min-width: .35rem;
-  background: var(--color-green-text);
-  border-radius: inherit;
-  transition: width .25s ease;
-}
-.allergenen-path-progress span[style="width:0%"] {
-  min-width: 0;
-}
 .allergenen-path-steps {
   display: grid;
   grid-template-columns: repeat(9, minmax(0, 1fr));
-  gap: .45rem;
+  gap: .3rem;
+  margin-top: .8rem;
 }
 .allergenen-path-step {
+  width: 100%;
+  height: .72rem;
   min-width: 0;
-  padding: .4rem .15rem;
-  background: transparent;
-  border: 0;
-  border-radius: 10px;
-  color: var(--color-dark-light);
+  padding: 0;
+  background: #ecefea;
+  border: 1px solid #dde1db;
+  border-radius: 999px;
   cursor: pointer;
-  font-family: inherit;
-  text-align: center;
-  transition: background .15s ease, transform .15s ease;
+  transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
 }
 .allergenen-path-step:hover,
 .allergenen-path-step:focus-visible {
-  background: rgba(79, 125, 108, .07);
-  outline: none;
+  outline: 2px solid rgba(79, 125, 108, .2);
+  outline-offset: 2px;
   transform: translateY(-1px);
 }
-.allergenen-path-step-symbol {
+.allergenen-path-step.is-safe {
+  background: var(--color-green-text);
+  border-color: var(--color-green-text);
+}
+.allergenen-path-step.is-known {
+  background: #f6eee9;
+  border-color: rgba(201, 137, 102, .5);
+}
+.allergenen-path-step.is-active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(201, 137, 102, .16);
+}
+.allergenen-path-step.is-paused {
+  background: #f4f0e8;
+  border-color: #d8cdb9;
+}
+.allergenen-path-meta {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 2.15rem;
-  height: 2.15rem;
-  margin: 0 auto .35rem;
-  background: #f3f3ef;
-  border: 1px solid #dfe2dc;
-  border-radius: 50%;
-  color: var(--color-gray);
-  font-size: .72rem;
+  justify-content: space-between;
+  gap: .75rem;
+  margin-top: .55rem;
+}
+.allergenen-path-moment {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  color: var(--color-green-text);
+  font-size: .76rem;
+}
+.allergenen-path-moment > span {
   font-weight: 700;
 }
-.allergenen-path-step-label,
-.allergenen-path-step-state {
-  display: block;
+.allergenen-path-moment strong {
+  font-size: inherit;
+}
+.allergenen-path-note {
+  margin: 0 0 0 auto;
+  color: var(--color-dark-light);
+  font-size: .72rem;
+  line-height: 1.3;
+  text-align: right;
+}
+.allergenen-path-next {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: .85rem;
+  padding: .8rem .9rem;
+  background: rgba(79, 125, 108, .07);
+  border-radius: 12px;
+}
+.allergenen-path-next-body {
+  display: flex;
+  flex-direction: column;
+  gap: .08rem;
+  min-width: 0;
+}
+.allergenen-path-next-label {
+  color: var(--color-green-text);
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.allergenen-path-next-body strong {
+  color: var(--color-dark);
+  font-size: .92rem;
+}
+.allergenen-path-next-body small {
   overflow: hidden;
+  color: var(--color-dark-light);
+  font-size: .76rem;
+  line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.allergenen-path-step-label {
-  color: var(--color-dark);
-  font-size: .68rem;
-  font-weight: 700;
+.allergenen-path-next .btn {
+  flex-shrink: 0;
 }
-.allergenen-path-step-state {
-  margin-top: .08rem;
-  color: var(--color-gray);
-  font-size: .62rem;
-}
-.allergenen-path-step.is-safe .allergenen-path-step-symbol {
-  background: var(--color-green-text);
-  border-color: var(--color-green-text);
-  color: var(--color-white);
-}
-.allergenen-path-step.is-safe .allergenen-path-step-state {
-  color: var(--color-green-text);
-}
-.allergenen-path-step.is-known .allergenen-path-step-symbol {
-  background: #f6eee9;
-  border-color: rgba(201, 137, 102, .5);
-  color: var(--color-primary);
-  font-size: 1.1rem;
-}
-.allergenen-path-step.is-known .allergenen-path-step-state {
-  color: var(--color-primary);
-}
-.allergenen-path-step.is-active .allergenen-path-step-symbol {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: var(--color-white);
-}
-.allergenen-path-step.is-paused .allergenen-path-step-symbol {
-  background: #f4f0e8;
-  border-color: #d8cdb9;
-  color: #756b5c;
-}
-.allergenen-path-note {
-  margin: .9rem 0 0;
+.allergenen-path-wait {
+  margin-top: .85rem;
+  padding: .7rem .85rem;
+  background: #f6f8f1;
+  border-radius: 10px;
   color: var(--color-dark-light);
   font-size: .78rem;
-  line-height: 1.4;
   text-align: center;
-}
-.allergenen-path-moment {
-  display: flex;
-  align-items: center;
-  gap: .7rem;
-  margin-top: .9rem;
-  padding: .75rem .85rem;
-  background: rgba(79, 125, 108, .08);
-  border-radius: 12px;
-  color: var(--color-green-text);
-}
-.allergenen-path-moment > span {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.8rem;
-  height: 1.8rem;
-  flex-shrink: 0;
-  background: var(--color-green-text);
-  border-radius: 50%;
-  color: var(--color-white);
-  font-weight: 700;
-}
-.allergenen-path-moment strong,
-.allergenen-path-moment small {
-  display: block;
-}
-.allergenen-path-moment strong {
-  font-size: .86rem;
-}
-.allergenen-path-moment small {
-  margin-top: .08rem;
-  color: var(--color-dark-light);
-  font-size: .76rem;
-  line-height: 1.35;
 }
 
 @media (max-width: 640px) {
@@ -7376,23 +7341,28 @@ body.is-aanraders #app-nav { display: none; }
   .allergenen-path {
     padding: 1rem .85rem;
   }
-  .allergenen-path-head p span {
-    display: block;
-    margin-top: .15rem;
-  }
   .allergenen-path-steps {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: .35rem;
+    gap: .22rem;
   }
-  .allergenen-path-step {
-    padding: .45rem .2rem;
+  .allergenen-path-meta {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: .3rem;
   }
-  .allergenen-path-step-symbol {
-    width: 2.35rem;
-    height: 2.35rem;
+  .allergenen-path-note {
+    margin-left: 0;
+    text-align: left;
   }
-  .allergenen-path-step-label {
-    font-size: .72rem;
+  .allergenen-path-next {
+    align-items: stretch;
+    flex-direction: column;
+    gap: .65rem;
+  }
+  .allergenen-path-next-body small {
+    white-space: normal;
+  }
+  .allergenen-path-next .btn {
+    width: 100%;
   }
 }
 

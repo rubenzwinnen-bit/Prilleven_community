@@ -8,23 +8,23 @@
    automatisch als 'allergisch' getoond.
 ============================================ */
 
-import { escapeHtml, showToast, colorFromSeed, initialsFromName } from '../utils.js?v=4.0.10';
-import { getChildren, updateChild } from '../childrenApi.js?v=4.0.10';
+import { escapeHtml, showToast, colorFromSeed, initialsFromName } from '../utils.js?v=4.0.11';
+import { getChildren, updateChild } from '../childrenApi.js?v=4.0.11';
 import {
   loadEhState,
   patchEhState,
   loadEhDoses,
   createEhDose,
   updateEhDose,
-} from '../eersteHapjesStateApi.js?v=4.0.10';
-import { loadSymptomsForChild } from '../eersteHapjesSymptomsApi.js?v=4.0.10';
+} from '../eersteHapjesStateApi.js?v=4.0.11';
+import { loadSymptomsForChild } from '../eersteHapjesSymptomsApi.js?v=4.0.11';
 import {
   ALLERGEN_FLOW,
   REACTION_LEVELS,
   getEligibleAllergens,
   getAllergenStatus,
-} from '../content/eersteHapjes-allergen-flow.js?v=4.0.10';
-import { openSymptomLogModal } from './symptomLogModal.js?v=4.0.10';
+} from '../content/eersteHapjes-allergen-flow.js?v=4.0.11';
+import { openSymptomLogModal } from './symptomLogModal.js?v=4.0.11';
 
 let state = {
   loaded: false,
@@ -733,8 +733,7 @@ function renderGrid(root, child) {
 
   grid.innerHTML = `
     ${ctx.artsToezicht ? renderArtsToezichtBanner() : ''}
-    ${renderAllergenPath(all, ctx, ageMonths, child)}
-    ${renderNextUpBanner(nextUp, ctx)}
+    ${renderAllergenPath(all, ctx, ageMonths, child, nextUp)}
     <ul class="allergenen-list">
       ${all.map(a => renderAllergenItem(a, ctx, ageMonths, child)).join('')}
     </ul>
@@ -826,36 +825,27 @@ function renderGrid(root, child) {
   });
 }
 
-function renderAllergenPath(allergens, ctx, ageMonths, child) {
+function renderAllergenPath(allergens, ctx, ageMonths, child, nextUp) {
   const resolvedKeys = new Set([...ctx.completed, ...ctx.knownAllergies]);
   const resolvedCount = resolvedKeys.size;
   const safeKeys = ctx.completed.filter(key => !ctx.knownAllergies.includes(key));
-  const safeCount = safeKeys.length;
-  const allergyCount = ctx.knownAllergies.length;
   const trackedCompletedCount = safeKeys
     .filter(key => !ctx.preIntroduced.includes(key))
     .length;
-  const percent = Math.round((resolvedCount / allergens.length) * 100);
 
   let milestone = '';
   if (resolvedCount >= allergens.length) {
     milestone = `
       <div class="allergenen-path-moment">
         <span aria-hidden="true">✓</span>
-        <div>
-          <strong>Jullie Allergenenpad is rond</strong>
-          <small>Alle allergenen zijn opgevolgd. Blijf het advies van je zorgverlener volgen.</small>
-        </div>
+        <strong>Allergenenpad afgerond</strong>
       </div>
     `;
   } else if (trackedCompletedCount === 1) {
     milestone = `
       <div class="allergenen-path-moment">
         <span aria-hidden="true">✓</span>
-        <div>
-          <strong>Eerste allergeen afgerond</strong>
-          <small>Een rustige eerste stap, helemaal op jullie tempo.</small>
-        </div>
+        <strong>Eerste allergeen afgerond</strong>
       </div>
     `;
   }
@@ -866,34 +856,52 @@ function renderAllergenPath(allergens, ctx, ageMonths, child) {
     const status = isExcluded && !['veilig', 'allergisch'].includes(rawStatus)
       ? 'excluded'
       : rawStatus;
-    const doseCount = ctx.inProgress[allergen.key] || 0;
+    const displayStatus = nextUp?.allergen.key === allergen.key && status === 'wacht'
+      ? 'next'
+      : status;
     const stepState = {
-      'veilig':      { className: 'is-safe', symbol: '✓', text: 'Klaar' },
-      'allergisch':  { className: 'is-known', symbol: 'i', text: 'Gekend' },
-      'in-progress': { className: 'is-active', symbol: `${doseCount}/3`, text: `${doseCount}/3` },
-      'paused':      { className: 'is-paused', symbol: '‖', text: 'Pauze' },
-      'excluded':    { className: 'is-neutral', symbol: '—', text: 'Niet gevolgd' },
-      'locked-age':  { className: 'is-neutral', symbol: '•', text: 'Later' },
-      'wacht':       { className: 'is-neutral', symbol: '•', text: 'Nog te volgen' },
-    }[status];
+      'veilig':      { className: 'is-safe', text: 'veilig geïntroduceerd' },
+      'allergisch':  { className: 'is-known', text: 'gekende allergie' },
+      'in-progress': { className: 'is-active', text: `${ctx.inProgress[allergen.key] || 0} van 3 introducties` },
+      'next':        { className: 'is-active', text: `volgende stap, introductie ${nextUp.doseNumber} van 3` },
+      'paused':      { className: 'is-paused', text: 'gepauzeerd' },
+      'excluded':    { className: 'is-neutral', text: 'niet gevolgd' },
+      'locked-age':  { className: 'is-neutral', text: 'later beschikbaar' },
+      'wacht':       { className: 'is-neutral', text: 'nog te volgen' },
+    }[displayStatus];
 
     return `
       <button class="allergenen-path-step ${stepState.className}"
               type="button"
               data-action="path-allergen"
               data-key="${allergen.key}"
-              aria-label="${escapeHtml(allergen.label)}: ${escapeHtml(stepState.text)}">
-        <span class="allergenen-path-step-symbol" aria-hidden="true">${stepState.symbol}</span>
-        <span class="allergenen-path-step-label">${escapeHtml(allergen.label)}</span>
-        <span class="allergenen-path-step-state">${escapeHtml(stepState.text)}</span>
-      </button>
+              title="${escapeHtml(allergen.label)} — ${escapeHtml(stepState.text)}"
+              aria-label="${escapeHtml(allergen.label)}: ${escapeHtml(stepState.text)}"></button>
     `;
   }).join('');
 
-  const breakdown = [
-    safeCount ? `${safeCount} veilig geïntroduceerd` : '',
-    allergyCount ? `${allergyCount} gekende ${allergyCount === 1 ? 'allergie' : 'allergieën'}` : '',
-  ].filter(Boolean).join(' · ');
+  let nextStep = '';
+  if (nextUp) {
+    const a = nextUp.allergen;
+    nextStep = `
+      <div class="allergenen-path-next" data-key="${a.key}">
+        <div class="allergenen-path-next-body">
+          <span class="allergenen-path-next-label">Volgende stap</span>
+          <strong>${escapeHtml(a.label)} · introductie ${nextUp.doseNumber}/3</strong>
+          <small>${escapeHtml(a.suggestedFood)}</small>
+        </div>
+        <button type="button" class="btn btn-primary" data-action="next-dose">
+          Introductie ${nextUp.doseNumber} registreren
+        </button>
+      </div>
+    `;
+  } else if (resolvedCount < allergens.length) {
+    nextStep = `
+      <div class="allergenen-path-wait">
+        Op dit moment is er geen volgende introductie beschikbaar.
+      </div>
+    `;
+  }
 
   return `
     <section class="allergenen-path" aria-labelledby="allergenen-path-title">
@@ -901,61 +909,18 @@ function renderAllergenPath(allergens, ctx, ageMonths, child) {
         <div>
           <span class="allergenen-path-eyebrow">Persoonlijke voortgang</span>
           <h3 id="allergenen-path-title">Allergenenpad van ${escapeHtml(child.name)}</h3>
-          <p>
-            <strong>${resolvedCount} van ${allergens.length}</strong> opgevolgd
-            ${breakdown ? `<span>· ${escapeHtml(breakdown)}</span>` : ''}
-          </p>
         </div>
-        <div class="allergenen-path-count" aria-hidden="true">
-          <strong>${resolvedCount}</strong><span>/${allergens.length}</span>
+        <div class="allergenen-path-count" aria-label="${resolvedCount} van ${allergens.length} allergenen opgevolgd">
+          <strong aria-hidden="true">${resolvedCount}</strong><span aria-hidden="true">/${allergens.length}</span>
         </div>
       </div>
-      <div class="allergenen-path-progress"
-           role="progressbar"
-           aria-label="Allergenen opgevolgd"
-           aria-valuemin="0"
-           aria-valuemax="${allergens.length}"
-           aria-valuenow="${resolvedCount}">
-        <span style="width:${percent}%"></span>
+      <div class="allergenen-path-steps" aria-label="Status van de 9 allergenen">${steps}</div>
+      <div class="allergenen-path-meta">
+        ${milestone}
+        <p class="allergenen-path-note">Op jullie tempo — pauzeren is geen achterstand.</p>
       </div>
-      <div class="allergenen-path-steps">${steps}</div>
-      <p class="allergenen-path-note">
-        Op jullie tempo. Wachten, pauzeren of begeleiding van een arts is geen achterstand.
-      </p>
-      ${milestone}
+      ${nextStep}
     </section>
-  `;
-}
-
-function renderNextUpBanner(nextUp, ctx) {
-  if (!nextUp) {
-    // Alles geïntroduceerd
-    const total = ALLERGEN_FLOW.length;
-    const done = new Set([...ctx.completed, ...ctx.knownAllergies]).size;
-    if (done >= total) {
-      return '';
-    }
-    return `
-      <div class="allergenen-nextup allergenen-nextup--wait">
-        ⏳ Er is op dit moment geen volgende introductie beschikbaar
-        (bv. wachten op leeftijdsvoorwaarde).
-      </div>
-    `;
-  }
-  const a = nextUp.allergen;
-  return `
-    <div class="allergenen-nextup" data-key="${a.key}">
-      <div class="allergenen-nextup-main">
-        <div class="allergenen-nextup-body">
-          <span class="allergenen-nextup-label">Volgende stap</span>
-          <strong>${escapeHtml(a.label)} — introductie ${nextUp.doseNumber}/3</strong>
-          <small>${escapeHtml(a.suggestedFood)}</small>
-        </div>
-      </div>
-      <button type="button" class="btn btn-primary" data-action="next-dose">
-        Introductie ${nextUp.doseNumber} registreren
-      </button>
-    </div>
   `;
 }
 

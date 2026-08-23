@@ -1233,9 +1233,10 @@ badgewand of beloning voor openen, klikken, berichtenvolume of schermtijd.
 ### 2. Allergenenpad — frontend-preview gebouwd
 
 - Voortgang staat **per kindje**, niet per account of huishouden gezamenlijk.
-- Boven het bestaande overzicht staat één geïntegreerde voortgangsweergave, geen
-  los puntensysteem: `x van 9 allergenen opgevolgd`, met negen rustige, klikbare
-  markeringen.
+- Boven het bestaande overzicht staat één compacte stuurkaart, geen los
+  puntensysteem: `x van 9 allergenen opgevolgd`, met negen klikbare segmenten en de
+  eerstvolgende introductie met actie in dezelfde kaart. Namen en statussen worden
+  niet herhaald; de tegels eronder blijven de detailweergave.
 - Het actieve allergeen behoudt de bestaande dosisvoortgang `x/3` en de bestaande
   “Volgende stap”-flow. Er komt geen extra wekelijkse doelstelling bovenop.
 - Contextuele zachte momenten zijn visueel voorzien bij het eerste volledig gelogde
