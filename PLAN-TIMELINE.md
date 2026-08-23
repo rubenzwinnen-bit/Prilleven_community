@@ -1230,22 +1230,23 @@ badgewand of beloning voor openen, klikken, berichtenvolume of schermtijd.
 - Definitieve cross-device opslag vereist later een Supabase-model met RLS en
   expliciete goedkeuring.
 
-### 2. Allergenenpad — eerstvolgende visuele uitbouw
+### 2. Allergenenpad — frontend-preview gebouwd
 
 - Voortgang staat **per kindje**, niet per account of huishouden gezamenlijk.
-- Boven het bestaande overzicht komt één geïntegreerde voortgangsweergave, geen
-  los puntensysteem: `x van 9 allergenen afgerond`, met negen rustige markeringen.
+- Boven het bestaande overzicht staat één geïntegreerde voortgangsweergave, geen
+  los puntensysteem: `x van 9 allergenen opgevolgd`, met negen rustige, klikbare
+  markeringen.
 - Het actieve allergeen behoudt de bestaande dosisvoortgang `x/3` en de bestaande
   “Volgende stap”-flow. Er komt geen extra wekelijkse doelstelling bovenop.
-- Kandidaten voor contextuele zachte momenten: eerste volledig doorlopen allergeen
-  en het volledige persoonlijke allergenenpad.
+- Contextuele zachte momenten zijn visueel voorzien bij het eerste volledig gelogde
+  allergeen en het volledige persoonlijke Allergenenpad.
 - Een reactie, pauze, leeftijdsvoorwaarde, uitgesloten allergeen of medisch toezicht
   is nooit “mislukt” en krijgt geen rode gamificatiestatus of aansporing om sneller
   te gaan.
-- De visuele voortgang kan worden afgeleid uit de bestaande doses en
-  `allergen_state`; waarschijnlijk geen nieuwe tabel nodig voor de eerste versie.
-- Eerst een frontend-preview maken en medisch gevoel/copy beoordelen voordat er
-  extra events of algemene mijlpalen worden toegevoegd.
+- De visuele voortgang wordt afgeleid uit de bestaande doses en `allergen_state`;
+  voor deze eerste versie is geen nieuwe tabel of opslag toegevoegd.
+- Eerst de frontend-preview en het medische gevoel van de copy beoordelen voordat
+  er extra events of algemene mijlpalen worden toegevoegd.
 
 ### 3. Learnings / documentenzone — Mijn leerpad
 
@@ -1313,8 +1314,8 @@ De app heeft twee mogelijke chatoppervlakken. Eerst kiezen welke de gebruiker me
 
 1. **Pril Ritme-preview testen** en feedback verwerken; vast doel 3 versus 2/3/4
    voorlopig openlaten.
-2. **Allergenenpad visueel uitwerken** op bestaande data, per kindje en zonder
-   snelheid of medische uitkomst te gamificeren.
+2. **Allergenenpad-preview testen** op bestaande data, per kindje en zonder
+   snelheid of medische uitkomst te gamificeren; feedback verwerken.
 3. **Mijn leerpad visueel uitwerken:** kaartstatussen, samenvatting en bewuste
    afrondflow voor PDF/blog/video; nog zonder schemawijziging.
 4. **Chatzone afbakenen:** HapjesHeld, community-chatruimtes of beide; per oppervlak

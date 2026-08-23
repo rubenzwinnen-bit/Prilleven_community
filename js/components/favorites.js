@@ -12,13 +12,13 @@
      gecached zodat het schema-detail snel rendert
 ============================================ */
 
-import * as Store from '../store.js?v=4.0.9';
-import * as Router from '../router.js?v=4.0.9';
+import * as Store from '../store.js?v=4.0.10';
+import * as Router from '../router.js?v=4.0.10';
 import {
   showToast, confirm, promptInput, escapeHtml, formatDateShort,
   getMealMomentLabel, getRecipeAgeLabel, WEEKDAYS, SCHEDULE_SLOTS, getSlotLabel
-} from '../utils.js?v=4.0.9';
-import { promptScheduleDetails } from './scheduleDetailsDialog.js?v=4.0.9';
+} from '../utils.js?v=4.0.10';
+import { promptScheduleDetails } from './scheduleDetailsDialog.js?v=4.0.10';
 
 /* Module-level cache zodat re-renders en handlers de data delen */
 let cachedFavRecipes = [];
