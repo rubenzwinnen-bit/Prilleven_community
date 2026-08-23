@@ -8,23 +8,23 @@
    automatisch als 'allergisch' getoond.
 ============================================ */
 
-import { escapeHtml, showToast, colorFromSeed, initialsFromName } from '../utils.js?v=4.0.17';
-import { getChildren, updateChild } from '../childrenApi.js?v=4.0.17';
+import { escapeHtml, showToast, colorFromSeed, initialsFromName } from '../utils.js?v=4.0.18';
+import { getChildren, updateChild } from '../childrenApi.js?v=4.0.18';
 import {
   loadEhState,
   patchEhState,
   loadEhDoses,
   createEhDose,
   updateEhDose,
-} from '../eersteHapjesStateApi.js?v=4.0.17';
-import { loadSymptomsForChild } from '../eersteHapjesSymptomsApi.js?v=4.0.17';
+} from '../eersteHapjesStateApi.js?v=4.0.18';
+import { loadSymptomsForChild } from '../eersteHapjesSymptomsApi.js?v=4.0.18';
 import {
   ALLERGEN_FLOW,
   REACTION_LEVELS,
   getEligibleAllergens,
   getAllergenStatus,
-} from '../content/eersteHapjes-allergen-flow.js?v=4.0.17';
-import { openSymptomLogModal } from './symptomLogModal.js?v=4.0.17';
+} from '../content/eersteHapjes-allergen-flow.js?v=4.0.18';
+import { openSymptomLogModal } from './symptomLogModal.js?v=4.0.18';
 
 let state = {
   loaded: false,
@@ -954,10 +954,7 @@ function renderAllergenPath(allergens, ctx, ageMonths, child, nextUp) {
         </div>
       </div>
       <div class="allergenen-path-steps" aria-label="Status van de 9 allergenen">${steps}</div>
-      <div class="allergenen-path-meta">
-        ${milestone}
-        <p class="allergenen-path-note">Op jullie tempo — pauzeren is geen achterstand.</p>
-      </div>
+      ${milestone ? `<div class="allergenen-path-meta">${milestone}</div>` : ''}
       ${nextStep}
     </section>
   `;

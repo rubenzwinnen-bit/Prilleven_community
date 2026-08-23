@@ -1244,6 +1244,8 @@ badgewand of beloning voor openen, klikken, berichtenvolume of schermtijd.
   niet herhaald; de tegels eronder blijven de detailweergave.
 - De buitenkaart gebruikt dezelfde zachte grijsgroene achtergrond, subtiele rand,
   ronding en vlakke kaartstijl als de Pril Ritme-tegel in het weekschema.
+- De vaste tempozin onder de segmenten is verwijderd en de verticale ruimte rond de
+  segmenten en volgende stap is verkleind, zodat de kaart compacter blijft.
 - Het actieve allergeen behoudt de bestaande dosisvoortgang `x/3` en de bestaande
   “Volgende stap”-flow. De benodigde hoeveelheid staat voortaan rechtstreeks in
   die volgende stap; de losse hoeveelheden-tegel bovenaan is verwijderd. Er komt
@@ -1252,6 +1254,9 @@ badgewand of beloning voor openen, klikken, berichtenvolume of schermtijd.
   krijgt voorrang op twijfel en de balk is niet inklapbaar. Medisch toezicht staat
   compact onder de CTA van “Volgende stap”. Bij een actieve pauze blijven de
   vervolgacties in de veiligheidsbalk direct bereikbaar.
+- Reactie loggen gebruikt zacht ingekleurde ernsttegels zonder stoplichtbollen:
+  groen voor mild, oranje voor twijfel en rood voor ernstig. De waarschuwing bovenaan
+  volgt dezelfde hiërarchie: ernstig is rood, twijfel blijft oranje.
 - Contextuele zachte momenten zijn visueel voorzien bij het eerste volledig gelogde
   allergeen en het volledige persoonlijke Allergenenpad.
 - Een reactie, pauze, leeftijdsvoorwaarde, uitgesloten allergeen of medisch toezicht

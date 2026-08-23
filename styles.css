@@ -6520,8 +6520,8 @@ body.is-aanraders #app-nav { display: none; }
   color: var(--color-dark);
 }
 .allergenen-safety-bar--ernstig {
-  background: #fff4e5;
-  border-color: #f0b97a;
+  background: #fdecec;
+  border-color: #e49a98;
 }
 .allergenen-safety-bar--twijfel {
   background: #fff9e7;
@@ -6538,6 +6538,15 @@ body.is-aanraders #app-nav { display: none; }
   color: #8a5a19;
   font-size: 1rem;
   line-height: 1;
+}
+.allergenen-safety-bar--ernstig .allergenen-safety-icon,
+.allergenen-safety-bar--ernstig .allergenen-safety-warning-copy strong,
+.allergenen-safety-bar--ernstig .allergenen-safety-active-head strong {
+  color: #9b2f2c;
+}
+.allergenen-safety-bar--ernstig .allergenen-safety-warning-copy p,
+.allergenen-safety-bar--ernstig .allergenen-safety-active-head > div > span {
+  color: #6f3a38;
 }
 .allergenen-safety-warning-copy strong {
   display: block;
@@ -7223,7 +7232,7 @@ body.is-aanraders #app-nav { display: none; }
 /* Allergenenpad — zachte voortgang per kindje */
 .allergenen-path {
   margin-bottom: 1rem;
-  padding: 1rem 1.15rem;
+  padding: .85rem 1.15rem;
   background: rgba(79, 125, 108, 0.08);
   border: 1px solid rgba(79, 125, 108, 0.14);
   border-radius: var(--radius-md);
@@ -7266,7 +7275,7 @@ body.is-aanraders #app-nav { display: none; }
   display: grid;
   grid-template-columns: repeat(9, minmax(0, 1fr));
   gap: .3rem;
-  margin-top: .8rem;
+  margin-top: .65rem;
 }
 .allergenen-path-step {
   width: 100%;
@@ -7307,7 +7316,7 @@ body.is-aanraders #app-nav { display: none; }
   align-items: center;
   justify-content: space-between;
   gap: .75rem;
-  margin-top: .55rem;
+  margin-top: .45rem;
 }
 .allergenen-path-moment {
   display: inline-flex;
@@ -7322,20 +7331,13 @@ body.is-aanraders #app-nav { display: none; }
 .allergenen-path-moment strong {
   font-size: inherit;
 }
-.allergenen-path-note {
-  margin: 0 0 0 auto;
-  color: var(--color-dark-light);
-  font-size: .72rem;
-  line-height: 1.3;
-  text-align: right;
-}
 .allergenen-path-next {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-top: .85rem;
-  padding: .8rem .9rem;
+  margin-top: .65rem;
+  padding: .7rem .8rem;
   background: rgba(79, 125, 108, .07);
   border: 1px solid rgba(79, 125, 108, .24);
   border-radius: 12px;
@@ -7421,7 +7423,7 @@ body.is-aanraders #app-nav { display: none; }
     width: 100%;
   }
   .allergenen-path {
-    padding: 1rem .85rem;
+    padding: .85rem;
   }
   .allergenen-path-steps {
     gap: .22rem;
@@ -7476,38 +7478,66 @@ body.is-aanraders #app-nav { display: none; }
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: .25rem;
-  padding: .85rem .6rem;
+  justify-content: center;
+  gap: .18rem;
+  min-height: 5.4rem;
+  padding: .78rem .65rem;
   border-radius: 12px;
-  border: 2px solid #e6e2d8;
-  background: #fff;
+  border: 2px solid transparent;
   cursor: pointer;
-  transition: transform .12s ease, border-color .15s ease, background .15s ease;
+  transition: transform .12s ease, border-color .15s ease, background .15s ease, box-shadow .15s ease;
 }
 .eh-stoplight-chip:hover {
   transform: translateY(-1px);
-  border-color: #cfd6c2;
-}
-.eh-stoplight-icon {
-  font-size: 1.7rem;
-  line-height: 1;
 }
 .eh-stoplight-label {
   font-weight: 600;
-  color: #333;
   font-size: .95rem;
 }
 .eh-stoplight-hint {
   font-size: .78rem;
-  color: #6b6b6b;
   line-height: 1.3;
 }
 .eh-stoplight-chip.selected {
-  background: #f6f8f1;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(49, 59, 53, .1);
 }
-.eh-stoplight-chip--mild.selected   { border-color: #6cae72; background: #ecf5ed; }
-.eh-stoplight-chip--matig.selected  { border-color: #e9a23b; background: #fff4e2; }
-.eh-stoplight-chip--heftig.selected { border-color: #d95553; background: #fdecec; }
+.eh-stoplight-chip--mild {
+  background: rgba(79, 125, 108, .09);
+  border-color: rgba(79, 125, 108, .32);
+  color: var(--color-green-text);
+}
+.eh-stoplight-chip--mild:hover,
+.eh-stoplight-chip--mild.selected {
+  background: rgba(79, 125, 108, .18);
+  border-color: var(--color-green-text);
+}
+.eh-stoplight-chip--matig {
+  background: #fff5e5;
+  border-color: #edc789;
+  color: #754b12;
+}
+.eh-stoplight-chip--matig:hover,
+.eh-stoplight-chip--matig.selected {
+  background: #ffebca;
+  border-color: #d58a24;
+}
+.eh-stoplight-chip--heftig {
+  background: #fdecec;
+  border-color: #e7aaa8;
+  color: #812b29;
+}
+.eh-stoplight-chip--heftig:hover,
+.eh-stoplight-chip--heftig.selected {
+  background: #f9dedd;
+  border-color: #c94845;
+}
+.eh-stoplight-chip--mild .eh-stoplight-hint,
+.eh-stoplight-chip--matig .eh-stoplight-hint,
+.eh-stoplight-chip--heftig .eh-stoplight-hint {
+  color: currentColor;
+  opacity: .82;
+}
 
 @media (max-width: 540px) {
   .eh-stoplight {
