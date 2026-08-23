@@ -1194,3 +1194,146 @@ evaluatie en expliciete goedkeuring van database-, analytics- of mobiele wijzigi
    welke zachte mijlpalen voldoende waarde hebben voor een volgende fase.
 3. Alleen na expliciete goedkeuring het cross-device Supabase-model met RLS
    ontwerpen en de migratie eerst ter beoordeling in de chat tonen.
+
+---
+
+## 2026-08-23 — Roadmap website-doelstellingen + vriendenprogramma
+
+Deze roadmap bundelt de volgende website-uitbouw na de eerste Pril Ritme-preview.
+De mobiele app blijft buiten scope tot de websiteflows inhoudelijk en visueel zijn
+goedgekeurd. Niet elke zone krijgt hetzelfde weekdoel: de voortgang volgt telkens
+een betekenisvolle actie binnen die functie. Geen punten, publieke ranglijst,
+badgewand of beloning voor openen, klikken, berichtenvolume of schermtijd.
+
+### Overkoepelend model
+
+- **Weekschema — Pril Ritme:** daadwerkelijk koken op unieke kalenderdagen.
+- **Allergenen — Allergenenpad:** het bestaande introductietraject per kindje veilig
+  en op eigen tempo doorlopen.
+- **Learnings/documenten — Mijn leerpad:** bewust verdergaan en materiaal afronden.
+- **Chat:** alleen een aantoonbaar nuttig resultaat kan tellen; nooit het aantal
+  vragen, berichten, likes of geopende gesprekken.
+- **Vrienden uitnodigen:** aparte commerciële referralfeature met korting voor beide
+  personen; niet vermengen met de zachte persoonlijke mijlpalen hierboven.
+- Pas als elke zone afzonderlijk goed voelt, een compact gezamenlijk
+  voortgangsoverzicht op de website overwegen.
+
+### 1. Weekschema / Pril Ritme — lokale preview gebouwd
+
+- Drie unieke kookdagen vormen het weekdoel; meerdere gerechten op één dag tellen
+  één keer.
+- Cooked it, undo, contextuele mijlpalen, beoordelingsuitnodiging en rollende
+  vierweekse historiek zijn gebouwd.
+- Eerst in de Vercel-preview evalueren of een vast doel van drie dagen past. Een
+  persoonlijke keuze 2/3/4 dagen blijft een open optie, geen automatische volgende
+  stap.
+- Definitieve cross-device opslag vereist later een Supabase-model met RLS en
+  expliciete goedkeuring.
+
+### 2. Allergenenpad — eerstvolgende visuele uitbouw
+
+- Voortgang staat **per kindje**, niet per account of huishouden gezamenlijk.
+- Boven het bestaande overzicht komt één geïntegreerde voortgangsweergave, geen
+  los puntensysteem: `x van 9 allergenen afgerond`, met negen rustige markeringen.
+- Het actieve allergeen behoudt de bestaande dosisvoortgang `x/3` en de bestaande
+  “Volgende stap”-flow. Er komt geen extra wekelijkse doelstelling bovenop.
+- Kandidaten voor contextuele zachte momenten: eerste volledig doorlopen allergeen
+  en het volledige persoonlijke allergenenpad.
+- Een reactie, pauze, leeftijdsvoorwaarde, uitgesloten allergeen of medisch toezicht
+  is nooit “mislukt” en krijgt geen rode gamificatiestatus of aansporing om sneller
+  te gaan.
+- De visuele voortgang kan worden afgeleid uit de bestaande doses en
+  `allergen_state`; waarschijnlijk geen nieuwe tabel nodig voor de eerste versie.
+- Eerst een frontend-preview maken en medisch gevoel/copy beoordelen voordat er
+  extra events of algemene mijlpalen worden toegevoegd.
+
+### 3. Learnings / documentenzone — Mijn leerpad
+
+- Learning-kaarten krijgen uiteindelijk een persoonlijke status: `Nieuw`, `Bezig`
+  of `Afgerond`.
+- Bovenaan komt een rustige samenvatting zoals `2 afgerond · 1 bezig`, met
+  “Ga verder met…” op basis van de bestaande bookmarkpositie.
+- Openen, scrollen, favoriet maken of veel notities schrijven telt niet als doel.
+- Voor `Afgerond` eerst één consistente productdefinitie kiezen voor PDF, blog en
+  video. Voorkeur voor een bewuste afrondactie op een logisch eindpunt; niet
+  stilzwijgend aannemen dat een geopend item gelezen of bekeken is.
+- Kandidaten voor contextuele momenten: eerste learning afgerond en vijf learnings
+  afgerond. Geen verplicht weekquotum en geen druk om de hele bibliotheek te lezen.
+- Bestaande bookmarks, favorieten en notities ondersteunen `Nieuw`/`Bezig`, maar er
+  is nog geen definitieve completion-state. Na visuele goedkeuring is daarvoor
+  waarschijnlijk een schemawijziging met RLS nodig; SQL eerst in de chat tonen en
+  pas na expliciete goedkeuring uitvoeren.
+
+### 4. Chatzone — betekenisvolle actie eerst definiëren
+
+De app heeft twee mogelijke chatoppervlakken. Eerst kiezen welke de gebruiker met
+“chatzone” bedoelt en of beide uiteindelijk een eigen zachte voortgang krijgen.
+
+#### HapjesHeld / AI-chat
+
+- Geen doel op aantal vragen, gesprekken, tokens of dagelijkse opens; dat beloont
+  gebruiksvolume in plaats van geholpen zijn.
+- Mogelijke betekenisvolle actie: de gebruiker markeert een antwoord of gesprek als
+  nuttig/afgerond, bewaart er bewust een bruikbare actie uit, of hervat een relevante
+  eerdere conversatie.
+- Eerst de gewenste uitkomst en één eenvoudige bevestigingsflow ontwerpen. Pas daarna
+  bepalen of “eerste nuttige gesprek” een contextueel moment verdient.
+
+#### Community-chatruimtes / timeline
+
+- Geen doelen op aantal posts, reacties, likes of chatberichten; dit lokt spam en
+  sociale druk uit.
+- Mogelijke betekenisvolle actie: een vraagsteller markeert een antwoord als
+  behulpzaam of opgelost. Alleen zo'n erkend resultaat kan later tellen.
+- Geen publieke competitie of leaderboard. Moderatie, veiligheid en kwaliteit gaan
+  altijd vóór participatievolume.
+
+### 5. Vrienden uitnodigen — apart referralprogramma
+
+- Website-ingang: bijvoorbeeld “Nodig een vriend uit” in profiel/account, met een
+  persoonlijke link of referralcode en heldere uitleg voor beide personen.
+- Beoogd voordeel: de bestaande abonnee krijgt korting én de nieuwe abonnee krijgt
+  korting. Hoogte, duur en moment van toekenning zijn nog niet beslist.
+- Korting pas koppelen aan een aantoonbaar geslaagde nieuwe betaling, nooit enkel aan
+  een klik, registratie of ingevuld e-mailadres.
+- Voor implementatie beslissen: kortingstype/bedrag, éénmalig of tijdelijk, maximale
+  referrals, stapelbaarheid, bestaande klanten, annulering/refund/chargeback,
+  self-referrals, dubbele accounts en andere misbruikpreventie.
+- Eerst onderzoeken wat Plug&Pay zelf ondersteunt voor kortingscodes, referrals en
+  abonnementswijzigingen. Geen betalings- of webhooklogica ontwerpen op aannames.
+- Waarschijnlijk nodig: eigen referralcode/toewijzing, auditbare statusovergangen en
+  koppeling aan `subscriptions`/betalingsevents. Dit kan nieuwe tabellen, endpoints,
+  privacy-/voorwaardenupdates en een wijziging aan de Plug&Pay-webhook vereisen.
+- Daarom eerst businessregels en visuele flow goedkeuren. Database-, endpoint-,
+  auth- en webhookwijzigingen altijd afzonderlijk vooraf tonen en bevestigen.
+- Referralbeloningen blijven commercieel en staan los van Pril Ritme,
+  Allergenenpad, Mijn leerpad en eventuele chatmijlpalen.
+
+### Stapsgewijze uitvoeringsvolgorde
+
+1. **Pril Ritme-preview testen** en feedback verwerken; vast doel 3 versus 2/3/4
+   voorlopig openlaten.
+2. **Allergenenpad visueel uitwerken** op bestaande data, per kindje en zonder
+   snelheid of medische uitkomst te gamificeren.
+3. **Mijn leerpad visueel uitwerken:** kaartstatussen, samenvatting en bewuste
+   afrondflow voor PDF/blog/video; nog zonder schemawijziging.
+4. **Chatzone afbakenen:** HapjesHeld, community-chatruimtes of beide; per oppervlak
+   eerst de betekenisvolle uitkomst bepalen en pas daarna een preview bouwen.
+5. **Referralprogramma functioneel ontwerpen:** gebruikersflow + volledige
+   kortings-/misbruikregels, daarna Plug&Pay-mogelijkheden verifiëren.
+6. Na visuele goedkeuring per zone de benodigde **definitieve opslag, RLS, endpoints,
+   analytics en privacy-impact** apart ontwerpen en ter goedkeuring voorleggen.
+7. Pas daarna eventueel een gezamenlijk website-overzicht en vervolgens de
+   **mobiele app** aanpakken.
+
+### Open productbeslissingen
+
+- Blijft Pril Ritme vast op drie kookdagen of mag een gezin 2/3/4 kiezen?
+- Welke afrondactie voelt voor PDF, blog en video natuurlijk en betrouwbaar?
+- Bedoelt “chatzone” HapjesHeld, community-chatruimtes/timeline of beide?
+- Wat is in chat een aantoonbaar nuttig resultaat zonder spam of klikgedrag te
+  belonen?
+- Welke korting krijgen uitnodiger en nieuwe abonnee, wanneer wordt die toegekend en
+  hoe worden refunds, bestaande klanten, stapeling en misbruik behandeld?
+- Kan Plug&Pay de gekozen referralregels native uitvoeren of is eigen verwerking
+  nodig?
