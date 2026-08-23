@@ -8,23 +8,23 @@
    automatisch als 'allergisch' getoond.
 ============================================ */
 
-import { escapeHtml, showToast, colorFromSeed, initialsFromName } from '../utils.js?v=4.0.18';
-import { getChildren, updateChild } from '../childrenApi.js?v=4.0.18';
+import { escapeHtml, showToast, colorFromSeed, initialsFromName } from '../utils.js?v=4.0.19';
+import { getChildren, updateChild } from '../childrenApi.js?v=4.0.19';
 import {
   loadEhState,
   patchEhState,
   loadEhDoses,
   createEhDose,
   updateEhDose,
-} from '../eersteHapjesStateApi.js?v=4.0.18';
-import { loadSymptomsForChild } from '../eersteHapjesSymptomsApi.js?v=4.0.18';
+} from '../eersteHapjesStateApi.js?v=4.0.19';
+import { loadSymptomsForChild } from '../eersteHapjesSymptomsApi.js?v=4.0.19';
 import {
   ALLERGEN_FLOW,
   REACTION_LEVELS,
   getEligibleAllergens,
   getAllergenStatus,
-} from '../content/eersteHapjes-allergen-flow.js?v=4.0.18';
-import { openSymptomLogModal } from './symptomLogModal.js?v=4.0.18';
+} from '../content/eersteHapjes-allergen-flow.js?v=4.0.19';
+import { openSymptomLogModal } from './symptomLogModal.js?v=4.0.19';
 
 let state = {
   loaded: false,
@@ -943,11 +943,10 @@ function renderAllergenPath(allergens, ctx, ageMonths, child, nextUp) {
   }
 
   return `
-    <section class="allergenen-path" aria-labelledby="allergenen-path-title">
+    <section class="allergenen-path" aria-label="Persoonlijke voortgang van ${escapeHtml(child.name)}">
       <div class="allergenen-path-head">
         <div>
           <span class="allergenen-path-eyebrow">Persoonlijke voortgang</span>
-          <h3 id="allergenen-path-title">Allergenenpad van ${escapeHtml(child.name)}</h3>
         </div>
         <div class="allergenen-path-count" aria-label="${resolvedCount} van ${allergens.length} allergenen opgevolgd">
           <strong aria-hidden="true">${resolvedCount}</strong><span aria-hidden="true">/${allergens.length}</span>

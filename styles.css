@@ -7252,11 +7252,6 @@ body.is-aanraders #app-nav { display: none; }
   letter-spacing: .06em;
   text-transform: uppercase;
 }
-.allergenen-path h3 {
-  margin: 0;
-  color: var(--color-dark);
-  font-size: 1.05rem;
-}
 .allergenen-path-count {
   display: flex;
   align-items: baseline;
