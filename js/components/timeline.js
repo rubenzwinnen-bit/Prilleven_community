@@ -4,14 +4,14 @@
    Stap 4: voegt like + replies toe via event-delegation.
 ============================================ */
 
-import { showToast, escapeHtml, processImageForUpload, confirm as confirmDialog, nl2br, formatRelativeTime } from '../utils.js?v=4.0.20';
-import * as Api from '../communityApi.js?v=4.0.20';
-import { sessionGet } from '../supabase.js?v=4.0.20';
-import * as Store from '../store.js?v=4.0.20';
+import { showToast, escapeHtml, processImageForUpload, confirm as confirmDialog, nl2br, formatRelativeTime } from '../utils.js?v=4.0.21';
+import * as Api from '../communityApi.js?v=4.0.21';
+import { sessionGet } from '../supabase.js?v=4.0.21';
+import * as Store from '../store.js?v=4.0.21';
 import { ensureNickname, getCachedNickname, invalidateNicknameCache }
-  from './nicknameModal.js?v=4.0.20';
-import { openProfileModal } from './profileModal.js?v=4.0.20';
-import { renderPostCard, renderReplyRow, renderPoll, renderChatroomTopicCard } from './timelinePost.js?v=4.0.20';
+  from './nicknameModal.js?v=4.0.21';
+import { openProfileModal } from './profileModal.js?v=4.0.21';
+import { renderPostCard, renderReplyRow, renderPoll, renderChatroomTopicCard } from './timelinePost.js?v=4.0.21';
 
 function currentUserId() {
   return sessionGet()?.user_id || null;

@@ -1258,7 +1258,8 @@ badgewand of beloning voor openen, klikken, berichtenvolume of schermtijd.
   groen voor mild, oranje voor twijfel en rood voor ernstig. De waarschuwing bovenaan
   volgt dezelfde hiërarchie: ernstig is rood, twijfel blijft oranje.
 - Contextuele zachte momenten zijn visueel voorzien bij het eerste volledig gelogde
-  allergeen en het volledige persoonlijke Allergenenpad.
+  allergeen en het volledige Allergenenpad. De functietitel gebruikt dezelfde
+  compacte groene stijl als `Pril Ritme` in het weekschema.
 - Een reactie, pauze, leeftijdsvoorwaarde, uitgesloten allergeen of medisch toezicht
   is nooit “mislukt” en krijgt geen rode gamificatiestatus of aansporing om sneller
   te gaan.

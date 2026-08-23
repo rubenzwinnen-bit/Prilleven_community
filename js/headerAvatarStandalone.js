@@ -6,9 +6,9 @@
    de profile-modal eraan.
 ============================================ */
 
-import { sessionGet, sessionClear, invalidateSubscriptionCache } from './supabase.js?v=4.0.20';
-import { initialsFromName, colorFromSeed, escapeHtml } from './utils.js?v=4.0.20';
-import * as Api from './communityApi.js?v=4.0.20';
+import { sessionGet, sessionClear, invalidateSubscriptionCache } from './supabase.js?v=4.0.21';
+import { initialsFromName, colorFromSeed, escapeHtml } from './utils.js?v=4.0.21';
+import * as Api from './communityApi.js?v=4.0.21';
 
 /**
  * Hang een logout-handler aan een button. Werkt voor de standalone

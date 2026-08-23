@@ -5,7 +5,7 @@
    Geen state-cache hier — caller beheert dat zelf.
 ============================================ */
 
-import { sessionRefreshIfNeeded } from './supabase.js?v=4.0.20';
+import { sessionRefreshIfNeeded } from './supabase.js?v=4.0.21';
 
 async function call(path, { method = 'GET', body = null } = {}) {
   const session = await sessionRefreshIfNeeded();
