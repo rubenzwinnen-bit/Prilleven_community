@@ -2743,90 +2743,22 @@ body.is-aanraders #app-nav { display: none; }
 
 /* Subtiele weekvoortgang: drie unieke kookdagen vormen één Pril Ritme. */
 .cooking-rhythm {
-  padding: 1rem 1.15rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
   margin-bottom: 1rem;
   border: 1px solid rgba(79, 125, 108, 0.14);
   border-radius: var(--radius-md);
   background: rgba(79, 125, 108, 0.08);
 }
 
-.cooking-rhythm-current,
-.cooking-history {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.25rem;
-}
-
-.cooking-rhythm-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  min-width: 0;
-}
-
-.cooking-rhythm-copy strong {
+.cooking-rhythm-title {
   color: var(--color-green-text);
   font-size: 0.95rem;
   font-weight: 600;
-}
-
-.cooking-rhythm-copy span {
-  color: var(--color-text-muted, #666);
-  font-size: 0.84rem;
-  line-height: 1.4;
-}
-
-.cooking-rhythm-dots {
-  display: flex;
-  gap: 0.45rem;
-  flex: 0 0 auto;
-}
-
-.cooking-rhythm-dot {
-  width: 2rem;
-  height: 2rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(79, 125, 108, 0.28);
-  border-radius: 50%;
-  color: var(--color-green-text);
-  background: var(--color-white, #fff);
-  font-size: 0.75rem;
-  font-weight: 600;
-  transition: var(--transition);
-}
-
-.cooking-rhythm-dot.is-done {
-  color: var(--color-white, #fff);
-  border-color: var(--color-green-text);
-  background: var(--color-green-text);
-}
-
-.cooking-history {
-  margin-top: 0.85rem;
-  padding-top: 0.85rem;
-  border-top: 1px solid rgba(79, 125, 108, 0.14);
-}
-
-.cooking-history-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  min-width: 0;
-}
-
-.cooking-history-copy strong {
-  color: var(--color-green-text);
-  font-size: 0.78rem;
-  font-weight: 600;
-}
-
-.cooking-history-copy span {
-  color: var(--color-text-muted, #666);
-  font-size: 0.74rem;
-  line-height: 1.35;
+  white-space: nowrap;
 }
 
 .cooking-history-weeks {
@@ -2844,8 +2776,8 @@ body.is-aanraders #app-nav { display: none; }
 }
 
 .cooking-history-marker {
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 2rem;
+  height: 2rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2855,6 +2787,11 @@ body.is-aanraders #app-nav { display: none; }
   background: rgba(255, 255, 255, 0.7);
   font-size: 0.62rem;
   font-weight: 600;
+}
+
+.cooking-history-week.is-current:not(.is-complete) .cooking-history-marker {
+  border-color: rgba(79, 125, 108, 0.42);
+  background: var(--color-white, #fff);
 }
 
 .cooking-history-week.is-complete .cooking-history-marker {
@@ -3213,16 +3150,18 @@ body.is-aanraders #app-nav { display: none; }
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .cooking-rhythm-current,
-  .cooking-history,
+  .cooking-rhythm,
   .recipe-cook-heading {
     align-items: flex-start;
     flex-direction: column;
   }
 
-  .cooking-rhythm-dots,
   .cooking-history-weeks {
     align-self: flex-start;
+  }
+
+  .cooking-rhythm {
+    gap: 0.65rem;
   }
 
   .cooking-history-weeks {

@@ -1019,8 +1019,8 @@ interactie volgen later in een aparte fase.
   de vier Claude-commando's in `.claude/commands/` blijven bestaan.
 - ✅ De lokale detectie voor zachte mijlpalen bestaat voor eerste Cooked it, eerste
   volle Pril Ritme-week en vijf verschillende bereide recepten. De aparte tegel
-  “Volgend zacht moment” is na de previewtest verwijderd omdat de drie ritmevinkjes
-  voldoende permanente voortgang tonen.
+  “Volgend zacht moment” is na de previewtest verwijderd omdat de compacte
+  Pril Ritme-rij voldoende permanente voortgang toont.
 - ✅ De inline kaart “Zacht moment bereikt” in het receptdetail is eveneens verwijderd
   zodat ze geen vaste schermruimte inneemt. Een korte popup rechtsonder die vanzelf
   verdwijnt blijft bewaard als later ontwerpidee, pas nadat alle gamificaties visueel
@@ -1028,10 +1028,10 @@ interactie volgen later in een aparte fase.
 - ✅ Na een bereid gerecht zonder eigen beoordeling verschijnt een rustige
   uitnodiging “Hoe smaakte het?”. De knop scrolt naar de bestaande ratingflow en
   focust de eerste ster; de uitnodiging verdwijnt zodra er beoordeeld is.
-- ✅ De bestaande groene Pril Ritme-tegel toont onder de drie weekvinkjes een rollende
-  historiek van deze week en de drie vorige kalenderweken. De huidige week toont
-  `x/3`; een volle week krijgt een groen vinkje en een onvolledige vorige week alleen
-  een neutrale streep. Er is geen streakverlies of rode status.
+- ✅ De bestaande groene Pril Ritme-tegel bundelt de huidige week en de drie vorige
+  kalenderweken in één compacte marker-rij. De huidige week toont `x/3`; een volle
+  week krijgt een groen vinkje en een onvolledige vorige week alleen een neutrale
+  streep. Er is geen streakverlies of rode status.
 - ✅ App-cachebuster opnieuw volledig gelijkgetrokken naar **`4.0.9`**.
 
 ### Gewijzigde kernbestanden
@@ -1074,7 +1074,7 @@ interactie volgen later in een aparte fase.
   animatie blijft vrij van de copy en undo herstelt de lokale teststate volledig.
 - ✅ Vierweekse ritmehistoriek geïsoleerd getest met twee volle, niet-aangrenzende
   weken en visueel gecontroleerd op desktop en de mobiele website. Een Cooked it
-  werkt zowel de drie weekvinkjes als `Deze week x/3` direct bij; undo herstelt beide.
+  werkt de gecombineerde weekmarker direct bij; undo herstelt die eveneens.
 
 ### Beslissingen voor vervolg
 - Eerst deze ene lus testen op gevoel en gebruik; pas daarna beslissen over
@@ -1136,8 +1136,8 @@ evaluatie en expliciete goedkeuring van database-, analytics- of mobiele wijzigi
      badgewand.
    - Rustige beoordelingsuitnodiging na een bereid gerecht, gekoppeld aan de bestaande
      ratingflow.
-   - Rollende vierweekse historiek binnen dezelfde groene Pril Ritme-tegel, zonder
-     harde streak of negatieve status voor een onvolledige week.
+   - Huidige week en drie vorige weken samen in één compacte marker-rij binnen
+     dezelfde groene Pril Ritme-tegel, zonder harde streak of negatieve status.
    - Lokale opslag per gebruiker/week om interactie en gevoel te testen zonder
      database-impact.
 
