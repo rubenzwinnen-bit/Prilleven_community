@@ -1241,9 +1241,10 @@ badgewand of beloning voor openen, klikken, berichtenvolume of schermtijd.
   “Volgende stap”-flow. De benodigde hoeveelheid staat voortaan rechtstreeks in
   die volgende stap; de losse hoeveelheden-tegel bovenaan is verwijderd. Er komt
   geen extra wekelijkse doelstelling bovenop.
-- Ernstige en twijfelachtige symptomen plus eventueel medisch toezicht worden per
-  kindje samengebracht in één compacte, inklapbare veiligheidsbalk. Bij een
-  actieve pauze blijven de vervolgacties in diezelfde balk direct bereikbaar.
+- Bovenaan staat per kindje maximaal één directe symptoomwaarschuwing: ernstig
+  krijgt voorrang op twijfel en de balk is niet inklapbaar. Medisch toezicht staat
+  compact onder de CTA van “Volgende stap”. Bij een actieve pauze blijven de
+  vervolgacties in de veiligheidsbalk direct bereikbaar.
 - Contextuele zachte momenten zijn visueel voorzien bij het eerste volledig gelogde
   allergeen en het volledige persoonlijke Allergenenpad.
 - Een reactie, pauze, leeftijdsvoorwaarde, uitgesloten allergeen of medisch toezicht

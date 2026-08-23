@@ -6582,77 +6582,23 @@ body.is-aanraders #app-nav { display: none; }
   background: #fff9e7;
   border-color: #e8c66d;
 }
-.allergenen-safety-bar--toezicht {
-  background: #f7f5e9;
-  border-color: #d8cfa8;
-}
-.allergenen-safety-bar summary {
+.allergenen-safety-warning {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: .7rem;
   padding: .7rem .85rem;
-  cursor: pointer;
-  list-style: none;
-}
-.allergenen-safety-bar summary::-webkit-details-marker {
-  display: none;
 }
 .allergenen-safety-icon {
   color: #8a5a19;
   font-size: 1rem;
   line-height: 1;
 }
-.allergenen-safety-summary {
-  display: flex;
-  flex-direction: column;
-  gap: .05rem;
-  min-width: 0;
-}
-.allergenen-safety-summary strong,
-.allergenen-safety-summary > span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.allergenen-safety-summary strong {
+.allergenen-safety-warning-copy strong {
+  display: block;
   font-size: .86rem;
 }
-.allergenen-safety-summary > span {
-  color: var(--color-dark-light);
-  font-size: .76rem;
-}
-.allergenen-safety-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: .35rem;
-  color: #765b2d;
-  font-size: .72rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-.allergenen-safety-toggle > span {
-  display: inline-block;
-  transition: transform .18s ease;
-}
-.allergenen-safety-bar[open] .allergenen-safety-toggle > span {
-  transform: rotate(180deg);
-}
-.allergenen-safety-details {
-  padding: 0 .85rem .7rem 2.55rem;
-  border-top: 1px solid rgba(118, 91, 45, .14);
-}
-.allergenen-safety-detail {
-  padding-top: .6rem;
-}
-.allergenen-safety-detail + .allergenen-safety-detail {
-  margin-top: .55rem;
-  border-top: 1px solid rgba(118, 91, 45, .12);
-}
-.allergenen-safety-detail strong {
-  font-size: .8rem;
-}
-.allergenen-safety-detail p {
+.allergenen-safety-warning-copy p {
   margin: .1rem 0 0;
   color: var(--color-dark-light);
   font-size: .76rem;
@@ -6709,15 +6655,6 @@ body.is-aanraders #app-nav { display: none; }
 }
 
 @media (max-width: 640px) {
-  .allergenen-safety-bar summary {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-  .allergenen-safety-toggle {
-    grid-column: 2;
-  }
-  .allergenen-safety-details {
-    padding-left: .85rem;
-  }
   .allergenen-safety-action {
     grid-template-columns: 1fr;
   }
@@ -7497,6 +7434,27 @@ body.is-aanraders #app-nav { display: none; }
 .allergenen-path-next .btn {
   flex-shrink: 0;
 }
+.allergenen-path-next-action {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: stretch;
+  gap: .35rem;
+}
+.allergenen-path-next-supervision {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .25rem;
+  padding: .22rem .4rem;
+  background: rgba(255,255,255,.86);
+  border-radius: 8px;
+  color: #6d5d32;
+  font-size: .68rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+}
 .allergenen-path-wait {
   margin-top: .85rem;
   padding: .7rem .85rem;
@@ -7538,6 +7496,7 @@ body.is-aanraders #app-nav { display: none; }
   .allergenen-path-next-body small {
     white-space: normal;
   }
+  .allergenen-path-next-action,
   .allergenen-path-next .btn {
     width: 100%;
   }
