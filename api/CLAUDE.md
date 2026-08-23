@@ -89,6 +89,11 @@ GDPR-endpoints voor de huidige user.
 - `GET` → `{ profile, usage, imageUsage }` (chat user profile + maand-/dag-tellers).
 - `PUT` → upsert via `sanitizeProfileInput()`. Whitelist: `display_name`, `children[]`, `diet[]` (uit ALLOWED_DIET set), `allergies[]`, `notes`, `memory_enabled`.
 
+### `learnings.mjs` — `/api/learnings/*` (catch-all)
+- Learningslijst, detail, favorieten, bookmarks, notities en clips binnen één function.
+- `GET /api/learnings` levert per item `is_favorite` én de eigen `bookmark` (`position`, `updated_at`) mee, zodat `Mijn leerpad` zonder extra request per kaart de status `Bezig` en de recentste hervatpositie kan bepalen.
+- De frontend-preview van `Afgerond` staat nog lokaal; er is nog geen completion-route of definitieve databasekolom.
+
 ### `memory.mjs` — `/api/memory`
 - `GET` → lijst eigen memories (sortering: importance desc, created desc).
 - `DELETE` → alles van user.

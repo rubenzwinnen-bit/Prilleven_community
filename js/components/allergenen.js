@@ -8,23 +8,23 @@
    automatisch als 'allergisch' getoond.
 ============================================ */
 
-import { escapeHtml, showToast, colorFromSeed, initialsFromName } from '../utils.js?v=4.0.22';
-import { getChildren, updateChild } from '../childrenApi.js?v=4.0.22';
+import { escapeHtml, showToast, colorFromSeed, initialsFromName } from '../utils.js?v=4.0.23';
+import { getChildren, updateChild } from '../childrenApi.js?v=4.0.23';
 import {
   loadEhState,
   patchEhState,
   loadEhDoses,
   createEhDose,
   updateEhDose,
-} from '../eersteHapjesStateApi.js?v=4.0.22';
-import { loadSymptomsForChild } from '../eersteHapjesSymptomsApi.js?v=4.0.22';
+} from '../eersteHapjesStateApi.js?v=4.0.23';
+import { loadSymptomsForChild } from '../eersteHapjesSymptomsApi.js?v=4.0.23';
 import {
   ALLERGEN_FLOW,
   REACTION_LEVELS,
   getEligibleAllergens,
   getAllergenStatus,
-} from '../content/eersteHapjes-allergen-flow.js?v=4.0.22';
-import { openSymptomLogModal } from './symptomLogModal.js?v=4.0.22';
+} from '../content/eersteHapjes-allergen-flow.js?v=4.0.23';
+import { openSymptomLogModal } from './symptomLogModal.js?v=4.0.23';
 
 let state = {
   loaded: false,

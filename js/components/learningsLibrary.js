@@ -5,10 +5,11 @@
    toggle en (admin) "Nieuw item" knop met upload-modal.
 ============================================ */
 
-import * as Store from '../store.js?v=4.0.22';
-import * as Router from '../router.js?v=4.0.22';
-import { showToast, confirm } from '../utils.js?v=4.0.22';
-import { sessionGet, sessionRefreshIfNeeded, supabaseStorageUploadXhr, learningsThumbPublicUrl } from '../supabase.js?v=4.0.22';
+import * as Store from '../store.js?v=4.0.23';
+import * as Router from '../router.js?v=4.0.23';
+import { showToast, confirm } from '../utils.js?v=4.0.23';
+import { sessionGet, sessionRefreshIfNeeded, supabaseStorageUploadXhr, learningsThumbPublicUrl } from '../supabase.js?v=4.0.23';
+import { getLearningStatus } from '../learningProgress.js?v=4.0.23';
 
 let cachedItems = [];
 let cachedFavIds = new Set();
@@ -66,6 +67,13 @@ export function render() {
           <p class="learnings-subtitle">Documenten, blogs en videos van Pril Leven.</p>
         </div>
       </header>
+
+      <section class="learning-path" id="learning-path" aria-label="Mijn leerpad">
+        <div class="learning-path-head">
+          <strong class="learning-path-title">Mijn leerpad</strong>
+          <span class="learning-path-summary">Voortgang laden...</span>
+        </div>
+      </section>
 
       <div class="toolbar learnings-toolbar">
         <div class="toolbar-left">
@@ -179,6 +187,12 @@ export async function init() {
 
   // Klikken in grid
   root.addEventListener('click', async (e) => {
+    const continueBtn = e.target.closest('[data-action="continue-learning"]');
+    if (continueBtn) {
+      Router.navigate('learnings/' + continueBtn.dataset.id);
+      return;
+    }
+
     const fav = e.target.closest('.learning-card-fav');
     if (fav) {
       e.stopPropagation();
@@ -248,9 +262,10 @@ export async function init() {
 async function reload() {
   try {
     const data = await apiGet('');
-    // API retourneert { learnings: [...] } met `is_favorite` per item.
+    // API retourneert favoriet + bestaande bookmark per item.
     cachedItems = data.learnings || [];
     cachedFavIds = new Set(cachedItems.filter(it => it.is_favorite).map(it => it.id));
+    renderLearningPath();
     renderGrid();
   } catch (err) {
     const grid = document.getElementById('learnings-grid');
@@ -263,6 +278,39 @@ async function reload() {
         </div>`;
     }
   }
+}
+
+function renderLearningPath() {
+  const path = document.getElementById('learning-path');
+  if (!path) return;
+
+  const statuses = cachedItems.map(item => ({ item, status: getLearningStatus(item) }));
+  const completedCount = statuses.filter(entry => entry.status.key === 'completed').length;
+  const activeItems = statuses
+    .filter(entry => entry.status.key === 'active')
+    .sort((a, b) => new Date(b.item.bookmark?.updated_at || 0) - new Date(a.item.bookmark?.updated_at || 0));
+  const continueItem = activeItems[0]?.item || null;
+
+  path.innerHTML = `
+    <div class="learning-path-head">
+      <strong class="learning-path-title">Mijn leerpad</strong>
+      <span class="learning-path-summary">
+        <strong>${completedCount}</strong> afgerond <span aria-hidden="true">&middot;</span>
+        <strong>${activeItems.length}</strong> bezig
+      </span>
+    </div>
+    ${continueItem ? `
+      <button class="learning-path-continue" type="button" data-action="continue-learning" data-id="${continueItem.id}">
+        <span>
+          <small>Ga verder met</small>
+          <strong>${escapeHtml(continueItem.title)}</strong>
+        </span>
+        <span class="learning-path-arrow" aria-hidden="true">&rarr;</span>
+      </button>
+    ` : `
+      <p class="learning-path-empty">Je leerpad begint zodra je ergens bewust verder leest of kijkt.</p>
+    `}
+  `;
 }
 
 /* ----------------------------------------
@@ -299,6 +347,7 @@ function renderGrid() {
 
   grid.innerHTML = filtered.map(it => {
     const isFav = cachedFavIds.has(it.id);
+    const status = getLearningStatus(it);
     const thumb = it.thumbnail_url
       ? `<img class="learning-card-thumb" src="${escapeHtml(it.thumbnail_url)}" alt="" loading="lazy" />`
       : `<div class="learning-card-thumb learning-card-thumb--placeholder">${KIND_ICON[it.kind] || '📚'}</div>`;
@@ -309,7 +358,10 @@ function renderGrid() {
           ${isFav ? '❤️' : '♡'}
         </button>
         <div class="learning-card-body">
-          <span class="learning-card-kind learning-card-kind--${it.kind}">${KIND_LABEL[it.kind] || it.kind}</span>
+          <div class="learning-card-meta">
+            <span class="learning-card-kind learning-card-kind--${it.kind}">${KIND_LABEL[it.kind] || it.kind}</span>
+            <span class="learning-card-status learning-card-status--${status.key}">${status.label}</span>
+          </div>
           <h3 class="learning-card-title">${escapeHtml(it.title)}</h3>
           ${it.description ? `<p class="learning-card-desc">${escapeHtml(it.description)}</p>` : ''}
         </div>

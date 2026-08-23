@@ -1269,22 +1269,22 @@ badgewand of beloning voor openen, klikken, berichtenvolume of schermtijd.
 - Eerst de frontend-preview en het medische gevoel van de copy beoordelen voordat
   er extra events of algemene mijlpalen worden toegevoegd.
 
-### 3. Learnings / documentenzone — Mijn leerpad
+### 3. Learnings / documentenzone — Mijn leerpad frontend-preview gebouwd
 
-- Learning-kaarten krijgen uiteindelijk een persoonlijke status: `Nieuw`, `Bezig`
-  of `Afgerond`.
-- Bovenaan komt een rustige samenvatting zoals `2 afgerond · 1 bezig`, met
-  “Ga verder met…” op basis van de bestaande bookmarkpositie.
+- Learning-kaarten tonen een persoonlijke status: `Nieuw`, `Bezig` of `Afgerond`.
+- Bovenaan staat een rustige samenvatting zoals `2 afgerond · 1 bezig`, met
+  “Ga verder met…” op basis van de recentste bestaande bookmarkpositie.
 - Openen, scrollen, favoriet maken of veel notities schrijven telt niet als doel.
-- Voor `Afgerond` eerst één consistente productdefinitie kiezen voor PDF, blog en
-  video. Voorkeur voor een bewuste afrondactie op een logisch eindpunt; niet
-  stilzwijgend aannemen dat een geopend item gelezen of bekeken is.
+- PDF, blog en video gebruiken dezelfde bewuste knop `Markeer als afgerond`, met
+  `Toch niet afgerond` als undo. Er wordt nooit stilzwijgend aangenomen dat een
+  geopend item gelezen of bekeken is.
 - Kandidaten voor contextuele momenten: eerste learning afgerond en vijf learnings
   afgerond. Geen verplicht weekquotum en geen druk om de hele bibliotheek te lezen.
-- Bestaande bookmarks, favorieten en notities ondersteunen `Nieuw`/`Bezig`, maar er
-  is nog geen definitieve completion-state. Na visuele goedkeuring is daarvoor
-  waarschijnlijk een schemawijziging met RLS nodig; SQL eerst in de chat tonen en
-  pas na expliciete goedkeuring uitvoeren.
+- `Bezig` wordt uitsluitend afgeleid uit bestaande bookmarks; de lijst-API levert
+  die positie en `updated_at` voortaan mee per learning. `Afgerond` staat voor deze
+  preview lokaal per gebruiker. Na visuele goedkeuring is daarvoor waarschijnlijk
+  een schemawijziging met RLS nodig; SQL eerst in de chat tonen en pas na expliciete
+  goedkeuring uitvoeren.
 
 ### 4. Chatzone — betekenisvolle actie eerst definiëren
 
@@ -1337,7 +1337,7 @@ De app heeft twee mogelijke chatoppervlakken. Eerst kiezen welke de gebruiker me
    voorlopig openlaten.
 2. **Allergenenpad-preview testen** op bestaande data, per kindje en zonder
    snelheid of medische uitkomst te gamificeren; feedback verwerken.
-3. **Mijn leerpad visueel uitwerken:** kaartstatussen, samenvatting en bewuste
+3. **Mijn leerpad-preview testen:** kaartstatussen, samenvatting en bewuste
    afrondflow voor PDF/blog/video; nog zonder schemawijziging.
 4. **Chatzone afbakenen:** HapjesHeld, community-chatruimtes of beide; per oppervlak
    eerst de betekenisvolle uitkomst bepalen en pas daarna een preview bouwen.

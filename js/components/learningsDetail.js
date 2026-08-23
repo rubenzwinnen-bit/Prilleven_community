@@ -9,9 +9,10 @@
    - Video: "Bewaar tijdcode" knop bij actieve notitie.
 ============================================ */
 
-import * as Router from '../router.js?v=4.0.22';
-import { showToast } from '../utils.js?v=4.0.22';
-import { sessionGet, sessionRefreshIfNeeded } from '../supabase.js?v=4.0.22';
+import * as Router from '../router.js?v=4.0.23';
+import { showToast } from '../utils.js?v=4.0.23';
+import { sessionGet, sessionRefreshIfNeeded } from '../supabase.js?v=4.0.23';
+import { isLearningCompleted, setLearningCompleted } from '../learningProgress.js?v=4.0.23';
 
 let abort = null;
 let item = null;
@@ -82,6 +83,14 @@ export function render(id) {
         </section>
       </div>
 
+      <section class="learning-completion" id="ld-completion" hidden>
+        <div class="learning-completion-copy">
+          <strong id="ld-completion-title">Klaar met deze learning?</strong>
+          <span id="ld-completion-text">Markeer ze als afgerond wanneer het voor jou rond voelt.</span>
+        </div>
+        <button class="btn btn-primary" id="ld-completion-toggle" type="button">Markeer als afgerond</button>
+      </section>
+
       <!-- Floating "save selection" popup -->
       <div id="ld-sel-popup" class="learning-sel-popup hidden">
         <button class="btn btn-primary btn-xs" id="ld-sel-save">📌 Opslaan in notitie</button>
@@ -121,10 +130,45 @@ export async function init(id) {
   }
 
   document.getElementById('ld-title').textContent = item.title;
+  setupCompletion();
   renderNotesList();
   setupNoteEditor();
   setupSelectionPopup();
   renderViewer();
+}
+
+function setupCompletion() {
+  const panel = document.getElementById('ld-completion');
+  const button = document.getElementById('ld-completion-toggle');
+  if (!panel || !button || !item) return;
+
+  panel.hidden = false;
+  renderCompletion();
+  button.addEventListener('click', () => {
+    const completed = !isLearningCompleted(item.id);
+    setLearningCompleted(item.id, completed);
+    renderCompletion();
+    showToast(completed ? 'Learning afgerond.' : 'Afronding ongedaan gemaakt.', completed ? 'success' : 'info');
+  }, { signal: abort.signal });
+}
+
+function renderCompletion() {
+  const panel = document.getElementById('ld-completion');
+  const title = document.getElementById('ld-completion-title');
+  const text = document.getElementById('ld-completion-text');
+  const button = document.getElementById('ld-completion-toggle');
+  if (!panel || !title || !text || !button || !item) return;
+
+  const completed = isLearningCompleted(item.id);
+  panel.classList.toggle('is-complete', completed);
+  title.textContent = completed ? 'Learning afgerond' : 'Klaar met deze learning?';
+  text.textContent = completed
+    ? 'Je kunt dit altijd weer aanpassen.'
+    : 'Markeer ze als afgerond wanneer het voor jou rond voelt.';
+  button.textContent = completed ? 'Toch niet afgerond' : 'Markeer als afgerond';
+  button.classList.toggle('btn-primary', !completed);
+  button.classList.toggle('btn-ghost', completed);
+  button.setAttribute('aria-pressed', String(completed));
 }
 
 /* ----------------------------------------
