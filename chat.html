@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=4.0.24" />
+  <link rel="stylesheet" href="/styles.css?v=4.0.25" />
 
   <style>
     html, body { height: 100%; }
@@ -100,6 +100,26 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+    .conv-info {
+      min-width: 0;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: .15rem;
+    }
+    .conv-info .conv-title { width: 100%; }
+    .conv-helped {
+      display: inline-flex;
+      align-items: center;
+      padding: .08rem .42rem;
+      border-radius: 999px;
+      background: rgba(79, 125, 108, .12);
+      color: var(--color-green-text);
+      font-size: .66rem;
+      font-weight: 600;
+      line-height: 1.4;
+    }
     .conv-title[contenteditable="true"] {
       background: var(--color-white);
       outline: 2px solid var(--color-green-text);
@@ -149,6 +169,26 @@
       font-size: 1.4rem;
       margin-bottom: .5rem;
     }
+    .chat-title-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: .55rem;
+      margin-bottom: .5rem;
+    }
+    .chat-title-row h1 { margin-bottom: 0; }
+    .chat-helped-status {
+      display: inline-flex;
+      align-items: center;
+      padding: .2rem .55rem;
+      border: 1px solid rgba(79, 125, 108, .24);
+      border-radius: 999px;
+      background: rgba(79, 125, 108, .10);
+      color: var(--color-green-text);
+      font-size: .72rem;
+      font-weight: 600;
+    }
+    .chat-helped-status[hidden] { display: none; }
     .chat-wrap .intro {
       color: var(--color-dark-light);
       margin-bottom: 1rem;
@@ -252,6 +292,49 @@
     }
     .msg.bot a:hover { color: #004999; }
     .msg.bot a:visited { color: #0066cc; }
+    .chat-help-action {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: .5rem;
+      margin-top: .7rem;
+      padding-top: .6rem;
+      border-top: 1px solid rgba(79, 125, 108, .18);
+      white-space: normal;
+    }
+    .chat-help-button {
+      padding: .38rem .72rem;
+      border: 1px solid rgba(79, 125, 108, .34);
+      border-radius: 999px;
+      background: var(--color-white);
+      color: var(--color-green-text);
+      font-family: inherit;
+      font-size: .78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .chat-help-button:hover {
+      border-color: var(--color-green-text);
+      background: rgba(79, 125, 108, .08);
+    }
+    .chat-help-button.is-helped {
+      border-color: var(--color-green-text);
+      background: var(--color-green-text);
+      color: var(--color-white);
+      cursor: default;
+    }
+    .chat-help-undo {
+      padding: .25rem 0;
+      border: 0;
+      background: transparent;
+      color: var(--color-dark-light);
+      font-family: inherit;
+      font-size: .75rem;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .chat-help-undo[hidden] { display: none; }
 
     form {
       display: flex;
@@ -714,7 +797,10 @@
 
     <main class="chat-main">
       <div class="chat-wrap">
-        <h1>HapjesHeld 2.0</h1>
+        <div class="chat-title-row">
+          <h1>HapjesHeld 2.0</h1>
+          <span id="conversation-helped-status" class="chat-helped-status" hidden>Geholpen ✓</span>
+        </div>
         <p class="intro">Stel je vraag over kindervoeding. De assistent gebruikt Anneleens eigen gids, masterclass, recepten en roadmap en onthoudt je eerdere gesprekken.</p>
 
         <div id="quota-bar" class="quota-bar" title="Je maandelijkse AI-gebruik. Wordt automatisch aangevuld op de 1e van elke maand.">
@@ -775,10 +861,10 @@
     </div>
   </div>
 
-  <script src="/js/chat.js?v=4.0.24" type="module"></script>
+  <script src="/js/chat.js?v=4.0.25" type="module"></script>
   <script type="module">
-    import { mountHeaderAvatar, attachLogoutHandler } from '/js/headerAvatarStandalone.js?v=4.0.24';
-    import { mountHeaderBell } from '/js/headerBellStandalone.js?v=4.0.24';
+    import { mountHeaderAvatar, attachLogoutHandler } from '/js/headerAvatarStandalone.js?v=4.0.25';
+    import { mountHeaderBell } from '/js/headerBellStandalone.js?v=4.0.25';
     document.addEventListener('DOMContentLoaded', () => {
       mountHeaderBell(document.getElementById('header-bell-mount'));
       mountHeaderAvatar(document.getElementById('header-avatar-mount'));

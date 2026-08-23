@@ -1286,20 +1286,24 @@ badgewand of beloning voor openen, klikken, berichtenvolume of schermtijd.
   een schemawijziging met RLS nodig; SQL eerst in de chat tonen en pas na expliciete
   goedkeuring uitvoeren.
 
-### 4. Chatzone — betekenisvolle actie eerst definiëren
+### 4. Chatzone — HapjesHeld frontend-preview gebouwd
 
-De app heeft twee mogelijke chatoppervlakken. Eerst kiezen welke de gebruiker met
-“chatzone” bedoelt en of beide uiteindelijk een eigen zachte voortgang krijgen.
+De app heeft twee chatoppervlakken. De eerste preview focust bewust op HapjesHeld;
+community-chatruimtes blijven een afzonderlijke latere productbeslissing.
 
 #### HapjesHeld / AI-chat
 
 - Geen doel op aantal vragen, gesprekken, tokens of dagelijkse opens; dat beloont
   gebruiksvolume in plaats van geholpen zijn.
-- Mogelijke betekenisvolle actie: de gebruiker markeert een antwoord of gesprek als
-  nuttig/afgerond, bewaart er bewust een bruikbare actie uit, of hervat een relevante
-  eerdere conversatie.
-- Eerst de gewenste uitkomst en één eenvoudige bevestigingsflow ontwerpen. Pas daarna
-  bepalen of “eerste nuttige gesprek” een contextueel moment verdient.
+- Onder het laatste AI-antwoord staat één bewuste actie `Dit helpt mij`. Na bevestiging
+  krijgt het gesprek de status `Geholpen` bovenaan en compact in de conversatielijst;
+  `Ongedaan maken` corrigeert een vergissing.
+- De status is voor deze visuele preview lokaal per gebruiker en conversatie opgeslagen
+  in `localStorage` (`prilleven_chat_helped_<email>`). Er is geen database-, API- of
+  analyticswijziging toegevoegd.
+- Eerst beoordelen of `Geholpen` natuurlijk aanvoelt en of één actie onder alleen het
+  laatste antwoord voldoende duidelijk is. Pas daarna beslissen of “eerste geholpen
+  gesprek” een contextueel moment verdient en welke cross-device opslag nodig is.
 
 #### Community-chatruimtes / timeline
 
@@ -1339,8 +1343,9 @@ De app heeft twee mogelijke chatoppervlakken. Eerst kiezen welke de gebruiker me
    snelheid of medische uitkomst te gamificeren; feedback verwerken.
 3. **Mijn leertraject-preview testen:** kaartstatussen, samenvatting en bewuste
    afrondflow voor PDF/blog/video; nog zonder schemawijziging.
-4. **Chatzone afbakenen:** HapjesHeld, community-chatruimtes of beide; per oppervlak
-   eerst de betekenisvolle uitkomst bepalen en pas daarna een preview bouwen.
+4. **HapjesHeld-preview testen:** `Dit helpt mij`, de status `Geholpen` en undo in
+   gesprek + zijbalk; daarna beslissen over definitieve opslag en of de
+   community-chatruimtes een eigen betekenisvolle actie nodig hebben.
 5. **Referralprogramma functioneel ontwerpen:** gebruikersflow + volledige
    kortings-/misbruikregels, daarna Plug&Pay-mogelijkheden verifiëren.
 6. Na visuele goedkeuring per zone de benodigde **definitieve opslag, RLS, endpoints,
@@ -1352,9 +1357,10 @@ De app heeft twee mogelijke chatoppervlakken. Eerst kiezen welke de gebruiker me
 
 - Blijft Pril Ritme vast op drie kookdagen of mag een gezin 2/3/4 kiezen?
 - Welke afrondactie voelt voor PDF, blog en video natuurlijk en betrouwbaar?
-- Bedoelt “chatzone” HapjesHeld, community-chatruimtes/timeline of beide?
-- Wat is in chat een aantoonbaar nuttig resultaat zonder spam of klikgedrag te
-  belonen?
+- Voelt `Dit helpt mij` als voldoende betekenisvolle HapjesHeld-uitkomst, of moet de
+  gebruiker ook een concrete vervolgstap uit het antwoord kunnen bewaren?
+- Krijgen community-chatruimtes later een afzonderlijke status `Behulpzaam/opgelost`,
+  of blijft zachte voortgang daar volledig weg?
 - Welke korting krijgen uitnodiger en nieuwe abonnee, wanneer wordt die toegekend en
   hoe worden refunds, bestaande klanten, stapeling en misbruik behandeld?
 - Kan Plug&Pay de gekozen referralregels native uitvoeren of is eigen verwerking
