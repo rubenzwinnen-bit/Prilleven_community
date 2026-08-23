@@ -8,23 +8,23 @@
    automatisch als 'allergisch' getoond.
 ============================================ */
 
-import { escapeHtml, showToast, colorFromSeed, initialsFromName } from '../utils.js?v=4.0.11';
-import { getChildren, updateChild } from '../childrenApi.js?v=4.0.11';
+import { escapeHtml, showToast, colorFromSeed, initialsFromName } from '../utils.js?v=4.0.12';
+import { getChildren, updateChild } from '../childrenApi.js?v=4.0.12';
 import {
   loadEhState,
   patchEhState,
   loadEhDoses,
   createEhDose,
   updateEhDose,
-} from '../eersteHapjesStateApi.js?v=4.0.11';
-import { loadSymptomsForChild } from '../eersteHapjesSymptomsApi.js?v=4.0.11';
+} from '../eersteHapjesStateApi.js?v=4.0.12';
+import { loadSymptomsForChild } from '../eersteHapjesSymptomsApi.js?v=4.0.12';
 import {
   ALLERGEN_FLOW,
   REACTION_LEVELS,
   getEligibleAllergens,
   getAllergenStatus,
-} from '../content/eersteHapjes-allergen-flow.js?v=4.0.11';
-import { openSymptomLogModal } from './symptomLogModal.js?v=4.0.11';
+} from '../content/eersteHapjes-allergen-flow.js?v=4.0.12';
+import { openSymptomLogModal } from './symptomLogModal.js?v=4.0.12';
 
 let state = {
   loaded: false,
@@ -761,7 +761,12 @@ function renderGrid(root, child) {
       });
       item.classList.add('open');
       head.setAttribute('aria-expanded', 'true');
-      item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Wacht tot een eventueel eerder geopend item dichtgeklapt is. Zo blijft
+      // de bovenkant van het doel stabiel tijdens het scrollen.
+      window.setTimeout(() => {
+        head.focus({ preventScroll: true });
+        item.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
+      }, 380);
     });
   });
 
