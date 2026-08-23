@@ -1028,8 +1028,11 @@ interactie volgen later in een aparte fase.
 - ✅ Na een bereid gerecht zonder eigen beoordeling verschijnt een rustige
   uitnodiging “Hoe smaakte het?”. De knop scrolt naar de bestaande ratingflow en
   focust de eerste ster; de uitnodiging verdwijnt zodra er beoordeeld is.
-- ✅ App-cachebuster na de previewcorrectie opnieuw volledig gelijkgetrokken naar
-  **`4.0.8`**.
+- ✅ De bestaande groene Pril Ritme-tegel toont onder de drie weekvinkjes een rollende
+  historiek van deze week en de drie vorige kalenderweken. De huidige week toont
+  `x/3`; een volle week krijgt een groen vinkje en een onvolledige vorige week alleen
+  een neutrale streep. Er is geen streakverlies of rode status.
+- ✅ App-cachebuster opnieuw volledig gelijkgetrokken naar **`4.0.9`**.
 
 ### Gewijzigde kernbestanden
 - `js/store.js` — kookregistratie, weekstart op maandag, unieke-dagtelling.
@@ -1069,6 +1072,9 @@ interactie volgen later in een aparte fase.
 - ✅ Zachte momenten visueel en interactief gecontroleerd in de ingelogde lokale app
   op desktop en mobiel: geen horizontale overflow, beoordeling focust de eerste ster,
   animatie blijft vrij van de copy en undo herstelt de lokale teststate volledig.
+- ✅ Vierweekse ritmehistoriek geïsoleerd getest met twee volle, niet-aangrenzende
+  weken en visueel gecontroleerd op desktop en de mobiele website. Een Cooked it
+  werkt zowel de drie weekvinkjes als `Deze week x/3` direct bij; undo herstelt beide.
 
 ### Beslissingen voor vervolg
 - Eerst deze ene lus testen op gevoel en gebruik; pas daarna beslissen over
@@ -1125,6 +1131,8 @@ evaluatie en expliciete goedkeuring van database-, analytics- of mobiele wijzigi
      verschillende recepten; geen permanente tegel of badgewand.
    - Rustige beoordelingsuitnodiging na een bereid gerecht, gekoppeld aan de bestaande
      ratingflow.
+   - Rollende vierweekse historiek binnen dezelfde groene Pril Ritme-tegel, zonder
+     harde streak of negatieve status voor een onvolledige week.
    - Lokale opslag per gebruiker/week om interactie en gevoel te testen zonder
      database-impact.
 
@@ -1147,8 +1155,9 @@ evaluatie en expliciete goedkeuring van database-, analytics- of mobiele wijzigi
    - De lokale visualisatie testen en pas na de cross-device basis beslissen welke
      contextuele momenten definitief blijven: eerste Cooked it, eerste volle Pril
      Ritme-week, vijf verschillende recepten en beoordeling na bereiding.
-   - Pas daarna een week-op-week ritme overwegen. Een onderbreking krijgt een zachte
-     herstart of herstelmechanisme, geen rode waarschuwing of verliesaversie.
+   - De lokale rollende vierweekse historiek is gebouwd; na de cross-device basis
+     beslissen of die definitief blijft. Een onderbreking houdt een neutrale streep,
+     geen rode waarschuwing of verliesaversie.
    - Een persoonlijk weekdoel van bijvoorbeeld 2, 3 of 4 dagen pas aanbieden als de
      pilot toont dat één vast doel onvoldoende past.
 

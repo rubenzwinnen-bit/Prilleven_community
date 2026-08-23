@@ -8,7 +8,7 @@
    omdat dit een lokale voorkeur is.
 ============================================ */
 
-import { supabaseFetch, supabaseStorageDelete } from './supabase.js?v=4.0.8';
+import { supabaseFetch, supabaseStorageDelete } from './supabase.js?v=4.0.9';
 
 /* ============================================
    IN-MEMORY CACHE LAAG
@@ -126,7 +126,7 @@ export async function refreshAdminStatus() {
     return false;
   }
   try {
-    const { fetchSubscriptionStatus } = await import('./supabase.js?v=4.0.8');
+    const { fetchSubscriptionStatus } = await import('./supabase.js?v=4.0.9');
     const status = await fetchSubscriptionStatus(user);
     const v = !!status?.is_admin;
     _adminCache = { email: user, value: v, loaded: true };
@@ -604,11 +604,15 @@ function localDateKey(date = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
-function currentWeekStart(date = new Date()) {
+function weekStartDate(date = new Date()) {
   const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const daysSinceMonday = (monday.getDay() + 6) % 7;
   monday.setDate(monday.getDate() - daysSinceMonday);
-  return localDateKey(monday);
+  return monday;
+}
+
+function currentWeekStart(date = new Date()) {
+  return localDateKey(weekStartDate(date));
 }
 
 export function getCookingStateStorageKey() {
@@ -713,12 +717,8 @@ export function getCookingWeekProgress() {
   };
 }
 
-function getCookingMilestoneProgressFromMeals(meals) {
-  const uniqueRecipeIds = new Set(
-    meals.map(meal => meal.recipeId).filter(recipeId => recipeId != null)
-  );
+function getCompletedDatesByWeek(meals) {
   const completedDatesByWeek = new Map();
-
   meals.forEach(meal => {
     if (!meal.weekStart || !meal.completedDate) return;
     if (!completedDatesByWeek.has(meal.weekStart)) {
@@ -726,6 +726,40 @@ function getCookingMilestoneProgressFromMeals(meals) {
     }
     completedDatesByWeek.get(meal.weekStart).add(meal.completedDate);
   });
+  return completedDatesByWeek;
+}
+
+/** Ritmehistoriek van de lopende en voorgaande kalenderweken. */
+export function getCookingRhythmHistory(weekCount = 4) {
+  const safeWeekCount = Math.min(8, Math.max(1, Number.parseInt(weekCount, 10) || 4));
+  const completedDatesByWeek = getCompletedDatesByWeek(readCookedMeals());
+  const currentMonday = weekStartDate();
+  const weeks = Array.from({ length: safeWeekCount }, (_, index) => {
+    const monday = new Date(currentMonday);
+    monday.setDate(monday.getDate() - (index * 7));
+    const weekStart = localDateKey(monday);
+    const days = completedDatesByWeek.get(weekStart)?.size || 0;
+    return {
+      weekStart,
+      days,
+      target: COOKING_RHYTHM_TARGET,
+      isCurrent: index === 0,
+      isComplete: days >= COOKING_RHYTHM_TARGET,
+    };
+  });
+
+  return {
+    weeks,
+    completedWeeks: weeks.filter(week => week.isComplete).length,
+    totalWeeks: weeks.length,
+  };
+}
+
+function getCookingMilestoneProgressFromMeals(meals) {
+  const uniqueRecipeIds = new Set(
+    meals.map(meal => meal.recipeId).filter(recipeId => recipeId != null)
+  );
+  const completedDatesByWeek = getCompletedDatesByWeek(meals);
 
   const completedRhythmWeeks = [...completedDatesByWeek.values()].filter(
     dates => dates.size >= COOKING_RHYTHM_TARGET

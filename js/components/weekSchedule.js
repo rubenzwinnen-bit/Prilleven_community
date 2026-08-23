@@ -16,13 +16,13 @@
    - generateSchedule/refreshSlot werken op de cache (generator sub-tab)
 ============================================ */
 
-import * as Store from '../store.js?v=4.0.8';
-import * as Router from '../router.js?v=4.0.8';
+import * as Store from '../store.js?v=4.0.9';
+import * as Router from '../router.js?v=4.0.9';
 import {
   showToast, escapeHtml, renderStarsDisplay, ALLERGENS, WEEKDAYS,
   SCHEDULE_SLOTS, slotToMealMoment, getSlotLabel, getAllergenLabel, normalizeAllergen
-} from '../utils.js?v=4.0.8';
-import { promptScheduleDetails } from './scheduleDetailsDialog.js?v=4.0.8';
+} from '../utils.js?v=4.0.9';
+import { promptScheduleDetails } from './scheduleDetailsDialog.js?v=4.0.9';
 
 /* ----------------------------------------
    STATE
@@ -137,22 +137,65 @@ function cookingRhythmMessage(progress) {
   return 'Je weekritme start zodra je een gepland gerecht afrondt.';
 }
 
+function cookingHistorySummary(history) {
+  if (history.completedWeeks === 0) {
+    return 'Je ritme mag rustig groeien, week per week.';
+  }
+  if (history.completedWeeks === 1) {
+    return 'In 1 van de afgelopen 4 weken vond je jouw ritme.';
+  }
+  return `In ${history.completedWeeks} van de afgelopen 4 weken vond je jouw ritme.`;
+}
+
+function cookingHistoryLabel(index) {
+  if (index === 0) return 'Deze week';
+  if (index === 1) return 'Vorige';
+  return `${index} weken`;
+}
+
 function buildCookingRhythmHtml() {
   const progress = Store.getCookingWeekProgress();
+  const history = Store.getCookingRhythmHistory(4);
   const visibleDays = Math.min(progress.days, progress.target);
   const dots = Array.from({ length: progress.target }, (_, index) => `
     <span class="cooking-rhythm-dot ${index < visibleDays ? 'is-done' : ''}"
           aria-hidden="true">${index < visibleDays ? '&#10003;' : index + 1}</span>
   `).join('');
+  const historyWeeks = history.weeks.map((week, index) => {
+    const marker = week.isComplete
+      ? '&#10003;'
+      : week.isCurrent ? `${Math.min(week.days, week.target)}/${week.target}` : '&ndash;';
+    const status = week.isComplete
+      ? 'ritme bereikt'
+      : week.isCurrent ? `${week.days} van ${week.target} kookdagen` : 'geen vol ritme';
+    return `
+      <div class="cooking-history-week ${week.isComplete ? 'is-complete' : ''}"
+           aria-label="${escapeHtml(cookingHistoryLabel(index))}: ${status}">
+        <span class="cooking-history-marker" aria-hidden="true">${marker}</span>
+        <small>${escapeHtml(cookingHistoryLabel(index))}</small>
+      </div>
+    `;
+  }).join('');
 
   return `
     <section class="cooking-rhythm ${progress.isComplete ? 'is-complete' : ''}"
              aria-label="Pril Ritme: ${visibleDays} van ${progress.target} kookdagen">
-      <div class="cooking-rhythm-copy">
-        <strong>Pril Ritme &middot; ${visibleDays} van ${progress.target} kookdagen</strong>
-        <span>${escapeHtml(cookingRhythmMessage(progress))}</span>
+      <div class="cooking-rhythm-current">
+        <div class="cooking-rhythm-copy">
+          <strong>Pril Ritme &middot; ${visibleDays} van ${progress.target} kookdagen</strong>
+          <span>${escapeHtml(cookingRhythmMessage(progress))}</span>
+        </div>
+        <div class="cooking-rhythm-dots">${dots}</div>
       </div>
-      <div class="cooking-rhythm-dots">${dots}</div>
+      <div class="cooking-history">
+        <div class="cooking-history-copy">
+          <strong>Afgelopen vier weken</strong>
+          <span>${escapeHtml(cookingHistorySummary(history))}</span>
+        </div>
+        <div class="cooking-history-weeks" aria-label="Pril Ritme van de afgelopen vier weken">
+          ${historyWeeks}
+        </div>
+      </div>
     </section>
   `;
 }

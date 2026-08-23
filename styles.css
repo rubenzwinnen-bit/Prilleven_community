@@ -2743,15 +2743,19 @@ body.is-aanraders #app-nav { display: none; }
 
 /* Subtiele weekvoortgang: drie unieke kookdagen vormen één Pril Ritme. */
 .cooking-rhythm {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.25rem;
   padding: 1rem 1.15rem;
   margin-bottom: 1rem;
   border: 1px solid rgba(79, 125, 108, 0.14);
   border-radius: var(--radius-md);
   background: rgba(79, 125, 108, 0.08);
+}
+
+.cooking-rhythm-current,
+.cooking-history {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
 }
 
 .cooking-rhythm-copy {
@@ -2798,6 +2802,73 @@ body.is-aanraders #app-nav { display: none; }
   color: var(--color-white, #fff);
   border-color: var(--color-green-text);
   background: var(--color-green-text);
+}
+
+.cooking-history {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(79, 125, 108, 0.14);
+}
+
+.cooking-history-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.cooking-history-copy strong {
+  color: var(--color-green-text);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.cooking-history-copy span {
+  color: var(--color-text-muted, #666);
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.cooking-history-weeks {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(3.2rem, 1fr));
+  gap: 0.4rem;
+  flex: 0 0 auto;
+}
+
+.cooking-history-week {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.cooking-history-marker {
+  width: 1.75rem;
+  height: 1.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(79, 125, 108, 0.22);
+  border-radius: 50%;
+  color: var(--color-green-text);
+  background: rgba(255, 255, 255, 0.7);
+  font-size: 0.62rem;
+  font-weight: 600;
+}
+
+.cooking-history-week.is-complete .cooking-history-marker {
+  color: var(--color-white);
+  border-color: var(--color-green-text);
+  background: var(--color-green-text);
+}
+
+.cooking-history-week small {
+  color: var(--color-text-muted, #666);
+  font-size: 0.61rem;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .active-meal-card.is-cooked {
@@ -3197,14 +3268,21 @@ body.is-aanraders #app-nav { display: none; }
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .cooking-rhythm,
+  .cooking-rhythm-current,
+  .cooking-history,
   .recipe-cook-heading {
     align-items: flex-start;
     flex-direction: column;
   }
 
-  .cooking-rhythm-dots {
+  .cooking-rhythm-dots,
+  .cooking-history-weeks {
     align-self: flex-start;
+  }
+
+  .cooking-history-weeks {
+    width: 100%;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .recipe-cook-success {
