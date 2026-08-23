@@ -6563,6 +6563,171 @@ body.is-aanraders #app-nav { display: none; }
 }
 .allergenen-arts-warn strong { display: block; margin-bottom: .25rem; }
 
+/* Eén compacte veiligheidsbalk op de plek van de oude hoeveelhedentegel. */
+.allergenen-header .allergenen-warn-slot {
+  margin-top: 1rem;
+}
+.allergenen-safety-bar {
+  overflow: hidden;
+  background: #fff8e8;
+  border: 1px solid #ead49a;
+  border-radius: 12px;
+  color: var(--color-dark);
+}
+.allergenen-safety-bar--ernstig {
+  background: #fff4e5;
+  border-color: #f0b97a;
+}
+.allergenen-safety-bar--twijfel {
+  background: #fff9e7;
+  border-color: #e8c66d;
+}
+.allergenen-safety-bar--toezicht {
+  background: #f7f5e9;
+  border-color: #d8cfa8;
+}
+.allergenen-safety-bar summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .7rem;
+  padding: .7rem .85rem;
+  cursor: pointer;
+  list-style: none;
+}
+.allergenen-safety-bar summary::-webkit-details-marker {
+  display: none;
+}
+.allergenen-safety-icon {
+  color: #8a5a19;
+  font-size: 1rem;
+  line-height: 1;
+}
+.allergenen-safety-summary {
+  display: flex;
+  flex-direction: column;
+  gap: .05rem;
+  min-width: 0;
+}
+.allergenen-safety-summary strong,
+.allergenen-safety-summary > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.allergenen-safety-summary strong {
+  font-size: .86rem;
+}
+.allergenen-safety-summary > span {
+  color: var(--color-dark-light);
+  font-size: .76rem;
+}
+.allergenen-safety-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  color: #765b2d;
+  font-size: .72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.allergenen-safety-toggle > span {
+  display: inline-block;
+  transition: transform .18s ease;
+}
+.allergenen-safety-bar[open] .allergenen-safety-toggle > span {
+  transform: rotate(180deg);
+}
+.allergenen-safety-details {
+  padding: 0 .85rem .7rem 2.55rem;
+  border-top: 1px solid rgba(118, 91, 45, .14);
+}
+.allergenen-safety-detail {
+  padding-top: .6rem;
+}
+.allergenen-safety-detail + .allergenen-safety-detail {
+  margin-top: .55rem;
+  border-top: 1px solid rgba(118, 91, 45, .12);
+}
+.allergenen-safety-detail strong {
+  font-size: .8rem;
+}
+.allergenen-safety-detail p {
+  margin: .1rem 0 0;
+  color: var(--color-dark-light);
+  font-size: .76rem;
+  line-height: 1.4;
+}
+.allergenen-safety-bar--active {
+  padding: .7rem .85rem;
+}
+.allergenen-safety-active-head {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+}
+.allergenen-safety-active-head > div {
+  display: flex;
+  flex-direction: column;
+  gap: .05rem;
+}
+.allergenen-safety-active-head strong {
+  font-size: .86rem;
+}
+.allergenen-safety-active-head > div > span {
+  color: var(--color-dark-light);
+  font-size: .76rem;
+}
+.allergenen-safety-action {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: .1rem 1rem;
+  align-items: center;
+  margin-top: .6rem;
+  padding-top: .6rem;
+  border-top: 1px solid rgba(118, 91, 45, .14);
+}
+.allergenen-safety-action h3,
+.allergenen-safety-action p {
+  grid-column: 1;
+  margin: 0;
+}
+.allergenen-safety-action h3 {
+  color: var(--color-dark);
+  font-size: .88rem;
+}
+.allergenen-safety-action p {
+  color: var(--color-dark-light);
+  font-size: .76rem;
+  line-height: 1.4;
+}
+.allergenen-safety-action .allergenen-pause-actions {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  margin-top: 0;
+}
+
+@media (max-width: 640px) {
+  .allergenen-safety-bar summary {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .allergenen-safety-toggle {
+    grid-column: 2;
+  }
+  .allergenen-safety-details {
+    padding-left: .85rem;
+  }
+  .allergenen-safety-action {
+    grid-template-columns: 1fr;
+  }
+  .allergenen-safety-action .allergenen-pause-actions {
+    grid-column: 1;
+    grid-row: auto;
+    margin-top: .55rem;
+  }
+}
+
 /* ============================================
    ALLERGENEN-AGENDA (maand-overzicht)
 ============================================ */
@@ -7309,6 +7474,17 @@ body.is-aanraders #app-nav { display: none; }
 .allergenen-path-next-body strong {
   color: var(--color-dark);
   font-size: .92rem;
+}
+.allergenen-path-next-amount {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: .12rem;
+  padding: .16rem .45rem;
+  background: rgba(255,255,255,.82);
+  border-radius: 999px;
+  color: var(--color-dark);
+  font-size: .71rem;
+  font-weight: 700;
 }
 .allergenen-path-next-body small {
   overflow: hidden;

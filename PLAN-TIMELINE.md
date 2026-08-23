@@ -1238,7 +1238,12 @@ badgewand of beloning voor openen, klikken, berichtenvolume of schermtijd.
   eerstvolgende introductie met actie in dezelfde kaart. Namen en statussen worden
   niet herhaald; de tegels eronder blijven de detailweergave.
 - Het actieve allergeen behoudt de bestaande dosisvoortgang `x/3` en de bestaande
-  “Volgende stap”-flow. Er komt geen extra wekelijkse doelstelling bovenop.
+  “Volgende stap”-flow. De benodigde hoeveelheid staat voortaan rechtstreeks in
+  die volgende stap; de losse hoeveelheden-tegel bovenaan is verwijderd. Er komt
+  geen extra wekelijkse doelstelling bovenop.
+- Ernstige en twijfelachtige symptomen plus eventueel medisch toezicht worden per
+  kindje samengebracht in één compacte, inklapbare veiligheidsbalk. Bij een
+  actieve pauze blijven de vervolgacties in diezelfde balk direct bereikbaar.
 - Contextuele zachte momenten zijn visueel voorzien bij het eerste volledig gelogde
   allergeen en het volledige persoonlijke Allergenenpad.
 - Een reactie, pauze, leeftijdsvoorwaarde, uitgesloten allergeen of medisch toezicht
