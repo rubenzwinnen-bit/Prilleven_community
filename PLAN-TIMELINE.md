@@ -1259,7 +1259,8 @@ badgewand of beloning voor openen, klikken, berichtenvolume of schermtijd.
   volgt dezelfde hiërarchie: ernstig is rood, twijfel blijft oranje.
 - Contextuele zachte momenten zijn visueel voorzien bij het eerste volledig gelogde
   allergeen en het volledige Allergenenpad. De functietitel gebruikt dezelfde
-  compacte groene stijl als `Pril Ritme` in het weekschema.
+  compacte groene stijl als `Pril Ritme` in het weekschema en vermeldt het actieve
+  kindje op dezelfde titelregel.
 - Een reactie, pauze, leeftijdsvoorwaarde, uitgesloten allergeen of medisch toezicht
   is nooit “mislukt” en krijgt geen rode gamificatiestatus of aansporing om sneller
   te gaan.

@@ -8,7 +8,7 @@
    5. Start de router
 ============================================ */
 
-import * as Store from './js/store.js?v=4.0.21';
+import * as Store from './js/store.js?v=4.0.22';
 import {
   checkAllowedUser,
   checkCanSignUp,
@@ -22,24 +22,24 @@ import {
   fetchSubscriptionStatus,
   subscriptionAccessMessage,
   invalidateSubscriptionCache,
-} from './js/supabase.js?v=4.0.21';
-import * as Router from './js/router.js?v=4.0.21';
-import * as Header from './js/components/header.js?v=4.0.21';
-import * as Nav from './js/components/nav.js?v=4.0.21';
-import * as Home from './js/components/home.js?v=4.0.21';
-import * as RecipeList from './js/components/recipeList.js?v=4.0.21';
-import * as RecipeDetail from './js/components/recipeDetail.js?v=4.0.21';
-import * as ImportRecipes from './js/components/importRecipes.js?v=4.0.21';
-import * as WeekSchedule from './js/components/weekSchedule.js?v=4.0.21';
-import * as Favorites from './js/components/favorites.js?v=4.0.21';
-import * as ShoppingList from './js/components/shoppingList.js?v=4.0.21';
-import * as RecipeForm from './js/components/recipeForm.js?v=4.0.21';
-import * as IngredientIcons from './js/components/ingredientIcons.js?v=4.0.21';
-import * as LearningsLibrary from './js/components/learningsLibrary.js?v=4.0.21';
-import * as LearningsDetail from './js/components/learningsDetail.js?v=4.0.21';
-import * as Profiel from './js/components/profiel.js?v=4.0.21';
-import * as Allergenen from './js/components/allergenen.js?v=4.0.21';
-import * as Aanraders from './js/components/aanraders.js?v=4.0.21';
+} from './js/supabase.js?v=4.0.22';
+import * as Router from './js/router.js?v=4.0.22';
+import * as Header from './js/components/header.js?v=4.0.22';
+import * as Nav from './js/components/nav.js?v=4.0.22';
+import * as Home from './js/components/home.js?v=4.0.22';
+import * as RecipeList from './js/components/recipeList.js?v=4.0.22';
+import * as RecipeDetail from './js/components/recipeDetail.js?v=4.0.22';
+import * as ImportRecipes from './js/components/importRecipes.js?v=4.0.22';
+import * as WeekSchedule from './js/components/weekSchedule.js?v=4.0.22';
+import * as Favorites from './js/components/favorites.js?v=4.0.22';
+import * as ShoppingList from './js/components/shoppingList.js?v=4.0.22';
+import * as RecipeForm from './js/components/recipeForm.js?v=4.0.22';
+import * as IngredientIcons from './js/components/ingredientIcons.js?v=4.0.22';
+import * as LearningsLibrary from './js/components/learningsLibrary.js?v=4.0.22';
+import * as LearningsDetail from './js/components/learningsDetail.js?v=4.0.22';
+import * as Profiel from './js/components/profiel.js?v=4.0.22';
+import * as Allergenen from './js/components/allergenen.js?v=4.0.22';
+import * as Aanraders from './js/components/aanraders.js?v=4.0.22';
 
 /* ============================================
    RECOVERY TOKEN DETECTIE
