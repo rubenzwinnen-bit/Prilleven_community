@@ -1017,14 +1017,14 @@ interactie volgen later in een aparte fase.
   `.agents/skills/`, met UI-metadata voor de skill-/slashlijst. De oude
   `source-command-*`-migratiewrappers voor deze twee commando's zijn verwijderd;
   de vier Claude-commando's in `.claude/commands/` blijven bestaan.
-- ✅ Zachte mijlpalen zijn als lokale visuele preview toegevoegd: eerste Cooked it,
-  eerste volle Pril Ritme-week en vijf verschillende bereide recepten. Ze verschijnen
-  uitsluitend contextueel wanneer een grens werkelijk wordt bereikt; de aparte tegel
+- ✅ De lokale detectie voor zachte mijlpalen bestaat voor eerste Cooked it, eerste
+  volle Pril Ritme-week en vijf verschillende bereide recepten. De aparte tegel
   “Volgend zacht moment” is na de previewtest verwijderd omdat de drie ritmevinkjes
   voldoende permanente voortgang tonen.
-- ✅ Wanneer een Cooked it werkelijk een grens bereikt, verschijnt in het
-  receptdetail een korte contextuele mijlpaalkaart. Er is geen puntenstelsel of
-  permanente badgewand.
+- ✅ De inline kaart “Zacht moment bereikt” in het receptdetail is eveneens verwijderd
+  zodat ze geen vaste schermruimte inneemt. Een korte popup rechtsonder die vanzelf
+  verdwijnt blijft bewaard als later ontwerpidee, pas nadat alle gamificaties visueel
+  zijn afgerond.
 - ✅ Na een bereid gerecht zonder eigen beoordeling verschijnt een rustige
   uitnodiging “Hoe smaakte het?”. De knop scrolt naar de bestaande ratingflow en
   focust de eerste ster; de uitnodiging verdwijnt zodra er beoordeeld is.
@@ -1081,6 +1081,9 @@ interactie volgen later in een aparte fase.
   Supabase-opslag, langere streaks of extra gamificationoppervlakken.
 - Eerst alle zachte momenten lokaal en visueel laten kloppen. Definitieve opslag en
   meetevents blijven uitgesteld tot het productgevoel expliciet is goedgekeurd.
+- Later beoordelen: een bereikt zacht moment eventueel tonen als kleine popup
+  rechtsonder die vanzelf verdwijnt, in plaats van als inline kaart. Eerst alle
+  gamificatie-oppervlakken afronden.
 - Definitieve opslag vereist later een Supabase-tabel met RLS; niet stilzwijgend
   de localStorage-preview als productiebron blijven gebruiken.
 
@@ -1127,8 +1130,10 @@ evaluatie en expliciete goedkeuring van database-, analytics- of mobiele wijzigi
    - Cooked it op geplande receptdetails, undo, groene bevestiging en vinkje op het
      actieve weekschema.
    - Pril Ritme: doel van drie unieke kookdagen binnen de kalenderweek.
-   - Contextuele mijlpaalkaart bij eerste Cooked it, eerste volle ritmeweek en vijf
-     verschillende recepten; geen permanente tegel of badgewand.
+   - Lokale detectie voor eerste Cooked it, eerste volle ritmeweek en vijf
+     verschillende recepten. De inline mijlpaalkaart is verwijderd; een tijdelijke
+     popup rechtsonder blijft een later ontwerpidee. Geen permanente tegel of
+     badgewand.
    - Rustige beoordelingsuitnodiging na een bereid gerecht, gekoppeld aan de bestaande
      ratingflow.
    - Rollende vierweekse historiek binnen dezelfde groene Pril Ritme-tegel, zonder

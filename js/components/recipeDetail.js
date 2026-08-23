@@ -12,9 +12,9 @@
    - init() haalt alle data parallel op via Promise.all
 ============================================ */
 
-import * as Store from '../store.js?v=4.0.14';
-import * as Router from '../router.js?v=4.0.14';
-import { getChildren } from '../childrenApi.js?v=4.0.14';
+import * as Store from '../store.js?v=4.0.15';
+import * as Router from '../router.js?v=4.0.15';
+import { getChildren } from '../childrenApi.js?v=4.0.15';
 import {
   showToast, escapeHtml, formatDate,
   renderStarsDisplay, renderStarsInteractive,
@@ -22,7 +22,7 @@ import {
   normalizeAllergen, ageInMonths, getRecipeMinAge, getRecipeAgeLabel,
   initialsFromName, colorFromSeed,
   WEEKDAYS, SCHEDULE_SLOTS
-} from '../utils.js?v=4.0.14';
+} from '../utils.js?v=4.0.15';
 
 /* ----------------------------------------
    ALGEMENE BABYHAPJE-UITLEG
@@ -329,9 +329,6 @@ function buildCookingCompletionHtml(activeInfo, userRating = 0) {
         <button class="recipe-cook-undo" id="recipe-cook-undo" type="button">Ongedaan maken</button>
       </div>
 
-      <div class="recipe-cook-milestone" id="recipe-cook-milestone"
-           aria-live="polite" hidden></div>
-
       <div class="recipe-cook-review" id="recipe-cook-review"
            ${activeInfo.isCooked && userRating === 0 ? '' : 'hidden'}>
         <span class="recipe-cook-review-mark" aria-hidden="true">&#9670;</span>
@@ -622,7 +619,6 @@ function attachListeners(recipeId, initialRating = 0, recipe = null, activeInfo 
     const success = document.getElementById('recipe-cook-success');
     const feedback = document.getElementById('recipe-cook-feedback');
     const undo = document.getElementById('recipe-cook-undo');
-    const milestone = document.getElementById('recipe-cook-milestone');
     const reviewPrompt = document.getElementById('recipe-cook-review');
     const reviewButton = document.getElementById('recipe-cook-review-button');
     const entry = activeInfo.cookEntry;
@@ -657,27 +653,11 @@ function attachListeners(recipeId, initialRating = 0, recipe = null, activeInfo 
       setSliderProgress(isCooked ? 100 : 0);
     };
 
-    const showReachedMilestones = milestones => {
-      if (!milestone || milestones.length === 0) return;
-      milestone.innerHTML = milestones.map(item => `
-        <div class="recipe-cook-milestone-item">
-          <span class="recipe-cook-milestone-check" aria-hidden="true">&#10003;</span>
-          <div>
-            <small>Zacht moment bereikt</small>
-            <strong>${escapeHtml(item.title)}</strong>
-            <span>${escapeHtml(item.description)}</span>
-          </div>
-        </div>
-      `).join('');
-      milestone.hidden = false;
-    };
-
     const completeMeal = () => {
       if (isCooked) return;
-      const result = Store.markScheduleMealCooked(meal);
+      Store.markScheduleMealCooked(meal);
       isCooked = true;
       syncCookedState();
-      showReachedMilestones(result?.newlyReached || []);
       section?.classList.remove('is-celebrating');
       void section?.offsetWidth;
       section?.classList.add('is-celebrating');
@@ -699,10 +679,6 @@ function attachListeners(recipeId, initialRating = 0, recipe = null, activeInfo 
     undo?.addEventListener('click', () => {
       Store.unmarkScheduleMealCooked(meal);
       isCooked = false;
-      if (milestone) {
-        milestone.hidden = true;
-        milestone.innerHTML = '';
-      }
       syncCookedState();
     });
 
