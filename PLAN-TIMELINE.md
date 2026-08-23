@@ -1242,6 +1242,8 @@ badgewand of beloning voor openen, klikken, berichtenvolume of schermtijd.
   puntensysteem: `x van 9 allergenen opgevolgd`, met negen klikbare segmenten en de
   eerstvolgende introductie met actie in dezelfde kaart. Namen en statussen worden
   niet herhaald; de tegels eronder blijven de detailweergave.
+- De buitenkaart gebruikt dezelfde zachte grijsgroene achtergrond, subtiele rand,
+  ronding en vlakke kaartstijl als de Pril Ritme-tegel in het weekschema.
 - Het actieve allergeen behoudt de bestaande dosisvoortgang `x/3` en de bestaande
   “Volgende stap”-flow. De benodigde hoeveelheid staat voortaan rechtstreeks in
   die volgende stap; de losse hoeveelheden-tegel bovenaan is verwijderd. Er komt

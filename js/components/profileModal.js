@@ -5,9 +5,9 @@
    Returnt Promise<profile|null>.
 ============================================ */
 
-import { escapeHtml, processImageForUpload, showToast, initialsFromName, colorFromSeed } from '../utils.js?v=4.0.15';
-import { sessionGet } from '../supabase.js?v=4.0.15';
-import * as Api from '../communityApi.js?v=4.0.15';
+import { escapeHtml, processImageForUpload, showToast, initialsFromName, colorFromSeed } from '../utils.js?v=4.0.16';
+import { sessionGet } from '../supabase.js?v=4.0.16';
+import * as Api from '../communityApi.js?v=4.0.16';
 
 export function openProfileModal() {
   return new Promise(async (resolve) => {

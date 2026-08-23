@@ -7223,11 +7223,10 @@ body.is-aanraders #app-nav { display: none; }
 /* Allergenenpad — zachte voortgang per kindje */
 .allergenen-path {
   margin-bottom: 1rem;
-  padding: 1rem 1.1rem;
-  background: var(--color-white);
-  border: 1px solid rgba(79, 125, 108, .22);
-  border-radius: 16px;
-  box-shadow: 0 5px 18px rgba(55, 78, 66, .06);
+  padding: 1rem 1.15rem;
+  background: rgba(79, 125, 108, 0.08);
+  border: 1px solid rgba(79, 125, 108, 0.14);
+  border-radius: var(--radius-md);
 }
 .allergenen-path-head {
   display: flex;
