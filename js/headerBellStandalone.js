@@ -5,8 +5,8 @@
    container en start polling.
 ============================================ */
 
-import { escapeHtml, showToast, formatRelativeTime } from './utils.js?v=4.0.23';
-import * as Api from './communityApi.js?v=4.0.23';
+import { escapeHtml, showToast, formatRelativeTime } from './utils.js?v=4.0.24';
+import * as Api from './communityApi.js?v=4.0.24';
 
 const BELL_POLL_MS = 60 * 1000;
 let _bellTimer = null;

@@ -1,10 +1,10 @@
 /* ============================================
-   MIJN LEERPAD — lokale frontend-preview
+   MIJN LEERTRAJECT — lokale frontend-preview
    Alleen de bewuste afrondstatus staat lokaal.
    'Bezig' blijft afgeleid van bestaande bookmarks.
 ============================================ */
 
-import * as Store from './store.js?v=4.0.23';
+import * as Store from './store.js?v=4.0.24';
 
 const STORAGE_PREFIX = 'prilleven_learning_progress_';
 

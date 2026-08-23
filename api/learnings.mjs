@@ -205,7 +205,7 @@ async function listLearnings(req, res, auth) {
     learnings = data || [];
   }
 
-  // Markeer favorieten en bestaande lees-/kijkposities voor Mijn leerpad.
+  // Markeer favorieten en bestaande lees-/kijkposities voor Mijn leertraject.
   const [{ data: favs }, { data: bookmarks }] = await Promise.all([
     supabase
       .from('user_learning_favorites')

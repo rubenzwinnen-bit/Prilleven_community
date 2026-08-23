@@ -4777,10 +4777,6 @@ body.is-aanraders #app-nav { display: none; }
 .learning-completion {
   margin-top: 1rem;
   padding: .9rem 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
   background: rgba(79, 125, 108, .08);
   border: 1px solid rgba(79, 125, 108, .18);
   border-radius: var(--radius-md);
@@ -4791,6 +4787,12 @@ body.is-aanraders #app-nav { display: none; }
 .learning-completion.is-complete {
   background: rgba(79, 125, 108, .12);
   border-color: rgba(79, 125, 108, .3);
+}
+.learning-completion-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
 }
 .learning-completion-copy {
   display: flex;
@@ -4807,8 +4809,92 @@ body.is-aanraders #app-nav { display: none; }
   font-size: .8rem;
   line-height: 1.35;
 }
-.learning-completion .btn {
+.learning-completion-slider {
+  --learning-progress: 0%;
+  position: relative;
+  height: 3.2rem;
+  margin-top: .7rem;
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--color-light);
+  border-radius: 999px;
+}
+.learning-completion-slider::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 0;
+  width: var(--learning-progress);
+  background: var(--color-green-text);
+  border-radius: inherit;
+  transition: width .08s linear;
+}
+.learning-completion-slider-label {
+  position: absolute;
+  z-index: 1;
+  inset: 0 3.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted, #666);
+  font-size: .84rem;
+  font-weight: 600;
+  pointer-events: none;
+  transition: color .2s ease;
+}
+.learning-completion-knob {
+  position: absolute;
+  z-index: 2;
+  top: .25rem;
+  left: var(--learning-progress);
+  width: 2.7rem;
+  height: 2.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-green-text);
+  background: var(--color-white, #fff);
+  border-radius: 50%;
+  box-shadow: 0 2px 9px rgba(0, 0, 0, .12);
+  font-size: 1.05rem;
+  font-weight: 600;
+  pointer-events: none;
+  transform: translateX(calc(-1 * var(--learning-progress)));
+  transition: left .08s linear, transform .08s linear;
+}
+.learning-completion-slider input[type="range"] {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: grab;
+}
+.learning-completion-slider input[type="range"]:active {
+  cursor: grabbing;
+}
+.learning-completion-slider:focus-within {
+  outline: 3px solid rgba(79, 125, 108, .2);
+  outline-offset: 2px;
+}
+.learning-completion-slider.is-complete .learning-completion-slider-label {
+  color: var(--color-white, #fff);
+}
+.learning-completion-undo {
   flex: 0 0 auto;
+  padding: .2rem;
+  color: var(--color-text-muted, #666);
+  background: transparent;
+  border: 0;
+  font-size: .76rem;
+  text-decoration: underline;
+  text-underline-offset: .2rem;
+  cursor: pointer;
+}
+.learning-completion-undo[hidden] {
+  display: none;
 }
 .learning-detail-body {
   display: grid;
@@ -4819,13 +4905,6 @@ body.is-aanraders #app-nav { display: none; }
 @media (max-width: 768px) {
   .learning-detail-body {
     grid-template-columns: 1fr;
-  }
-  .learning-completion {
-    align-items: stretch;
-    flex-direction: column;
-  }
-  .learning-completion .btn {
-    width: 100%;
   }
 }
 
@@ -4970,6 +5049,9 @@ body.is-aanraders #app-nav { display: none; }
 .learning-pdf-canvas-wrap canvas {
   display: block;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+canvas.hiddenCanvasElement {
+  display: none !important;
 }
 /* PDF.js TextLayer-container: ligt exact over de canvas.
    Let op: --scale-factor wordt per render via JS gezet — vereist door

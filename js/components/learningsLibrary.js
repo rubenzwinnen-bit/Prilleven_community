@@ -5,11 +5,11 @@
    toggle en (admin) "Nieuw item" knop met upload-modal.
 ============================================ */
 
-import * as Store from '../store.js?v=4.0.23';
-import * as Router from '../router.js?v=4.0.23';
-import { showToast, confirm } from '../utils.js?v=4.0.23';
-import { sessionGet, sessionRefreshIfNeeded, supabaseStorageUploadXhr, learningsThumbPublicUrl } from '../supabase.js?v=4.0.23';
-import { getLearningStatus } from '../learningProgress.js?v=4.0.23';
+import * as Store from '../store.js?v=4.0.24';
+import * as Router from '../router.js?v=4.0.24';
+import { showToast, confirm } from '../utils.js?v=4.0.24';
+import { sessionGet, sessionRefreshIfNeeded, supabaseStorageUploadXhr, learningsThumbPublicUrl } from '../supabase.js?v=4.0.24';
+import { getLearningStatus } from '../learningProgress.js?v=4.0.24';
 
 let cachedItems = [];
 let cachedFavIds = new Set();
@@ -68,9 +68,9 @@ export function render() {
         </div>
       </header>
 
-      <section class="learning-path" id="learning-path" aria-label="Mijn leerpad">
+      <section class="learning-path" id="learning-path" aria-label="Mijn leertraject">
         <div class="learning-path-head">
-          <strong class="learning-path-title">Mijn leerpad</strong>
+          <strong class="learning-path-title">Mijn leertraject</strong>
           <span class="learning-path-summary">Voortgang laden...</span>
         </div>
       </section>
@@ -293,7 +293,7 @@ function renderLearningPath() {
 
   path.innerHTML = `
     <div class="learning-path-head">
-      <strong class="learning-path-title">Mijn leerpad</strong>
+      <strong class="learning-path-title">Mijn leertraject</strong>
       <span class="learning-path-summary">
         <strong>${completedCount}</strong> afgerond <span aria-hidden="true">&middot;</span>
         <strong>${activeItems.length}</strong> bezig
@@ -308,7 +308,7 @@ function renderLearningPath() {
         <span class="learning-path-arrow" aria-hidden="true">&rarr;</span>
       </button>
     ` : `
-      <p class="learning-path-empty">Je leerpad begint zodra je ergens bewust verder leest of kijkt.</p>
+      <p class="learning-path-empty">Je leertraject begint zodra je ergens bewust verder leest of kijkt.</p>
     `}
   `;
 }

@@ -1215,7 +1215,7 @@ badgewand of beloning voor openen, klikken, berichtenvolume of schermtijd.
 - **Weekschema — Pril Ritme:** daadwerkelijk koken op unieke kalenderdagen.
 - **Allergenen — Allergenenpad:** het bestaande introductietraject per kindje veilig
   en op eigen tempo doorlopen.
-- **Learnings/documenten — Mijn leerpad:** bewust verdergaan en materiaal afronden.
+- **Learnings/documenten — Mijn leertraject:** bewust verdergaan en materiaal afronden.
 - **Chat:** alleen een aantoonbaar nuttig resultaat kan tellen; nooit het aantal
   vragen, berichten, likes of geopende gesprekken.
 - **Vrienden uitnodigen:** aparte commerciële referralfeature met korting voor beide
@@ -1269,15 +1269,15 @@ badgewand of beloning voor openen, klikken, berichtenvolume of schermtijd.
 - Eerst de frontend-preview en het medische gevoel van de copy beoordelen voordat
   er extra events of algemene mijlpalen worden toegevoegd.
 
-### 3. Learnings / documentenzone — Mijn leerpad frontend-preview gebouwd
+### 3. Learnings / documentenzone — Mijn leertraject frontend-preview gebouwd
 
 - Learning-kaarten tonen een persoonlijke status: `Nieuw`, `Bezig` of `Afgerond`.
 - Bovenaan staat een rustige samenvatting zoals `2 afgerond · 1 bezig`, met
   “Ga verder met…” op basis van de recentste bestaande bookmarkpositie.
 - Openen, scrollen, favoriet maken of veel notities schrijven telt niet als doel.
-- PDF, blog en video gebruiken dezelfde bewuste knop `Markeer als afgerond`, met
-  `Toch niet afgerond` als undo. Er wordt nooit stilzwijgend aangenomen dat een
-  geopend item gelezen of bekeken is.
+- PDF, blog en video gebruiken dezelfde bewuste schuifactie `Veeg om af te ronden`,
+  met `Ongedaan maken` als aparte undo. Er wordt nooit stilzwijgend aangenomen dat
+  een geopend item gelezen of bekeken is.
 - Kandidaten voor contextuele momenten: eerste learning afgerond en vijf learnings
   afgerond. Geen verplicht weekquotum en geen druk om de hele bibliotheek te lezen.
 - `Bezig` wordt uitsluitend afgeleid uit bestaande bookmarks; de lijst-API levert
@@ -1329,7 +1329,7 @@ De app heeft twee mogelijke chatoppervlakken. Eerst kiezen welke de gebruiker me
 - Daarom eerst businessregels en visuele flow goedkeuren. Database-, endpoint-,
   auth- en webhookwijzigingen altijd afzonderlijk vooraf tonen en bevestigen.
 - Referralbeloningen blijven commercieel en staan los van Pril Ritme,
-  Allergenenpad, Mijn leerpad en eventuele chatmijlpalen.
+  Allergenenpad, Mijn leertraject en eventuele chatmijlpalen.
 
 ### Stapsgewijze uitvoeringsvolgorde
 
@@ -1337,7 +1337,7 @@ De app heeft twee mogelijke chatoppervlakken. Eerst kiezen welke de gebruiker me
    voorlopig openlaten.
 2. **Allergenenpad-preview testen** op bestaande data, per kindje en zonder
    snelheid of medische uitkomst te gamificeren; feedback verwerken.
-3. **Mijn leerpad-preview testen:** kaartstatussen, samenvatting en bewuste
+3. **Mijn leertraject-preview testen:** kaartstatussen, samenvatting en bewuste
    afrondflow voor PDF/blog/video; nog zonder schemawijziging.
 4. **Chatzone afbakenen:** HapjesHeld, community-chatruimtes of beide; per oppervlak
    eerst de betekenisvolle uitkomst bepalen en pas daarna een preview bouwen.
