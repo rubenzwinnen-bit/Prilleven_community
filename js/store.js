@@ -8,7 +8,7 @@
    omdat dit een lokale voorkeur is.
 ============================================ */
 
-import { supabaseFetch, supabaseStorageDelete } from './supabase.js?v=4.0.7';
+import { supabaseFetch, supabaseStorageDelete } from './supabase.js?v=4.0.8';
 
 /* ============================================
    IN-MEMORY CACHE LAAG
@@ -126,7 +126,7 @@ export async function refreshAdminStatus() {
     return false;
   }
   try {
-    const { fetchSubscriptionStatus } = await import('./supabase.js?v=4.0.7');
+    const { fetchSubscriptionStatus } = await import('./supabase.js?v=4.0.8');
     const status = await fetchSubscriptionStatus(user);
     const v = !!status?.is_admin;
     _adminCache = { email: user, value: v, loaded: true };
@@ -736,7 +736,6 @@ function getCookingMilestoneProgressFromMeals(meals) {
       id: 'first-cooked',
       title: 'Je eerste Cooked it',
       description: 'Je kookverhaal is begonnen.',
-      nextDescription: 'Rond je eerste geplande gerecht af.',
       current: Math.min(meals.length, 1),
       target: 1,
       isReached: meals.length >= 1,
@@ -745,7 +744,6 @@ function getCookingMilestoneProgressFromMeals(meals) {
       id: 'first-rhythm',
       title: 'Je eerste volle Pril Ritme-week',
       description: 'Drie betekenisvolle kookdagen in één week.',
-      nextDescription: 'Kook op drie verschillende dagen in één week.',
       current: completedRhythmWeeks > 0
         ? COOKING_RHYTHM_TARGET
         : Math.min(currentWeekDays, COOKING_RHYTHM_TARGET),
@@ -756,7 +754,6 @@ function getCookingMilestoneProgressFromMeals(meals) {
       id: 'five-recipes',
       title: 'Vijf verschillende gerechten',
       description: 'Je bracht al vijf verschillende gerechten op tafel.',
-      nextDescription: 'Breng vijf verschillende gerechten op tafel.',
       current: Math.min(uniqueRecipeIds.size, 5),
       target: 5,
       isReached: uniqueRecipeIds.size >= 5,
@@ -769,11 +766,6 @@ function getCookingMilestoneProgressFromMeals(meals) {
     completedRhythmWeeks,
     milestones,
   };
-}
-
-/** Zachte mijlpalen over alle lokaal bewaarde Cooked it-weken heen. */
-export function getCookingMilestoneProgress() {
-  return getCookingMilestoneProgressFromMeals(readCookedMeals());
 }
 
 /* ============================================

@@ -16,13 +16,13 @@
    - generateSchedule/refreshSlot werken op de cache (generator sub-tab)
 ============================================ */
 
-import * as Store from '../store.js?v=4.0.7';
-import * as Router from '../router.js?v=4.0.7';
+import * as Store from '../store.js?v=4.0.8';
+import * as Router from '../router.js?v=4.0.8';
 import {
   showToast, escapeHtml, renderStarsDisplay, ALLERGENS, WEEKDAYS,
   SCHEDULE_SLOTS, slotToMealMoment, getSlotLabel, getAllergenLabel, normalizeAllergen
-} from '../utils.js?v=4.0.7';
-import { promptScheduleDetails } from './scheduleDetailsDialog.js?v=4.0.7';
+} from '../utils.js?v=4.0.8';
+import { promptScheduleDetails } from './scheduleDetailsDialog.js?v=4.0.8';
 
 /* ----------------------------------------
    STATE
@@ -154,45 +154,6 @@ function buildCookingRhythmHtml() {
       </div>
       <div class="cooking-rhythm-dots">${dots}</div>
     </section>
-  `;
-}
-
-function buildNextCookingMilestoneHtml() {
-  const progress = Store.getCookingMilestoneProgress();
-  const nextMilestone = progress.milestones.find(milestone => !milestone.isReached);
-
-  if (!nextMilestone) {
-    return `
-      <aside class="cooking-next-milestone is-complete" aria-label="Alle zachte kookmomenten bereikt">
-        <span class="cooking-next-label">Jouw kookverhaal</span>
-        <strong>Drie zachte momenten bereikt</strong>
-        <span>Je eerste Cooked it, een vol Pril Ritme en vijf verschillende gerechten.</span>
-        <span class="cooking-next-complete" aria-hidden="true">&#10003;</span>
-      </aside>
-    `;
-  }
-
-  const percentage = Math.round((nextMilestone.current / nextMilestone.target) * 100);
-  return `
-    <aside class="cooking-next-milestone"
-           aria-label="Volgend zacht moment: ${escapeHtml(nextMilestone.title)}, ${nextMilestone.current} van ${nextMilestone.target}">
-      <span class="cooking-next-label">Volgend zacht moment</span>
-      <strong>${escapeHtml(nextMilestone.title)}</strong>
-      <span>${escapeHtml(nextMilestone.nextDescription)}</span>
-      <div class="cooking-next-progress" aria-hidden="true">
-        <span style="width:${percentage}%"></span>
-      </div>
-      <small>${nextMilestone.current} van ${nextMilestone.target}</small>
-    </aside>
-  `;
-}
-
-function buildCookingOverviewHtml() {
-  return `
-    <div class="cooking-overview">
-      ${buildCookingRhythmHtml()}
-      ${buildNextCookingMilestoneHtml()}
-    </div>
   `;
 }
 
@@ -362,7 +323,7 @@ function buildActiveTabHtml() {
       </div>
     </div>
 
-    ${buildCookingOverviewHtml()}
+    ${buildCookingRhythmHtml()}
 
     <div class="active-days-view" id="active-days-view">
       ${renderActiveDays(preset)}

@@ -2748,95 +2748,10 @@ body.is-aanraders #app-nav { display: none; }
   justify-content: space-between;
   gap: 1.25rem;
   padding: 1rem 1.15rem;
-  margin-bottom: 0;
+  margin-bottom: 1rem;
   border: 1px solid rgba(79, 125, 108, 0.14);
   border-radius: var(--radius-md);
   background: rgba(79, 125, 108, 0.08);
-}
-
-.cooking-overview {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(16rem, 0.8fr);
-  gap: 0.85rem;
-  margin-bottom: 1rem;
-}
-
-.cooking-next-milestone {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0.18rem;
-  min-width: 0;
-  padding: 0.9rem 1rem;
-  overflow: hidden;
-  border: 1px solid rgba(201, 137, 102, 0.2);
-  border-radius: var(--radius-md);
-  background: rgba(201, 137, 102, 0.08);
-}
-
-.cooking-next-label {
-  color: var(--color-primary-dark);
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.cooking-next-milestone strong {
-  color: var(--color-dark);
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.cooking-next-milestone > span:not(.cooking-next-label, .cooking-next-complete) {
-  color: var(--color-text-muted, #666);
-  font-size: 0.76rem;
-  line-height: 1.35;
-}
-
-.cooking-next-progress {
-  height: 0.28rem;
-  margin-top: 0.4rem;
-  overflow: hidden;
-  border-radius: 999px;
-  background: rgba(201, 137, 102, 0.18);
-}
-
-.cooking-next-progress span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--color-primary);
-}
-
-.cooking-next-milestone small {
-  align-self: flex-end;
-  color: var(--color-primary-dark);
-  font-size: 0.68rem;
-  font-weight: 600;
-}
-
-.cooking-next-milestone.is-complete {
-  padding-right: 3.25rem;
-  border-color: rgba(79, 125, 108, 0.18);
-  background: rgba(79, 125, 108, 0.07);
-}
-
-.cooking-next-complete {
-  position: absolute;
-  top: 50%;
-  right: 1rem;
-  width: 1.75rem;
-  height: 1.75rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  color: var(--color-white);
-  background: var(--color-green-text);
-  font-size: 0.78rem;
-  transform: translateY(-50%);
 }
 
 .cooking-rhythm-copy {
@@ -3251,10 +3166,6 @@ body.is-aanraders #app-nav { display: none; }
 }
 
 @media (max-width: 900px) {
-  .cooking-overview {
-    grid-template-columns: 1fr;
-  }
-
   .active-day-meals {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }

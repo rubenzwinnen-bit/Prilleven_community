@@ -1017,16 +1017,19 @@ interactie volgen later in een aparte fase.
   `.agents/skills/`, met UI-metadata voor de skill-/slashlijst. De oude
   `source-command-*`-migratiewrappers voor deze twee commando's zijn verwijderd;
   de vier Claude-commando's in `.claude/commands/` blijven bestaan.
-- ✅ Zachte mijlpalen zijn als lokale visuele preview toegevoegd. Het actieve
-  weekschema toont altijd precies het volgende zachte moment: eerste Cooked it,
-  eerste volle Pril Ritme-week en daarna vijf verschillende bereide recepten.
+- ✅ Zachte mijlpalen zijn als lokale visuele preview toegevoegd: eerste Cooked it,
+  eerste volle Pril Ritme-week en vijf verschillende bereide recepten. Ze verschijnen
+  uitsluitend contextueel wanneer een grens werkelijk wordt bereikt; de aparte tegel
+  “Volgend zacht moment” is na de previewtest verwijderd omdat de drie ritmevinkjes
+  voldoende permanente voortgang tonen.
 - ✅ Wanneer een Cooked it werkelijk een grens bereikt, verschijnt in het
   receptdetail een korte contextuele mijlpaalkaart. Er is geen puntenstelsel of
   permanente badgewand.
 - ✅ Na een bereid gerecht zonder eigen beoordeling verschijnt een rustige
   uitnodiging “Hoe smaakte het?”. De knop scrolt naar de bestaande ratingflow en
   focust de eerste ster; de uitnodiging verdwijnt zodra er beoordeeld is.
-- ✅ App-cachebuster opnieuw volledig gelijkgetrokken naar **`4.0.7`**.
+- ✅ App-cachebuster na de previewcorrectie opnieuw volledig gelijkgetrokken naar
+  **`4.0.8`**.
 
 ### Gewijzigde kernbestanden
 - `js/store.js` — kookregistratie, weekstart op maandag, unieke-dagtelling.
@@ -1119,7 +1122,7 @@ evaluatie en expliciete goedkeuring van database-, analytics- of mobiele wijzigi
      actieve weekschema.
    - Pril Ritme: doel van drie unieke kookdagen binnen de kalenderweek.
    - Contextuele mijlpaalkaart bij eerste Cooked it, eerste volle ritmeweek en vijf
-     verschillende recepten; daarnaast steeds één volgend zacht moment in beeld.
+     verschillende recepten; geen permanente tegel of badgewand.
    - Rustige beoordelingsuitnodiging na een bereid gerecht, gekoppeld aan de bestaande
      ratingflow.
    - Lokale opslag per gebruiker/week om interactie en gevoel te testen zonder
