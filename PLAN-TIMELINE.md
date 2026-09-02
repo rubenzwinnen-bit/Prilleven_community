@@ -1365,3 +1365,98 @@ community-chatruimtes blijven een afzonderlijke latere productbeslissing.
   hoe worden refunds, bestaande klanten, stapeling en misbruik behandeld?
 - Kan Plug&Pay de gekozen referralregels native uitvoeren of is eigen verwerking
   nodig?
+
+---
+
+## 2026-09-02 — Productie-incident: betalingen kwamen niet door + performance-release
+
+Begon als een vraag over trage laadtijden. Bij het uitzoeken van een losstaand
+detail (drie geweigerde webhooks) bleek dat **geen enkele betaling verwerkt werd
+sinds 13 augustus**. Dat kreeg voorrang.
+
+### Het incident — 87 betalende leden buitengesloten
+
+- **Oorzaak:** Plug&Pay stuurt sinds 13-08 (regel `504592`, `webhook_event:
+  order_payment_completed`) een **JSON-body met content-type
+  `x-www-form-urlencoded`**. `parseBody()` liet het content-type voorgaan,
+  waarna `parseForm()` de JSON vermorzelde tot één sleutel en het e-mailadres
+  onvindbaar was.
+- **Omvang:** 127 events met `geen_email_in_payload`, waarvan 88 voor Pril Leven
+  Community (87 unieke klanten). Nul verwerkte betalingen tussen 13-08 en 02-09.
+  Alle 87 hadden een verstreken einddatum; sommigen waren al buitengesloten.
+- **Fix:** de vorm van de body telt nu zwaarder dan het content-type — begint hij
+  met `{` of `[`, dan JSON. Gereproduceerd vóór en na met een echte payload uit
+  de log. Los gereleased vanaf `main` (commit `4e14f96`).
+- **Herstel:** einddatum = laatste betaling + 30 dagen (alle betalingen waren
+  `monthly`; geen enkele payload bevatte een `next_billing_date`, dus de webhook
+  zou sowieso zijn fallback gebruiken). Alle 87 hersteld en geverifieerd via het
+  productie-endpoint. Backup vóór de update in **`allowed_users_backup_20260902`**
+  — die tabel mag weg zodra het herstel bevestigd is.
+- **Waarom het niet opviel:** de webhook logt netjes en antwoordt 200. De schade
+  komt pas weken later, als einddatums verstrijken. Monitoring-query staat nu in
+  `api/CLAUDE.md`.
+- **Nog te bevestigen:** de incassorun van de nacht 02→03-09 (±02:00 UTC) moet
+  `applied = true` opleveren. De `dryrun`-test strandde op een verkeerde sleutel
+  en is niet afgerond.
+
+### Performance — laadtijden
+
+Gemeten in plaats van gegokt: de database bleek onschuldig (zwaarste query
+14,7 ms; `recipes` is 82 rijen). De vertraging zat volledig in het laden van de
+frontend.
+
+| | vóór | na |
+|---|---|---|
+| JS-requests eerste render | 39 | 16 |
+| JS-bytes eerste render | 601 kB | 219 kB |
+| Waterfall-lagen | 6, serieel | 3, parallel via `modulepreload` |
+| Browsercache JS/CSS | geen (`max-age=0`) | 1 jaar, `immutable` |
+| Render-blocking fonts | ja | nee |
+| Wachten op abonnementscheck | ~400 ms leeg scherm | geen |
+
+- `styles.css` **bewust niet gesplitst**: 35 kB brotli en na de cache-fix maar
+  één keer opgehaald. De refactor woog niet op tegen de winst.
+- De app rendert nu optimistisch op een onthouden geslaagde check
+  (`prilleven_sub_last_ok`, 24 u, per e-mailadres). De server blijft beslissen —
+  zie `js/CLAUDE.md` §4.6b voor de regels die intact moeten blijven.
+
+### Opzeggen — nieuwe route
+
+- **Plug&Pay-klantenportaal kan dit niet voor ons:** zelf opzeggen zit enkel in
+  **Ultimate** (€125/mnd); wij draaien **Premium** (€59/mnd). Losse bestellingen
+  annuleren binnen 14 dagen kan wel op elk pakket.
+- Daarom `POST /api/opzegverzoek` + tabel **`cancellation_requests`** (migratie
+  uitgevoerd op productie). De rij is leidend, de mail naar `hallo@` is een
+  seintje: verdwijnt die in een filter, dan staat het verzoek er nog.
+- Mail via de **Resend REST API met plain `fetch`** — geen nieuwe dependency.
+  `RESEND_API_KEY` staat nu in Vercel (Production, Preview, Development). Dit is
+  een **andere** sleutel dan die Supabase voor auth-mails gebruikt (custom SMTP).
+- **`info@prilleven.be` bestaat niet meer.** Stond nog op 9 plekken, waaronder
+  het contactpunt voor GDPR-, inzage-, verwijder- en klachtverzoeken in
+  `privacy.html` en `voorwaarden.html`. Alles nu `hallo@prilleven.be`.
+
+### Volgende stappen
+
+1. **Controleer morgenvroeg of de webhook werkt:**
+   `select received_at, category, applied, coalesce(error,'ok'), email from
+   subscription_events where received_at > '2026-09-02 09:30:00+00' order by 1 desc;`
+   Er moet `applied = true` staan. Zo niet, dan is er iets anders aan de hand dan
+   de parse-fout.
+2. **Test het opzegverzoek end-to-end** op een eigen account: komt de mail bij
+   `hallo@` aan, en staat de rij in `cancellation_requests`?
+3. **Ruim op na bevestiging:** `drop table allowed_users_backup_20260902;`
+
+### Open vragen / blockers
+
+- Had `info@prilleven.be` een forward? Zo niet, dan zijn eerdere GDPR- en
+  verwijderverzoeken nooit gezien — mogelijk wachten mensen op antwoord.
+- Zet de webhook bij het **oude CRM van Joemen** uit; die stuurt nog steeds
+  events die terecht op `auth_geweigerd` stranden (11 sinds 12-08).
+- Upgraden naar Plug&Pay Ultimate (+€66/mnd) voor echte zelfbediening, of blijft
+  het handmatige opzegverzoek volstaan? Aandachtspunt: online afgesloten
+  abonnementen moeten in NL/BE net zo makkelijk op te zeggen zijn als af te
+  sluiten.
+- Een adminscherm voor `cancellation_requests` is er nog niet — nu met SQL.
+- **De gamification-previews van 22-08 zijn nog steeds niet visueel getest.** Die
+  branch is vandaag wel naar `main` gegaan (voor de performance-fixes), dus de
+  previews staan nu live zonder dat de feedbackronde is gebeurd.

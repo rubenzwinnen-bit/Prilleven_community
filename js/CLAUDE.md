@@ -175,6 +175,15 @@ alsnog bij de eerste render en is de winst weg. Eager blijven alleen `header`,
 `nav`, `home`, `store`, `router` en `supabase` — die zijn nodig vóór de eerste
 render. Resultaat: 16 modules bij eerste render in plaats van 39.
 
+### 4.8 Opzegverzoek (profiel > Account)
+
+`bindOpzegSection()` in `components/profiel.js` praat met `/api/opzegverzoek`.
+Bij het laden checkt hij met een `GET` of er al een open verzoek staat; zo ja,
+verdwijnt de knop en verschijnt de bevestigingstekst. De status komt dus uit de
+database, niet uit `localStorage` — na herladen of op een ander toestel klopt
+hij nog steeds. Zelf opzeggen in Plug&Pay kan niet (Ultimate-only), dus dit
+verzoek wordt met de hand afgehandeld.
+
 ## 5. XSS / veiligheid
 
 - **Nooit** `innerHTML` met data uit Supabase of user-input zonder `escapeHtml()`.

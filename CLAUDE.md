@@ -171,6 +171,7 @@ SUPABASE_SERVICE_ROLE_KEY
 SUPABASE_ANON_KEY
 PLUGPAY_WEBHOOK_BEARER
 PLUGPAY_WEBHOOK_SECRET
+RESEND_API_KEY
 ```
 
 Op Vercel zelf staan deze al ingesteld via project settings.
@@ -213,6 +214,9 @@ en `eind-sessie` (via de slashlijst of `$skill-naam`).
 - **Publieke URL staat op twee plekken**: `CANONICAL_ORIGIN` in `api/aanraders.mjs` en de `Sitemap:`-regel in `robots.txt` — bij een domeinwijziging altijd beide. Nu `community-web.prilleven.be`; de bedoeling is `community.prilleven.be`, maar daar draait nog **Kollab** (versie 1 van de community, extern platform via `clientportal.ludicrous.cloud`). Die naam pas overnemen bij de migratie van v1 naar deze app, niet eerder. `/robots.txt` is statisch, `/sitemap.xml` loopt via een rewrite naar `/api/aanraders?sitemap=1`.
 - **`eerste_hapjes_allergen_doses`** heeft UNIQUE `(child_id, allergen_key, dose_number)` + CHECK `dose_number BETWEEN 1 AND 3`. Bij bulk-rename/merge van allergen-keys (bv. `ei-geel`+`ei-wit` → `kippen-ei`) eerst constraint droppen, dedup-delete uitvoeren, dan constraint herstellen — een tijdelijke `dose_number`-offset is onmogelijk.
 - **Eetmomenten** moeten altijd de filter-namen zijn (`ochtend, fruit moment, middag, snack, avond` — zie `MEAL_MOMENTS`). CSV-import normaliseert via `normalizeMealMoment()` (utils.js): synoniemen (`lunch → middag`) worden gemapt, onbekende waarden gedropt. Een afwijkende waarde in `recipes.meal_moments` krijgt geen min-age-fallback en toont een ruw label.
+- **Betalingen kwamen tussen 13-08 en 02-09-2026 niet door:** Plug&Pay stuurde JSON met content-type `x-www-form-urlencoded`, waardoor de webhook-parser het e-mailadres niet vond. 127 events niet verwerkt, 87 leden buitengesloten, met de hand hersteld. Zie `api/CLAUDE.md` voor de fix en de monitoring-query. Een stille webhook-fout kost weken voor je hem ziet — controleer `subscription_events` op `applied = false`.
+- **Contactadres is `hallo@prilleven.be`.** `info@prilleven.be` bestaat sinds 2026-09-02 niet meer en stond toen nog in `privacy.html`, `voorwaarden.html` en `delete-account.html` als contactpunt voor GDPR-, inzage-, verwijder- en klachtverzoeken. Gebruik overal `hallo@`.
+- **Opzeggen kan niet via zelfbediening in Plug&Pay:** dat zit enkel in het **Ultimate**-pakket (€125/mnd), wij draaien **Premium** (€59/mnd). Daarom `/api/opzegverzoek` + tabel `cancellation_requests`, en handmatige afhandeling in Plug&Pay.
 - **Cooked it / Pril Ritme is voorlopig een frontend-preview:** gekookte slots staan per gebruiker en kalenderweek in `localStorage` (`prilleven_cooked_meals_<user>`). Drie unieke kookdagen vullen het weekritme; meerdere gerechten op dezelfde dag tellen één keer. Nog niet geschikt als definitieve cross-device opslag.
 
 ---

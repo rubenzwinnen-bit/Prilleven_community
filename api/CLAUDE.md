@@ -70,6 +70,8 @@ Chatruimtes (topics + replies + admin). Eén function, rewrite: `/api/chat-rooms
 - Type-bepaling: URL `?type=` → body `trigger_type/event/event_type/type/action`. `classifyEvent()` herkent ook Nederlandse termen ("betaald", "geëindigd").
 - Categorieën: `activated` | `cancelled` | `expired` | `unknown`.
 - Body mag **JSON of form-urlencoded** zijn; `parseForm()` klapt bracket-notatie (`data[customer][email]`) uit tot een genest object.
+- **VALKUIL — de vorm van de body telt zwaarder dan het content-type.** Plug&Pay stuurt sinds 2026-08-13 (regel `504592`, `webhook_event: order_payment_completed`) een **JSON-body met content-type `x-www-form-urlencoded`**. Toen `parseBody()` het content-type liet voorgaan, liet `parseForm()` zijn `URLSearchParams` los op die JSON: de hele string werd één sleutel en het e-mailadres was onvindbaar. Gevolg: **127 events met `geen_email_in_payload`, nul verwerkte betalingen tussen 13-08 en 02-09, en 87 betalende leden die hun verlenging niet kregen** en toegang verloren zodra hun oude einddatum verstreek. Gefixt op 2026-09-02: begint de body met `{` of `[`, dan JSON — wat de header ook beweert. Wijzig die volgorde niet terug.
+- **Monitoring:** deze storing is onzichtbaar van buiten — de webhook logt netjes en antwoordt 200, de schade komt pas weken later als einddatums verstrijken. Controleer periodiek: `select category, applied, count(*) from subscription_events where received_at > now() - interval '7 days' group by 1,2;`. Staat daar `applied = false` bij `activated`, dan komen betalingen niet door.
 - **Elke** call wordt gelogd in `subscription_events`, ook bij auth- of parsefout (`error: 'auth_geweigerd'` / `'body_niet_parsebaar'`). Anders is een verkeerd ingestelde webhook-URL onzichtbaar.
 - `?dryrun=1` → logt en returnt wat er geschreven zóu worden, zonder `allowed_users` aan te raken. Gebruik dit op een preview-deploy: die praat met dezelfde productie-database.
 - `pickNextDate()` haalt de echte incassodatum uit de payload. Ontbreekt die, dan valt `fallbackEndDate(cycle)` terug op +30 dagen / +3 maanden / +1 jaar en komt er `fallback_datum:<cycle>` in de `error`-kolom van de audit-log — grep daarop om te zien of Plug&Pay de datum werkelijk meestuurt.
@@ -110,6 +112,15 @@ GDPR-endpoints voor de huidige user.
 
 ### `subscription-status.mjs` — GET `/api/subscription-status?email=…`
 **Publiek** endpoint (geen auth) — front-end pingt elke 2 minuten. Returnt enkel non-sensitive velden: `{ active, reason, end_date, is_admin }`.
+
+### `opzegverzoek.mjs` — `/api/opzegverzoek`
+Klanten kunnen **niet** zelf opzeggen in Plug&Pay: zelfbediening in het klantenportaal zit enkel in het **Ultimate**-pakket en wij draaien op **Premium**. Het verzoek loopt dus via ons.
+- `GET` → staat er al een open verzoek voor deze user? `POST` → leg het vast en mail het team.
+- E-mailadres komt **uit het JWT**, nooit uit de body — anders kan iemand voor een ander opzeggen.
+- Schrijft naar `cancellation_requests`; die rij is leidend, de mail is een seintje. Ontbreekt `RESEND_API_KEY`, dan wordt het verzoek nog steeds opgeslagen (alleen een `console.error`).
+- Idempotent via de partiële unique index op `(user_id) WHERE status='open'`: tweede klik geeft geen tweede rij en geen tweede mail.
+- Mail via de **Resend REST API met plain `fetch`** — geen dependency. Van `noreply@prilleven.be` naar `hallo@prilleven.be`, `reply_to` = de klant.
+- Afhandelen gebeurt met de hand: opzeggen in Plug&Pay, daarna de rij op `verwerkt` zetten.
 
 ### `admin.mjs` — GET `/api/admin?section=…`
 Admin dashboard. Vereist `requireAdmin`. Sections: `global`, `users`, `queries`, `events`, `conversations` (per email), `chunks` (per ids), `fallbacks`.
@@ -153,7 +164,7 @@ De affiliatepagina. Wijkt bewust af van elk ander endpoint hier:
 | `user-memory.mjs` | `retrieveUserMemory`, `extractAndStoreMemories(userId, q, a, msgId)` — Haiku extraheert max 5 feiten, dedupeert via embedding-sim ≥ 0.92, insert in `chat_user_memory`. |
 | `community.mjs` | Alle community helpers (groot bestand) — zie endpoint-overzicht hierboven. Bevat ook `loadAdminUserIds(userIds)` met fallback via `auth.admin.getUserById` als view onbeschikbaar is, en `loadBlockedUserIds(userId)`. |
 | `badges.mjs` (v3.2.0) | Single source of truth voor de badge-tellingen. `countTimelineBadge(userId, since)` (posts+replies+gevolgde topics, admin/gevolgd-telregel), `countChatroomBadge(userId, since, topicReads)` (per topic nieuw topic + replies, per-topic `effectiveSince`), `computeTotalBadge(userId)` (leest `user_badge_state` → tijdlijn+chatruimtes opgeteld = het absolute app-icoon-getal voor de push). `BADGE_MAX_AGE_MS` = 6 weken (`withExpiry` ondergrens). Hergebruikt door zowel `api/community.mjs` (route `app-badges`) als `_lib/push.mjs`. Importeert `loadAdminUserIds`/`loadBlockedUserIds` uit `_lib/community.mjs` + `loadFollowedChatroomTopics` (ook hier). |
-| `push.mjs` (v3.2.0) | Expo-push versturen + tokens. `upsertPushToken`/`deletePushToken` (`push_tokens`), `notifyNewActivity(kind, ctx, notif)` = hoofdingang voor de triggers: bepaalt de ontvangers (`resolveRecipients`: timeline_post→iedereen met token; timeline_reply→admins tenzij auteur admin; chatroom_topic/reply→admins + room-/topic-volgers tenzij auteur admin; steeds minus auteur + minus wie de auteur blokkeerde), berekent per ontvanger `computeTotalBadge` (uit `badges.mjs`) en stuurt één Expo-push per token (`https://exp.host/--/api/v2/push/send`, chunks van 100). Volledig defensief — gooit nooit, een push-fout mag de post/reply-request nooit breken. |
+| `push.mjs` (v3.2.0) | Expo-push versturen + tokens. `upsertPushToken`/`deletePushToken` (`push_tokens`), `notifyNewActivity(kind, ctx, notif)` = hoofdingang voor de triggers: bepaalt de ontvangers (`resolveRecipients`: timeline_post→iedereen met token; timeline_reply→admins tenzij auteur admin; chatroom_topic/reply→admins + room-/topic-volgers tenzij auteur admin; steeds minus auteur + minus wie de auteur blokkeerde), berekent per ontvanger `computeTotalBadge` (uit `badges.mjs`) en stuurt één Expo-push per token (`https://exp.host/--/api/v2/push/send`, chunks van 100). Volledig defensief — gooit nooit, een push-fout mag de post/reply-request nooit breken. **`data`-payload (2026-09-02):** elk Expo-bericht draagt `data: { kind, topicId?, postId?, roomSlug?, roomTitle? }`; daarop bepaalt de mobiele app waar een tik naartoe navigeert (app: `src/navigation/pushRouting.tsx` → Tijdlijn of het juiste ChatTopic). Lege velden worden weggelaten, niet op null gezet. De webversie doet niets met deze data. Nieuwe trigger toevoegen? Geef `topicId`/`postId` mee in `ctx`, anders landt de tik op de tijdlijn. |
 
 ---
 
@@ -223,10 +234,13 @@ ANTHROPIC_API_KEY              # clients.mjs
 VOYAGE_API_KEY                 # clients.mjs / retrieve.mjs
 PLUGPAY_WEBHOOK_BEARER         # webhook (optie 1) — als ?key= in de URL of Bearer-header
 PLUGPAY_WEBHOOK_SECRET         # webhook (optie 2, HMAC)
+RESEND_API_KEY                 # opzegverzoek.mjs — mail via de Resend REST API
 ```
 Op Vercel ingesteld via project settings. Lokaal in `.env.local`. Crasht hard als ze in `clients.mjs` ontbreken.
 
-**VALKUIL — `PLUGPAY_WEBHOOK_BEARER` stond tot 2026-08-12 helemaal niet op Vercel.** Het project `pril_leven_community` had enkel `AI_GATEWAY_API_KEY`, `ANTHROPIC_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_URL` en `VOYAGE_API_KEY`. Zonder secret valt de webhook terug op trust-mode en accepteert hij élke POST: iedereen die de URL kende, kon zichzelf een abonnement geven of dat van een ander intrekken. Nu gezet (Sensitive, Production + Preview). Bij een nieuw endpoint met een gedeeld geheim: controleer dat de variabele er écht staat, want de code faalt hier stil met enkel een `console.warn`.
+**VALKUIL — `PLUGPAY_WEBHOOK_BEARER` stond tot 2026-08-12 helemaal niet op Vercel.** Het project `pril_leven_community` had enkel `AI_GATEWAY_API_KEY`, `ANTHROPIC_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_URL` en `VOYAGE_API_KEY`. Zonder secret valt de webhook terug op trust-mode en accepteert hij élke POST: iedereen die de URL kende, kon zichzelf een abonnement geven of dat van een ander intrekken. Nu gezet (Sensitive, Production + Preview). Bij een nieuw endpoint met een gedeeld geheim: controleer dat de variabele er écht staat, want de code faalt hier stil met enkel een `console.warn`. Handig: `vercel env ls production` toont de namen (niet de waarden).
+
+**`RESEND_API_KEY` is niet dezelfde sleutel als die Supabase gebruikt.** De wachtwoord-resetmails gaan via Supabase Auth met Resend als **custom SMTP** — die credentials staan in de Supabase-instellingen en zijn onbereikbaar vanuit een Vercel-function. Daarom een aparte API-key voor onze eigen mail. Zoeken op "resend" in de repo levert daardoor niets op; dat betekent niet dat er geen Resend-account is.
 
 ---
 
