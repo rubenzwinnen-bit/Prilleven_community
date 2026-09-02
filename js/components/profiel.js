@@ -4,14 +4,14 @@
    Route: #/profiel
 ============================================ */
 
-import * as Store from '../store.js?v=4.0.31';
-import { sessionGet, sessionRefreshIfNeeded, sessionClear, fetchSubscriptionStatus } from '../supabase.js?v=4.0.31';
-import { escapeHtml, showToast, processImageForUpload, initialsFromName, colorFromSeed } from '../utils.js?v=4.0.31';
-import * as Api from '../childrenApi.js?v=4.0.31';
-import * as FamilyApi from '../familyApi.js?v=4.0.31';
-import * as CommunityApi from '../communityApi.js?v=4.0.31';
-import { ALLERGEN_FLOW } from '../content/eersteHapjes-allergen-flow.js?v=4.0.31';
-import { patchEhState, loadEhState } from '../eersteHapjesStateApi.js?v=4.0.31';
+import * as Store from '../store.js?v=4.0.32';
+import { sessionGet, sessionRefreshIfNeeded, sessionClear, fetchSubscriptionStatus } from '../supabase.js?v=4.0.32';
+import { escapeHtml, showToast, processImageForUpload, initialsFromName, colorFromSeed, confirm } from '../utils.js?v=4.0.32';
+import * as Api from '../childrenApi.js?v=4.0.32';
+import * as FamilyApi from '../familyApi.js?v=4.0.32';
+import * as CommunityApi from '../communityApi.js?v=4.0.32';
+import { ALLERGEN_FLOW } from '../content/eersteHapjes-allergen-flow.js?v=4.0.32';
+import { patchEhState, loadEhState } from '../eersteHapjesStateApi.js?v=4.0.32';
 
 /* ----------------------------------------
    ALLERGEENLIJST (13 standaard-allergenen, identiek aan tracker)
@@ -71,16 +71,24 @@ export function render() {
    zodat een opzegging nooit strandt op "waar moet ik zijn?".
    De app kan zelf geen mail versturen: er is geen mailprovider in dit project.
 ---------------------------------------- */
-const OPZEG_MAIL = 'hallo@prilleven.be';
-
-function opzegMailtoLink(email) {
-  const onderwerp = 'Opzeggen abonnement Pril Leven Community';
-  const tekst =
-    'Hallo,\n\n' +
-    'Ik wil mijn abonnement op Pril Leven Community opzeggen.\n\n' +
-    'E-mailadres van mijn account: ' + (email || '') + '\n\n' +
-    'Met vriendelijke groet,\n';
-  return `mailto:${OPZEG_MAIL}?subject=${encodeURIComponent(onderwerp)}&body=${encodeURIComponent(tekst)}`;
+async function opzegApi(method, body) {
+  const session = await sessionRefreshIfNeeded();
+  if (!session) return { ok: false, error: 'Je sessie is verlopen. Log opnieuw in.' };
+  try {
+    const res = await fetch('/api/opzegverzoek', {
+      method,
+      headers: {
+        Authorization: 'Bearer ' + session.access_token,
+        ...(body ? { 'Content-Type': 'application/json' } : {}),
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, error: data.error || 'Er ging iets mis.' };
+    return { ok: true, data };
+  } catch {
+    return { ok: false, error: 'Geen verbinding. Probeer het later opnieuw.' };
+  }
 }
 
 /** Toont de einddatum als "12 september 2026"; leeg als we hem niet kennen. */
@@ -174,15 +182,15 @@ function renderPage(container, children, familyDiet, profile, chatProfile, subSt
         }</span>
       </div>
 
-      <div class="profiel-abo-block">
+      <div class="profiel-abo-block" id="profiel-abo-block">
         <p class="profiel-section-sub">
-          Wil je stoppen? Stuur ons een opzegverzoek — onderwerp en tekst staan al klaar,
-          jij hoeft enkel te versturen. Je krijgt van ons een bevestiging, en je houdt
-          toegang tot het einde van de periode die je al betaald hebt.
+          Wil je stoppen? Dien hier je opzegverzoek in. Je houdt toegang tot het einde
+          van de periode die je al betaald hebt, en wij bevestigen de opzegging.
         </p>
-        <a class="btn btn-outline btn-sm" id="profiel-opzeggen" href="${opzegMailtoLink(email)}">
+        <div id="profiel-opzeg-status" class="profiel-opzeg-status hidden"></div>
+        <button class="btn btn-outline btn-sm" id="profiel-opzeggen" type="button">
           Abonnement opzeggen
-        </a>
+        </button>
       </div>
 
       <div class="profiel-nickname-inline" id="profiel-nickname-inline">
@@ -298,6 +306,7 @@ function renderPage(container, children, familyDiet, profile, chatProfile, subSt
 
   bindPageEvents(container, children);
   bindNicknameSection(container, profile);
+  bindOpzegSection(container);
   bindInstellingenSection(container);
   bindBlockedSection(container);
 }
@@ -689,6 +698,65 @@ function bindNicknameSection(container, initialProfile) {
       showError(err.message || 'Er ging iets mis.');
       setStatus('');
     }
+  });
+}
+
+/* ----------------------------------------
+   ABONNEMENT OPZEGGEN
+   Het verzoek gaat naar /api/opzegverzoek: dat legt het vast in de database
+   en mailt het team. De knop verdwijnt zodra er een open verzoek staat,
+   zodat niemand twee keer indient en zich afvraagt of het aankwam.
+---------------------------------------- */
+function bindOpzegSection(container) {
+  const btn = container.querySelector('#profiel-opzeggen');
+  const statusEl = container.querySelector('#profiel-opzeg-status');
+  if (!btn || !statusEl) return;
+
+  const toonIngediend = (datum) => {
+    const wanneer = datum
+      ? new Date(datum).toLocaleDateString('nl-BE', { day: 'numeric', month: 'long', year: 'numeric' })
+      : '';
+    statusEl.textContent = wanneer
+      ? `Je opzegverzoek van ${wanneer} is bij ons binnen. We bevestigen het per mail.`
+      : 'Je opzegverzoek is bij ons binnen. We bevestigen het per mail.';
+    statusEl.classList.remove('hidden');
+    btn.classList.add('hidden');
+  };
+
+  /* Stond er al een verzoek open, dan meteen tonen. Faalt deze check
+     (offline, sessie verlopen), dan blijft de knop gewoon staan. */
+  opzegApi('GET').then((res) => {
+    if (res.ok && res.data?.open_verzoek) toonIngediend(res.data.open_verzoek.aangevraagd_op);
+  });
+
+  btn.addEventListener('click', async () => {
+    const zeker = await confirm(
+      'Wil je je abonnement opzeggen?<br><br>' +
+      'Je houdt toegang tot het einde van de periode die je al betaald hebt. ' +
+      'We verwerken je verzoek en bevestigen het per mail.'
+    );
+    if (!zeker) return;
+
+    btn.disabled = true;
+    const origineel = btn.textContent;
+    btn.textContent = 'Bezig…';
+
+    const res = await opzegApi('POST', {});
+
+    btn.disabled = false;
+    btn.textContent = origineel;
+
+    if (!res.ok) {
+      showToast(res.error || 'Kon het verzoek niet indienen.', 'error');
+      return;
+    }
+    toonIngediend(res.data?.aangevraagd_op);
+    showToast(
+      res.data?.al_ingediend
+        ? 'Je verzoek stond al bij ons open.'
+        : 'Je opzegverzoek is verstuurd.',
+      'success'
+    );
   });
 }
 
