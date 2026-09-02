@@ -100,8 +100,22 @@ function parseForm(raw) {
 function parseBody(raw, contentType) {
   const trimmed = String(raw || '').trim();
   if (!trimmed) return {};
-  if (String(contentType || '').includes('x-www-form-urlencoded')) return parseForm(trimmed);
-  if (trimmed.startsWith('{') || trimmed.startsWith('[')) return JSON.parse(trimmed);
+
+  /* De vorm van de body telt zwaarder dan het content-type. Plug&Pay stuurt
+     sinds 2026-08-13 (regel 504592, webhook_event order_payment_completed)
+     een JSON-body met content-type x-www-form-urlencoded. Ging het content-type
+     voor, dan liet parseForm() zijn URLSearchParams los op die JSON: de hele
+     string werd één sleutel en het e-mailadres was onvindbaar. Gevolg: 127
+     events met 'geen_email_in_payload' en 87 betalende leden die hun
+     verlenging niet kregen. Begint de body met { of [, dan is het JSON —
+     ongeacht wat de header beweert. */
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      /* Toch geen geldige JSON: val terug op de form-parser hieronder. */
+    }
+  }
   return parseForm(trimmed);
 }
 
