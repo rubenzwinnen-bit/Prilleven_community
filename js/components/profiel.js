@@ -4,14 +4,14 @@
    Route: #/profiel
 ============================================ */
 
-import * as Store from '../store.js?v=4.0.28';
-import { sessionGet, sessionRefreshIfNeeded, sessionClear } from '../supabase.js?v=4.0.28';
-import { escapeHtml, showToast, processImageForUpload, initialsFromName, colorFromSeed } from '../utils.js?v=4.0.28';
-import * as Api from '../childrenApi.js?v=4.0.28';
-import * as FamilyApi from '../familyApi.js?v=4.0.28';
-import * as CommunityApi from '../communityApi.js?v=4.0.28';
-import { ALLERGEN_FLOW } from '../content/eersteHapjes-allergen-flow.js?v=4.0.28';
-import { patchEhState, loadEhState } from '../eersteHapjesStateApi.js?v=4.0.28';
+import * as Store from '../store.js?v=4.0.29';
+import { sessionGet, sessionRefreshIfNeeded, sessionClear, fetchSubscriptionStatus } from '../supabase.js?v=4.0.29';
+import { escapeHtml, showToast, processImageForUpload, initialsFromName, colorFromSeed } from '../utils.js?v=4.0.29';
+import * as Api from '../childrenApi.js?v=4.0.29';
+import * as FamilyApi from '../familyApi.js?v=4.0.29';
+import * as CommunityApi from '../communityApi.js?v=4.0.29';
+import { ALLERGEN_FLOW } from '../content/eersteHapjes-allergen-flow.js?v=4.0.29';
+import { patchEhState, loadEhState } from '../eersteHapjesStateApi.js?v=4.0.29';
 
 /* ----------------------------------------
    ALLERGEENLIJST (13 standaard-allergenen, identiek aan tracker)
@@ -64,17 +64,47 @@ export function render() {
 }
 
 /* ----------------------------------------
+   OPZEGVERZOEK
+   Het Plug&Pay-klantenportaal laat klanten enkel op het Ultimate-pakket
+   zelf opzeggen; wij zitten op Premium. Daarom sturen we een mail met
+   alles al ingevuld — onderwerp, tekst en het e-mailadres van het account —
+   zodat een opzegging nooit strandt op "waar moet ik zijn?".
+   De app kan zelf geen mail versturen: er is geen mailprovider in dit project.
+---------------------------------------- */
+const OPZEG_MAIL = 'info@prilleven.be';
+
+function opzegMailtoLink(email) {
+  const onderwerp = 'Opzeggen abonnement Pril Leven Community';
+  const tekst =
+    'Hallo,\n\n' +
+    'Ik wil mijn abonnement op Pril Leven Community opzeggen.\n\n' +
+    'E-mailadres van mijn account: ' + (email || '') + '\n\n' +
+    'Met vriendelijke groet,\n';
+  return `mailto:${OPZEG_MAIL}?subject=${encodeURIComponent(onderwerp)}&body=${encodeURIComponent(tekst)}`;
+}
+
+/** Toont de einddatum als "12 september 2026"; leeg als we hem niet kennen. */
+function formatEinddatum(isoDatum) {
+  if (!isoDatum) return '';
+  const d = new Date(isoDatum);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('nl-BE', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+/* ----------------------------------------
    INIT — laadt data en rendert de pagina
 ---------------------------------------- */
 export async function init() {
   const container = document.querySelector('.profiel-page-inner');
   if (!container) return;
 
-  const [childrenRes, familyRes, profileRes, chatProfileRes] = await Promise.all([
+  const [childrenRes, familyRes, profileRes, chatProfileRes, subStatus] = await Promise.all([
     Api.getChildren(),
     FamilyApi.getFamilyDiet(),
     CommunityApi.getMyProfile(),
     fetchChatProfile(),
+    /* Gecached in supabase.js, dus meestal geen extra netwerkcall. */
+    fetchSubscriptionStatus(Store.getCurrentUser()),
   ]);
   if (!childrenRes.ok) {
     container.innerHTML = `<p class="profiel-error">${escapeHtml(childrenRes.error || 'Kon profiel niet laden.')}</p>`;
@@ -87,6 +117,7 @@ export async function init() {
     familyRes.ok ? (familyRes.data.family_diet || []) : [],
     profileRes.ok ? (profileRes.data?.profile || null) : null,
     chatProfileRes,
+    subStatus,
   );
 }
 
@@ -111,7 +142,7 @@ async function fetchChatProfile() {
 /* ----------------------------------------
    PAGINA OPBOUWEN
 ---------------------------------------- */
-function renderPage(container, children, familyDiet, profile, chatProfile) {
+function renderPage(container, children, familyDiet, profile, chatProfile, subStatus) {
   const email = Store.getCurrentUser() || '';
   const userId = sessionGet()?.user_id || '';
   const nickname = profile?.nickname || '';
@@ -130,6 +161,28 @@ function renderPage(container, children, familyDiet, profile, chatProfile) {
       <div class="profiel-account-row">
         <span class="profiel-account-label">E-mailadres</span>
         <span class="profiel-account-value">${escapeHtml(email)}</span>
+      </div>
+
+      <div class="profiel-account-row">
+        <span class="profiel-account-label">Lidmaatschap</span>
+        <span class="profiel-account-value">${
+          subStatus?.active
+            ? (formatEinddatum(subStatus.end_date)
+                ? `Actief tot ${escapeHtml(formatEinddatum(subStatus.end_date))}`
+                : 'Actief')
+            : 'Niet actief'
+        }</span>
+      </div>
+
+      <div class="profiel-abo-block">
+        <p class="profiel-section-sub">
+          Wil je stoppen? Stuur ons een opzegverzoek — onderwerp en tekst staan al klaar,
+          jij hoeft enkel te versturen. Je krijgt van ons een bevestiging, en je houdt
+          toegang tot het einde van de periode die je al betaald hebt.
+        </p>
+        <a class="btn btn-outline btn-sm" id="profiel-opzeggen" href="${opzegMailtoLink(email)}">
+          Abonnement opzeggen
+        </a>
       </div>
 
       <div class="profiel-nickname-inline" id="profiel-nickname-inline">

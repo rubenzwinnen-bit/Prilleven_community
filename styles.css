@@ -8370,6 +8370,23 @@ canvas.hiddenCanvasElement {
   margin-top: .75rem;
 }
 
+/* ---- Abonnement opzeggen (profiel > Account) ---- */
+.profiel-abo-block {
+  margin-top: .75rem;
+  padding-top: .875rem;
+  border-top: 1px solid var(--color-light);
+}
+.profiel-abo-block .profiel-section-sub {
+  margin-bottom: .75rem;
+}
+/* De opzegknop is een <a> met een mailto, geen <button>: geef hem
+   dezelfde uitlijning als de knoppen elders op de pagina. */
+a.btn#profiel-opzeggen {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
 /* ============================================
    CHATRUIMTE VOLGSYSTEEM — V2.9.0
    Badges, follow-knoppen, chatroom-tijdlijn-kaart
