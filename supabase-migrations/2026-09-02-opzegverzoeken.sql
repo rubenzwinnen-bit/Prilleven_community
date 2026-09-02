@@ -1,3 +1,10 @@
+-- ============================================================
+-- 2026-09-02 — Opzegverzoeken voor het abonnement vastleggen.
+-- Run in: Supabase Dashboard → SQL Editor → New query
+-- Safe to run twice: uses IF NOT EXISTS / DROP POLICY IF EXISTS.
+-- UITGEVOERD OP PRODUCTIE OP 2026-09-02.
+-- ============================================================
+
 -- Opzegverzoeken voor het abonnement.
 --
 -- Waarom deze tabel: klanten kunnen niet zelf opzeggen in het Plug&Pay

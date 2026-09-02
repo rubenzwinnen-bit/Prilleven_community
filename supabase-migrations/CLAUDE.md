@@ -176,6 +176,9 @@ Voedt de **publieke** pagina `/aanraders` (zie `api/CLAUDE.md`). Anon mag lezen 
 ### Storage buckets — aanvulling
 - **`affiliate-images`** — productfoto's, publiek leesbaar (zoals `recipe-images`). Alleen een SELECT-policy; schrijven gaat server-side met de service-role via een signed upload-URL.
 
+### Opzegverzoeken (2026-09-02 — `2026-09-02-opzegverzoeken.sql`)
+- **`cancellation_requests`** — `id, user_id (FK auth.users), email, status ∈ ('open','verwerkt','geannuleerd'), reden, einddatum_bij_verzoek, mail_verstuurd, created_at, verwerkt_op, verwerkt_door`. Aangemaakt door `POST /api/opzegverzoek`; het opzeggen zelf gebeurt met de hand in Plug&Pay (zelfbediening zit daar enkel in het Ultimate-pakket, wij draaien Premium). **Partiële unique index** `(user_id) WHERE status = 'open'` — één open verzoek per gebruiker, zodat dubbelklikken geen tweede rij en geen tweede mail geeft. RLS: enkel `SELECT` op je eigen rijen; schrijven uitsluitend server-side met de service-role, anders kan een client zijn eigen status zetten.
+
 ### Views
 - **`community_posts_view`** — post + nickname + avatar_path + likes_count + replies_count + has_poll. `security_invoker = true`.
 - **`community_admin_user_ids`** — resolveert admin user_ids via email-join `auth.users ↔ allowed_users.is_admin`. `security_invoker = true`. Bevat ook email + nickname (na `2026-05-03-community-admin-view-email.sql`).
