@@ -8,7 +8,7 @@
    omdat dit een lokale voorkeur is.
 ============================================ */
 
-import { supabaseFetch, supabaseStorageDelete } from './supabase.js?v=4.0.27';
+import { supabaseFetch, supabaseStorageDelete } from './supabase.js?v=4.0.28';
 
 /* ============================================
    IN-MEMORY CACHE LAAG
@@ -119,6 +119,15 @@ export function isAdmin() {
  * Roep dit aan na login én op app init — dan is de sync
  * isAdmin() betrouwbaar voor de rest van de sessie.
  */
+/** Zet de admin-status uit een eerder onthouden waarde, zodat de nav
+ *  meteen klopt terwijl de echte check nog loopt. Wordt overschreven
+ *  zodra refreshAdminStatus() een serverantwoord heeft. */
+export function setAdminStatusFromCache(value) {
+  const user = (getCurrentUser() || '').toLowerCase();
+  if (!user) return;
+  _adminCache = { email: user, value: !!value, loaded: true };
+}
+
 export async function refreshAdminStatus() {
   const user = (getCurrentUser() || '').toLowerCase();
   if (!user) {
@@ -126,7 +135,7 @@ export async function refreshAdminStatus() {
     return false;
   }
   try {
-    const { fetchSubscriptionStatus } = await import('./supabase.js?v=4.0.27');
+    const { fetchSubscriptionStatus } = await import('./supabase.js?v=4.0.28');
     const status = await fetchSubscriptionStatus(user);
     const v = !!status?.is_admin;
     _adminCache = { email: user, value: v, loaded: true };

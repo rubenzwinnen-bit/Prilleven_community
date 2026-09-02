@@ -8,7 +8,7 @@
    5. Start de router
 ============================================ */
 
-import * as Store from './js/store.js?v=4.0.27';
+import * as Store from './js/store.js?v=4.0.28';
 import {
   checkAllowedUser,
   checkCanSignUp,
@@ -22,11 +22,13 @@ import {
   fetchSubscriptionStatus,
   subscriptionAccessMessage,
   invalidateSubscriptionCache,
-} from './js/supabase.js?v=4.0.27';
-import * as Router from './js/router.js?v=4.0.27';
-import * as Header from './js/components/header.js?v=4.0.27';
-import * as Nav from './js/components/nav.js?v=4.0.27';
-import * as Home from './js/components/home.js?v=4.0.27';
+  getRememberedSubscription,
+  forgetRememberedSubscription,
+} from './js/supabase.js?v=4.0.28';
+import * as Router from './js/router.js?v=4.0.28';
+import * as Header from './js/components/header.js?v=4.0.28';
+import * as Nav from './js/components/nav.js?v=4.0.28';
+import * as Home from './js/components/home.js?v=4.0.28';
 
 /* ============================================
    LAZY ROUTE-MODULES
@@ -38,19 +40,19 @@ import * as Home from './js/components/home.js?v=4.0.27';
    een tweede bezoek aan dezelfde route is direct.
 ============================================ */
 const lazy = {
-  RecipeList: () => import('./js/components/recipeList.js?v=4.0.27'),
-  RecipeDetail: () => import('./js/components/recipeDetail.js?v=4.0.27'),
-  ImportRecipes: () => import('./js/components/importRecipes.js?v=4.0.27'),
-  WeekSchedule: () => import('./js/components/weekSchedule.js?v=4.0.27'),
-  Favorites: () => import('./js/components/favorites.js?v=4.0.27'),
-  ShoppingList: () => import('./js/components/shoppingList.js?v=4.0.27'),
-  RecipeForm: () => import('./js/components/recipeForm.js?v=4.0.27'),
-  IngredientIcons: () => import('./js/components/ingredientIcons.js?v=4.0.27'),
-  LearningsLibrary: () => import('./js/components/learningsLibrary.js?v=4.0.27'),
-  LearningsDetail: () => import('./js/components/learningsDetail.js?v=4.0.27'),
-  Profiel: () => import('./js/components/profiel.js?v=4.0.27'),
-  Allergenen: () => import('./js/components/allergenen.js?v=4.0.27'),
-  Aanraders: () => import('./js/components/aanraders.js?v=4.0.27'),
+  RecipeList: () => import('./js/components/recipeList.js?v=4.0.28'),
+  RecipeDetail: () => import('./js/components/recipeDetail.js?v=4.0.28'),
+  ImportRecipes: () => import('./js/components/importRecipes.js?v=4.0.28'),
+  WeekSchedule: () => import('./js/components/weekSchedule.js?v=4.0.28'),
+  Favorites: () => import('./js/components/favorites.js?v=4.0.28'),
+  ShoppingList: () => import('./js/components/shoppingList.js?v=4.0.28'),
+  RecipeForm: () => import('./js/components/recipeForm.js?v=4.0.28'),
+  IngredientIcons: () => import('./js/components/ingredientIcons.js?v=4.0.28'),
+  LearningsLibrary: () => import('./js/components/learningsLibrary.js?v=4.0.28'),
+  LearningsDetail: () => import('./js/components/learningsDetail.js?v=4.0.28'),
+  Profiel: () => import('./js/components/profiel.js?v=4.0.28'),
+  Allergenen: () => import('./js/components/allergenen.js?v=4.0.28'),
+  Aanraders: () => import('./js/components/aanraders.js?v=4.0.28'),
 };
 
 /* ----------------------------------------
@@ -115,21 +117,63 @@ async function initApp() {
     return;
   }
 
-  // Check subscription voor bestaande sessie
-  const status = await fetchSubscriptionStatus(user);
+  /* Was de vorige statuscheck van deze gebruiker geslaagd, en niet te
+     lang geleden? Dan tonen we de app meteen en verifieren we op de
+     achtergrond. Dat scheelt een blokkerende netwerkcall van ~400ms
+     (meer bij een cold start) waarin het scherm leeg bleef.
+
+     Is er geen bruikbare herinnering (eerste bezoek, ander account,
+     of de vorige check zei 'niet actief'), dan wachten we zoals
+     voorheen op het serverantwoord voordat er iets zichtbaar wordt. */
+  const remembered = getRememberedSubscription(user);
+
+  if (remembered) {
+    Store.setAdminStatusFromCache(remembered.isAdmin);
+    setupApp();
+    verifySubscriptionInBackground(user);
+  } else {
+    const status = await fetchSubscriptionStatus(user);
+    if (!status.active) {
+      showSubscriptionExpiredScreen(status);
+      return;
+    }
+    // Pre-load admin status zodat Store.isAdmin() synchroon werkt
+    await Store.refreshAdminStatus();
+    setupApp();
+  }
+
+  // Periodiek checken of subscription nog actief is (elke 2 min).
+  // Detecteert live-cancellation zonder dat gebruiker moet refreshen.
+  startSubscriptionPoll();
+}
+
+/* ============================================
+   ACHTERGROND-VERIFICATIE VAN HET ABONNEMENT
+   Draait nadat de app al zichtbaar is. Zegt de server
+   'niet actief', dan schuift het verlopen-scherm er alsnog
+   overheen — dat is een overlay over de volledige pagina.
+   Klopte de onthouden admin-status niet, dan hertekenen we
+   de nav (die is het enige dat op isAdmin() steunt).
+============================================ */
+async function verifySubscriptionInBackground(email) {
+  const status = await fetchSubscriptionStatus(email);
+
   if (!status.active) {
     showSubscriptionExpiredScreen(status);
     return;
   }
 
-  // Pre-load admin status zodat Store.isAdmin() synchroon werkt
+  const adminVoor = Store.isAdmin();
   await Store.refreshAdminStatus();
-
-  setupApp();
-
-  // Periodiek checken of subscription nog actief is (elke 2 min).
-  // Detecteert live-cancellation zonder dat gebruiker moet refreshen.
-  startSubscriptionPoll();
+  if (Store.isAdmin() !== adminVoor) {
+    const navEl = document.getElementById('app-nav');
+    /* Alleen de HTML verversen, niet Nav.init() opnieuw draaien:
+       die hangt listeners aan document en zou ze verdubbelen. */
+    if (navEl) {
+      navEl.innerHTML = Nav.render();
+      Nav.updateActive();
+    }
+  }
 }
 
 let subPollTimer = null;
@@ -214,6 +258,7 @@ function showSubscriptionExpiredScreen(status) {
     localStorage.removeItem('receptenboek_user');
     sessionClear();
     if (email) invalidateSubscriptionCache(email);
+    forgetRememberedSubscription();
     Store.clearCache();
     location.reload();
   });
