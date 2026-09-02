@@ -8379,12 +8379,14 @@ canvas.hiddenCanvasElement {
 .profiel-abo-block .profiel-section-sub {
   margin-bottom: .75rem;
 }
-/* De opzegknop is een <a> met een mailto, geen <button>: geef hem
-   dezelfde uitlijning als de knoppen elders op de pagina. */
-a.btn#profiel-opzeggen {
-  display: inline-flex;
-  align-items: center;
-  text-decoration: none;
+/* Bevestiging dat het verzoek binnen is; vervangt de knop. */
+.profiel-opzeg-status {
+  padding: .625rem .75rem;
+  border-radius: 10px;
+  background: var(--color-light);
+  color: var(--color-dark-light);
+  font-size: .875rem;
+  line-height: 1.5;
 }
 
 /* ============================================

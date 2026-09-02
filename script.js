@@ -8,7 +8,7 @@
    5. Start de router
 ============================================ */
 
-import * as Store from './js/store.js?v=4.0.31';
+import * as Store from './js/store.js?v=4.0.32';
 import {
   checkAllowedUser,
   checkCanSignUp,
@@ -24,11 +24,11 @@ import {
   invalidateSubscriptionCache,
   getRememberedSubscription,
   forgetRememberedSubscription,
-} from './js/supabase.js?v=4.0.31';
-import * as Router from './js/router.js?v=4.0.31';
-import * as Header from './js/components/header.js?v=4.0.31';
-import * as Nav from './js/components/nav.js?v=4.0.31';
-import * as Home from './js/components/home.js?v=4.0.31';
+} from './js/supabase.js?v=4.0.32';
+import * as Router from './js/router.js?v=4.0.32';
+import * as Header from './js/components/header.js?v=4.0.32';
+import * as Nav from './js/components/nav.js?v=4.0.32';
+import * as Home from './js/components/home.js?v=4.0.32';
 
 /* ============================================
    LAZY ROUTE-MODULES
@@ -40,19 +40,19 @@ import * as Home from './js/components/home.js?v=4.0.31';
    een tweede bezoek aan dezelfde route is direct.
 ============================================ */
 const lazy = {
-  RecipeList: () => import('./js/components/recipeList.js?v=4.0.31'),
-  RecipeDetail: () => import('./js/components/recipeDetail.js?v=4.0.31'),
-  ImportRecipes: () => import('./js/components/importRecipes.js?v=4.0.31'),
-  WeekSchedule: () => import('./js/components/weekSchedule.js?v=4.0.31'),
-  Favorites: () => import('./js/components/favorites.js?v=4.0.31'),
-  ShoppingList: () => import('./js/components/shoppingList.js?v=4.0.31'),
-  RecipeForm: () => import('./js/components/recipeForm.js?v=4.0.31'),
-  IngredientIcons: () => import('./js/components/ingredientIcons.js?v=4.0.31'),
-  LearningsLibrary: () => import('./js/components/learningsLibrary.js?v=4.0.31'),
-  LearningsDetail: () => import('./js/components/learningsDetail.js?v=4.0.31'),
-  Profiel: () => import('./js/components/profiel.js?v=4.0.31'),
-  Allergenen: () => import('./js/components/allergenen.js?v=4.0.31'),
-  Aanraders: () => import('./js/components/aanraders.js?v=4.0.31'),
+  RecipeList: () => import('./js/components/recipeList.js?v=4.0.32'),
+  RecipeDetail: () => import('./js/components/recipeDetail.js?v=4.0.32'),
+  ImportRecipes: () => import('./js/components/importRecipes.js?v=4.0.32'),
+  WeekSchedule: () => import('./js/components/weekSchedule.js?v=4.0.32'),
+  Favorites: () => import('./js/components/favorites.js?v=4.0.32'),
+  ShoppingList: () => import('./js/components/shoppingList.js?v=4.0.32'),
+  RecipeForm: () => import('./js/components/recipeForm.js?v=4.0.32'),
+  IngredientIcons: () => import('./js/components/ingredientIcons.js?v=4.0.32'),
+  LearningsLibrary: () => import('./js/components/learningsLibrary.js?v=4.0.32'),
+  LearningsDetail: () => import('./js/components/learningsDetail.js?v=4.0.32'),
+  Profiel: () => import('./js/components/profiel.js?v=4.0.32'),
+  Allergenen: () => import('./js/components/allergenen.js?v=4.0.32'),
+  Aanraders: () => import('./js/components/aanraders.js?v=4.0.32'),
 };
 
 /* ----------------------------------------
