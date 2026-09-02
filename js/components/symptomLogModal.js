@@ -8,8 +8,8 @@
    severity in bestaande waarden: mild | matig | heftig.
 ============================================ */
 
-import { escapeHtml } from '../utils.js?v=4.0.30';
-import { createSymptom, updateSymptom } from '../eersteHapjesSymptomsApi.js?v=4.0.30';
+import { escapeHtml } from '../utils.js?v=4.0.31';
+import { createSymptom, updateSymptom } from '../eersteHapjesSymptomsApi.js?v=4.0.31';
 
 const SEVERITY_OPTIONS = [
   { value: 'mild',   label: 'Mild',    hint: 'meestal verder doen' },
