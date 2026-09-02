@@ -8,7 +8,7 @@
    5. Start de router
 ============================================ */
 
-import * as Store from './js/store.js?v=4.0.25';
+import * as Store from './js/store.js?v=4.0.26';
 import {
   checkAllowedUser,
   checkCanSignUp,
@@ -22,24 +22,36 @@ import {
   fetchSubscriptionStatus,
   subscriptionAccessMessage,
   invalidateSubscriptionCache,
-} from './js/supabase.js?v=4.0.25';
-import * as Router from './js/router.js?v=4.0.25';
-import * as Header from './js/components/header.js?v=4.0.25';
-import * as Nav from './js/components/nav.js?v=4.0.25';
-import * as Home from './js/components/home.js?v=4.0.25';
-import * as RecipeList from './js/components/recipeList.js?v=4.0.25';
-import * as RecipeDetail from './js/components/recipeDetail.js?v=4.0.25';
-import * as ImportRecipes from './js/components/importRecipes.js?v=4.0.25';
-import * as WeekSchedule from './js/components/weekSchedule.js?v=4.0.25';
-import * as Favorites from './js/components/favorites.js?v=4.0.25';
-import * as ShoppingList from './js/components/shoppingList.js?v=4.0.25';
-import * as RecipeForm from './js/components/recipeForm.js?v=4.0.25';
-import * as IngredientIcons from './js/components/ingredientIcons.js?v=4.0.25';
-import * as LearningsLibrary from './js/components/learningsLibrary.js?v=4.0.25';
-import * as LearningsDetail from './js/components/learningsDetail.js?v=4.0.25';
-import * as Profiel from './js/components/profiel.js?v=4.0.25';
-import * as Allergenen from './js/components/allergenen.js?v=4.0.25';
-import * as Aanraders from './js/components/aanraders.js?v=4.0.25';
+} from './js/supabase.js?v=4.0.26';
+import * as Router from './js/router.js?v=4.0.26';
+import * as Header from './js/components/header.js?v=4.0.26';
+import * as Nav from './js/components/nav.js?v=4.0.26';
+import * as Home from './js/components/home.js?v=4.0.26';
+
+/* ============================================
+   LAZY ROUTE-MODULES
+   Elke pagina wordt pas opgehaald wanneer de route
+   voor het eerst bezocht wordt. Dat scheelt ~380 KB
+   JavaScript op de eerste render; wie enkel de hub
+   bekijkt, laadt niet ook het allergenenpad en profiel.
+   De browser cachet de module na de eerste keer, dus
+   een tweede bezoek aan dezelfde route is direct.
+============================================ */
+const lazy = {
+  RecipeList: () => import('./js/components/recipeList.js?v=4.0.26'),
+  RecipeDetail: () => import('./js/components/recipeDetail.js?v=4.0.26'),
+  ImportRecipes: () => import('./js/components/importRecipes.js?v=4.0.26'),
+  WeekSchedule: () => import('./js/components/weekSchedule.js?v=4.0.26'),
+  Favorites: () => import('./js/components/favorites.js?v=4.0.26'),
+  ShoppingList: () => import('./js/components/shoppingList.js?v=4.0.26'),
+  RecipeForm: () => import('./js/components/recipeForm.js?v=4.0.26'),
+  IngredientIcons: () => import('./js/components/ingredientIcons.js?v=4.0.26'),
+  LearningsLibrary: () => import('./js/components/learningsLibrary.js?v=4.0.26'),
+  LearningsDetail: () => import('./js/components/learningsDetail.js?v=4.0.26'),
+  Profiel: () => import('./js/components/profiel.js?v=4.0.26'),
+  Allergenen: () => import('./js/components/allergenen.js?v=4.0.26'),
+  Aanraders: () => import('./js/components/aanraders.js?v=4.0.26'),
+};
 
 /* ============================================
    RECOVERY TOKEN DETECTIE
@@ -554,79 +566,92 @@ function setupApp() {
 
   /* --- Recepten overzicht --- */
   Router.on('recipes', async () => {
-    await renderPage(RecipeList.render(), RecipeList.init);
+    const M = await lazy.RecipeList();
+    await renderPage(M.render(), M.init);
   });
 
   /* --- Recept bewerken --- */
   Router.on('edit/:id', async (params) => {
+    const M = await lazy.RecipeForm();
     await renderPage(
-      RecipeForm.render(params.id),
-      () => RecipeForm.init(params.id)
+      M.render(params.id),
+      () => M.init(params.id)
     );
   });
 
   /* --- Nieuw recept toevoegen (manueel, admin) --- */
   Router.on('new-recipe', async () => {
-    await renderPage(RecipeForm.render(), () => RecipeForm.init());
+    const M = await lazy.RecipeForm();
+    await renderPage(M.render(), () => M.init());
   });
 
   /* --- Recept detail --- */
   Router.on('recipe/:id', async (params) => {
+    const M = await lazy.RecipeDetail();
     await renderPage(
-      RecipeDetail.render(params.id),
-      () => RecipeDetail.init(params.id)
+      M.render(params.id),
+      () => M.init(params.id)
     );
   });
 
   /* --- Recepten importeren --- */
   Router.on('import', async () => {
-    await renderPage(ImportRecipes.render(), ImportRecipes.init);
+    const M = await lazy.ImportRecipes();
+    await renderPage(M.render(), M.init);
   });
 
   /* --- Ingrediënt iconen beheer --- */
   Router.on('ingredient-icons', async () => {
-    await renderPage(IngredientIcons.render(), IngredientIcons.init);
+    const M = await lazy.IngredientIcons();
+    await renderPage(M.render(), M.init);
   });
 
   /* --- Weekschema generator --- */
   Router.on('schedule', async () => {
-    await renderPage(WeekSchedule.render(), WeekSchedule.init);
+    const M = await lazy.WeekSchedule();
+    await renderPage(M.render(), M.init);
   });
 
   /* --- Favorieten --- */
   Router.on('favorites', async () => {
-    await renderPage(Favorites.render(), Favorites.init);
+    const M = await lazy.Favorites();
+    await renderPage(M.render(), M.init);
   });
 
   /* --- Boodschappenlijst voor een weekschema --- */
   Router.on('shopping/:id', async (params) => {
+    const M = await lazy.ShoppingList();
     await renderPage(
-      ShoppingList.render(params.id),
-      () => ShoppingList.init(params.id)
+      M.render(params.id),
+      () => M.init(params.id)
     );
   });
 
   /* --- Learnings: overzicht --- */
   Router.on('learnings', async () => {
-    await renderPage(LearningsLibrary.render(), LearningsLibrary.init);
+    const M = await lazy.LearningsLibrary();
+    await renderPage(M.render(), M.init);
   });
 
   /* --- Learnings: detail --- */
   Router.on('learnings/:id', async (params) => {
+    const M = await lazy.LearningsDetail();
     await renderPage(
-      LearningsDetail.render(params.id),
-      () => LearningsDetail.init(params.id)
+      M.render(params.id),
+      () => M.init(params.id)
     );
   });
 
   /* --- Profiel --- */
   Router.on('profiel', async () => {
-    await renderPage(Profiel.render(), Profiel.init);
+    const M = await lazy.Profiel();
+    await renderPage(M.render(), M.init);
   });
 
   /* --- Allergenen introduceren --- */
   Router.on('allergenen', async () => {
-    await renderPage(Allergenen.render(), Allergenen.init);
+    const M = await lazy.Allergenen();
+    await renderPage(M.render(), M.init);
   });
 
   /* --- Aanraders: overzicht, categorie, product ---
@@ -634,15 +659,18 @@ function setupApp() {
      zodat de gebruiker de community niet verlaat. De HTML komt van de
      server (fragment-modus), dus er is maar één renderer. */
   Router.on('aanraders', async () => {
-    await renderPage(Aanraders.render(), () => Aanraders.init('overzicht'));
+    const M = await lazy.Aanraders();
+    await renderPage(M.render(), () => M.init('overzicht'));
   });
 
   Router.on('aanraders/c/:slug', async (params) => {
-    await renderPage(Aanraders.render(), () => Aanraders.init('categorie', params.slug));
+    const M = await lazy.Aanraders();
+    await renderPage(M.render(), () => M.init('categorie', params.slug));
   });
 
   Router.on('aanraders/p/:slug', async (params) => {
-    await renderPage(Aanraders.render(), () => Aanraders.init('product', params.slug));
+    const M = await lazy.Aanraders();
+    await renderPage(M.render(), () => M.init('product', params.slug));
   });
 
   /* --- 404 pagina --- */
