@@ -4,14 +4,14 @@
    Route: #/profiel
 ============================================ */
 
-import * as Store from '../store.js?v=4.0.29';
-import { sessionGet, sessionRefreshIfNeeded, sessionClear, fetchSubscriptionStatus } from '../supabase.js?v=4.0.29';
-import { escapeHtml, showToast, processImageForUpload, initialsFromName, colorFromSeed } from '../utils.js?v=4.0.29';
-import * as Api from '../childrenApi.js?v=4.0.29';
-import * as FamilyApi from '../familyApi.js?v=4.0.29';
-import * as CommunityApi from '../communityApi.js?v=4.0.29';
-import { ALLERGEN_FLOW } from '../content/eersteHapjes-allergen-flow.js?v=4.0.29';
-import { patchEhState, loadEhState } from '../eersteHapjesStateApi.js?v=4.0.29';
+import * as Store from '../store.js?v=4.0.31';
+import { sessionGet, sessionRefreshIfNeeded, sessionClear, fetchSubscriptionStatus } from '../supabase.js?v=4.0.31';
+import { escapeHtml, showToast, processImageForUpload, initialsFromName, colorFromSeed } from '../utils.js?v=4.0.31';
+import * as Api from '../childrenApi.js?v=4.0.31';
+import * as FamilyApi from '../familyApi.js?v=4.0.31';
+import * as CommunityApi from '../communityApi.js?v=4.0.31';
+import { ALLERGEN_FLOW } from '../content/eersteHapjes-allergen-flow.js?v=4.0.31';
+import { patchEhState, loadEhState } from '../eersteHapjesStateApi.js?v=4.0.31';
 
 /* ----------------------------------------
    ALLERGEENLIJST (13 standaard-allergenen, identiek aan tracker)
@@ -71,7 +71,7 @@ export function render() {
    zodat een opzegging nooit strandt op "waar moet ik zijn?".
    De app kan zelf geen mail versturen: er is geen mailprovider in dit project.
 ---------------------------------------- */
-const OPZEG_MAIL = 'info@prilleven.be';
+const OPZEG_MAIL = 'hallo@prilleven.be';
 
 function opzegMailtoLink(email) {
   const onderwerp = 'Opzeggen abonnement Pril Leven Community';
