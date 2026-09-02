@@ -201,7 +201,7 @@ en `eind-sessie` (via de slashlijst of `$skill-naam`).
 ## 8. Bekende gevoeligheden / valkuilen
 
 - **Cache-buster vergeten** = gebruikers zien oude JS/CSS. Altijd bumpen.
-- **HTML cache headers staan op no-cache, JS/CSS op s-maxage 1 jaar** (zie `vercel.json`). Daarom is de cache-buster query string essentieel.
+- **HTML cache headers staan op no-cache, JS/CSS op `max-age=31536000, immutable`** (zie `vercel.json`, sinds 2026-09-02). De browser cachet JS/CSS dus een jaar; zonder cache-buster-bump zien gebruikers gegarandeerd oude code. Bumpen is niet optioneel meer.
 - **`allowed_users` vs `subscriptions`**: `allowed_users` is de huidige toegang, `subscriptions` houdt de geschiedenis bij. Webhook update beide.
 - **Toegangsverlening loopt sinds 2026-08-12 rechtstreeks via Plug&Pay**, niet meer via het CRM van Joemen. Dat CRM stuurde enkel contactvelden en vuurde nooit bij een verlenging — tussen juni en augustus 2026 kwamen er 2 `activated`-events binnen tegenover 39 `expired`, en moesten 160 einddatums met de hand hersteld worden. Zie `api/CLAUDE.md` voor de twee Plug&Pay-regels en het incasso-vinkje.
 - **RLS-fouten verschijnen als lege response** — niet als error. Bij "data komt niet binnen": eerst RLS-policy checken.

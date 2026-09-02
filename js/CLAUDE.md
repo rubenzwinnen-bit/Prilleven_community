@@ -138,6 +138,24 @@ const res = await fetch('/api/profile', {
 
 ---
 
+### 4.7 Route-componenten zijn lazy (sinds 2026-09-02)
+
+`script.js` importeert paginacomponenten niet meer statisch. Ze staan in de
+`lazy`-map bovenaan en worden pas opgehaald bij het eerste bezoek aan de route:
+
+```js
+Router.on('recipes', async () => {
+  const M = await lazy.RecipeList();
+  await renderPage(M.render(), M.init);
+});
+```
+
+Een **nieuwe pagina toevoegen** = een regel in `lazy` + een route die `await
+lazy.X()` doet. Zet er géén statische `import * as X` bij: dan laadt de module
+alsnog bij de eerste render en is de winst weg. Eager blijven alleen `header`,
+`nav`, `home`, `store`, `router` en `supabase` — die zijn nodig vóór de eerste
+render. Resultaat: 16 modules bij eerste render in plaats van 39.
+
 ## 5. XSS / veiligheid
 
 - **Nooit** `innerHTML` met data uit Supabase of user-input zonder `escapeHtml()`.
