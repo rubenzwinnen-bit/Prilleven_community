@@ -131,6 +131,25 @@ const res = await fetch('/api/profile', {
 - `sessionClear()` → bij logout. **Combineer met** `Store.setCurrentUser('')` of equivalent + `Store.clearAdminCache()` + `invalidateSubscriptionCache(email)`.
 - `sessionRefreshIfNeeded({ force })` → returnt huidige/nieuwe sessie, of `null` als refresh faalt.
 
+### 4.6b Optimistische start (sinds 2026-09-02)
+
+`initApp()` wacht niet meer op `/api/subscription-status` voordat er iets op
+het scherm komt. `getRememberedSubscription(email)` (supabase.js) leest een
+herinnering uit `localStorage` (`prilleven_sub_last_ok`); is die er, dan rendert
+de app meteen en verifieert `verifySubscriptionInBackground()` daarna alsnog.
+
+De server blijft beslissen. Houd deze regels intact als je hieraan raakt:
+- alleen een echt serverantwoord met `active: true` wordt onthouden — de
+  fail-open bij netwerkfout (`{ active: true }` uit de `catch`) dus nooit;
+- `active: false` wist de herinnering onmiddellijk;
+- de herinnering vervalt na 24 uur en geldt enkel voor hetzelfde e-mailadres;
+- zonder bruikbare herinnering is de flow blokkerend zoals vroeger;
+- uitloggen roept `forgetRememberedSubscription()` aan.
+
+Wijzigt de admin-status bij de achtergrondcheck, dan wordt alleen de nav-HTML
+ververst — niet `Nav.init()`, want die hangt listeners aan `document` en zou ze
+verdubbelen.
+
 ### 4.6 Subscription-status
 `fetchSubscriptionStatus(email)` uit `supabase.js`. 1 min in-memory cache. Returnt `{ active, reason, end_date, is_admin }`. **Fail-open** bij netwerkfout (we sluiten niemand uit als de server hikt).
 
