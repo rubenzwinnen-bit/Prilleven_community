@@ -8,7 +8,7 @@
    5. Start de router
 ============================================ */
 
-import * as Store from './js/store.js?v=4.0.26';
+import * as Store from './js/store.js?v=4.0.27';
 import {
   checkAllowedUser,
   checkCanSignUp,
@@ -22,11 +22,11 @@ import {
   fetchSubscriptionStatus,
   subscriptionAccessMessage,
   invalidateSubscriptionCache,
-} from './js/supabase.js?v=4.0.26';
-import * as Router from './js/router.js?v=4.0.26';
-import * as Header from './js/components/header.js?v=4.0.26';
-import * as Nav from './js/components/nav.js?v=4.0.26';
-import * as Home from './js/components/home.js?v=4.0.26';
+} from './js/supabase.js?v=4.0.27';
+import * as Router from './js/router.js?v=4.0.27';
+import * as Header from './js/components/header.js?v=4.0.27';
+import * as Nav from './js/components/nav.js?v=4.0.27';
+import * as Home from './js/components/home.js?v=4.0.27';
 
 /* ============================================
    LAZY ROUTE-MODULES
@@ -38,20 +38,42 @@ import * as Home from './js/components/home.js?v=4.0.26';
    een tweede bezoek aan dezelfde route is direct.
 ============================================ */
 const lazy = {
-  RecipeList: () => import('./js/components/recipeList.js?v=4.0.26'),
-  RecipeDetail: () => import('./js/components/recipeDetail.js?v=4.0.26'),
-  ImportRecipes: () => import('./js/components/importRecipes.js?v=4.0.26'),
-  WeekSchedule: () => import('./js/components/weekSchedule.js?v=4.0.26'),
-  Favorites: () => import('./js/components/favorites.js?v=4.0.26'),
-  ShoppingList: () => import('./js/components/shoppingList.js?v=4.0.26'),
-  RecipeForm: () => import('./js/components/recipeForm.js?v=4.0.26'),
-  IngredientIcons: () => import('./js/components/ingredientIcons.js?v=4.0.26'),
-  LearningsLibrary: () => import('./js/components/learningsLibrary.js?v=4.0.26'),
-  LearningsDetail: () => import('./js/components/learningsDetail.js?v=4.0.26'),
-  Profiel: () => import('./js/components/profiel.js?v=4.0.26'),
-  Allergenen: () => import('./js/components/allergenen.js?v=4.0.26'),
-  Aanraders: () => import('./js/components/aanraders.js?v=4.0.26'),
+  RecipeList: () => import('./js/components/recipeList.js?v=4.0.27'),
+  RecipeDetail: () => import('./js/components/recipeDetail.js?v=4.0.27'),
+  ImportRecipes: () => import('./js/components/importRecipes.js?v=4.0.27'),
+  WeekSchedule: () => import('./js/components/weekSchedule.js?v=4.0.27'),
+  Favorites: () => import('./js/components/favorites.js?v=4.0.27'),
+  ShoppingList: () => import('./js/components/shoppingList.js?v=4.0.27'),
+  RecipeForm: () => import('./js/components/recipeForm.js?v=4.0.27'),
+  IngredientIcons: () => import('./js/components/ingredientIcons.js?v=4.0.27'),
+  LearningsLibrary: () => import('./js/components/learningsLibrary.js?v=4.0.27'),
+  LearningsDetail: () => import('./js/components/learningsDetail.js?v=4.0.27'),
+  Profiel: () => import('./js/components/profiel.js?v=4.0.27'),
+  Allergenen: () => import('./js/components/allergenen.js?v=4.0.27'),
+  Aanraders: () => import('./js/components/aanraders.js?v=4.0.27'),
 };
+
+/* ----------------------------------------
+   AANRADERS-STYLESHEET
+   Stond vroeger in index.html en laadde dus op elke pagina mee,
+   terwijl alleen de aanraders-route hem nodig heeft. We voegen hem
+   nu eenmalig toe bij het eerste bezoek en wachten tot hij binnen is,
+   zodat de pagina niet even ongestyled flitst.
+---------------------------------------- */
+let _aanradersCss = null;
+function loadAanradersCss() {
+  if (_aanradersCss) return _aanradersCss;
+  _aanradersCss = new Promise((resolve) => {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'aanraders.css?v=3.4.4';
+    /* Ook bij een fout doorgaan: liever ongestyled dan een blanco pagina. */
+    link.onload = resolve;
+    link.onerror = resolve;
+    document.head.appendChild(link);
+  });
+  return _aanradersCss;
+}
 
 /* ============================================
    RECOVERY TOKEN DETECTIE
@@ -659,17 +681,17 @@ function setupApp() {
      zodat de gebruiker de community niet verlaat. De HTML komt van de
      server (fragment-modus), dus er is maar één renderer. */
   Router.on('aanraders', async () => {
-    const M = await lazy.Aanraders();
+    const [M] = await Promise.all([lazy.Aanraders(), loadAanradersCss()]);
     await renderPage(M.render(), () => M.init('overzicht'));
   });
 
   Router.on('aanraders/c/:slug', async (params) => {
-    const M = await lazy.Aanraders();
+    const [M] = await Promise.all([lazy.Aanraders(), loadAanradersCss()]);
     await renderPage(M.render(), () => M.init('categorie', params.slug));
   });
 
   Router.on('aanraders/p/:slug', async (params) => {
-    const M = await lazy.Aanraders();
+    const [M] = await Promise.all([lazy.Aanraders(), loadAanradersCss()]);
     await renderPage(M.render(), () => M.init('product', params.slug));
   });
 

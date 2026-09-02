@@ -6,8 +6,8 @@
    nickname, null = user heeft geannuleerd.
 ============================================ */
 
-import { escapeHtml } from '../utils.js?v=4.0.26';
-import { setMyNickname, getMyProfile } from '../communityApi.js?v=4.0.26';
+import { escapeHtml } from '../utils.js?v=4.0.27';
+import { setMyNickname, getMyProfile } from '../communityApi.js?v=4.0.27';
 
 /**
  * Toon modal en wacht op resultaat.

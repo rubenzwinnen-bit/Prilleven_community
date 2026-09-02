@@ -8,8 +8,15 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=4.0.26" />
+  <!-- Poppins niet render-blocking laden: de browser mag doortekenen met de
+       fallback-font en wisselt zodra Poppins binnen is (display=swap).
+       De <noscript> houdt het werkend zonder JavaScript. -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
+        media="print" onload="this.media='all'">
+  <noscript>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+  </noscript>
+  <link rel="stylesheet" href="/styles.css?v=4.0.27" />
 
   <style>
     html, body { height: 100%; }
@@ -861,10 +868,10 @@
     </div>
   </div>
 
-  <script src="/js/chat.js?v=4.0.26" type="module"></script>
+  <script src="/js/chat.js?v=4.0.27" type="module"></script>
   <script type="module">
-    import { mountHeaderAvatar, attachLogoutHandler } from '/js/headerAvatarStandalone.js?v=4.0.26';
-    import { mountHeaderBell } from '/js/headerBellStandalone.js?v=4.0.26';
+    import { mountHeaderAvatar, attachLogoutHandler } from '/js/headerAvatarStandalone.js?v=4.0.27';
+    import { mountHeaderBell } from '/js/headerBellStandalone.js?v=4.0.27';
     document.addEventListener('DOMContentLoaded', () => {
       mountHeaderBell(document.getElementById('header-bell-mount'));
       mountHeaderAvatar(document.getElementById('header-avatar-mount'));

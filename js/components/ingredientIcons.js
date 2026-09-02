@@ -6,13 +6,13 @@
    mogelijkheid en zoek/filter/sorteer functies.
 ============================================ */
 
-import { getRecipes } from '../store.js?v=4.0.26';
+import { getRecipes } from '../store.js?v=4.0.27';
 import {
   supabaseFetch,
   uploadIngredientIcon,
   deleteIngredientIcon,
-} from '../supabase.js?v=4.0.26';
-import { showToast, escapeHtml } from '../utils.js?v=4.0.26';
+} from '../supabase.js?v=4.0.27';
+import { showToast, escapeHtml } from '../utils.js?v=4.0.27';
 
 /* ----------------------------------------
    STORAGE PAD SANITISATIE
