@@ -466,7 +466,7 @@ export default async function handler(req, res) {
          alle gebruikers met een token; hun app-icoon-badge wordt bijgewerkt. */
       await notifyNewActivity(
         'timeline_post',
-        { authorId: post.user_id, authorIsAdmin: adminSet.has(post.user_id) },
+        { authorId: post.user_id, postId: post.id, authorIsAdmin: adminSet.has(post.user_id) },
         { title: 'Nieuw bericht op de tijdlijn', body: snippet(post.body) }
       );
       return json(res, 201, {
@@ -540,7 +540,7 @@ export default async function handler(req, res) {
            voor gewone gebruikers enkel als de auteur admin is. */
         await notifyNewActivity(
           'timeline_reply',
-          { authorId: auth.userId, authorIsAdmin: adminSet.has(auth.userId) },
+          { authorId: auth.userId, postId: params.id, authorIsAdmin: adminSet.has(auth.userId) },
           { title: 'Nieuwe reactie op de tijdlijn', body: snippet(reply.body) }
         );
         return json(res, 201, {

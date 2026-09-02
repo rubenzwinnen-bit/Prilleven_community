@@ -149,7 +149,9 @@ async function resolveRecipients(kind, ctx) {
 /* ----------------------------------------
    notifyNewActivity — hoofdingang voor de triggers
    kind:  zie resolveRecipients
-   ctx:   { authorId, roomId?, topicId?, authorIsAdmin }
+   ctx:   { authorId, authorIsAdmin, roomId?, topicId?, postId?, roomSlug?, roomTitle? }
+          roomId bepaalt de ontvangers; topicId doet dat én gaat mee in de
+          payload. postId, roomSlug en roomTitle dienen enkel de payload.
    notif: { title, body }
    Berekent per ontvanger het absolute app-icoon-getal en stuurt de pushes.
    Defensief: gooit nooit.
@@ -172,6 +174,16 @@ export async function notifyNewActivity(kind, ctx, notif) {
       })
     );
 
+    /* Payload waarop de mobiele app bepaalt waar een tik naartoe navigeert
+       (app: src/navigation/pushRouting.tsx). Ontbrekende velden laten we weg
+       in plaats van ze op null te zetten — de app leest ze als optioneel.
+       De webversie doet niets met deze data. */
+    const data = { kind };
+    if (ctx.topicId) data.topicId = ctx.topicId;
+    if (ctx.postId) data.postId = ctx.postId;
+    if (ctx.roomSlug) data.roomSlug = ctx.roomSlug;
+    if (ctx.roomTitle) data.roomTitle = ctx.roomTitle;
+
     const messages = tokens.map(({ token, user_id }) => ({
       to: token,
       sound: 'default',
@@ -179,6 +191,7 @@ export async function notifyNewActivity(kind, ctx, notif) {
       body: notif.body,
       badge: badgeByUser.get(user_id) ?? 1,
       priority: 'high',
+      data,
     }));
 
     await sendExpoPush(messages);

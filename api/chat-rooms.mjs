@@ -633,7 +633,14 @@ export default async function handler(req, res) {
       // Push-notificatie (defensief — mag de topic-create nooit breken).
       await notifyNewActivity(
         'chatroom_topic',
-        { authorId: auth.userId, roomId: room.id, authorIsAdmin: topicOut.author_is_admin },
+        {
+          authorId: auth.userId,
+          roomId: room.id,
+          topicId: topicOut.id,
+          roomSlug: room.slug,
+          roomTitle: room.title,
+          authorIsAdmin: topicOut.author_is_admin,
+        },
         { title: `Nieuw topic in ${room.title}`, body: snippet(clean.title) }
       );
 
