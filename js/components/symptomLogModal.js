@@ -1,6 +1,6 @@
 /* ============================================
    EERSTE HAPJES — SYMPTOM LOG MODAL
-   Eenvoudig: stoplicht-ernst (🟢/🟠/🔴) + tijd + notitie + context.
+   Eenvoudig: gekleurde ernsttegels + tijd + notitie + context.
    Extra velden (allergeen-link verplicht, 4 enums optioneel):
      - linked_allergen_key (verplicht — 'onbekend' is geldig)
      - time_after_eating, duration, worsened, behavior (optioneel)
@@ -8,13 +8,13 @@
    severity in bestaande waarden: mild | matig | heftig.
 ============================================ */
 
-import { escapeHtml } from '../utils.js?v=4.0.0';
-import { createSymptom, updateSymptom } from '../eersteHapjesSymptomsApi.js?v=4.0.0';
+import { escapeHtml } from '../utils.js?v=4.0.28';
+import { createSymptom, updateSymptom } from '../eersteHapjesSymptomsApi.js?v=4.0.28';
 
 const SEVERITY_OPTIONS = [
-  { value: 'mild',   icon: '🟢', label: 'Mild',    hint: 'meestal verder doen' },
-  { value: 'matig',  icon: '🟠', label: 'Twijfel', hint: 'tijdelijk pauzeren + opvolgen' },
-  { value: 'heftig', icon: '🔴', label: 'Ernstig', hint: 'stoppen + medische hulp' },
+  { value: 'mild',   label: 'Mild',    hint: 'meestal verder doen' },
+  { value: 'matig',  label: 'Twijfel', hint: 'tijdelijk pauzeren + opvolgen' },
+  { value: 'heftig', label: 'Ernstig', hint: 'stoppen + medische hulp' },
 ];
 
 // Labels voor allergenen-dropdown (matcht keys in eersteHapjes-allergen-flow.js).
@@ -107,7 +107,7 @@ export function openSymptomLogModal({ childId, childName, introducedKeys = [], e
             ` : ''}
           </div>
 
-          <!-- Ernst (stoplicht) -->
+          <!-- Ernst -->
           <div class="eh-symptom-field">
             <label>
               Ernst
@@ -117,8 +117,8 @@ export function openSymptomLogModal({ childId, childName, introducedKeys = [], e
             </label>
             <div class="eh-stoplight" data-group="severity">
               ${SEVERITY_OPTIONS.map(s => `
-                <button type="button" class="eh-stoplight-chip eh-stoplight-chip--${s.value}" data-value="${s.value}">
-                  <span class="eh-stoplight-icon">${s.icon}</span>
+                <button type="button" class="eh-stoplight-chip eh-stoplight-chip--${s.value}"
+                        data-value="${s.value}" aria-pressed="false">
                   <span class="eh-stoplight-label">${escapeHtml(s.label)}</span>
                   <span class="eh-stoplight-hint">${escapeHtml(s.hint)}</span>
                 </button>
@@ -208,7 +208,10 @@ export function openSymptomLogModal({ childId, childName, introducedKeys = [], e
       // Voorgeselecteerde chips markeren
       if (state.severity) {
         const chip = overlay.querySelector(`.eh-stoplight-chip[data-value="${state.severity}"]`);
-        if (chip) chip.classList.add('selected');
+        if (chip) {
+          chip.classList.add('selected');
+          chip.setAttribute('aria-pressed', 'true');
+        }
       }
       for (const group of ['time_after_eating', 'duration', 'worsened', 'behavior']) {
         if (!state[group]) continue;
@@ -221,12 +224,16 @@ export function openSymptomLogModal({ childId, childName, introducedKeys = [], e
       $('#eh-symptom-when').value = toLocalInput(new Date());
     }
 
-    // Stoplicht-chips (single-select)
+    // Ernsttegels (single-select)
     overlay.querySelector('[data-group="severity"]').addEventListener('click', (e) => {
       const chip = e.target.closest('.eh-stoplight-chip');
       if (!chip) return;
-      overlay.querySelectorAll('.eh-stoplight-chip').forEach(b => b.classList.remove('selected'));
+      overlay.querySelectorAll('.eh-stoplight-chip').forEach(b => {
+        b.classList.remove('selected');
+        b.setAttribute('aria-pressed', 'false');
+      });
       chip.classList.add('selected');
+      chip.setAttribute('aria-pressed', 'true');
       state.severity = chip.dataset.value;
     });
 

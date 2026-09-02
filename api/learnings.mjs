@@ -205,13 +205,24 @@ async function listLearnings(req, res, auth) {
     learnings = data || [];
   }
 
-  // Markeer welke favoriet zijn voor deze user (1 extra query).
-  const { data: favs } = await supabase
-    .from('user_learning_favorites')
-    .select('learning_id')
-    .eq('user_id', auth.userId);
+  // Markeer favorieten en bestaande lees-/kijkposities voor Mijn leertraject.
+  const [{ data: favs }, { data: bookmarks }] = await Promise.all([
+    supabase
+      .from('user_learning_favorites')
+      .select('learning_id')
+      .eq('user_id', auth.userId),
+    supabase
+      .from('user_learning_bookmarks')
+      .select('learning_id, position, updated_at')
+      .eq('user_id', auth.userId),
+  ]);
   const favSet = new Set((favs || []).map(f => f.learning_id));
-  for (const l of learnings) l.is_favorite = favSet.has(l.id);
+  const bookmarkMap = new Map((bookmarks || []).map(row => [row.learning_id, row]));
+  for (const l of learnings) {
+    l.is_favorite = favSet.has(l.id);
+    const bm = bookmarkMap.get(l.id);
+    l.bookmark = bm ? { position: bm.position, updated_at: bm.updated_at } : null;
+  }
 
   return json(res, 200, { learnings });
 }

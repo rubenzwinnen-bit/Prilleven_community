@@ -9,9 +9,10 @@
    - Video: "Bewaar tijdcode" knop bij actieve notitie.
 ============================================ */
 
-import * as Router from '../router.js?v=4.0.0';
-import { showToast } from '../utils.js?v=4.0.0';
-import { sessionGet, sessionRefreshIfNeeded } from '../supabase.js?v=4.0.0';
+import * as Router from '../router.js?v=4.0.28';
+import { showToast } from '../utils.js?v=4.0.28';
+import { sessionGet, sessionRefreshIfNeeded } from '../supabase.js?v=4.0.28';
+import { isLearningCompleted, setLearningCompleted } from '../learningProgress.js?v=4.0.28';
 
 let abort = null;
 let item = null;
@@ -82,6 +83,22 @@ export function render(id) {
         </section>
       </div>
 
+      <section class="learning-completion" id="ld-completion" hidden>
+        <div class="learning-completion-heading">
+          <div class="learning-completion-copy">
+            <strong id="ld-completion-title">Klaar met deze learning?</strong>
+            <span id="ld-completion-text">Rond ze af met één bewuste beweging.</span>
+          </div>
+          <button class="learning-completion-undo" id="ld-completion-undo" type="button" hidden>Ongedaan maken</button>
+        </div>
+        <div class="learning-completion-slider" id="ld-completion-slider" style="--learning-progress:0%">
+          <span class="learning-completion-slider-label" id="ld-completion-slider-label">Veeg om af te ronden &rarr;</span>
+          <span class="learning-completion-knob" id="ld-completion-knob" aria-hidden="true">&rarr;</span>
+          <input id="ld-completion-range" type="range" min="0" max="100" value="0"
+                 aria-label="Veeg naar rechts om deze learning als afgerond te markeren">
+        </div>
+      </section>
+
       <!-- Floating "save selection" popup -->
       <div id="ld-sel-popup" class="learning-sel-popup hidden">
         <button class="btn btn-primary btn-xs" id="ld-sel-save">📌 Opslaan in notitie</button>
@@ -121,10 +138,74 @@ export async function init(id) {
   }
 
   document.getElementById('ld-title').textContent = item.title;
+  setupCompletion();
   renderNotesList();
   setupNoteEditor();
   setupSelectionPopup();
   renderViewer();
+}
+
+function setupCompletion() {
+  const panel = document.getElementById('ld-completion');
+  const slider = document.getElementById('ld-completion-slider');
+  const range = document.getElementById('ld-completion-range');
+  const undo = document.getElementById('ld-completion-undo');
+  if (!panel || !slider || !range || !undo || !item) return;
+
+  panel.hidden = false;
+  renderCompletion();
+
+  range.addEventListener('input', () => {
+    setCompletionProgress(range.value);
+    if (Number(range.value) < 88 || isLearningCompleted(item.id)) return;
+    setLearningCompleted(item.id, true);
+    renderCompletion();
+    showToast('Learning afgerond.', 'success');
+  }, { signal: abort.signal });
+
+  range.addEventListener('change', () => {
+    if (isLearningCompleted(item.id)) return;
+    range.value = '0';
+    setCompletionProgress(0);
+  }, { signal: abort.signal });
+
+  undo.addEventListener('click', () => {
+    setLearningCompleted(item.id, false);
+    renderCompletion();
+    showToast('Afronding ongedaan gemaakt.', 'info');
+  }, { signal: abort.signal });
+}
+
+function setCompletionProgress(value) {
+  const safeValue = Math.max(0, Math.min(100, Number(value) || 0));
+  document.getElementById('ld-completion-slider')
+    ?.style.setProperty('--learning-progress', `${safeValue}%`);
+}
+
+function renderCompletion() {
+  const panel = document.getElementById('ld-completion');
+  const title = document.getElementById('ld-completion-title');
+  const text = document.getElementById('ld-completion-text');
+  const slider = document.getElementById('ld-completion-slider');
+  const label = document.getElementById('ld-completion-slider-label');
+  const knob = document.getElementById('ld-completion-knob');
+  const range = document.getElementById('ld-completion-range');
+  const undo = document.getElementById('ld-completion-undo');
+  if (!panel || !title || !text || !slider || !label || !knob || !range || !undo || !item) return;
+
+  const completed = isLearningCompleted(item.id);
+  panel.classList.toggle('is-complete', completed);
+  slider.classList.toggle('is-complete', completed);
+  title.textContent = completed ? 'Learning afgerond' : 'Klaar met deze learning?';
+  text.textContent = completed
+    ? 'Je kunt dit altijd weer aanpassen.'
+    : 'Rond ze af met één bewuste beweging.';
+  label.innerHTML = completed ? 'Afgerond &#10003;' : 'Veeg om af te ronden &rarr;';
+  knob.innerHTML = completed ? '&#10003;' : '&rarr;';
+  range.disabled = completed;
+  range.value = completed ? '100' : '0';
+  undo.hidden = !completed;
+  setCompletionProgress(completed ? 100 : 0);
 }
 
 /* ----------------------------------------

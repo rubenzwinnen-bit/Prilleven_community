@@ -16,12 +16,13 @@
    - generateSchedule/refreshSlot werken op de cache (generator sub-tab)
 ============================================ */
 
-import * as Store from '../store.js?v=4.0.0';
-import * as Router from '../router.js?v=4.0.0';
+import * as Store from '../store.js?v=4.0.28';
+import * as Router from '../router.js?v=4.0.28';
 import {
-  showToast, escapeHtml, promptInput, renderStarsDisplay, ALLERGENS, WEEKDAYS,
+  showToast, escapeHtml, renderStarsDisplay, ALLERGENS, WEEKDAYS,
   SCHEDULE_SLOTS, slotToMealMoment, getSlotLabel, getAllergenLabel, normalizeAllergen
-} from '../utils.js?v=4.0.0';
+} from '../utils.js?v=4.0.28';
+import { promptScheduleDetails } from './scheduleDetailsDialog.js?v=4.0.28';
 
 /* ----------------------------------------
    STATE
@@ -31,6 +32,10 @@ let activeSchedule = null;    // actief schema uit DB (active sub-tab)
 let cachedRecipes = [];
 let cachedUserRatings = {};
 let recipeMap = new Map();
+let cachedFavoriteIds = new Set();
+let cookingStateListenersAttached = false;
+
+const MIN_NON_FAVORITE_POOL = 4;
 
 /* ----------------------------------------
    PERSISTENT PER-GEBRUIKER KEYS
@@ -119,6 +124,43 @@ function capitalize(s) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+function cookingHistoryLabel(index) {
+  if (index === 0) return 'Deze week';
+  if (index === 1) return 'Vorige';
+  return `${index} weken`;
+}
+
+function buildCookingRhythmHtml() {
+  const progress = Store.getCookingWeekProgress();
+  const history = Store.getCookingRhythmHistory(4);
+  const visibleDays = Math.min(progress.days, progress.target);
+  const historyWeeks = history.weeks.map((week, index) => {
+    const marker = week.isComplete
+      ? '&#10003;'
+      : week.isCurrent ? `${Math.min(week.days, week.target)}/${week.target}` : '&ndash;';
+    const status = week.isComplete
+      ? 'ritme bereikt'
+      : week.isCurrent ? `${week.days} van ${week.target} kookdagen` : 'geen vol ritme';
+    return `
+      <div class="cooking-history-week${week.isComplete ? ' is-complete' : ''}${week.isCurrent ? ' is-current' : ''}"
+           aria-label="${escapeHtml(cookingHistoryLabel(index))}: ${status}">
+        <span class="cooking-history-marker" aria-hidden="true">${marker}</span>
+        <small>${escapeHtml(cookingHistoryLabel(index))}</small>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <section class="cooking-rhythm ${progress.isComplete ? 'is-complete' : ''}"
+             aria-label="Pril Ritme: ${visibleDays} van ${progress.target} kookdagen">
+      <strong class="cooking-rhythm-title">Pril Ritme</strong>
+      <div class="cooking-history-weeks" aria-label="Pril Ritme van de afgelopen vier weken">
+        ${historyWeeks}
+      </div>
+    </section>
+  `;
+}
+
 /* ----------------------------------------
    RENDER (skeleton)
 ---------------------------------------- */
@@ -203,6 +245,22 @@ function buildGenerateTabHtml() {
         ${usedAllergens.size === 0 ? '<p class="text-muted">Geen allergenen gevonden in de recepten.</p>' : ''}
       </div>
 
+      <div class="schedule-preferences">
+        <h3>Voorkeuren</h3>
+        <label class="schedule-favorite-preference ${cachedFavoriteIds.size === 0 ? 'is-disabled' : ''}">
+          <input type="checkbox" id="prefer-favorites"
+                 ${currentSchedule?.preferFavorites && cachedFavoriteIds.size > 0 ? 'checked' : ''}
+                 ${cachedFavoriteIds.size === 0 ? 'disabled' : ''}>
+          <span class="schedule-favorite-preference-copy">
+            <strong>Gebruik mijn favoriete recepten</strong>
+            <small>${cachedFavoriteIds.size > 0
+              ? 'Favorieten krijgen vaker een plek, terwijl je weekschema gevarieerd blijft.'
+              : 'Je hebt nog geen favoriete recepten.'
+            }</small>
+          </span>
+        </label>
+      </div>
+
       <div class="mt-2" style="display:flex;gap:0.75rem;flex-wrap:wrap">
         <button class="btn btn-primary btn-lg" id="btn-generate">
           &#127922; Genereer Weekschema
@@ -251,12 +309,9 @@ function buildActiveTabHtml() {
   const preset = loadActivePreset();
 
   return `
-    <div class="schedule-controls">
+    <div class="schedule-controls active-schedule-toolbar">
       <h3>${escapeHtml(activeSchedule.name || 'Actief weekschema')}</h3>
-      <p class="text-muted mb-2" style="font-size:0.85rem">
-        Kies welke dagen je wilt zien. Je keuze wordt onthouden.
-      </p>
-      <div class="day-selector-bar" id="active-preset-bar">
+      <div class="day-selector-bar" id="active-preset-bar" role="group" aria-label="Dagen tonen">
         <button class="day-selector-btn ${preset === 'today' ? 'active' : ''}"
                 data-preset="today" type="button">
           Vandaag
@@ -272,7 +327,9 @@ function buildActiveTabHtml() {
       </div>
     </div>
 
-    <div id="active-days-view">
+    ${buildCookingRhythmHtml()}
+
+    <div class="active-days-view" id="active-days-view">
       ${renderActiveDays(preset)}
     </div>
   `;
@@ -288,40 +345,55 @@ function renderActiveDays(preset) {
     const dayData = activeSchedule.days[day] || {};
     const isToday = day === today;
 
-    const rows = SCHEDULE_SLOTS.map(slot => {
+    const tiles = SCHEDULE_SLOTS.map(slot => {
       const recipeId = dayData[slot.id];
       const recipe = recipeId ? recipeMap.get(recipeId) : null;
+      const slotLabel = getSlotLabel(slot.id);
 
       if (!recipe) {
         return `
-          <div class="active-day-row">
-            <span class="active-day-slot">${getSlotLabel(slot.id)}</span>
-            <span class="active-day-recipe-empty">—</span>
+          <div class="active-meal-card is-empty" aria-label="${escapeHtml(slotLabel)}: geen recept">
+            <div class="active-meal-media active-meal-media-placeholder">
+              <span>Geen foto</span>
+            </div>
+            <div class="active-meal-body">
+              <span class="active-meal-slot">${escapeHtml(slotLabel)}</span>
+              <span class="active-meal-empty">Geen recept gepland</span>
+            </div>
           </div>
         `;
       }
 
-      const userRating = cachedUserRatings[recipe.id] || 0;
+      const isCooked = Store.isScheduleMealCooked(
+        activeSchedule.id, day, slot.id, recipe.id
+      );
+      const imageHtml = recipe.image
+        ? `<img class="active-meal-image" src="${escapeHtml(recipe.image)}" alt="" loading="lazy">`
+        : '<span class="active-meal-image-placeholder">Geen foto</span>';
+
       return `
-        <div class="active-day-row">
-          <span class="active-day-slot">${getSlotLabel(slot.id)}</span>
-          <a href="#/recipe/${recipe.id}" class="active-day-recipe" target="_blank" rel="noopener"
-             title="Bekijk recept (opent in nieuw tabblad)">
-            <span class="active-day-recipe-name">${escapeHtml(recipe.name)}</span>
-            ${userRating ? `<span class="active-day-rating">${renderStarsDisplay(userRating)}</span>` : ''}
-          </a>
-        </div>
+        <a href="#/recipe/${recipe.id}" class="active-meal-card ${isCooked ? 'is-cooked' : ''}"
+           target="_blank" rel="noopener" title="Bekijk recept (opent in nieuw tabblad)">
+          <div class="active-meal-media">
+            ${imageHtml}
+            ${isCooked ? '<span class="active-meal-cooked" aria-label="Gerecht gemaakt">&#10003;</span>' : ''}
+          </div>
+          <div class="active-meal-body">
+            <span class="active-meal-slot">${escapeHtml(slotLabel)}</span>
+            <strong class="active-meal-name">${escapeHtml(recipe.name)}</strong>
+          </div>
+        </a>
       `;
     }).join('');
 
     return `
-      <div class="active-day-block ${isToday ? 'active-day-block-today' : ''}">
+      <section class="active-day-block ${isToday ? 'active-day-block-today' : ''}">
         <h4 class="active-day-header">
           ${capitalize(day)}
           ${isToday ? '<span class="active-day-today-badge">Vandaag</span>' : ''}
         </h4>
-        ${rows}
-      </div>
+        <div class="active-day-meals">${tiles}</div>
+      </section>
     `;
   }).join('');
 
@@ -409,15 +481,17 @@ export async function init() {
 
   /* ---- Data parallel ophalen ---- */
   try {
-    const [recipes, userRatings, active] = await Promise.all([
+    const [recipes, userRatings, active, favoriteIds] = await Promise.all([
       Store.getRecipes(),
       Store.getAllUserRatings(),
       Store.getActiveSchedule(),
+      Store.getFavoriteRecipeIds(),
     ]);
     cachedRecipes = recipes;
     cachedUserRatings = userRatings;
     recipeMap = new Map(recipes.map(r => [r.id, r]));
     activeSchedule = active;
+    cachedFavoriteIds = new Set(favoriteIds);
   } catch (err) {
     page.innerHTML = `
       <div class="empty-state">
@@ -433,6 +507,7 @@ export async function init() {
 
   /* ---- Event listeners ---- */
   attachListeners();
+  attachCookingStateListeners();
 }
 
 /* ----------------------------------------
@@ -505,14 +580,158 @@ function rerenderPage() {
   attachListeners();
 }
 
+function attachCookingStateListeners() {
+  if (cookingStateListenersAttached) return;
+  cookingStateListenersAttached = true;
+
+  const refreshCookingState = event => {
+    if (event.type === 'storage' && event.key !== Store.getCookingStateStorageKey()) return;
+    if (!document.getElementById('schedule-page') || !activeSchedule) return;
+    rerenderPage();
+  };
+
+  window.addEventListener('storage', refreshCookingState);
+  window.addEventListener('prilleven:cooking-state-changed', refreshCookingState);
+}
+
 /* ----------------------------------------
    WEEKSCHEMA GENEREREN
 ---------------------------------------- */
+function getFavoriteSelectionSettings(availableRecipes) {
+  const favoriteCount = availableRecipes.filter(recipe => cachedFavoriteIds.has(recipe.id)).length;
+
+  if (favoriteCount === 0) return { favoriteCount: 0, probability: 0, maxPreferredSlots: 0 };
+  if (favoriteCount <= 2) return { favoriteCount, probability: 0.2, maxPreferredSlots: 2 };
+  if (favoriteCount <= 5) return { favoriteCount, probability: 0.3, maxPreferredSlots: 4 };
+  return { favoriteCount, probability: 0.35, maxPreferredSlots: 7 };
+}
+
+function createSelectionState(availableRecipes, preferFavorites) {
+  const settings = getFavoriteSelectionSettings(availableRecipes);
+  return {
+    preferFavorites: Boolean(preferFavorites && settings.favoriteCount > 0),
+    ...settings,
+    recipeUsage: new Map(),
+    favoriteSelections: 0,
+    preferredSlots: 0,
+  };
+}
+
+function randomFrom(pool) {
+  return pool[Math.floor(Math.random() * pool.length)] || null;
+}
+
+function leastUsedRandom(pool, recipeUsage) {
+  if (pool.length === 0) return null;
+  const lowestUsage = Math.min(...pool.map(recipe => recipeUsage.get(recipe.id) || 0));
+  return randomFrom(pool.filter(recipe => (recipeUsage.get(recipe.id) || 0) === lowestUsage));
+}
+
+function recordSelection(state, recipe, usedPreference = false) {
+  if (!recipe) return;
+  state.recipeUsage.set(recipe.id, (state.recipeUsage.get(recipe.id) || 0) + 1);
+  if (cachedFavoriteIds.has(recipe.id)) state.favoriteSelections += 1;
+  if (usedPreference) state.preferredSlots += 1;
+}
+
+function removeSelection(state, recipeId) {
+  if (!recipeId) return;
+  const currentUsage = state.recipeUsage.get(recipeId) || 0;
+  if (currentUsage > 1) state.recipeUsage.set(recipeId, currentUsage - 1);
+  else state.recipeUsage.delete(recipeId);
+
+  if (cachedFavoriteIds.has(recipeId)) {
+    state.favoriteSelections = Math.max(0, state.favoriteSelections - 1);
+    state.preferredSlots = Math.max(0, state.preferredSlots - 1);
+  }
+}
+
+function selectRecipeForSlot(suitableRecipes, state, avoidRecipeId = null) {
+  const alternatives = suitableRecipes.filter(recipe => recipe.id !== avoidRecipeId);
+  const candidates = alternatives.length > 0 ? alternatives : suitableRecipes;
+  if (candidates.length === 0) return { recipe: null, usedPreference: false };
+
+  /* Zonder voorkeur blijft de bestaande uniforme random-keuze exact behouden. */
+  if (!state.preferFavorites) {
+    return { recipe: randomFrom(candidates), usedPreference: false };
+  }
+
+  const favorites = candidates.filter(recipe => cachedFavoriteIds.has(recipe.id));
+  const nonFavorites = candidates.filter(recipe => !cachedFavoriteIds.has(recipe.id));
+
+  /* Als de niet-favoriete pool te klein is, negeren we het onderscheid volledig.
+     Zo worden 1-3 overige recepten niet de hele week geforceerd herhaald wanneer
+     iemand bijna alle recepten van dit eetmoment als favoriet markeerde. */
+  if (nonFavorites.length < MIN_NON_FAVORITE_POOL) {
+    return {
+      recipe: leastUsedRandom(candidates, state.recipeUsage),
+      usedPreference: false,
+    };
+  }
+
+  const usableFavorites = favorites.filter(recipe => (state.recipeUsage.get(recipe.id) || 0) < 2);
+  const canPreferFavorite = usableFavorites.length > 0 &&
+    state.preferredSlots < state.maxPreferredSlots;
+
+  if (canPreferFavorite && Math.random() < state.probability) {
+    return {
+      recipe: leastUsedRandom(usableFavorites, state.recipeUsage),
+      usedPreference: true,
+    };
+  }
+
+  return {
+    recipe: leastUsedRandom(nonFavorites, state.recipeUsage),
+    usedPreference: false,
+  };
+}
+
+function ensureFavoriteAppears(days, availableRecipes, state) {
+  if (!state.preferFavorites || state.favoriteSelections > 0) return;
+
+  const possibleSlots = [];
+  WEEKDAYS.forEach(day => {
+    SCHEDULE_SLOTS.forEach(slot => {
+      const mealMoment = slotToMealMoment(slot.id);
+      const favorites = availableRecipes.filter(recipe =>
+        cachedFavoriteIds.has(recipe.id) && (recipe.mealMoments || []).includes(mealMoment)
+      );
+      if (favorites.length > 0) possibleSlots.push({ day, slotId: slot.id, favorites });
+    });
+  });
+
+  const target = randomFrom(possibleSlots);
+  if (!target) return;
+
+  const previousId = days[target.day]?.[target.slotId];
+  removeSelection(state, previousId);
+  const favorite = leastUsedRandom(target.favorites, state.recipeUsage);
+  days[target.day][target.slotId] = favorite.id;
+  recordSelection(state, favorite, true);
+}
+
+function buildSelectionStateFromSchedule(schedule, availableRecipes) {
+  const state = createSelectionState(availableRecipes, schedule.preferFavorites);
+
+  WEEKDAYS.forEach(day => {
+    SCHEDULE_SLOTS.forEach(slot => {
+      const recipeId = schedule.days?.[day]?.[slot.id];
+      const recipe = recipeId ? recipeMap.get(recipeId) : null;
+      recordSelection(state, recipe, cachedFavoriteIds.has(recipeId));
+    });
+  });
+
+  return state;
+}
+
 function generateSchedule() {
   /* Haal uitgesloten allergenen op */
   const excluded = Array.from(
     document.querySelectorAll('input[name="exclude-allergen"]:checked')
   ).map(cb => cb.value);
+  const preferFavorites = Boolean(
+    document.getElementById('prefer-favorites')?.checked && cachedFavoriteIds.size > 0
+  );
 
   /* Filter recepten op allergenen (gebruik cache).
      Normaliseer recept-waarden zodat legacy-namen blijven matchen. */
@@ -525,8 +744,10 @@ function generateSchedule() {
     return;
   }
 
-  /* Genereer het schema */
+  /* Genereer het schema. Met favorietenvoorkeur bewaken we tegelijk variatie;
+     zonder voorkeur blijft de bestaande uniforme random-selectie behouden. */
   const days = {};
+  const selectionState = createSelectionState(availableRecipes, preferFavorites);
 
   WEEKDAYS.forEach(day => {
     days[day] = {};
@@ -536,18 +757,20 @@ function generateSchedule() {
         (r.mealMoments || []).includes(mealMoment)
       );
 
-      if (suitable.length > 0) {
-        const random = suitable[Math.floor(Math.random() * suitable.length)];
-        days[day][slot.id] = random.id;
-      } else {
-        days[day][slot.id] = null;
-      }
+      const selection = selectRecipeForSlot(suitable, selectionState);
+      days[day][slot.id] = selection.recipe?.id || null;
+      recordSelection(selectionState, selection.recipe, selection.usedPreference);
     });
   });
+
+  /* De aangevinkte optie moet merkbaar zijn als er minstens één passend
+     favoriet recept bestaat, ook wanneer alle random-kansen net missen. */
+  ensureFavoriteAppears(days, availableRecipes, selectionState);
 
   currentSchedule = {
     days,
     excludedAllergens: excluded,
+    preferFavorites,
     generatedAt: new Date().toISOString(),
   };
 
@@ -580,15 +803,10 @@ function refreshSlot(day, slotId) {
 
   /* Probeer een ander recept te kiezen dan het huidige */
   const currentId = currentSchedule.days[day]?.[slotId];
-  const alternatives = suitable.filter(r => r.id !== currentId);
-  const pool = alternatives.length > 0 ? alternatives : suitable;
-
-  if (pool.length > 0) {
-    const random = pool[Math.floor(Math.random() * pool.length)];
-    currentSchedule.days[day][slotId] = random.id;
-  } else {
-    currentSchedule.days[day][slotId] = null;
-  }
+  const selectionState = buildSelectionStateFromSchedule(currentSchedule, availableRecipes);
+  removeSelection(selectionState, currentId);
+  const selection = selectRecipeForSlot(suitable, selectionState, currentId);
+  currentSchedule.days[day][slotId] = selection.recipe?.id || null;
 
   /* Persisteer de wijziging zodat ook een ververst slot blijft staan */
   saveActiveSchedule(currentSchedule);
@@ -604,15 +822,17 @@ function refreshSlot(day, slotId) {
 async function saveSchedule() {
   if (!currentSchedule) return;
 
-  const name = await promptInput(
-    'Geef dit weekschema een naam:',
-    `Weekschema ${new Date().toLocaleDateString('nl-BE')}`
-  );
-  if (!name) return;
+  const details = await promptScheduleDetails({
+    title: 'Weekschema opslaan',
+    name: `Weekschema ${new Date().toLocaleDateString('nl-BE')}`,
+    persons: activeSchedule?.persons || 4,
+  });
+  if (!details) return;
 
   try {
     await Store.saveSchedule({
-      name: name,
+      name: details.name,
+      persons: details.persons,
       days: currentSchedule.days,
       excludedAllergens: currentSchedule.excludedAllergens
     });
@@ -631,4 +851,5 @@ export function reset() {
      opnieuw uit localStorage leest (kan een andere gebruiker zijn). */
   currentSchedule = null;
   activeSchedule = null;
+  cachedFavoriteIds = new Set();
 }

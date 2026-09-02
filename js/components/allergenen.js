@@ -1,6 +1,6 @@
 /* ============================================
    ALLERGENEN INTRODUCEREN
-   Tracker voor de 13 standaard-allergenen per kindje.
+   Tracker voor de 9 standaard-allergenen per kindje.
    Bron-van-waarheid: eerste_hapjes_allergen_doses (3 doses per
    allergeen, reactie geen/mild/ernstig). Bekende allergieën uit
    het profiel (children.known_allergies) worden bij init gesynced
@@ -8,23 +8,23 @@
    automatisch als 'allergisch' getoond.
 ============================================ */
 
-import { escapeHtml, showToast, colorFromSeed, initialsFromName } from '../utils.js?v=4.0.0';
-import { getChildren, updateChild } from '../childrenApi.js?v=4.0.0';
+import { escapeHtml, showToast, colorFromSeed, initialsFromName } from '../utils.js?v=4.0.28';
+import { getChildren, updateChild } from '../childrenApi.js?v=4.0.28';
 import {
   loadEhState,
   patchEhState,
   loadEhDoses,
   createEhDose,
   updateEhDose,
-} from '../eersteHapjesStateApi.js?v=4.0.0';
-import { loadSymptomsForChild } from '../eersteHapjesSymptomsApi.js?v=4.0.0';
+} from '../eersteHapjesStateApi.js?v=4.0.28';
+import { loadSymptomsForChild } from '../eersteHapjesSymptomsApi.js?v=4.0.28';
 import {
   ALLERGEN_FLOW,
   REACTION_LEVELS,
   getEligibleAllergens,
   getAllergenStatus,
-} from '../content/eersteHapjes-allergen-flow.js?v=4.0.0';
-import { openSymptomLogModal } from './symptomLogModal.js?v=4.0.0';
+} from '../content/eersteHapjes-allergen-flow.js?v=4.0.28';
+import { openSymptomLogModal } from './symptomLogModal.js?v=4.0.28';
 
 let state = {
   loaded: false,
@@ -202,14 +202,7 @@ async function renderApp(root) {
         Volg de 9 allergenen, telkens 3 introducties met een rustpauze van minstens 2 dagen ertussen.
         Bekende allergieën uit het profiel zijn automatisch gemarkeerd.
       </p>
-      <div class="allergenen-hoeveelheden">
-        <h3 class="allergenen-hoeveelheden-title">Hoeveelheden</h3>
-        <ul class="allergenen-hoeveelheden-list">
-          <li><strong>Introductie 1:</strong> starten met ¼ koffielepel</li>
-          <li><strong>Introductie 2:</strong> ½ koffielepel</li>
-          <li><strong>Introductie 3:</strong> volledige koffielepel</li>
-        </ul>
-      </div>
+      <div class="allergenen-warn-slot" id="allergenen-warn-slot" aria-live="polite"></div>
       <div class="allergenen-header-actions">
         <button type="button" class="btn btn-outline btn-sm" data-action="log-symptom">
           ➕ Symptoom loggen
@@ -217,7 +210,6 @@ async function renderApp(root) {
       </div>
     </header>
     ${renderSwitcher(state.children, active)}
-    <div class="allergenen-warn-slot" id="allergenen-warn-slot"></div>
     <div class="allergenen-stage" id="allergenen-stage">
       <div class="empty-state"><div class="empty-state-icon">&#9203;</div><h3>Data laden…</h3></div>
     </div>
@@ -226,7 +218,7 @@ async function renderApp(root) {
   bindHeaderActions(root);
 
   await loadChildData(active.id);
-  renderArtsWarning(root);
+  renderSafetyBar(root, active);
   renderStage(root, active);
 }
 
@@ -244,7 +236,7 @@ function renderStage(root, child) {
   } else if (!allergenState.setup_done) {
     renderSetup(stage, child);
   } else if (allergenState.paused && (allergenState.paused_step || 0) > 0) {
-    renderPauseFlow(stage, child);
+    stage.innerHTML = '';
   } else {
     stage.innerHTML = `<div class="allergenen-grid" id="allergenen-grid"></div>`;
     renderGrid(root, child);
@@ -452,7 +444,7 @@ function bindHeaderActions(root) {
       } else {
         showToast('Symptoom geregistreerd.', 'success');
       }
-      renderArtsWarning(root);
+      renderSafetyBar(root, active);
       if (!alreadyPaused) renderGrid(root, active);
     }
   });
@@ -476,7 +468,7 @@ async function triggerPauseFlow(childId, pauseType, allergenKey, root, child) {
     });
     state.ehState = updated;
     if (root && child) {
-      renderArtsWarning(root);
+      renderSafetyBar(root, child);
       renderStage(root, child);
     }
   } catch (err) {
@@ -484,7 +476,7 @@ async function triggerPauseFlow(childId, pauseType, allergenKey, root, child) {
   }
 }
 
-function renderPauseFlow(stage, child) {
+function renderPauseFlow(slot, child) {
   const allergenState = state.ehState?.allergen_state || {};
   const pauseType = allergenState.paused_type;
   const step = Math.min(allergenState.paused_step || 1, 3);
@@ -498,11 +490,8 @@ function renderPauseFlow(stage, child) {
   if (step === 1) {
     if (pauseType === 'twijfel') {
       content = `
-        <div class="allergenen-pause-icon">⚠️</div>
         <h3>Reactie met twijfel geregistreerd</h3>
-        <p>Je hebt een symptoom ingevoerd waar je twijfelde over de ernst van de reactie van je kind.
-           Ga eerst langs je arts om deze reactie te bespreken.</p>
-        <p class="allergenen-pause-sub">De introductie van allergenen is tijdelijk gepauzeerd.</p>
+        <p>Bespreek deze reactie eerst met je arts. De introductie van allergenen is tijdelijk gepauzeerd.</p>
         <div class="allergenen-pause-actions">
           <button type="button" class="btn btn-primary" data-action="pause-next">Gelezen</button>
         </div>
@@ -511,7 +500,6 @@ function renderPauseFlow(stage, child) {
       content = `
         <h3>Allergeen (tijdelijk) niet meer aanbieden</h3>
         <p>Contacteer je pediater of kinderdiëtiste voor een plan van aanpak.</p>
-        <p class="allergenen-pause-sub">De introductie van allergenen is volledig gepauzeerd.</p>
         <div class="allergenen-pause-actions">
           <button type="button" class="btn btn-danger" data-action="pause-next">Gelezen</button>
         </div>
@@ -519,7 +507,6 @@ function renderPauseFlow(stage, child) {
     }
   } else if (step === 2) {
     content = `
-      <div class="allergenen-pause-icon">🏥</div>
       <h3>Arts geraadpleegd?</h3>
       <p>Heb je een afspraak gehad bij je arts om de laatste reactie van je kindje te bespreken?</p>
       <div class="allergenen-pause-actions">
@@ -528,7 +515,6 @@ function renderPauseFlow(stage, child) {
     `;
   } else {
     content = `
-      <div class="allergenen-pause-icon">❓</div>
       <h3>Allergie bevestigen</h3>
       <p>Is <strong>${escapeHtml(child.name)}</strong> allergisch aan
          <strong>${escapeHtml(allergenLabel)}</strong>?</p>
@@ -539,19 +525,32 @@ function renderPauseFlow(stage, child) {
     `;
   }
 
-  stage.innerHTML = `
-    <div class="allergenen-pause-flow${pauseType === 'ernstig' && step === 1 ? ' allergenen-pause-flow--ernstig' : ''}">
-      ${content}
+  const summary = pauseType === 'ernstig'
+    ? 'Ernstige reactie · introductie gepauzeerd'
+    : 'Reactie met twijfel · introductie gepauzeerd';
+
+  slot.innerHTML = `
+    <div class="allergenen-safety-bar allergenen-safety-bar--active allergenen-safety-bar--${pauseType === 'ernstig' ? 'ernstig' : 'twijfel'}">
+      <div class="allergenen-safety-active-head">
+        <span class="allergenen-safety-icon" aria-hidden="true">${pauseType === 'ernstig' ? '⚠️' : '●'}</span>
+        <div>
+          <strong>Aandacht voor ${escapeHtml(child.name)}</strong>
+          <span>${summary}</span>
+        </div>
+      </div>
+      <div class="allergenen-safety-action">
+        ${content}
+      </div>
     </div>
   `;
 
-  stage.querySelector('[data-action="pause-next"]')?.addEventListener('click', async () => {
+  slot.querySelector('[data-action="pause-next"]')?.addEventListener('click', async () => {
     await advancePauseStep(child, step + 1);
   });
-  stage.querySelector('[data-action="pause-allergic-yes"]')?.addEventListener('click', async () => {
+  slot.querySelector('[data-action="pause-allergic-yes"]')?.addEventListener('click', async () => {
     await handleAllergyConfirmed(child, pausedAllergenKey, pauseType);
   });
-  stage.querySelector('[data-action="pause-allergic-no"]')?.addEventListener('click', async () => {
+  slot.querySelector('[data-action="pause-allergic-no"]')?.addEventListener('click', async () => {
     await handleAllergyDenied(child, pauseType);
   });
 }
@@ -564,7 +563,10 @@ async function advancePauseStep(child, nextStep) {
     });
     state.ehState = updated;
     const root = document.getElementById('allergenen-root');
-    if (root) renderStage(root, child);
+    if (root) {
+      renderSafetyBar(root, child);
+      renderStage(root, child);
+    }
   } catch (err) {
     showToast(err.message || 'Opslaan mislukt.', 'error');
   }
@@ -603,7 +605,7 @@ async function handleAllergyConfirmed(child, allergenKey, pauseType) {
     showToast(`${allergenObj?.label || allergenKey} gemarkeerd als allergie.`, 'success');
 
     const root = document.getElementById('allergenen-root');
-    if (root) { renderArtsWarning(root); renderStage(root, child); }
+    if (root) { renderSafetyBar(root, child); renderStage(root, child); }
   } catch (err) {
     showToast(err.message || 'Opslaan mislukt.', 'error');
   }
@@ -626,7 +628,7 @@ async function handleAllergyDenied(child, pauseType) {
     state.ehState = updated;
 
     const root = document.getElementById('allergenen-root');
-    if (root) { renderArtsWarning(root); renderStage(root, child); }
+    if (root) { renderSafetyBar(root, child); renderStage(root, child); }
   } catch (err) {
     showToast(err.message || 'Opslaan mislukt.', 'error');
   }
@@ -651,30 +653,67 @@ async function toggleAllergenExcluded(childId, allergenKey, root, child) {
   }
 }
 
-function shouldShowArtsWarning() {
-  // Trigger: laatste dose met ernstige reactie of een heftig symptoom in laatste 14 dagen.
+function hasRecentDoseReaction(reactions) {
   const cutoff = Date.now() - 14 * 86400000;
-  const recentErnstigeDose = (state.doses || []).some(d => {
-    if (d.reaction !== 'ernstig') return false;
+  return (state.doses || []).some(d => {
+    if (!reactions.includes(d.reaction)) return false;
     const t = new Date((d.intro_date || '') + 'T00:00:00Z').getTime();
     return Number.isFinite(t) && t >= cutoff;
   });
-  const recentHeftigSymptom = (state.symptoms || []).some(s => {
-    if (s.severity !== 'heftig') return false;
+}
+
+function hasRecentSymptomSeverity(severities) {
+  const cutoff = Date.now() - 14 * 86400000;
+  return (state.symptoms || []).some(s => {
+    if (!severities.includes(s.severity)) return false;
     const t = new Date(s.occurred_at || 0).getTime();
     return Number.isFinite(t) && t >= cutoff;
   });
-  return recentErnstigeDose || recentHeftigSymptom;
 }
 
-function renderArtsWarning(root) {
+function renderSafetyBar(root, child) {
   const slot = root.querySelector('#allergenen-warn-slot');
   if (!slot) return;
-  if (!shouldShowArtsWarning()) { slot.innerHTML = ''; return; }
+
+  const allergenState = state.ehState?.allergen_state || {};
+  if (allergenState.paused && (allergenState.paused_step || 0) > 0) {
+    renderPauseFlow(slot, child);
+    return;
+  }
+
+  const hasRecentErnstig = hasRecentDoseReaction(['ernstig'])
+    || hasRecentSymptomSeverity(['heftig']);
+  const hasRecentTwijfel = hasRecentDoseReaction(['mild'])
+    || hasRecentSymptomSeverity(['matig']);
+
+  const warning = hasRecentErnstig
+    ? {
+      key: 'ernstig',
+      title: 'Ernstige reactie recent gelogd',
+      text: 'Pril Leven geeft geen medisch advies. Neem contact op met je huisarts, kinderarts of kinderdiëtiste voor verdere begeleiding.',
+    }
+    : hasRecentTwijfel
+      ? {
+      key: 'twijfel',
+      title: 'Reactie met twijfel recent gelogd',
+      text: 'Bespreek de reactie met je huisarts, kinderarts of kinderdiëtiste voordat je dit allergeen opnieuw aanbiedt.',
+    }
+      : null;
+
+  if (!warning) {
+    slot.innerHTML = '';
+    return;
+  }
+
+  const icon = hasRecentErnstig ? '⚠️' : '●';
+
   slot.innerHTML = `
-    <div class="allergenen-arts-warn">
-      <strong>⚠️ Er is recent een ernstige reactie of heftig symptoom gelogd voor je kindje.</strong>
-      Pril Leven geeft geen medisch advies, neem contact op met je huisarts, kinderarts of kinderdiëtiste voor verdere begeleiding.
+    <div class="allergenen-safety-bar allergenen-safety-warning allergenen-safety-bar--${warning.key}">
+      <span class="allergenen-safety-icon" aria-hidden="true">${icon}</span>
+      <div class="allergenen-safety-warning-copy">
+        <strong>${escapeHtml(warning.title)} voor ${escapeHtml(child.name)}</strong>
+        <p>${escapeHtml(warning.text)}</p>
+      </div>
     </div>
   `;
 }
@@ -709,19 +748,6 @@ function bindSwitcher(root) {
   });
 }
 
-function renderArtsToezichtBanner() {
-  return `
-    <div class="allergenen-arts-toezicht-banner">
-      <span class="allergenen-arts-toezicht-icon">🩺</span>
-      <div>
-        <strong>Introductie onder medisch toezicht</strong>
-        <p>Ga enkel verder met het introduceren van allergenen onder toezicht van je arts.
-           Sla allergenen over via de knop per allergeen.</p>
-      </div>
-    </div>
-  `;
-}
-
 function renderGrid(root, child) {
   const grid = document.getElementById('allergenen-grid');
   if (!grid) return;
@@ -732,8 +758,7 @@ function renderGrid(root, child) {
   const nextUp = ctx.paused ? null : getNextDoseSuggestion(ctx, ageMonths);
 
   grid.innerHTML = `
-    ${ctx.artsToezicht ? renderArtsToezichtBanner() : ''}
-    ${renderNextUpBanner(nextUp, ctx)}
+    ${renderAllergenPath(all, ctx, ageMonths, child, nextUp)}
     <ul class="allergenen-list">
       ${all.map(a => renderAllergenItem(a, ctx, ageMonths, child)).join('')}
     </ul>
@@ -746,6 +771,29 @@ function renderGrid(root, child) {
       openDoseModal(child.id, nextUp.allergen.key, nextUp.doseNumber);
     });
   }
+
+  // Allergenenpad-markering → open het bijhorende bestaande detail.
+  grid.querySelectorAll('[data-action="path-allergen"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const item = grid.querySelector(`.allergenen-item[data-key="${btn.dataset.key}"]`);
+      const head = item?.querySelector('.allergenen-item-head');
+      if (!item || !head) return;
+      grid.querySelectorAll('.allergenen-item.open').forEach(other => {
+        if (other !== item) {
+          other.classList.remove('open');
+          other.querySelector('.allergenen-item-head')?.setAttribute('aria-expanded', 'false');
+        }
+      });
+      item.classList.add('open');
+      head.setAttribute('aria-expanded', 'true');
+      // Wacht tot een eventueel eerder geopend item dichtgeklapt is. Zo blijft
+      // de bovenkant van het doel stabiel tijdens het scrollen.
+      window.setTimeout(() => {
+        head.focus({ preventScroll: true });
+        item.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
+      }, 380);
+    });
+  });
 
   // Klik op een item → toggle expand (accordeon: max 1 tegelijk open)
   grid.querySelectorAll('.allergenen-item-head').forEach(head => {
@@ -793,7 +841,7 @@ function renderGrid(root, child) {
       if (!result?.symptom) return;
       state.symptoms = state.symptoms.map(s => s.id === result.symptom.id ? result.symptom : s);
       showToast('Symptoom bijgewerkt.', 'success');
-      renderArtsWarning(root);
+      renderSafetyBar(root, child);
       renderGrid(root, child);
     });
   });
@@ -807,40 +855,107 @@ function renderGrid(root, child) {
   });
 }
 
-function renderNextUpBanner(nextUp, ctx) {
-  if (!nextUp) {
-    // Alles geïntroduceerd
-    const total = ALLERGEN_FLOW.length;
-    const done = ctx.completed.length + ctx.knownAllergies.length;
-    if (done >= total) {
-      return `
-        <div class="allergenen-nextup allergenen-nextup--done">
-          🎉 <strong>Alle allergenen zijn geïntroduceerd.</strong>
-          Je hoeft niets meer te doen — bekijk de historiek in de agenda.
-        </div>
-      `;
-    }
-    return `
-      <div class="allergenen-nextup allergenen-nextup--wait">
-        ⏳ Er is op dit moment geen volgende introductie beschikbaar
-        (bv. wachten op leeftijdsvoorwaarde).
+function renderAllergenPath(allergens, ctx, ageMonths, child, nextUp) {
+  const resolvedKeys = new Set([...ctx.completed, ...ctx.knownAllergies]);
+  const resolvedCount = resolvedKeys.size;
+  const safeKeys = ctx.completed.filter(key => !ctx.knownAllergies.includes(key));
+  const trackedCompletedCount = safeKeys
+    .filter(key => !ctx.preIntroduced.includes(key))
+    .length;
+
+  let milestone = '';
+  if (resolvedCount >= allergens.length) {
+    milestone = `
+      <div class="allergenen-path-moment">
+        <span aria-hidden="true">✓</span>
+        <strong>Allergenenpad afgerond</strong>
+      </div>
+    `;
+  } else if (trackedCompletedCount === 1) {
+    milestone = `
+      <div class="allergenen-path-moment">
+        <span aria-hidden="true">✓</span>
+        <strong>Eerste allergeen afgerond</strong>
       </div>
     `;
   }
-  const a = nextUp.allergen;
-  return `
-    <div class="allergenen-nextup" data-key="${a.key}">
-      <div class="allergenen-nextup-main">
-        <div class="allergenen-nextup-body">
-          <span class="allergenen-nextup-label">Volgende stap</span>
-          <strong>${escapeHtml(a.label)} — introductie ${nextUp.doseNumber}/3</strong>
+
+  const steps = allergens.map(allergen => {
+    const isExcluded = ctx.excludedKeys.includes(allergen.key);
+    const rawStatus = getAllergenStatus(allergen.key, ctx, ageMonths);
+    const status = isExcluded && !['veilig', 'allergisch'].includes(rawStatus)
+      ? 'excluded'
+      : rawStatus;
+    const displayStatus = nextUp?.allergen.key === allergen.key && status === 'wacht'
+      ? 'next'
+      : status;
+    const stepState = {
+      'veilig':      { className: 'is-safe', text: 'veilig geïntroduceerd' },
+      'allergisch':  { className: 'is-known', text: 'gekende allergie' },
+      'in-progress': { className: 'is-active', text: `${ctx.inProgress[allergen.key] || 0} van 3 introducties` },
+      'next':        { className: 'is-active', text: `volgende stap, introductie ${nextUp.doseNumber} van 3` },
+      'paused':      { className: 'is-paused', text: 'gepauzeerd' },
+      'excluded':    { className: 'is-neutral', text: 'niet gevolgd' },
+      'locked-age':  { className: 'is-neutral', text: 'later beschikbaar' },
+      'wacht':       { className: 'is-neutral', text: 'nog te volgen' },
+    }[displayStatus];
+
+    return `
+      <button class="allergenen-path-step ${stepState.className}"
+              type="button"
+              data-action="path-allergen"
+              data-key="${allergen.key}"
+              title="${escapeHtml(allergen.label)} — ${escapeHtml(stepState.text)}"
+              aria-label="${escapeHtml(allergen.label)}: ${escapeHtml(stepState.text)}"></button>
+    `;
+  }).join('');
+
+  let nextStep = '';
+  if (nextUp) {
+    const a = nextUp.allergen;
+    const amountText = DOSE_AMOUNT_TEXT[nextUp.doseNumber] || '';
+    nextStep = `
+      <div class="allergenen-path-next" data-key="${a.key}">
+        <div class="allergenen-path-next-body">
+          <span class="allergenen-path-next-label">Volgende stap</span>
+          <strong>${escapeHtml(a.label)} · introductie ${nextUp.doseNumber}/3</strong>
+          ${amountText ? `<span class="allergenen-path-next-amount">${escapeHtml(amountText)}</span>` : ''}
           <small>${escapeHtml(a.suggestedFood)}</small>
         </div>
+        <div class="allergenen-path-next-action">
+          <button type="button" class="btn btn-primary" data-action="next-dose">
+            Introductie ${nextUp.doseNumber} registreren
+          </button>
+          ${ctx.artsToezicht ? `
+            <span class="allergenen-path-next-supervision">
+              <span aria-hidden="true">🩺</span> Introductie onder medisch toezicht
+            </span>
+          ` : ''}
+        </div>
       </div>
-      <button type="button" class="btn btn-primary" data-action="next-dose">
-        Introductie ${nextUp.doseNumber} registreren
-      </button>
-    </div>
+    `;
+  } else if (resolvedCount < allergens.length) {
+    nextStep = `
+      <div class="allergenen-path-wait">
+        Op dit moment is er geen volgende introductie beschikbaar.
+      </div>
+    `;
+  }
+
+  return `
+    <section class="allergenen-path" aria-label="Allergenenpad van ${escapeHtml(child.name)}">
+      <div class="allergenen-path-head">
+        <div>
+          <span class="allergenen-path-eyebrow">Allergenenpad &middot; ${escapeHtml(child.name)}</span>
+        </div>
+        <div class="allergenen-path-count" aria-label="${resolvedCount} van ${allergens.length} allergenen opgevolgd">
+          <strong aria-hidden="true">${resolvedCount}</strong><span aria-hidden="true">/${allergens.length}</span>
+        </div>
+      </div>
+      <div class="allergenen-path-steps" aria-label="Status van de 9 allergenen">${steps}</div>
+      ${milestone ? `<div class="allergenen-path-meta">${milestone}</div>` : ''}
+      ${nextStep}
+    </section>
   `;
 }
 
@@ -1099,7 +1214,7 @@ function openDoseModal(childId, allergenKey, doseNumber, { existing = null } = {
       const root = document.getElementById('allergenen-root');
       const child = state.children.find(c => c.id === childId);
       if (root && child) {
-        renderArtsWarning(root);
+        renderSafetyBar(root, child);
         renderGrid(root, child);
       }
     } catch (err) {

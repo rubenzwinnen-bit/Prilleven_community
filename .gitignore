@@ -97,6 +97,7 @@ recepten boeken/
 # .mcp.json.example wordt wel gecommit als template
 # ============================================
 .mcp.json
+.codex/config.toml
 
 # ============================================
 # WERKBESTANDEN — niet in productie

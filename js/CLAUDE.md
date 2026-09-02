@@ -40,11 +40,11 @@ Pril Leven heeft historisch **twee** parallel-lopende auth-systemen. Begrijp het
 
 | Bestand | Rol |
 |---|---|
-| `store.js` | Legacy data-laag (receptenboek, ratings, comments, favorites, schedules). Heeft eigen 30s in-memory cache. Bevat `getCurrentUser`, `setCurrentUser`, `isAdmin`, `refreshAdminStatus`. Roept Supabase rechtstreeks aan via `supabaseFetch()`. |
+| `store.js` | Legacy data-laag (receptenboek, ratings, comments, favorites, schedules) + lokale Cooked it-previewstate. Heeft eigen 30s in-memory cache. `getRecipesByIds(ids)` bouwt het resultaat altijd opnieuw op in de aangeleverde ID-volgorde; favoriete recepten gebruiken `favorites.created_at.asc`, zodat navigeren/cachehits hun volgorde nooit veranderen. Bevat `getCurrentUser`, `setCurrentUser`, `isAdmin`, `refreshAdminStatus`. Roept Supabase rechtstreeks aan via `supabaseFetch()`. |
 | `supabase.js` | Supabase REST + Storage + Auth helpers. Hardcoded `SUPABASE_URL` + `SUPABASE_ANON_KEY` (publiek = OK). Bevat: `supabaseFetch`, storage helpers (`supabaseStorageUpload`, `uploadIngredientIcon`, …), auth (`authSignUp`, `authSignIn`, `authResetPassword`, `authUpdatePassword`, `markUserRegistered`, `checkAllowedUser`, `checkCanSignUp`), sessie (`sessionGet/Set/Clear/RefreshIfNeeded`), subscription-status fetcher. |
 | `router.js` | Hash-gebaseerde SPA-router. `on(path, handler)`, `navigate(path)`, `init()`, `getCurrentPath()`, `hasHistory()`. Bewaart scroll-positie in `sessionStorage` per pad. |
 | `utils.js` | Helpers: `showToast`, `confirm`, `promptInput`, datum-formatters, sterren-render, `escapeHtml`, `nl2br`, `formatRelativeTime`, `colorFromSeed`, `initialsFromName`, `processImageForUpload` (EXIF strip + resize naar max 1920px JPEG q=0.85). Leeftijd-helpers: `getRecipeMinAge(recipe)` (expliciete `minAgeMonths` óf min van de eetmoment-minima), `getRecipeAgeLabel(recipe)` ("vanaf X mnd" of `null`), `AGE_FILTER_OPTIONS` (unieke minima `[6,7,9,10]`). Constanten: `ALLERGENS`, `MEAL_MOMENTS`, `MEAL_MOMENT_MIN_AGE` (ochtend 9, fruit moment 7, middag 6, snack 10, avond 6), `SCHEDULE_SLOTS`, `WEEKDAYS`. |
-| `chat.js` | Logic voor `chat.html` — chat-interface met sidebar (conversations) + memory-modal. Profile-modal is verwijderd (V2.8.0); memory-toggle + GDPR staan nu op `/profiel`. `loadProfile()` blijft voor de quota-bar (consumeert `data.usage` uit `/api/profile`). |
+| `chat.js` | Logic voor `chat.html` — chat-interface met sidebar (conversations) + memory-modal. De lokale HapjesHeld-preview bewaart per gebruiker/conversatie de status `Geholpen` in `localStorage` (`prilleven_chat_helped_<email>`), met `Dit helpt mij` onder het laatste AI-antwoord en undo. Profile-modal is verwijderd (V2.8.0); memory-toggle + GDPR staan nu op `/profiel`. `loadProfile()` blijft voor de quota-bar (consumeert `data.usage` uit `/api/profile`). |
 | `admin-chat.js` | Logic voor `admin-chat.html` — admin dashboard tabs (overview, users, queries, fallbacks, events, chat). Bevat `authedFetch` (GET) + `authedPost` (POST) helpers. Chat-tab laadt lazy de reports queue via `loadChatReports()` + `initChatTab()` (event delegation op `#chat-reports-list`). |
 | `communityApi.js` | Wrapper rond `/api/community/*`. Doet `sessionRefreshIfNeeded()` vóór elke call, returnt `{ ok, status, data, error }`. Exporteert: `getMyProfile`, `setMyNickname`, `updateMyProfile`, `getAvatarUploadUrl`, `getPosts`, `createPost`, `votePoll`, `getUploadUrl`, `uploadToStorage`, replies, likes, edit/delete, `reportTarget`, admin (`togglePin`, `listReports`, `resolveReport`), notifications. |
 | `chatRoomsApi.js` | Wrapper rond `/api/chat-rooms/*`. Zelfde patroon als `communityApi.js`. Exporteert: `listRooms`, `getRoom`, `editRoom` (admin), topics + replies CRUD, `pinTopic` (admin). |
@@ -61,15 +61,17 @@ Pril Leven heeft historisch **twee** parallel-lopende auth-systemen. Begrijp het
 | `header.js` | Header met logo + avatar-pill + uitlogknop + notificatie-bel. Cachet community-profiel in `localStorage['community.profile.cache.v1']` om email-flicker bij navigatie te vermijden. Bel-logica (polling, badge, dropdown) zit inline in dit component; losse pagina's gebruiken `headerBellStandalone.js`. |
 | `nav.js` | Hoofdnavigatie. ADMIN_ITEMS ondersteunt zowel `path` (hash-route via Router) als `href` (externe/standalone link, bv. `/admin-chat.html`). |
 | `home.js` | Landingspagina (hub). |
-| `recipeCard.js`, `recipeList.js`, `recipeDetail.js`, `recipeForm.js` | Recepten. Leeftijd-badge (groen ovaal `.recipe-age-badge`, "vanaf X mnd" uit `getRecipeAgeLabel`) staat naast de titel op de kaart en rechts naast de "Informatie"-titel op het detail (`--lg`-variant). `recipeList.js` heeft een multi-select leeftijdsfilter (pills `.age-pill`, state `selectedAges`, matcht op `getRecipeMinAge`). |
-| `weekSchedule.js` | Weekschema (5 slots × 7 dagen). |
-| `shoppingList.js` | Boodschappenlijst gegenereerd uit actief schema. |
-| `favorites.js` | Favoriete recepten. |
+| `recipeCard.js`, `recipeList.js`, `recipeDetail.js`, `recipeForm.js` | Recepten. Leeftijd-badge (groen ovaal `.recipe-age-badge`, "vanaf X mnd" uit `getRecipeAgeLabel`) staat naast de titel op de kaart en rechts naast de "Informatie"-titel op het detail (`--lg`-variant). `recipeList.js` heeft een multi-select leeftijdsfilter (pills `.age-pill`, state `selectedAges`, matcht op `getRecipeMinAge`). `recipeDetail.js` toont bij een recept uit het actieve weekschema de zachte Cooked it-veegactie; bij herhaling kiest die eerst een ongekookt slot van vandaag, daarna het reeds afgeronde slot van vandaag (voor zichtbare undo), en pas zonder voorkomen vandaag het eerste ongekookte slot. De inline kaart “Zacht moment bereikt” is verwijderd; de lokale mijlpaaldetectie in `store.js` blijft beschikbaar voor een later, tijdelijk popupmoment. |
+| `weekSchedule.js` | Weekschema (5 slots × 7 dagen). Het actieve schema gebruikt een compacte titel/filterbalk en per dag vijf visuele recepttegels; Cooked it staat als groen vinkje op de foto. `Pril Ritme` telt unieke kookdagen (doel: 3), toont de huidige en drie vorige weken samen in één compacte marker-rij en luistert naar de `storage`-event voor andere tabbladen. De generator kan favoriete recepten adaptief voorrang geven: allergenen/eetmoment blijven hard, dezelfde favoriet max. 2× bij voorkeur, en bij minder dan 4 niet-favorieten voor een eetmoment vervalt het onderscheid om een te kleine restpool niet te forceren. |
+| `learningsLibrary.js`, `learningsDetail.js`, `learningProgress.js` | Learnings/documentenzone met `Mijn leertraject`: de lijst-API levert bestaande bookmarks mee, kaarten tonen `Nieuw`/`Bezig`/`Afgerond`, de samenvatting kiest de recentste bookmark voor `Ga verder met…` en elk detail heeft dezelfde bewuste schuif-/undoactie. `Afgerond` is voorlopig een lokale preview per gebruiker (`prilleven_learning_progress_<user>`); bookmarks blijven de bestaande serverdata en alleen die maken een item `Bezig`. PDF.js maakt interne canvassen met class `hiddenCanvasElement`; die moeten via CSS verborgen blijven. |
+| `shoppingList.js` | Boodschappenlijst uit een actief schema. Genereren en hergenereren gebeurt uitsluitend na een expliciete klik; een getoonde lijst verandert niet mee wanneer de selectie wijzigt. |
+| `favorites.js` | Favoriete recepten en opgeslagen weekschema's. De twee teltegels in “Jouw favorieten” zijn toegankelijke tabs; slechts één paneel wordt tegelijk getoond. Recepten blijven stabiel in oorspronkelijke bewaarvolgorde. Gebruikt een eigen receptkaart zonder emoji/pictogrammen (dus niet de gedeelde `recipeCard.js`), met tekstuele metadata en apart gegroepeerde weekschema-acties. Naam en personen van een opgeslagen schema zijn samen bewerkbaar. |
+| `scheduleDetailsDialog.js` | Gedeeld compact formulier voor naam + personen bij het opslaan of bewerken van een weekschema. |
 | `importRecipes.js` | Bulk JSON import (admin). |
 | `ingredientIcons.js` | Beheer van ingrediënt-iconen (admin). |
 | `timeline.js`, `timelinePost.js` | Community-feed pagina + losse post-detail. |
 | `chatRooms.js` | Chatruimtes-pane (rechts op landing) + room-view + topic-detail. Heeft per-room topic-cache (`pril_chatroom_v1_<slug>`, TTL 2 min) voor instant render. Set `state.activeSlug` **vóór** elke async fetch om freeze-bug bij race te vermijden. Admin kan room-intro inline bewerken via PATCH route. Rooms-lijst rendert altijd na eerste fetch (geen JSON.stringify-skip op lege array) + heeft `.rooms-empty` state. |
-| `allergenen.js` | Allergenen-introductie-tracker (binnen Eerste Hapjes). Doses + symptoom-logs met pencil-edit (modal) ipv delete. Pencil expliciet `grid-row: 1; grid-column: -1 / -2` zodat hij rechts blijft bij multi-row content. Geen agenda-knop. Bron-flow in `content/eersteHapjes-allergen-flow.js` (9 items: kippen-ei, pinda, noten, sesam, vis, schaaldieren, soja, tarwe, koemelk — allemaal `introBefore: 12`). Stage-gating in `renderStage`: `opted_out` → `renderDisabled` (functie uit, met "Toch volgen" → `opted_out:false, started:false`) → `!started` → welkom → `!setup_done` → setup. Setup-scherm heeft 2 elkaar uitsluitende checkboxes (nog volgen / functie uitschakelen) + tegels; min. 1 vakje óf 1 allergeen verplicht. `opted_out` zit in `allergen_state` (gewhitelist in `api/_lib/eersteHapjes-state.mjs`). |
+| `allergenen.js` | Allergenen-introductie-tracker (binnen Eerste Hapjes). Boven de allergenentegels staat één compact `Allergenenpad · <kindnaam>`: `x/9` opgevolgd, negen klikbare statussegmenten, een korte zachte mijlpaal en de eerstvolgende introductie met CTA, benodigde hoeveelheid en allergeenfoto in dezelfde kaart. De functienaam gebruikt dezelfde groene titelstijl als `Pril Ritme` in het weekschema; de buitenkaart gebruikt dezelfde zachte grijsgroene achtergrond, rand en vlakke stijl. De losse hoeveelheden-tegel is verwijderd. Bovenaan staat maximaal één directe symptoomwaarschuwing per kindje: ernstig krijgt voorrang op twijfel en de balk is niet inklapbaar. Medisch toezicht staat compact onder de CTA van `Volgende stap`; bij een actieve pauze blijven de vervolgacties in de veiligheidsbalk direct bedienbaar. Statusteksten worden niet herhaald; die blijven in de tegels eronder. Een segmentklik wacht de accordeontransitie af en lijnt de doeltegel via `scroll-margin-top` onder de sticky header uit. Veilig en gekende allergie tellen als opgevolgd; wachten, pauze, leeftijd en overslaan blijven neutraal. Alles wordt afgeleid uit bestaande doses + `allergen_state`, zonder extra opslag. Doses + symptoom-logs hebben pencil-edit (modal) ipv delete. Pencil expliciet `grid-row: 1; grid-column: -1 / -2` zodat hij rechts blijft bij multi-row content. Geen agenda-knop. Bron-flow in `content/eersteHapjes-allergen-flow.js` (9 items: kippen-ei, pinda, noten, sesam, vis, schaaldieren, soja, tarwe, koemelk — allemaal `introBefore: 12`). Stage-gating in `renderStage`: `opted_out` → `renderDisabled` (functie uit, met "Toch volgen" → `opted_out:false, started:false`) → `!started` → welkom → `!setup_done` → setup. Setup-scherm heeft 2 elkaar uitsluitende checkboxes (nog volgen / functie uitschakelen) + tegels; min. 1 vakje óf 1 allergeen verplicht. `opted_out` zit in `allergen_state` (gewhitelist in `api/_lib/eersteHapjes-state.mjs`). |
 | `aanraders.js` | In-app weergave van de publieke affiliatepagina (`#/aanraders`, `#/aanraders/c/:slug`, `#/aanraders/p/:slug`). **Geen eigen renderer**: haalt dezelfde HTML op als de publieke pagina via `GET /api/aanraders?fragment=1[&c=|&p=]` en injecteert die. Kopieerknop en fotogalerij zijn hier opnieuw geïmplementeerd, want het inline script van de serverpagina draait niet bij `innerHTML`. Beheerbalk en inhoud staan in aparte containers (`#aanraders-beheer` / `#aanraders-inhoud`) zodat de balk niet mee ververst. Zoeken/filteren komt uit `/aanraders-filters.js` (root, gedeeld met de publieke pagina) en moet ná élke fragment-injectie opnieuw met `initAanradersFilters(doel)` gestart worden. |
 | `nicknameModal.js` | Modal om community-nickname in te stellen vóór posten. |
 | `profileModal.js` | Modal voor community-profiel (nickname + avatar). |
@@ -121,6 +123,7 @@ const res = await fetch('/api/profile', {
 - `Store.refreshAdminStatus()` → fetch + cache. Roep aan na login.
 - `Store.clearAdminCache()` → bij logout.
 - `Store.clearCache()` → wis alle in-memory caches (bv. na een grote import).
+- Cooked it-preview: `Store.markScheduleMealCooked()`, `unmarkScheduleMealCooked()`, `isScheduleMealCooked()` en `getCookingWeekProgress()`. Opslag is `localStorage['prilleven_cooked_meals_<user>']`, per maandag-startende kalenderweek; meerdere gerechten op één datum tellen als één kookdag. Dit is bewust nog geen Supabase/cross-device state.
 
 ### 4.5 Sessie
 - `sessionGet()` → het volledige sessie-object of `null`.
@@ -128,12 +131,49 @@ const res = await fetch('/api/profile', {
 - `sessionClear()` → bij logout. **Combineer met** `Store.setCurrentUser('')` of equivalent + `Store.clearAdminCache()` + `invalidateSubscriptionCache(email)`.
 - `sessionRefreshIfNeeded({ force })` → returnt huidige/nieuwe sessie, of `null` als refresh faalt.
 
+### 4.6b Optimistische start (sinds 2026-09-02)
+
+`initApp()` wacht niet meer op `/api/subscription-status` voordat er iets op
+het scherm komt. `getRememberedSubscription(email)` (supabase.js) leest een
+herinnering uit `localStorage` (`prilleven_sub_last_ok`); is die er, dan rendert
+de app meteen en verifieert `verifySubscriptionInBackground()` daarna alsnog.
+
+De server blijft beslissen. Houd deze regels intact als je hieraan raakt:
+- alleen een echt serverantwoord met `active: true` wordt onthouden — de
+  fail-open bij netwerkfout (`{ active: true }` uit de `catch`) dus nooit;
+- `active: false` wist de herinnering onmiddellijk;
+- de herinnering vervalt na 24 uur en geldt enkel voor hetzelfde e-mailadres;
+- zonder bruikbare herinnering is de flow blokkerend zoals vroeger;
+- uitloggen roept `forgetRememberedSubscription()` aan.
+
+Wijzigt de admin-status bij de achtergrondcheck, dan wordt alleen de nav-HTML
+ververst — niet `Nav.init()`, want die hangt listeners aan `document` en zou ze
+verdubbelen.
+
 ### 4.6 Subscription-status
 `fetchSubscriptionStatus(email)` uit `supabase.js`. 1 min in-memory cache. Returnt `{ active, reason, end_date, is_admin }`. **Fail-open** bij netwerkfout (we sluiten niemand uit als de server hikt).
 
 `script.js` polleert dit elke 2 minuten via `startSubscriptionPoll()` om live-cancellation te detecteren zonder refresh.
 
 ---
+
+### 4.7 Route-componenten zijn lazy (sinds 2026-09-02)
+
+`script.js` importeert paginacomponenten niet meer statisch. Ze staan in de
+`lazy`-map bovenaan en worden pas opgehaald bij het eerste bezoek aan de route:
+
+```js
+Router.on('recipes', async () => {
+  const M = await lazy.RecipeList();
+  await renderPage(M.render(), M.init);
+});
+```
+
+Een **nieuwe pagina toevoegen** = een regel in `lazy` + een route die `await
+lazy.X()` doet. Zet er géén statische `import * as X` bij: dan laadt de module
+alsnog bij de eerste render en is de winst weg. Eager blijven alleen `header`,
+`nav`, `home`, `store`, `router` en `supabase` — die zijn nodig vóór de eerste
+render. Resultaat: 16 modules bij eerste render in plaats van 39.
 
 ## 5. XSS / veiligheid
 
@@ -175,7 +215,7 @@ Vervang ALLE voorkomens van de huidige versie (bv. `?v=2.1.0`) met de nieuwe (bv
 3. Alle bestanden in `/js/*.js` en `/js/components/*.js` met imports.
 
 Snelle check: `grep -rn "?v=" --include="*.js" --include="*.html" | grep -v <huidige versie>` — dat hoort niets op te leveren.
-**Huidige versie: `3.5.2` voor alle module-imports, `3.5.3` voor `styles.css`.** `aanraders.css` en `aanraders-filters.js` hebben eigen versies (`CSS_VERSION` / `FILTER_JS_VERSION` in `api/aanraders.mjs`) omdat de publieke pagina ze los uitlevert.
+**Huidige versie: `4.0.4` voor alle module-imports en `styles.css`.** `aanraders.css` en `aanraders-filters.js` hebben eigen versies (`CSS_VERSION` / `FILTER_JS_VERSION` in `api/aanraders.mjs`) omdat de publieke pagina ze los uitlevert.
 Een vind-vervang over alle bestanden tegelijk werkt prima.
 
 ---

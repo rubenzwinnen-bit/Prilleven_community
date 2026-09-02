@@ -290,6 +290,57 @@ export async function markUserRegistered(email) {
 const SUB_CACHE = new Map(); // email → { status, expiresAt }
 const SUB_CACHE_TTL = 60 * 1000; // 1 minuut
 
+/* ----------------------------------------
+   LAATST GESLAAGDE CHECK (localStorage)
+   ============================================
+   De statuscheck is een netwerkcall van ~400ms (meer bij een
+   cold start). Vroeger wachtte de app daarop voordat er iets
+   op het scherm kwam. Nu onthouden we dat de vorige check
+   gelukt is, zodat een terugkerende gebruiker meteen zijn app
+   ziet terwijl de echte check op de achtergrond loopt.
+
+   We onthouden ALLEEN een echt serverantwoord dat actief was.
+   Een fail-open bij netwerkfout wordt dus nooit onthouden, en
+   zodra de server 'niet actief' zegt, wissen we de herinnering.
+   Na MAX_AGE vervalt hij en wachten we weer op de server.
+---------------------------------------- */
+const SUB_REMEMBER_KEY = 'prilleven_sub_last_ok';
+const SUB_REMEMBER_MAX_AGE = 24 * 60 * 60 * 1000; // 24 uur
+
+/** Geeft de onthouden status terug, of null als er geen bruikbare is. */
+export function getRememberedSubscription(email) {
+  if (!email) return null;
+  try {
+    const raw = localStorage.getItem(SUB_REMEMBER_KEY);
+    if (!raw) return null;
+    const saved = JSON.parse(raw);
+    if (saved.email !== email.toLowerCase().trim()) return null;
+    if (Date.now() - saved.at > SUB_REMEMBER_MAX_AGE) return null;
+    return { isAdmin: !!saved.is_admin };
+  } catch {
+    return null;
+  }
+}
+
+function rememberSubscription(email, status) {
+  try {
+    if (status.active) {
+      localStorage.setItem(SUB_REMEMBER_KEY, JSON.stringify({
+        email: email.toLowerCase().trim(),
+        at: Date.now(),
+        is_admin: !!status.is_admin,
+      }));
+    } else {
+      localStorage.removeItem(SUB_REMEMBER_KEY);
+    }
+  } catch { /* storage vol of geblokkeerd; niet erg, dan wachten we gewoon */ }
+}
+
+/** Wist de herinnering, bv. bij uitloggen. */
+export function forgetRememberedSubscription() {
+  try { localStorage.removeItem(SUB_REMEMBER_KEY); } catch {}
+}
+
 export async function fetchSubscriptionStatus(email) {
   if (!email) return { active: false, reason: 'not_registered' };
   const key = email.toLowerCase().trim();
@@ -305,6 +356,7 @@ export async function fetchSubscriptionStatus(email) {
     }
     const status = await res.json();
     SUB_CACHE.set(key, { status, expiresAt: now + SUB_CACHE_TTL });
+    rememberSubscription(key, status);
     return status;
   } catch {
     return { active: true, reason: null };

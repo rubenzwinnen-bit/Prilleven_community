@@ -8,7 +8,7 @@
    5. Start de router
 ============================================ */
 
-import * as Store from './js/store.js?v=4.0.0';
+import * as Store from './js/store.js?v=4.0.28';
 import {
   checkAllowedUser,
   checkCanSignUp,
@@ -22,24 +22,60 @@ import {
   fetchSubscriptionStatus,
   subscriptionAccessMessage,
   invalidateSubscriptionCache,
-} from './js/supabase.js?v=4.0.0';
-import * as Router from './js/router.js?v=4.0.0';
-import * as Header from './js/components/header.js?v=4.0.0';
-import * as Nav from './js/components/nav.js?v=4.0.0';
-import * as Home from './js/components/home.js?v=4.0.0';
-import * as RecipeList from './js/components/recipeList.js?v=4.0.0';
-import * as RecipeDetail from './js/components/recipeDetail.js?v=4.0.0';
-import * as ImportRecipes from './js/components/importRecipes.js?v=4.0.0';
-import * as WeekSchedule from './js/components/weekSchedule.js?v=4.0.0';
-import * as Favorites from './js/components/favorites.js?v=4.0.0';
-import * as ShoppingList from './js/components/shoppingList.js?v=4.0.0';
-import * as RecipeForm from './js/components/recipeForm.js?v=4.0.0';
-import * as IngredientIcons from './js/components/ingredientIcons.js?v=4.0.0';
-import * as LearningsLibrary from './js/components/learningsLibrary.js?v=4.0.0';
-import * as LearningsDetail from './js/components/learningsDetail.js?v=4.0.0';
-import * as Profiel from './js/components/profiel.js?v=4.0.0';
-import * as Allergenen from './js/components/allergenen.js?v=4.0.0';
-import * as Aanraders from './js/components/aanraders.js?v=4.0.0';
+  getRememberedSubscription,
+  forgetRememberedSubscription,
+} from './js/supabase.js?v=4.0.28';
+import * as Router from './js/router.js?v=4.0.28';
+import * as Header from './js/components/header.js?v=4.0.28';
+import * as Nav from './js/components/nav.js?v=4.0.28';
+import * as Home from './js/components/home.js?v=4.0.28';
+
+/* ============================================
+   LAZY ROUTE-MODULES
+   Elke pagina wordt pas opgehaald wanneer de route
+   voor het eerst bezocht wordt. Dat scheelt ~380 KB
+   JavaScript op de eerste render; wie enkel de hub
+   bekijkt, laadt niet ook het allergenenpad en profiel.
+   De browser cachet de module na de eerste keer, dus
+   een tweede bezoek aan dezelfde route is direct.
+============================================ */
+const lazy = {
+  RecipeList: () => import('./js/components/recipeList.js?v=4.0.28'),
+  RecipeDetail: () => import('./js/components/recipeDetail.js?v=4.0.28'),
+  ImportRecipes: () => import('./js/components/importRecipes.js?v=4.0.28'),
+  WeekSchedule: () => import('./js/components/weekSchedule.js?v=4.0.28'),
+  Favorites: () => import('./js/components/favorites.js?v=4.0.28'),
+  ShoppingList: () => import('./js/components/shoppingList.js?v=4.0.28'),
+  RecipeForm: () => import('./js/components/recipeForm.js?v=4.0.28'),
+  IngredientIcons: () => import('./js/components/ingredientIcons.js?v=4.0.28'),
+  LearningsLibrary: () => import('./js/components/learningsLibrary.js?v=4.0.28'),
+  LearningsDetail: () => import('./js/components/learningsDetail.js?v=4.0.28'),
+  Profiel: () => import('./js/components/profiel.js?v=4.0.28'),
+  Allergenen: () => import('./js/components/allergenen.js?v=4.0.28'),
+  Aanraders: () => import('./js/components/aanraders.js?v=4.0.28'),
+};
+
+/* ----------------------------------------
+   AANRADERS-STYLESHEET
+   Stond vroeger in index.html en laadde dus op elke pagina mee,
+   terwijl alleen de aanraders-route hem nodig heeft. We voegen hem
+   nu eenmalig toe bij het eerste bezoek en wachten tot hij binnen is,
+   zodat de pagina niet even ongestyled flitst.
+---------------------------------------- */
+let _aanradersCss = null;
+function loadAanradersCss() {
+  if (_aanradersCss) return _aanradersCss;
+  _aanradersCss = new Promise((resolve) => {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'aanraders.css?v=3.4.4';
+    /* Ook bij een fout doorgaan: liever ongestyled dan een blanco pagina. */
+    link.onload = resolve;
+    link.onerror = resolve;
+    document.head.appendChild(link);
+  });
+  return _aanradersCss;
+}
 
 /* ============================================
    RECOVERY TOKEN DETECTIE
@@ -81,21 +117,63 @@ async function initApp() {
     return;
   }
 
-  // Check subscription voor bestaande sessie
-  const status = await fetchSubscriptionStatus(user);
+  /* Was de vorige statuscheck van deze gebruiker geslaagd, en niet te
+     lang geleden? Dan tonen we de app meteen en verifieren we op de
+     achtergrond. Dat scheelt een blokkerende netwerkcall van ~400ms
+     (meer bij een cold start) waarin het scherm leeg bleef.
+
+     Is er geen bruikbare herinnering (eerste bezoek, ander account,
+     of de vorige check zei 'niet actief'), dan wachten we zoals
+     voorheen op het serverantwoord voordat er iets zichtbaar wordt. */
+  const remembered = getRememberedSubscription(user);
+
+  if (remembered) {
+    Store.setAdminStatusFromCache(remembered.isAdmin);
+    setupApp();
+    verifySubscriptionInBackground(user);
+  } else {
+    const status = await fetchSubscriptionStatus(user);
+    if (!status.active) {
+      showSubscriptionExpiredScreen(status);
+      return;
+    }
+    // Pre-load admin status zodat Store.isAdmin() synchroon werkt
+    await Store.refreshAdminStatus();
+    setupApp();
+  }
+
+  // Periodiek checken of subscription nog actief is (elke 2 min).
+  // Detecteert live-cancellation zonder dat gebruiker moet refreshen.
+  startSubscriptionPoll();
+}
+
+/* ============================================
+   ACHTERGROND-VERIFICATIE VAN HET ABONNEMENT
+   Draait nadat de app al zichtbaar is. Zegt de server
+   'niet actief', dan schuift het verlopen-scherm er alsnog
+   overheen — dat is een overlay over de volledige pagina.
+   Klopte de onthouden admin-status niet, dan hertekenen we
+   de nav (die is het enige dat op isAdmin() steunt).
+============================================ */
+async function verifySubscriptionInBackground(email) {
+  const status = await fetchSubscriptionStatus(email);
+
   if (!status.active) {
     showSubscriptionExpiredScreen(status);
     return;
   }
 
-  // Pre-load admin status zodat Store.isAdmin() synchroon werkt
+  const adminVoor = Store.isAdmin();
   await Store.refreshAdminStatus();
-
-  setupApp();
-
-  // Periodiek checken of subscription nog actief is (elke 2 min).
-  // Detecteert live-cancellation zonder dat gebruiker moet refreshen.
-  startSubscriptionPoll();
+  if (Store.isAdmin() !== adminVoor) {
+    const navEl = document.getElementById('app-nav');
+    /* Alleen de HTML verversen, niet Nav.init() opnieuw draaien:
+       die hangt listeners aan document en zou ze verdubbelen. */
+    if (navEl) {
+      navEl.innerHTML = Nav.render();
+      Nav.updateActive();
+    }
+  }
 }
 
 let subPollTimer = null;
@@ -180,6 +258,7 @@ function showSubscriptionExpiredScreen(status) {
     localStorage.removeItem('receptenboek_user');
     sessionClear();
     if (email) invalidateSubscriptionCache(email);
+    forgetRememberedSubscription();
     Store.clearCache();
     location.reload();
   });
@@ -554,79 +633,92 @@ function setupApp() {
 
   /* --- Recepten overzicht --- */
   Router.on('recipes', async () => {
-    await renderPage(RecipeList.render(), RecipeList.init);
+    const M = await lazy.RecipeList();
+    await renderPage(M.render(), M.init);
   });
 
   /* --- Recept bewerken --- */
   Router.on('edit/:id', async (params) => {
+    const M = await lazy.RecipeForm();
     await renderPage(
-      RecipeForm.render(params.id),
-      () => RecipeForm.init(params.id)
+      M.render(params.id),
+      () => M.init(params.id)
     );
   });
 
   /* --- Nieuw recept toevoegen (manueel, admin) --- */
   Router.on('new-recipe', async () => {
-    await renderPage(RecipeForm.render(), () => RecipeForm.init());
+    const M = await lazy.RecipeForm();
+    await renderPage(M.render(), () => M.init());
   });
 
   /* --- Recept detail --- */
   Router.on('recipe/:id', async (params) => {
+    const M = await lazy.RecipeDetail();
     await renderPage(
-      RecipeDetail.render(params.id),
-      () => RecipeDetail.init(params.id)
+      M.render(params.id),
+      () => M.init(params.id)
     );
   });
 
   /* --- Recepten importeren --- */
   Router.on('import', async () => {
-    await renderPage(ImportRecipes.render(), ImportRecipes.init);
+    const M = await lazy.ImportRecipes();
+    await renderPage(M.render(), M.init);
   });
 
   /* --- Ingrediënt iconen beheer --- */
   Router.on('ingredient-icons', async () => {
-    await renderPage(IngredientIcons.render(), IngredientIcons.init);
+    const M = await lazy.IngredientIcons();
+    await renderPage(M.render(), M.init);
   });
 
   /* --- Weekschema generator --- */
   Router.on('schedule', async () => {
-    await renderPage(WeekSchedule.render(), WeekSchedule.init);
+    const M = await lazy.WeekSchedule();
+    await renderPage(M.render(), M.init);
   });
 
   /* --- Favorieten --- */
   Router.on('favorites', async () => {
-    await renderPage(Favorites.render(), Favorites.init);
+    const M = await lazy.Favorites();
+    await renderPage(M.render(), M.init);
   });
 
   /* --- Boodschappenlijst voor een weekschema --- */
   Router.on('shopping/:id', async (params) => {
+    const M = await lazy.ShoppingList();
     await renderPage(
-      ShoppingList.render(params.id),
-      () => ShoppingList.init(params.id)
+      M.render(params.id),
+      () => M.init(params.id)
     );
   });
 
   /* --- Learnings: overzicht --- */
   Router.on('learnings', async () => {
-    await renderPage(LearningsLibrary.render(), LearningsLibrary.init);
+    const M = await lazy.LearningsLibrary();
+    await renderPage(M.render(), M.init);
   });
 
   /* --- Learnings: detail --- */
   Router.on('learnings/:id', async (params) => {
+    const M = await lazy.LearningsDetail();
     await renderPage(
-      LearningsDetail.render(params.id),
-      () => LearningsDetail.init(params.id)
+      M.render(params.id),
+      () => M.init(params.id)
     );
   });
 
   /* --- Profiel --- */
   Router.on('profiel', async () => {
-    await renderPage(Profiel.render(), Profiel.init);
+    const M = await lazy.Profiel();
+    await renderPage(M.render(), M.init);
   });
 
   /* --- Allergenen introduceren --- */
   Router.on('allergenen', async () => {
-    await renderPage(Allergenen.render(), Allergenen.init);
+    const M = await lazy.Allergenen();
+    await renderPage(M.render(), M.init);
   });
 
   /* --- Aanraders: overzicht, categorie, product ---
@@ -634,15 +726,18 @@ function setupApp() {
      zodat de gebruiker de community niet verlaat. De HTML komt van de
      server (fragment-modus), dus er is maar één renderer. */
   Router.on('aanraders', async () => {
-    await renderPage(Aanraders.render(), () => Aanraders.init('overzicht'));
+    const [M] = await Promise.all([lazy.Aanraders(), loadAanradersCss()]);
+    await renderPage(M.render(), () => M.init('overzicht'));
   });
 
   Router.on('aanraders/c/:slug', async (params) => {
-    await renderPage(Aanraders.render(), () => Aanraders.init('categorie', params.slug));
+    const [M] = await Promise.all([lazy.Aanraders(), loadAanradersCss()]);
+    await renderPage(M.render(), () => M.init('categorie', params.slug));
   });
 
   Router.on('aanraders/p/:slug', async (params) => {
-    await renderPage(Aanraders.render(), () => Aanraders.init('product', params.slug));
+    const [M] = await Promise.all([lazy.Aanraders(), loadAanradersCss()]);
+    await renderPage(M.render(), () => M.init('product', params.slug));
   });
 
   /* --- 404 pagina --- */

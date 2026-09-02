@@ -4,10 +4,10 @@
    profile-modal voor nickname + foto) en uitlogknop.
 ============================================ */
 
-import * as Store from '../store.js?v=4.0.0';
-import { sessionClear, sessionGet, invalidateSubscriptionCache } from '../supabase.js?v=4.0.0';
-import { initialsFromName, colorFromSeed, escapeHtml, showToast, formatRelativeTime } from '../utils.js?v=4.0.0';
-import * as Api from '../communityApi.js?v=4.0.0';
+import * as Store from '../store.js?v=4.0.28';
+import { sessionClear, sessionGet, invalidateSubscriptionCache, forgetRememberedSubscription } from '../supabase.js?v=4.0.28';
+import { initialsFromName, colorFromSeed, escapeHtml, showToast, formatRelativeTime } from '../utils.js?v=4.0.28';
+import * as Api from '../communityApi.js?v=4.0.28';
 
 /* Cache key voor nickname + avatar-url zodat header bij volgende
    page-load meteen de juiste pill kan tonen (geen email-flicker). */
@@ -95,6 +95,7 @@ export function init() {
       localStorage.removeItem('receptenboek_user');
       sessionClear();
       if (email) invalidateSubscriptionCache(email);
+      forgetRememberedSubscription();
       Store.clearAdminCache();
       Store.clearCache();
       location.reload();

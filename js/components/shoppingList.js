@@ -13,17 +13,18 @@
      recepten parallel op en bouwt de UI op
 ============================================ */
 
-import * as Store from '../store.js?v=4.0.0';
-import * as Router from '../router.js?v=4.0.0';
+import * as Store from '../store.js?v=4.0.28';
+import * as Router from '../router.js?v=4.0.28';
 import {
   showToast, escapeHtml, WEEKDAYS, SCHEDULE_SLOTS, getSlotLabel
-} from '../utils.js?v=4.0.0';
+} from '../utils.js?v=4.0.28';
 
 /* ----------------------------------------
    STATE / CACHE
 ---------------------------------------- */
 let cachedSchedule = null;
 let recipeMap = new Map();
+let hasGeneratedList = false;
 
 /* ----------------------------------------
    RENDER (skeleton)
@@ -46,6 +47,7 @@ export function render(scheduleId) {
 export async function init(scheduleId) {
   const page = document.getElementById('shopping-page');
   if (!page) return;
+  hasGeneratedList = false;
 
   /* ---- Schema ophalen ---- */
   try {
@@ -200,8 +202,11 @@ function buildPageHtml(schedule) {
 
       <div class="text-center mb-3">
         <button class="btn btn-primary btn-lg" id="btn-generate-list">
-          &#128196; Genereer Boodschappenlijst
+          Genereer boodschappenlijst
         </button>
+        <p class="shopping-generation-note" id="shopping-generation-status" aria-live="polite">
+          De lijst verandert alleen wanneer je zelf op deze knop klikt.
+        </p>
       </div>
 
       <div id="shopping-result"></div>
@@ -219,22 +224,26 @@ function attachListeners(scheduleId) {
 
   document.getElementById('btn-select-all')?.addEventListener('click', () => {
     setAllCheckboxes(true);
+    markShoppingListOutdated();
   });
 
   document.getElementById('btn-deselect-all')?.addEventListener('click', () => {
     setAllCheckboxes(false);
+    markShoppingListOutdated();
   });
 
   document.getElementById('btn-select-weekdays')?.addEventListener('click', () => {
     const weekdayNames = ['maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag'];
     setAllCheckboxes(false);
     weekdayNames.forEach(day => setDayCheckboxes(day, true));
+    markShoppingListOutdated();
   });
 
   document.getElementById('btn-select-weekend')?.addEventListener('click', () => {
     const weekendNames = ['zaterdag', 'zondag'];
     setAllCheckboxes(false);
     weekendNames.forEach(day => setDayCheckboxes(day, true));
+    markShoppingListOutdated();
   });
 
   document.querySelectorAll('.day-checkbox').forEach(dayCb => {
@@ -242,6 +251,7 @@ function attachListeners(scheduleId) {
       const day = e.target.dataset.day;
       const checked = e.target.checked;
       setDaySlots(day, checked);
+      markShoppingListOutdated();
     });
   });
 
@@ -249,12 +259,21 @@ function attachListeners(scheduleId) {
     slotCb.addEventListener('change', (e) => {
       const day = e.target.dataset.day;
       updateDayCheckboxState(day);
+      markShoppingListOutdated();
     });
   });
 
   document.getElementById('btn-generate-list')?.addEventListener('click', () => {
     generateShoppingList();
   });
+}
+
+function markShoppingListOutdated() {
+  if (!hasGeneratedList) return;
+  const status = document.getElementById('shopping-generation-status');
+  if (!status) return;
+  status.textContent = 'Je selectie is gewijzigd. Hergenereer de lijst om dit mee te nemen.';
+  status.classList.add('is-outdated');
 }
 
 /* ============================================
@@ -422,6 +441,20 @@ function generateShoppingList() {
   document.getElementById('btn-print-list')?.addEventListener('click', () => {
     window.print();
   });
+
+  hasGeneratedList = true;
+  const generateButton = document.getElementById('btn-generate-list');
+  if (generateButton) generateButton.textContent = 'Hergenereer boodschappenlijst';
+
+  const status = document.getElementById('shopping-generation-status');
+  if (status) {
+    const generatedAt = new Date().toLocaleTimeString('nl-BE', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    status.textContent = `Gegenereerd om ${generatedAt}. Alleen hergenereren past deze lijst aan.`;
+    status.classList.remove('is-outdated');
+  }
 
   result.scrollIntoView({ behavior: 'smooth', block: 'start' });
 

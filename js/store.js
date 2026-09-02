@@ -8,7 +8,7 @@
    omdat dit een lokale voorkeur is.
 ============================================ */
 
-import { supabaseFetch, supabaseStorageDelete } from './supabase.js?v=4.0.0';
+import { supabaseFetch, supabaseStorageDelete } from './supabase.js?v=4.0.28';
 
 /* ============================================
    IN-MEMORY CACHE LAAG
@@ -119,6 +119,15 @@ export function isAdmin() {
  * Roep dit aan na login én op app init — dan is de sync
  * isAdmin() betrouwbaar voor de rest van de sessie.
  */
+/** Zet de admin-status uit een eerder onthouden waarde, zodat de nav
+ *  meteen klopt terwijl de echte check nog loopt. Wordt overschreven
+ *  zodra refreshAdminStatus() een serverantwoord heeft. */
+export function setAdminStatusFromCache(value) {
+  const user = (getCurrentUser() || '').toLowerCase();
+  if (!user) return;
+  _adminCache = { email: user, value: !!value, loaded: true };
+}
+
 export async function refreshAdminStatus() {
   const user = (getCurrentUser() || '').toLowerCase();
   if (!user) {
@@ -126,7 +135,7 @@ export async function refreshAdminStatus() {
     return false;
   }
   try {
-    const { fetchSubscriptionStatus } = await import('./supabase.js?v=4.0.0');
+    const { fetchSubscriptionStatus } = await import('./supabase.js?v=4.0.28');
     const status = await fetchSubscriptionStatus(user);
     const v = !!status?.is_admin;
     _adminCache = { email: user, value: v, loaded: true };
@@ -234,26 +243,27 @@ export async function getRecipesByIds(ids) {
   if (!ids || ids.length === 0) return [];
 
   /* Eerst kijken wat er al in cache zit */
-  const result = [];
   const missing = [];
   for (const id of ids) {
     const cached = _cacheGet(`recipe:${id}`);
-    if (cached) result.push(cached);
-    else missing.push(id);
+    if (!cached && !missing.includes(id)) missing.push(id);
   }
-  if (missing.length === 0) return result;
 
-  /* PostgREST in-filter: id=in.("rec-1","rec-2") */
-  const filter = missing.map(id => `"${id}"`).join(',');
-  const data = await supabaseFetch(
-    `/rest/v1/recipes?id=in.(${filter})&select=*`
-  );
-  for (const row of (data || [])) {
-    const recipe = dbToRecipe(row);
-    _cacheSet(`recipe:${recipe.id}`, recipe);
-    result.push(recipe);
+  if (missing.length > 0) {
+    /* PostgREST in-filter: id=in.("rec-1","rec-2") */
+    const filter = missing.map(id => `"${id}"`).join(',');
+    const data = await supabaseFetch(
+      `/rest/v1/recipes?id=in.(${filter})&select=*`
+    );
+    for (const row of (data || [])) {
+      const recipe = dbToRecipe(row);
+      _cacheSet(`recipe:${recipe.id}`, recipe);
+    }
   }
-  return result;
+
+  /* Een PostgREST `in`-query garandeert geen rijvolgorde. Bouw daarom altijd
+     opnieuw op volgens de aangeleverde ID's, ongeacht wat al gecached was. */
+  return ids.map(id => _cacheGet(`recipe:${id}`)).filter(Boolean);
 }
 
 /** Voeg een nieuw recept toe */
@@ -496,7 +506,8 @@ export async function getFavoriteRecipeIds() {
   if (cached) return cached;
 
   const data = await supabaseFetch(
-    `/rest/v1/favorites?user_name=eq.${encodeURIComponent(user)}&select=recipe_id`,
+    `/rest/v1/favorites?user_name=eq.${encodeURIComponent(user)}` +
+    `&select=recipe_id&order=created_at.asc`,
     { headers: { 'Range-Unit': 'items', 'Range': '0-9999' } }
   );
   const ids = (data || []).map(f => f.recipe_id);
@@ -587,6 +598,220 @@ export async function getFavoriteCountsMap() {
 }
 
 /* ============================================
+   GEKOOKTE GERECHTEN (FRONTEND-PREVIEW)
+   Lokaal per gebruiker en per kalenderweek.
+   Zo kan de Cooked it-flow getest worden zonder
+   al productiedata of een nieuwe tabel toe te voegen.
+============================================ */
+const COOKED_MEALS_KEY_PREFIX = 'prilleven_cooked_meals_';
+export const COOKING_RHYTHM_TARGET = 3;
+
+function localDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function weekStartDate(date = new Date()) {
+  const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const daysSinceMonday = (monday.getDay() + 6) % 7;
+  monday.setDate(monday.getDate() - daysSinceMonday);
+  return monday;
+}
+
+function currentWeekStart(date = new Date()) {
+  return localDateKey(weekStartDate(date));
+}
+
+export function getCookingStateStorageKey() {
+  return `${COOKED_MEALS_KEY_PREFIX}${getCurrentUser() || 'anoniem'}`;
+}
+
+function readCookedMeals() {
+  try {
+    const raw = localStorage.getItem(getCookingStateStorageKey());
+    const meals = raw ? JSON.parse(raw) : [];
+    return Array.isArray(meals) ? meals : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCookedMeals(meals) {
+  localStorage.setItem(getCookingStateStorageKey(), JSON.stringify(meals));
+  window.dispatchEvent(new CustomEvent('prilleven:cooking-state-changed'));
+}
+
+/** Gekookte gerechten van de lopende week. */
+export function getCurrentWeekCookedMeals() {
+  const weekStart = currentWeekStart();
+  return readCookedMeals().filter(meal => meal.weekStart === weekStart);
+}
+
+/** Controleer één concrete plaats in het actieve weekschema. */
+export function isScheduleMealCooked(scheduleId, day, slot, recipeId) {
+  return getCurrentWeekCookedMeals().some(meal =>
+    meal.scheduleId === scheduleId &&
+    meal.day === day &&
+    meal.slot === slot &&
+    meal.recipeId === recipeId
+  );
+}
+
+/** Markeer één gerecht als gemaakt. Meerdere gerechten op dezelfde dag
+ *  tellen voor het weekritme samen als één kookdag. */
+export function markScheduleMealCooked({ scheduleId, day, slot, recipeId }) {
+  const meals = readCookedMeals();
+  const weekStart = currentWeekStart();
+  const progressBefore = getCookingMilestoneProgressFromMeals(meals);
+  const alreadyCooked = meals.some(meal =>
+    meal.weekStart === weekStart &&
+    meal.scheduleId === scheduleId &&
+    meal.day === day &&
+    meal.slot === slot &&
+    meal.recipeId === recipeId
+  );
+  if (alreadyCooked) {
+    return { added: false, progress: progressBefore, newlyReached: [] };
+  }
+
+  meals.push({
+    scheduleId,
+    day,
+    slot,
+    recipeId,
+    weekStart,
+    completedDate: localDateKey(),
+    completedAt: new Date().toISOString(),
+  });
+  saveCookedMeals(meals);
+
+  const progress = getCookingMilestoneProgressFromMeals(meals);
+  const reachedBefore = new Set(
+    progressBefore.milestones.filter(milestone => milestone.isReached).map(milestone => milestone.id)
+  );
+  return {
+    added: true,
+    progress,
+    newlyReached: progress.milestones.filter(
+      milestone => milestone.isReached && !reachedBefore.has(milestone.id)
+    ),
+  };
+}
+
+/** Maak de afronding van één gerecht in de lopende week ongedaan. */
+export function unmarkScheduleMealCooked({ scheduleId, day, slot, recipeId }) {
+  const weekStart = currentWeekStart();
+  const meals = readCookedMeals().filter(meal => !(
+    meal.weekStart === weekStart &&
+    meal.scheduleId === scheduleId &&
+    meal.day === day &&
+    meal.slot === slot &&
+    meal.recipeId === recipeId
+  ));
+  saveCookedMeals(meals);
+}
+
+/** Weekvoortgang op basis van unieke kookdagen, niet het aantal gerechten. */
+export function getCookingWeekProgress() {
+  const completedDates = [...new Set(
+    getCurrentWeekCookedMeals().map(meal => meal.completedDate).filter(Boolean)
+  )];
+  return {
+    days: completedDates.length,
+    target: COOKING_RHYTHM_TARGET,
+    completedDates,
+    isComplete: completedDates.length >= COOKING_RHYTHM_TARGET,
+  };
+}
+
+function getCompletedDatesByWeek(meals) {
+  const completedDatesByWeek = new Map();
+  meals.forEach(meal => {
+    if (!meal.weekStart || !meal.completedDate) return;
+    if (!completedDatesByWeek.has(meal.weekStart)) {
+      completedDatesByWeek.set(meal.weekStart, new Set());
+    }
+    completedDatesByWeek.get(meal.weekStart).add(meal.completedDate);
+  });
+  return completedDatesByWeek;
+}
+
+/** Ritmehistoriek van de lopende en voorgaande kalenderweken. */
+export function getCookingRhythmHistory(weekCount = 4) {
+  const safeWeekCount = Math.min(8, Math.max(1, Number.parseInt(weekCount, 10) || 4));
+  const completedDatesByWeek = getCompletedDatesByWeek(readCookedMeals());
+  const currentMonday = weekStartDate();
+  const weeks = Array.from({ length: safeWeekCount }, (_, index) => {
+    const monday = new Date(currentMonday);
+    monday.setDate(monday.getDate() - (index * 7));
+    const weekStart = localDateKey(monday);
+    const days = completedDatesByWeek.get(weekStart)?.size || 0;
+    return {
+      weekStart,
+      days,
+      target: COOKING_RHYTHM_TARGET,
+      isCurrent: index === 0,
+      isComplete: days >= COOKING_RHYTHM_TARGET,
+    };
+  });
+
+  return {
+    weeks,
+    completedWeeks: weeks.filter(week => week.isComplete).length,
+    totalWeeks: weeks.length,
+  };
+}
+
+function getCookingMilestoneProgressFromMeals(meals) {
+  const uniqueRecipeIds = new Set(
+    meals.map(meal => meal.recipeId).filter(recipeId => recipeId != null)
+  );
+  const completedDatesByWeek = getCompletedDatesByWeek(meals);
+
+  const completedRhythmWeeks = [...completedDatesByWeek.values()].filter(
+    dates => dates.size >= COOKING_RHYTHM_TARGET
+  ).length;
+  const currentWeekDays = completedDatesByWeek.get(currentWeekStart())?.size || 0;
+  const milestones = [
+    {
+      id: 'first-cooked',
+      title: 'Je eerste Cooked it',
+      description: 'Je kookverhaal is begonnen.',
+      current: Math.min(meals.length, 1),
+      target: 1,
+      isReached: meals.length >= 1,
+    },
+    {
+      id: 'first-rhythm',
+      title: 'Je eerste volle Pril Ritme-week',
+      description: 'Drie betekenisvolle kookdagen in één week.',
+      current: completedRhythmWeeks > 0
+        ? COOKING_RHYTHM_TARGET
+        : Math.min(currentWeekDays, COOKING_RHYTHM_TARGET),
+      target: COOKING_RHYTHM_TARGET,
+      isReached: completedRhythmWeeks > 0,
+    },
+    {
+      id: 'five-recipes',
+      title: 'Vijf verschillende gerechten',
+      description: 'Je bracht al vijf verschillende gerechten op tafel.',
+      current: Math.min(uniqueRecipeIds.size, 5),
+      target: 5,
+      isReached: uniqueRecipeIds.size >= 5,
+    },
+  ];
+
+  return {
+    totalCookedMeals: meals.length,
+    uniqueRecipes: uniqueRecipeIds.size,
+    completedRhythmWeeks,
+    milestones,
+  };
+}
+
+/* ============================================
    WEEKSCHEMA'S (per gebruiker)
 ============================================ */
 
@@ -650,6 +875,33 @@ export async function saveSchedule(schedule) {
     isActive: s.is_active || false,
     createdAt: s.created_at,
   };
+}
+
+/** Werk de naam en/of het aantal personen van een opgeslagen weekschema bij */
+export async function updateSchedule(scheduleId, updates = {}) {
+  const user = getCurrentUser();
+  if (!user) {
+    throw new Error('Geen gebruikersnaam ingesteld. Vul bovenaan je naam in.');
+  }
+
+  const body = {};
+  if (typeof updates.name === 'string' && updates.name.trim()) {
+    body.name = updates.name.trim();
+  }
+  if (Number.isInteger(updates.persons) && updates.persons >= 1) {
+    body.persons = updates.persons;
+  }
+  if (Object.keys(body).length === 0) return;
+
+  await supabaseFetch(
+    `/rest/v1/schedules?id=eq.${encodeURIComponent(scheduleId)}` +
+    `&user_name=eq.${encodeURIComponent(user)}`,
+    { method: 'PATCH', body, prefer: 'return=minimal' }
+  );
+
+  _cacheInvalidate('schedules:');
+  _cacheInvalidate('schedule:');
+  _cacheInvalidate('active_schedule:');
 }
 
 /** Haal een enkel weekschema op (gecached) */

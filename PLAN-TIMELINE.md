@@ -812,3 +812,556 @@ Cache-buster `3.5.2`/`3.5.3` → **`4.0.0`** (44 bestanden, 137 verwijzingen). `
 - ⬜ Content: lange beschrijvingen, downloadbestanden, Crisp-affiliatelink.
 - ⬜ Categorie **Kookboeken** staat op `binnenkort` maar bevat een zichtbaar product — blijft verborgen.
 - ⬜ `.home-tile--terracotta-light` in `styles.css` is ongebruikt.
+
+---
+
+## 2026-08-05 (vervolg) — URL-strategie na de release, en de overgang weg bij Joemen
+
+Geen code deze fase — alleen beslissingen en verkenning. Vastgelegd omdat het de planning voor november bepaalt.
+
+### Wat we hebben uitgezocht
+- **`prilleven.be` draait WordPress op nginx** (bij Combell, `188.208.37.198`), gebouwd en beheerd door **Joemen**. `wp-json` antwoordt; `/community` en `/aanraders` bestaan er nog niet (enkel de www→non-www 301, daarna 404). Die paden zijn dus vrij.
+- **`community.prilleven.be` draait Kollab** — wit-label klantenportaal/community, geleverd via Ludicrous (`clientportal.ludicrous.cloud`), onderliggend platform ClientClub/Revex. De naam "Kollab" komt uit het `manifest.json` van de app zelf; Joemen verkoopt het mogelijk onder een andere naam.
+- **`link.prilleven.be` → `brand.ludicrous.cloud`** — zelfde leverancier, functie onbekend. Uit te vragen bij Joemen vóór de overgang.
+- **Er staat al een `google-site-verification`-TXT op `prilleven.be`.** Iemand heeft dus al een Search Console-property; waarschijnlijk Joemen. Overdracht vragen is meer waard dan zelf vanaf nul beginnen.
+- **Alle 10 live productpagina's hebben een werkende `og:image`** (plus titel en beschrijving). Gedeelde links tonen dus een nette preview — belangrijk, want het verkeer komt voorlopig van Instagram.
+
+### Beslissingen
+- **Geen reverse proxy, wel redirects.** `prilleven.be/aanraders` op het hoofddomein zou een reverse proxy vereisen (DNS kent geen paden); op gedeelde Combell-hosting is dat vrijwel zeker niet mogelijk. De hele app onder `/community` hangen is bovendien een brede refactor: 137 absolute paden, `vercel.json`-rewrites, hash-router, en `/api/*` zou botsen met WordPress. Niet doen. In plaats daarvan twee redirects in WordPress.
+- **Redirects voorlopig als 302, niet 301.** Het doel verandert in november; een 301 wordt hardnekkig gecachet door browsers en krijg je er niet meer uit. Na de domeinmigratie omzetten naar 301.
+- **`/community`-redirect nog niet instellen** zolang leden verdeeld zijn over Kollab en de nieuwe app — anders stuur je een deel van je leden naar een app waar ze geen account hebben. Openstaande vraag: welke community gebruiken de leden vandaag?
+- **Search Console uitgesteld tot november.** Anneleen heeft er geen account voor, en het is een meetinstrument — Google indexeert ook zonder. Opzetten samen met de domeinmigratie, dan staat meteen de juiste URL erin. De SEO uit stap 9 blijft intussen gewoon werken en kost niets.
+- **Domeinmigratie vergt géén reverse proxy.** Een hostnaam wijst naar één plek; `community.prilleven.be` overnemen is één CNAME wijzigen in Combell. Bevestigd dat Combell de zone beheert (de records in het paneel komen overeen met wat publiek resolvet). Het echte werk zit in de leveranciersovergang, niet in de DNS.
+
+### Meeting met Joemen (gepland 2026-08-06) — te vragen
+Volgorde bewust: begin met de datavraag, niet met de mededeling dat jullie stoppen.
+1. **Tot welke datum toegang tot Kollab na de laatste betaling?** Schriftelijk laten bevestigen. Grootste risico van de hele overgang.
+2. Welke data is exporteerbaar en in welk formaat — ledenlijst met e-mailadressen, posts, bestanden, cursusmateriaal?
+3. Wat gebeurt er met onze data na beëindiging, en wanneer wordt die verwijderd?
+4. Opzegtermijn — wanneer moet formeel opgezegd worden om november te halen?
+5. Hangt er aan jullie kant nog iets aan `community.prilleven.be` (SSL, mail, integraties)?
+6. Wat is `link.prilleven.be` / `brand.ludicrous.cloud`?
+7. Adminaccount op WordPress, of willen zij de twee redirects instellen?
+8. Blijft de WordPress-site na november bij Joemen, of nemen we die ook over?
+9. Op wiens hostingaccount draait de site, en zitten er betaalde plugin-/themalicenties van Joemen op?
+10. Ondersteunt de hosting een reverse proxy? (Bepaalt of `/aanraders` ooit écht op het hoofddomein kan.)
+11. Van wie is de bestaande Google Search Console-property, en kan die overgedragen worden?
+12. Bestaan er Analytics-/Pixel-accounts, en op wiens naam?
+13. Op wiens naam staan domeinregistratie en Combell-account?
+14. Wie licht de leden in over de overstap, en wanneer?
+
+### Volgende stappen
+1. **Meeting met Joemen** — bovenstaande vragen, met schriftelijke bevestiging van de einddatum en de data-export.
+2. **`community.prilleven.be` weghalen uit Vercel** (staat er nu als ongeldige configuratie; blijft het staan, dan kan iemand het "repareren" via Combell en ligt Kollab eruit).
+3. **Redirect `prilleven.be/aanraders` → `community-web.prilleven.be/aanraders`** (302) laten instellen zodra er WordPress-toegang is.
+
+### Open vragen
+- ⬜ **Welke community gebruiken de leden vandaag** — Kollab, de nieuwe app, of beide? Bepaalt of en waarheen de `/community`-redirect wijst.
+- ⬜ Ondersteunt de Combell-hosting een reverse proxy? (Vraag 10 hierboven.)
+- ⬜ Bestaat er een overdraagbare Search Console-property? (Vraag 11.)
+
+---
+
+## 2026-08-12 — Betaalwebhook weg bij Joemen, rechtstreeks van Plug&Pay
+
+Commits `0b121e9` (merge) en de grendel erna. Geen cache-buster-bump: enkel backend.
+
+### Wat de aanleiding was
+De audit-tabel legde een eenrichtingsklep bloot. Per maand `activated` / `expired`:
+april 34/12, mei 37/13, juni **1**/14, juli **1**/9, augustus **0**/16. De
+"toegang weg"-workflow bleef vuren, de betaalkant niet. Verlengingen kwamen dus
+nooit binnen — precies waarom op 31 juli 160 einddatums met de hand hersteld
+moesten worden. Dat zou elke maand terugkomen.
+
+Oorzaak: de webhook kwam niet van Plug&Pay maar uit het CRM van Joemen
+(`workflow: "Community toegang Weg"`, `customData: {email}`, `triggerData`).
+Één bruikbaar veld — het e-mailadres. Geen bedrag, cyclus of incassodatum.
+
+### Vandaag afgerond
+- ✅ **`api/webhooks/plugpay.mjs` herschreven** tot een echte Plug&Pay-ontvanger.
+  Alles wat op Joemens CRM-payload was afgestemd is eruit.
+- ✅ **Beveiligd.** `PLUGPAY_WEBHOOK_BEARER` als `?key=` in de URL (Plug&Pay laat bij
+  een webhook-actie geen eigen headers toe) of als Bearer-header.
+- ✅ **JSON én form-urlencoded**, met bracket-notatie (`data[customer][email]`)
+  uitgeklapt tot een genest object — we wisten vooraf niet welk formaat komt.
+- ✅ **Elke call wordt gelogd**, ook bij auth- of parsefout. Voorheen gaf een
+  verkeerd formaat een 400 vóór de logregel: geen enkel spoor.
+- ✅ **`pickNextDate()`** haalt de echte incassodatum op; ontbreekt die, dan
+  fallback per cyclus met `fallback_datum:<cyclus>` in de audit-log.
+- ✅ **Grendel tegen een datum in het verleden** bij een betaling — anders sluit
+  een lid zich met zijn eigen betaling buiten.
+- ✅ **`?dryrun=1`** om te testen zonder `allowed_users` te raken.
+- ✅ Getest met tien nagebootste payloads (echte datum, form-encoded, ontbrekende
+  datum, jaarcyclus, geëindigd abonnement, foute sleutel, ontbrekende e-mail,
+  type uit de body, datum in verleden en toekomst). Na de deploy op productie
+  geverifieerd: POST zonder of met foute sleutel geeft 401 en belandt in
+  `subscription_events` met `error: auth_geweigerd`.
+- ✅ **Twee regels aangemaakt in Plug&Pay** (Instellingen → Koppelingen):
+  "Bestelling betaald" → `?type=activated`, en "Abonnement geëindigd" → `?type=expired`.
+
+### Het endpoint stond open
+`PLUGPAY_WEBHOOK_BEARER` stond **helemaal niet** op Vercel — het project had enkel
+vijf variabelen. Zonder secret valt de code terug op trust-mode en accepteert hij
+élke POST. `/api/webhooks/plugpay` is publiek en gaf 200. Wie de URL kende, kon
+zichzelf een abonnement geven of dat van een ander intrekken. Niet uitgeprobeerd
+(dat zou echte data wijzigen); vastgesteld uit de ontbrekende variabele plus de
+trust-mode-tak in de code. Inmiddels gezet als Sensitive, Production + Preview.
+
+### Beslissingen
+- **Plug&Pay als bron, niet MailBlue.** MailBlue weet alleen wat Plug&Pay ernaartoe
+  duwt; elke tussenschakel is een plek waar data verdwijnt — precies hoe de payload
+  via Joemen tot één veld was uitgedund. Plug&Pay is de kassa. (Plug&Pay heeft
+  overigens ActiveCampaign als directe actie: de omweg via Joemen was nooit nodig.)
+- **Niet in de MailBlue-onboarding hangen.** Die automation start één keer per
+  contact; verlengingen zouden er nooit doorheen komen. Zou dezelfde storing
+  opnieuw bouwen, alleen bij een andere leverancier.
+- **Stripe afgevallen.** Dat is een betaalprovider, geen laag erboven. Overstappen
+  betekent 157 lopende SEPA-machtigingen opnieuw laten afsluiten. Een
+  bedrijfsbeslissing over de kassa, geen oplossing voor een webhook.
+- **Klassieke "Webhook", niet "Webhook V2".** V2 stuurt enkel `trigger_type` +
+  een id en dwingt een API-call terug naar Plug&Pay (extra sleutel, extra faalpunt).
+  Omkeerbaar: het is één dropdown.
+- **Geen testbestelling mogelijk** — de admin-optie staat op de checkoutpagina zelf
+  (alleen zichtbaar voor ingelogde beheerders), niet in het beheerscherm, en kwam
+  er niet uit. Daarom de grendel tegen een datum in het verleden: de gevaarlijkste
+  faalmodus afgedekt zonder test.
+- **`dryrun` asymmetrisch ingezet.** Van de betalingsregel gaat hij eraf: de
+  slechtste uitkomst is de +30-dagen-fallback, exact wat het oude systeem deed.
+  Op de `expired`-regel blijft hij staan: daar is de slechtste uitkomst dat een
+  betalend lid zijn toegang verliest, en we weten nog niet in welke gevallen
+  Plug&Pay "Abonnement geëindigd" afvuurt (bij een wissel van abonnementsvorm?).
+
+### Volgende stappen
+1. **`&dryrun=1` weghalen** uit de URL van de regel "Bestelling betaald".
+2. **Eerste echte betaling afwachten** — die is de test. De volledige payload komt
+   in `subscription_events`; daaruit blijkt of Plug&Pay de incassodatum meestuurt.
+   Grep op `fallback_datum:` — komt dat voor, dan zit de datum er niet in en moeten
+   we alsnog naar Webhook V2 + de API (sleutel via Instellingen → Ontwikkelaars).
+3. **Joemens workflows uitzetten aan hún kant.** Ze krijgen sinds 12/08 een 401;
+   elke poging staat in de log als `auth_geweigerd`, dus daaraan zie je of ze nog vuren.
+
+### Niet vergeten / open
+- ⬜ **`dryrun` staat nog op de betalingsregel** — zolang dat zo is krijgt niemand
+  automatisch toegang en moet je nieuwe leden met de hand toevoegen.
+- ⬜ **`dryrun` op de `expired`-regel** bewust laten staan tot we in de log zien
+  wanneer die trigger vuurt en bij wie.
+- ⬜ **Novemberchecklist aanvullen**: de toegangsverlening hing tot vandaag aan
+  Joemen. Dat staat er nog niet in en is een harde afhankelijkheid bij de overgang.
+- ⬜ **Vraag 6 aan Joemen blijft staan**: wat is `link.prilleven.be` /
+  `brand.ludicrous.cloud`?
+- ⬜ `SUPABASE_ANON_KEY` ontbreekt op Vercel — geen probleem (`auth.mjs` valt terug
+  op de service-role key), maar het verklaart het documentatiegat uit V4.0.0.
+- ⬜ Project `pril-leven-web` heeft drie variabelen op "Needs Attention". Het is leeg
+  en nooit live geweest; opruimen mag.
+
+---
+
+## 2026-08-22 — Pril Ritme / Cooked it frontend-preview
+
+Branch: **`codex/pril-ritme-gamification`**. Eerste afgebakende gamificationlus;
+bewust nog geen punten, badges, leaderboard of boodschappenlijst.
+Deze fase betreft uitsluitend de **website**; de mobiele app en native swipe-down-
+interactie volgen later in een aparte fase.
+
+### Gebouwd
+- ✅ Recepten uit het actieve weekschema krijgen na de bereidingswijze een zachte
+  veegactie: **“Veeg om af te ronden” → “Cooked it!”**, met korte groene feedback
+  en een knop om ongedaan te maken.
+- ✅ Het actieve weekschema toont een groen vinkje op afgeronde slots en een compact
+  **Pril Ritme** van 3 unieke kookdagen. Meerdere gerechten op dezelfde dag tellen
+  maar één keer.
+- ✅ Bij een recept dat meermaals in het schema staat kiest de actie eerst een
+  ongekookt slot van vandaag, anders het eerste nog ongekookte slot.
+- ✅ State staat voorlopig per gebruiker en kalenderweek in
+  `localStorage['prilleven_cooked_meals_<user>']`; geen databasewijziging en dus
+  nog niet cross-device. `storage`-events houden een open weekschema in een ander
+  tabblad synchroon.
+- ✅ App-cachebuster volledig gelijkgetrokken naar **`4.0.6`** (alle HTML/JS-imports)
+  om dubbele module-instanties te vermijden.
+- ✅ De Favorieten-pagina herontworpen als rustige bewaarbibliotheek zonder de oude
+  emoji/pictogrammen. Favoriete recepten hebben een eigen tekstuele kaartvariant;
+  opgeslagen weekschema's tonen alleen nog status, personen en logisch gegroepeerde
+  acties. De redundante zeven dag-/maaltijdtegels zijn verwijderd; de concrete
+  planning verschijnt pas via “Details bekijken”. De gedeelde receptkaarten elders
+  in de app blijven ongewijzigd.
+- ✅ De teltegels “recepten” en “weekschema's” in “Jouw favorieten” functioneren nu
+  als toegankelijke tabs met toetsenbordnavigatie. Slechts één collectie staat
+  tegelijk in beeld, zodat opgeslagen weekschema's ook bij veel favoriete recepten
+  direct bereikbaar blijven. De dubbele zichtbare sectiekoppen, beschrijvingen en
+  aantallen zijn verwijderd, net als de overbodige hero-zin over “rustig verzameld”.
+- ✅ Opgeslagen weekschema's hebben één rustige actie “Bewerken” voor zowel naam als
+  aantal personen. Hetzelfde compacte formulier wordt gebruikt wanneer een nieuw
+  gegenereerd schema wordt opgeslagen, zodat het niet eerst stilzwijgend op vier
+  personen hoeft te staan. Een actief schema en zijn volgende boodschappenlijst
+  gebruiken de gewijzigde gegevens meteen.
+- ✅ De generator heeft de optie “Gebruik mijn favoriete recepten”. Bij 1–2 geldige
+  favorieten zijn maximaal 2 voorkeursplekken voorzien, bij 3–5 maximaal 4 en vanaf
+  6 maximaal 7. Een favoriet wordt in de voorkeursselectie maximaal tweemaal gebruikt;
+  allergenen en eetmoment blijven altijd harde filters. Als een eetmoment minder dan
+  4 niet-favoriete alternatieven overhoudt, vervalt het onderscheid voor dat eetmoment
+  en kiest de generator gevarieerd uit de volledige geldige pool. Zo blijven ook
+  situaties met 80–100% favorieten volledig en niet-repetitief.
+- ✅ De boodschappenlijst verandert alleen na een expliciete klik op “Genereren” of
+  “Hergenereren”. Een gewijzigde selectie markeert de getoonde lijst als verouderd,
+  maar past de ingrediënten niet stilzwijgend aan.
+- ✅ De actieve weekschemaweergave is visueel en compacter: de grote filterkaart is
+  vervangen door één lage titel-/segmentbalk zonder overbodige uitleg. Iedere dag
+  toont vijf compacte fototegels met eetmoment en receptnaam; Cooked it verschijnt
+  als subtiel groen vinkje op de foto. Vandaag/morgen en de hele week hergebruiken
+  dezelfde tegelstructuur.
+- ✅ Favoriete recepten behouden voortaan hun oorspronkelijke bewaarvolgorde
+  (`favorites.created_at.asc`). De batch-fetch bouwt resultaten altijd terug op in
+  de aangeleverde ID-volgorde, zodat een wissel tussen cachehits en netwerkresultaten
+  de kaarten niet meer herschikt.
+- ✅ Echte ChatGPT/Codex repo-skills `start-sessie` en `eind-sessie` toegevoegd in
+  `.agents/skills/`, met UI-metadata voor de skill-/slashlijst. De oude
+  `source-command-*`-migratiewrappers voor deze twee commando's zijn verwijderd;
+  de vier Claude-commando's in `.claude/commands/` blijven bestaan.
+- ✅ De lokale detectie voor zachte mijlpalen bestaat voor eerste Cooked it, eerste
+  volle Pril Ritme-week en vijf verschillende bereide recepten. De aparte tegel
+  “Volgend zacht moment” is na de previewtest verwijderd omdat de compacte
+  Pril Ritme-rij voldoende permanente voortgang toont.
+- ✅ De inline kaart “Zacht moment bereikt” in het receptdetail is eveneens verwijderd
+  zodat ze geen vaste schermruimte inneemt. Een korte popup rechtsonder die vanzelf
+  verdwijnt blijft bewaard als later ontwerpidee, pas nadat alle gamificaties visueel
+  zijn afgerond.
+- ✅ Na een bereid gerecht zonder eigen beoordeling verschijnt een rustige
+  uitnodiging “Hoe smaakte het?”. De knop scrolt naar de bestaande ratingflow en
+  focust de eerste ster; de uitnodiging verdwijnt zodra er beoordeeld is.
+- ✅ De bestaande groene Pril Ritme-tegel bundelt de huidige week en de drie vorige
+  kalenderweken in één compacte marker-rij. De huidige week toont `x/3`; een volle
+  week krijgt een groen vinkje en een onvolledige vorige week alleen een neutrale
+  streep. Er is geen streakverlies of rode status.
+- ✅ App-cachebuster opnieuw volledig gelijkgetrokken naar **`4.0.9`**.
+
+### Gewijzigde kernbestanden
+- `js/store.js` — kookregistratie, weekstart op maandag, unieke-dagtelling.
+- `js/components/recipeDetail.js` — Cooked it-flow en slotkeuze.
+- `js/components/weekSchedule.js` — Pril Ritme en afgeronde slots.
+- `js/components/favorites.js` — Favorieten-overzicht, receptkaarten en schema-acties.
+- `js/components/scheduleDetailsDialog.js` — gedeeld formulier voor naam en personen.
+- `js/components/shoppingList.js` — expliciet genereren/hergenereren zonder auto-update.
+- `styles.css` — responsive, subtiele groene feedback en reduced-motion.
+
+### Verificatie
+- ✅ `node --check` op de gewijzigde JS-bestanden.
+- ✅ Store-test: markeren, twee gerechten op één dag = één kookdag, ongedaan maken.
+- ✅ `git diff --check` schoon.
+- ✅ Ingelogde lokale websitecontrole met een echt actief weekschema: gepland gerecht
+  openen, afronden, vinkje in schema, `0 → 1 van 3`, twee gerechten op dezelfde dag
+  blijven `1 van 3`, en beide afrondingen via de UI ongedaan gemaakt.
+- ✅ Desktopweergave visueel gecontroleerd in de bestaande website-opmaak. Tijdens
+  de test een herhaalrecept/undo-randgeval gevonden en opgelost: een voorkomen van
+  vandaag blijft prioritair en verborgen succesfeedback is niet klik- of focusbaar.
+- ✅ Favorieten lokaal ingelogd gecontroleerd: receptkaart opent het juiste recept,
+  weekschema-details openen en sluiten met correcte knoptekst en `aria-expanded`.
+- ✅ Nieuwe generator lokaal ingelogd gecontroleerd met 6 echte favorieten: 7 van de
+  35 plekken kregen een favoriet en geen favoriet verscheen meer dan tweemaal.
+- ✅ Opslaan- en bewerkdialoog visueel gecontroleerd met vooraf ingevulde naam en
+  personen; de test is geannuleerd zodat productiegegevens niet zijn gewijzigd.
+- ✅ Boodschappenlijst gecontroleerd: na genereren wordt de knop “Hergenereren”; een
+  gewijzigde selectie toont een waarschuwing terwijl de bestaande lijst zichtbaar en
+  ongewijzigd blijft.
+- ✅ Actieve dag visueel gecontroleerd als vijf fototegels; “Vandaag en morgen” geeft
+  2 dagen/10 tegels en “Heel weekschema” 7 dagen/35 tegels.
+- ✅ Favorieten driemaal via verschillende routes herladen; alle zes recepten bleven
+  iedere keer in exact dezelfde volgorde staan.
+- ✅ Lokale mijlpaaltest: eerste Cooked it, drie unieke kookdagen en vijf unieke
+  recepten bereiken elk uitsluitend hun eigen grens; alle gewijzigde JS-bestanden
+  blijven syntactisch geldig en `git diff --check` is schoon.
+- ✅ Zachte momenten visueel en interactief gecontroleerd in de ingelogde lokale app
+  op desktop en mobiel: geen horizontale overflow, beoordeling focust de eerste ster,
+  animatie blijft vrij van de copy en undo herstelt de lokale teststate volledig.
+- ✅ Vierweekse ritmehistoriek geïsoleerd getest met twee volle, niet-aangrenzende
+  weken en visueel gecontroleerd op desktop en de mobiele website. Een Cooked it
+  werkt de gecombineerde weekmarker direct bij; undo herstelt die eveneens.
+
+### Beslissingen voor vervolg
+- Eerst deze ene lus testen op gevoel en gebruik; pas daarna beslissen over
+  Supabase-opslag, langere streaks of extra gamificationoppervlakken.
+- Eerst alle zachte momenten lokaal en visueel laten kloppen. Definitieve opslag en
+  meetevents blijven uitgesteld tot het productgevoel expliciet is goedgekeurd.
+- Later beoordelen: een bereikt zacht moment eventueel tonen als kleine popup
+  rechtsonder die vanzelf verdwijnt, in plaats van als inline kaart. Eerst alle
+  gamificatie-oppervlakken afronden.
+- Definitieve opslag vereist later een Supabase-tabel met RLS; niet stilzwijgend
+  de localStorage-preview als productiebron blijven gebruiken.
+
+### Volledig gamificatieplan
+
+Dit is het richtinggevende productplan. Alleen de **websitepreview uit fase 1** is
+momenteel gebouwd, inclusief de lokale visualisatie van de drie zachte momenten;
+definitieve opslag en latere fasen blijven kandidaten en worden pas uitgevoerd na
+evaluatie en expliciete goedkeuring van database-, analytics- of mobiele wijzigingen.
+
+#### Productprincipes
+- Beloon betekenisvol gedrag dat de gebruiker toch al uitvoert, niet het openen van
+  de app, doorklikken of zoeken naar een aparte bevestigingsknop.
+- De feedback blijft zacht en kort: aangename micro-animatie, kleur en duidelijke
+  voortgang, zonder puntenregen, permanente badgewand of publieke ranglijst.
+- Geen schuldgevoel bij jonge ouders: een gemiste dag mag niet aanvoelen als falen.
+  Daarom start Pril Ritme als weekdoel met unieke kookdagen, niet als harde dagelijkse
+  login-streak.
+- Eén echte actie telt één keer. Meerdere gerechten op dezelfde kalenderdag mogen
+  zichtbaar afgerond zijn, maar verhogen het weekritme slechts één stap.
+- Eerst websitegedrag valideren; mobiele gebaren, haptics, boodschappenlijst en
+  notificaties volgen pas daarna.
+
+#### Wat wel en niet beloningswaardig is
+- **Kernactie:** een gerecht uit het actieve weekschema daadwerkelijk als bereid
+  afronden. Dit is de sterkste koppeling tussen planning en gezinsgedrag.
+- **Contextuele mijlpalen (later te testen):** eerste gerecht bereid, drie unieke
+  kookdagen in één week, vijf verschillende recepten werkelijk bereid, en een
+  beoordeling plaatsen ná een bereid gerecht.
+- **Mobiele kandidaat:** automatisch een klein succesmoment wanneer meerdere echte
+  boodschappen zijn afgevinkt of een relevante lijstsectie klaar is; geen aparte
+  “lijst voltooid”-knop.
+- **Niet belonen:** alleen een recept bekijken, de app dagelijks openen, lukraak
+  favorieten opslaan of veel klikken. Dat stimuleert gebruik van de interface in
+  plaats van het gewenste resultaat.
+- “Eerste recept bewaard” of “eerste beoordeling” is dus niet automatisch een badge.
+  Als zo'n moment wordt gebruikt, verschijnt het contextueel en eenmalig; een
+  klassieke badgecollectie komt er alleen als een gebruikerstest daar waarde voor
+  aantoont.
+
+#### Gefaseerde uitbouw
+
+1. **Websitepreview — gebouwd**
+   - Cooked it op geplande receptdetails, undo, groene bevestiging en vinkje op het
+     actieve weekschema.
+   - Pril Ritme: doel van drie unieke kookdagen binnen de kalenderweek.
+   - Lokale detectie voor eerste Cooked it, eerste volle ritmeweek en vijf
+     verschillende recepten. De inline mijlpaalkaart is verwijderd; een tijdelijke
+     popup rechtsonder blijft een later ontwerpidee. Geen permanente tegel of
+     badgewand.
+   - Rustige beoordelingsuitnodiging na een bereid gerecht, gekoppeld aan de bestaande
+     ratingflow.
+   - Huidige week en drie vorige weken samen in één compacte marker-rij binnen
+     dezelfde groene Pril Ritme-tegel, zonder harde streak of negatieve status.
+   - Lokale opslag per gebruiker/week om interactie en gevoel te testen zonder
+     database-impact.
+
+2. **Websitepilot en observatie**
+   - Testen of gebruikers de Cooked it-actie spontaan begrijpen en of de feedback
+     voldoende plezierig maar niet opdringerig is.
+   - Letten op mis-klikken/undo, herhaalrecepten, gemiste slots en de vraag of drie
+     dagen voor verschillende gezinnen een realistisch standaarddoel is.
+   - Alleen minimale, privacybewuste productevents toevoegen als vooraf duidelijk is
+     welke beslissing elke meting ondersteunt.
+
+3. **Definitieve cross-device basis**
+   - Na goedkeuring een Supabase-model met RLS ontwerpen voor kookevents/progressie;
+     localStorage wordt dan uitsluitend cache/fallback en niet de bron van waarheid.
+   - Definities vastleggen voor kalenderweek, Europe/Brussels-tijdzone, huishouden,
+     herhaalde recepten, undo en wisselen van actief weekschema.
+   - Website en latere mobiele app moeten exact dezelfde events en telling gebruiken.
+
+4. **Definitieve zachte mijlpalen en langer ritme**
+   - De lokale visualisatie testen en pas na de cross-device basis beslissen welke
+     contextuele momenten definitief blijven: eerste Cooked it, eerste volle Pril
+     Ritme-week, vijf verschillende recepten en beoordeling na bereiding.
+   - De lokale rollende vierweekse historiek is gebouwd; na de cross-device basis
+     beslissen of die definitief blijft. Een onderbreking houdt een neutrale streep,
+     geen rode waarschuwing of verliesaversie.
+   - Een persoonlijk weekdoel van bijvoorbeeld 2, 3 of 4 dagen pas aanbieden als de
+     pilot toont dat één vast doel onvoldoende past.
+
+5. **Mobiele app**
+   - Op een gerecht uit het actieve weekschema: natuurlijke swipe/pull-down naar
+     “Cooked it!”, korte groene feedback en eventueel subtiele haptic feedback.
+   - Boodschappenvoortgang afleiden uit bestaande vinkjes; geen extra bevestigingsflow.
+   - Optionele herinneringen alleen contextueel en opt-in, bijvoorbeeld rond een
+     gepland eetmoment; nooit een generieke dagelijkse streakmelding.
+
+6. **Evaluatie en gefaseerde uitrol**
+   - Kernmetingen: aandeel actieve weekschema's met minstens één Cooked it, unieke
+     kookdagen per week, weken met herhaald gebruik, snelle undo-ratio en gebruik van
+     “Details bekijken”/boodschappenlijst na progressie.
+   - Secundair: beoordelingen na bereiding en vijf verschillende bereide recepten;
+     niet optimaliseren op schermtijd of ruwe klikvolumes.
+   - Eerst intern/kleine pilot, daarna bredere uitrol. Een nieuwe beloningslus blijft
+     alleen behouden als ze begrijpelijk is en hergebruik verbetert zonder irritatie.
+
+#### Open productbeslissingen vóór fase 3
+- Blijft drie dagen het vaste doel of mag een gezin 2/3/4 kiezen?
+- Telt progressie per account of per huishouden wanneer meerdere ouders dezelfde
+  planning gebruiken?
+- Hoe lang blijft undo mogelijk en hoe corrigeren we een fout na weekafsluiting?
+- Welke minimale events zijn nodig om effect te beoordelen, en hoe worden die in
+  privacydocumentatie en consent verwerkt?
+- Welke mijlpalen voelen motiverend zonder alsnog een zichtbare badgecollectie te
+  worden?
+
+#### Concrete vervolgstappen
+1. De Vercel-preview op desktop en mobiel intern gebruiken en concrete feedback
+   verzamelen over Cooked it, Pril Ritme en de visuele weekschemategels.
+2. Na de pilot beslissen of drie unieke kookdagen het juiste vaste weekdoel is en
+   welke zachte mijlpalen voldoende waarde hebben voor een volgende fase.
+3. Alleen na expliciete goedkeuring het cross-device Supabase-model met RLS
+   ontwerpen en de migratie eerst ter beoordeling in de chat tonen.
+
+---
+
+## 2026-08-23 — Roadmap website-doelstellingen + vriendenprogramma
+
+Deze roadmap bundelt de volgende website-uitbouw na de eerste Pril Ritme-preview.
+De mobiele app blijft buiten scope tot de websiteflows inhoudelijk en visueel zijn
+goedgekeurd. Niet elke zone krijgt hetzelfde weekdoel: de voortgang volgt telkens
+een betekenisvolle actie binnen die functie. Geen punten, publieke ranglijst,
+badgewand of beloning voor openen, klikken, berichtenvolume of schermtijd.
+
+### Overkoepelend model
+
+- **Weekschema — Pril Ritme:** daadwerkelijk koken op unieke kalenderdagen.
+- **Allergenen — Allergenenpad:** het bestaande introductietraject per kindje veilig
+  en op eigen tempo doorlopen.
+- **Learnings/documenten — Mijn leertraject:** bewust verdergaan en materiaal afronden.
+- **Chat:** alleen een aantoonbaar nuttig resultaat kan tellen; nooit het aantal
+  vragen, berichten, likes of geopende gesprekken.
+- **Vrienden uitnodigen:** aparte commerciële referralfeature met korting voor beide
+  personen; niet vermengen met de zachte persoonlijke mijlpalen hierboven.
+- Pas als elke zone afzonderlijk goed voelt, een compact gezamenlijk
+  voortgangsoverzicht op de website overwegen.
+
+### 1. Weekschema / Pril Ritme — lokale preview gebouwd
+
+- Drie unieke kookdagen vormen het weekdoel; meerdere gerechten op één dag tellen
+  één keer.
+- Cooked it, undo, contextuele mijlpalen, beoordelingsuitnodiging en rollende
+  vierweekse historiek zijn gebouwd.
+- Eerst in de Vercel-preview evalueren of een vast doel van drie dagen past. Een
+  persoonlijke keuze 2/3/4 dagen blijft een open optie, geen automatische volgende
+  stap.
+- Definitieve cross-device opslag vereist later een Supabase-model met RLS en
+  expliciete goedkeuring.
+
+### 2. Allergenenpad — frontend-preview gebouwd
+
+- Voortgang staat **per kindje**, niet per account of huishouden gezamenlijk.
+- Boven het bestaande overzicht staat één compacte stuurkaart, geen los
+  puntensysteem: `x van 9 allergenen opgevolgd`, met negen klikbare segmenten en de
+  eerstvolgende introductie met actie in dezelfde kaart. Namen en statussen worden
+  niet herhaald; de tegels eronder blijven de detailweergave.
+- De buitenkaart gebruikt dezelfde zachte grijsgroene achtergrond, subtiele rand,
+  ronding en vlakke kaartstijl als de Pril Ritme-tegel in het weekschema.
+- De vaste tempozin onder de segmenten is verwijderd en de verticale ruimte rond de
+  segmenten en volgende stap is verkleind, zodat de kaart compacter blijft.
+- Het actieve allergeen behoudt de bestaande dosisvoortgang `x/3` en de bestaande
+  “Volgende stap”-flow. De benodigde hoeveelheid staat voortaan rechtstreeks in
+  die volgende stap; de losse hoeveelheden-tegel bovenaan is verwijderd. Er komt
+  geen extra wekelijkse doelstelling bovenop.
+- Bovenaan staat per kindje maximaal één directe symptoomwaarschuwing: ernstig
+  krijgt voorrang op twijfel en de balk is niet inklapbaar. Medisch toezicht staat
+  compact onder de CTA van “Volgende stap”. Bij een actieve pauze blijven de
+  vervolgacties in de veiligheidsbalk direct bereikbaar.
+- Reactie loggen gebruikt zacht ingekleurde ernsttegels zonder stoplichtbollen:
+  groen voor mild, oranje voor twijfel en rood voor ernstig. De waarschuwing bovenaan
+  volgt dezelfde hiërarchie: ernstig is rood, twijfel blijft oranje.
+- Contextuele zachte momenten zijn visueel voorzien bij het eerste volledig gelogde
+  allergeen en het volledige Allergenenpad. De functietitel gebruikt dezelfde
+  compacte groene stijl als `Pril Ritme` in het weekschema en vermeldt het actieve
+  kindje op dezelfde titelregel.
+- Een reactie, pauze, leeftijdsvoorwaarde, uitgesloten allergeen of medisch toezicht
+  is nooit “mislukt” en krijgt geen rode gamificatiestatus of aansporing om sneller
+  te gaan.
+- De visuele voortgang wordt afgeleid uit de bestaande doses en `allergen_state`;
+  voor deze eerste versie is geen nieuwe tabel of opslag toegevoegd.
+- Eerst de frontend-preview en het medische gevoel van de copy beoordelen voordat
+  er extra events of algemene mijlpalen worden toegevoegd.
+
+### 3. Learnings / documentenzone — Mijn leertraject frontend-preview gebouwd
+
+- Learning-kaarten tonen een persoonlijke status: `Nieuw`, `Bezig` of `Afgerond`.
+- Bovenaan staat een rustige samenvatting zoals `2 afgerond · 1 bezig`, met
+  “Ga verder met…” op basis van de recentste bestaande bookmarkpositie.
+- Openen, scrollen, favoriet maken of veel notities schrijven telt niet als doel.
+- PDF, blog en video gebruiken dezelfde bewuste schuifactie `Veeg om af te ronden`,
+  met `Ongedaan maken` als aparte undo. Er wordt nooit stilzwijgend aangenomen dat
+  een geopend item gelezen of bekeken is.
+- Kandidaten voor contextuele momenten: eerste learning afgerond en vijf learnings
+  afgerond. Geen verplicht weekquotum en geen druk om de hele bibliotheek te lezen.
+- `Bezig` wordt uitsluitend afgeleid uit bestaande bookmarks; de lijst-API levert
+  die positie en `updated_at` voortaan mee per learning. `Afgerond` staat voor deze
+  preview lokaal per gebruiker. Na visuele goedkeuring is daarvoor waarschijnlijk
+  een schemawijziging met RLS nodig; SQL eerst in de chat tonen en pas na expliciete
+  goedkeuring uitvoeren.
+
+### 4. Chatzone — HapjesHeld frontend-preview gebouwd
+
+De app heeft twee chatoppervlakken. De eerste preview focust bewust op HapjesHeld;
+community-chatruimtes blijven een afzonderlijke latere productbeslissing.
+
+#### HapjesHeld / AI-chat
+
+- Geen doel op aantal vragen, gesprekken, tokens of dagelijkse opens; dat beloont
+  gebruiksvolume in plaats van geholpen zijn.
+- Onder het laatste AI-antwoord staat één bewuste actie `Dit helpt mij`. Na bevestiging
+  krijgt het gesprek de status `Geholpen` bovenaan en compact in de conversatielijst;
+  `Ongedaan maken` corrigeert een vergissing.
+- De status is voor deze visuele preview lokaal per gebruiker en conversatie opgeslagen
+  in `localStorage` (`prilleven_chat_helped_<email>`). Er is geen database-, API- of
+  analyticswijziging toegevoegd.
+- Eerst beoordelen of `Geholpen` natuurlijk aanvoelt en of één actie onder alleen het
+  laatste antwoord voldoende duidelijk is. Pas daarna beslissen of “eerste geholpen
+  gesprek” een contextueel moment verdient en welke cross-device opslag nodig is.
+
+#### Community-chatruimtes / timeline
+
+- Geen doelen op aantal posts, reacties, likes of chatberichten; dit lokt spam en
+  sociale druk uit.
+- Mogelijke betekenisvolle actie: een vraagsteller markeert een antwoord als
+  behulpzaam of opgelost. Alleen zo'n erkend resultaat kan later tellen.
+- Geen publieke competitie of leaderboard. Moderatie, veiligheid en kwaliteit gaan
+  altijd vóór participatievolume.
+
+### 5. Vrienden uitnodigen — apart referralprogramma
+
+- Website-ingang: bijvoorbeeld “Nodig een vriend uit” in profiel/account, met een
+  persoonlijke link of referralcode en heldere uitleg voor beide personen.
+- Beoogd voordeel: de bestaande abonnee krijgt korting én de nieuwe abonnee krijgt
+  korting. Hoogte, duur en moment van toekenning zijn nog niet beslist.
+- Korting pas koppelen aan een aantoonbaar geslaagde nieuwe betaling, nooit enkel aan
+  een klik, registratie of ingevuld e-mailadres.
+- Voor implementatie beslissen: kortingstype/bedrag, éénmalig of tijdelijk, maximale
+  referrals, stapelbaarheid, bestaande klanten, annulering/refund/chargeback,
+  self-referrals, dubbele accounts en andere misbruikpreventie.
+- Eerst onderzoeken wat Plug&Pay zelf ondersteunt voor kortingscodes, referrals en
+  abonnementswijzigingen. Geen betalings- of webhooklogica ontwerpen op aannames.
+- Waarschijnlijk nodig: eigen referralcode/toewijzing, auditbare statusovergangen en
+  koppeling aan `subscriptions`/betalingsevents. Dit kan nieuwe tabellen, endpoints,
+  privacy-/voorwaardenupdates en een wijziging aan de Plug&Pay-webhook vereisen.
+- Daarom eerst businessregels en visuele flow goedkeuren. Database-, endpoint-,
+  auth- en webhookwijzigingen altijd afzonderlijk vooraf tonen en bevestigen.
+- Referralbeloningen blijven commercieel en staan los van Pril Ritme,
+  Allergenenpad, Mijn leertraject en eventuele chatmijlpalen.
+
+### Stapsgewijze uitvoeringsvolgorde
+
+1. **Pril Ritme-preview testen** en feedback verwerken; vast doel 3 versus 2/3/4
+   voorlopig openlaten.
+2. **Allergenenpad-preview testen** op bestaande data, per kindje en zonder
+   snelheid of medische uitkomst te gamificeren; feedback verwerken.
+3. **Mijn leertraject-preview testen:** kaartstatussen, samenvatting en bewuste
+   afrondflow voor PDF/blog/video; nog zonder schemawijziging.
+4. **HapjesHeld-preview testen:** `Dit helpt mij`, de status `Geholpen` en undo in
+   gesprek + zijbalk; daarna beslissen over definitieve opslag en of de
+   community-chatruimtes een eigen betekenisvolle actie nodig hebben.
+5. **Referralprogramma functioneel ontwerpen:** gebruikersflow + volledige
+   kortings-/misbruikregels, daarna Plug&Pay-mogelijkheden verifiëren.
+6. Na visuele goedkeuring per zone de benodigde **definitieve opslag, RLS, endpoints,
+   analytics en privacy-impact** apart ontwerpen en ter goedkeuring voorleggen.
+7. Pas daarna eventueel een gezamenlijk website-overzicht en vervolgens de
+   **mobiele app** aanpakken.
+
+### Open productbeslissingen
+
+- Blijft Pril Ritme vast op drie kookdagen of mag een gezin 2/3/4 kiezen?
+- Welke afrondactie voelt voor PDF, blog en video natuurlijk en betrouwbaar?
+- Voelt `Dit helpt mij` als voldoende betekenisvolle HapjesHeld-uitkomst, of moet de
+  gebruiker ook een concrete vervolgstap uit het antwoord kunnen bewaren?
+- Krijgen community-chatruimtes later een afzonderlijke status `Behulpzaam/opgelost`,
+  of blijft zachte voortgang daar volledig weg?
+- Welke korting krijgen uitnodiger en nieuwe abonnee, wanneer wordt die toegekend en
+  hoe worden refunds, bestaande klanten, stapeling en misbruik behandeld?
+- Kan Plug&Pay de gekozen referralregels native uitvoeren of is eigen verwerking
+  nodig?

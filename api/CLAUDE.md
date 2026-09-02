@@ -73,6 +73,7 @@ Chatruimtes (topics + replies + admin). Eén function, rewrite: `/api/chat-rooms
 - **Elke** call wordt gelogd in `subscription_events`, ook bij auth- of parsefout (`error: 'auth_geweigerd'` / `'body_niet_parsebaar'`). Anders is een verkeerd ingestelde webhook-URL onzichtbaar.
 - `?dryrun=1` → logt en returnt wat er geschreven zóu worden, zonder `allowed_users` aan te raken. Gebruik dit op een preview-deploy: die praat met dezelfde productie-database.
 - `pickNextDate()` haalt de echte incassodatum uit de payload. Ontbreekt die, dan valt `fallbackEndDate(cycle)` terug op +30 dagen / +3 maanden / +1 jaar en komt er `fallback_datum:<cycle>` in de `error`-kolom van de audit-log — grep daarop om te zien of Plug&Pay de datum werkelijk meestuurt.
+- **Grendel bij `activated`: een einddatum in het verleden wordt genegeerd** en vervangen door de fallback (`datum_in_verleden_genegeerd:<datum>` in de log). Anders zou een verkeerd gekozen veld (orderdatum, vorige periode) een lid met zijn eigen betaling buitensluiten.
 - Schrijft naar `allowed_users` (upsert bij activated, update anders) en roept `invalidateSubscriptionCache(email)` aan na success.
 - Ook GET = health-check (returnt JSON met hint).
 
@@ -87,6 +88,11 @@ GDPR-endpoints voor de huidige user.
 ### `profile.mjs` — `/api/profile`
 - `GET` → `{ profile, usage, imageUsage }` (chat user profile + maand-/dag-tellers).
 - `PUT` → upsert via `sanitizeProfileInput()`. Whitelist: `display_name`, `children[]`, `diet[]` (uit ALLOWED_DIET set), `allergies[]`, `notes`, `memory_enabled`.
+
+### `learnings.mjs` — `/api/learnings/*` (catch-all)
+- Learningslijst, detail, favorieten, bookmarks, notities en clips binnen één function.
+- `GET /api/learnings` levert per item `is_favorite` én de eigen `bookmark` (`position`, `updated_at`) mee, zodat `Mijn leertraject` zonder extra request per kaart de status `Bezig` en de recentste hervatpositie kan bepalen.
+- De frontend-preview van `Afgerond` staat nog lokaal; er is nog geen completion-route of definitieve databasekolom.
 
 ### `memory.mjs` — `/api/memory`
 - `GET` → lijst eigen memories (sortering: importance desc, created desc).
@@ -215,10 +221,12 @@ SUPABASE_SERVICE_ROLE_KEY      # in alle /api functions (clients.mjs)
 SUPABASE_ANON_KEY              # optioneel — auth.mjs valt anders terug op service-role
 ANTHROPIC_API_KEY              # clients.mjs
 VOYAGE_API_KEY                 # clients.mjs / retrieve.mjs
-PLUGPAY_WEBHOOK_BEARER         # webhook (optie 1)
+PLUGPAY_WEBHOOK_BEARER         # webhook (optie 1) — als ?key= in de URL of Bearer-header
 PLUGPAY_WEBHOOK_SECRET         # webhook (optie 2, HMAC)
 ```
 Op Vercel ingesteld via project settings. Lokaal in `.env.local`. Crasht hard als ze in `clients.mjs` ontbreken.
+
+**VALKUIL — `PLUGPAY_WEBHOOK_BEARER` stond tot 2026-08-12 helemaal niet op Vercel.** Het project `pril_leven_community` had enkel `AI_GATEWAY_API_KEY`, `ANTHROPIC_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_URL` en `VOYAGE_API_KEY`. Zonder secret valt de webhook terug op trust-mode en accepteert hij élke POST: iedereen die de URL kende, kon zichzelf een abonnement geven of dat van een ander intrekken. Nu gezet (Sensitive, Production + Preview). Bij een nieuw endpoint met een gedeeld geheim: controleer dat de variabele er écht staat, want de code faalt hier stil met enkel een `console.warn`.
 
 ---
 
