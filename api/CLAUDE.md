@@ -26,7 +26,7 @@ De **AI-chat** (HapjesHeld). Hot path, kostbaar. **Niet aanpassen zonder bevesti
 - System-prompt staat hardcoded in dit bestand — toon = warm, geruststellend, NL, geen markdown, alleen info uit retrieval-context.
 
 ### `community.mjs` — `/api/community/*` (catch-all)
-Alle community endpoints lopen via één function (Vercel Hobby function-limit). Rewrite: `/api/community/(.*) → /api/community`.
+Alle community endpoints lopen via één function. Rewrite: `/api/community/(.*) → /api/community`. (Historisch wegens de Hobby function-limiet; sinds 2026-07-29 draait het project op Vercel Pro — zie §9 — maar één function betekent ook één koude start, dus de bundeling blijft zinvol.)
 Interne routes (in `matchRoute()`):
 - `GET/PUT /profile` — community-profiel (nickname, avatar)
 - `POST /profile/avatar-url` — signed avatar upload-URL
@@ -121,6 +121,17 @@ Klanten kunnen **niet** zelf opzeggen in Plug&Pay: zelfbediening in het klantenp
 - Idempotent via de partiële unique index op `(user_id) WHERE status='open'`: tweede klik geeft geen tweede rij en geen tweede mail.
 - Mail via de **Resend REST API met plain `fetch`** — geen dependency. Van `noreply@prilleven.be` naar `hallo@prilleven.be`, `reply_to` = de klant.
 - Afhandelen gebeurt met de hand: opzeggen in Plug&Pay, daarna de rij op `verwerkt` zetten.
+
+### `eerste-hapjes/state.mjs` — `/api/eerste-hapjes/state`
+- `GET ?child_id=<uuid>[&include=doses,symptoms]` — allergeen-state per kindje.
+  Met `include` komen de doses en/of symptomen in hetzelfde antwoord mee
+  (`{ state, doses, symptoms }`), server-side parallel opgehaald.
+  **Waarom:** de mobiele app haalde die uit drie aparte functions, die elk apart
+  afkoelen — gemeten 3,8 s voor `/doses` alleen bij een koude start. Eén function
+  betekent één koude start, en hij blijft warmer omdat hij vaker geraakt wordt.
+  De losse `/doses` en `/symptoms` blijven bestaan voor het symptomenlogboek en
+  het doseformulier.
+- `PATCH` — body `{ child_id, ...partial }`, deep-merge op `allergen_state`.
 
 ### `admin.mjs` — GET `/api/admin?section=…`
 Admin dashboard. Vereist `requireAdmin`. Sections: `global`, `users`, `queries`, `events`, `conversations` (per email), `chunks` (per ids), `fallbacks`.

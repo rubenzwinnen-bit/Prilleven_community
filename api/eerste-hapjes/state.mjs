@@ -1,5 +1,9 @@
-// GET   /api/eerste-hapjes/state?child_id=<uuid>
+// GET   /api/eerste-hapjes/state?child_id=<uuid>[&include=doses,symptoms]
 //        → laad de state-rij voor een kindje (creëert default-rij als nog niet bestaat)
+//        → met `include` komen doses en/of symptomen in hetzelfde antwoord mee.
+//          De mobiele app haalde die uit drie aparte functies, wat drie koude
+//          starts kon betekenen: gemeten 3,8 s voor doses alleen. Nu één
+//          functie, die daardoor ook vaker geraakt wordt en dus warm blijft.
 // PATCH /api/eerste-hapjes/state
 //        body: { child_id, ...partial fields }
 //        → updaten van readiness_check / current_phase / dietary / allergen_state / etc.
@@ -7,10 +11,12 @@
 import { requireAuth, AuthError } from '../_lib/auth.mjs';
 import {
   loadState,
+  loadDoses,
   patchState,
   sanitizeStatePatch,
   HttpError,
 } from '../_lib/eersteHapjes-state.mjs';
+import { loadSymptomsForChild } from '../_lib/eersteHapjes-logs.mjs';
 
 function json(res, status, body) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -53,8 +59,27 @@ export default async function handler(req, res) {
       if (!childId || !isUuid(childId)) {
         return json(res, 400, { error: 'child_id is verplicht.' });
       }
-      const state = await loadState(auth.userId, childId);
-      return json(res, 200, { state });
+      const include = new Set(
+        (url.searchParams.get('include') || '')
+          .split(',')
+          .map(v => v.trim())
+          .filter(Boolean)
+      );
+
+      /* Naast elkaar: de drie queries staan vlak bij de database, dus dit
+         kost nauwelijks meer dan de state alleen. */
+      const [state, doses, symptoms] = await Promise.all([
+        loadState(auth.userId, childId),
+        include.has('doses') ? loadDoses(auth.userId, childId) : null,
+        include.has('symptoms')
+          ? loadSymptomsForChild(auth.userId, childId, { limit: 200 })
+          : null,
+      ]);
+
+      const payload = { state };
+      if (include.has('doses')) payload.doses = doses || [];
+      if (include.has('symptoms')) payload.symptoms = symptoms || [];
+      return json(res, 200, payload);
     }
 
     if (req.method === 'PATCH') {
