@@ -18,7 +18,8 @@
 //   GET    /api/community/blocks            → eigen blocklijst
 //   POST   /api/community/blocks            → gebruiker blokkeren { blocked_id }
 //   DELETE /api/community/blocks/:id        → gebruiker deblokkeren
-//   GET    /api/community/app-badges?since= → tijdlijn-badge teller { timeline }
+//   GET    /api/community/app-badges?since= → badge-tellers
+//          { timeline, chatrooms: { total, perRoom, perTopic } }
 
 import { requireAuth, requireAdmin, AuthError } from './_lib/auth.mjs';
 import { supabase } from './_lib/clients.mjs';
@@ -66,6 +67,7 @@ import {
 import { findBlockedWord } from './_lib/moderation.mjs';
 import {
   countTimelineBadge,
+  countChatroomBadge,
   loadFollowedChatroomTopics,
 } from './_lib/badges.mjs';
 import {
@@ -329,9 +331,28 @@ export default async function handler(req, res) {
 
     /* ----- app-badges ----- */
     if (route === 'app-badges') {
+      /* Tijdlijn: de client stuurt zijn eigen baseline mee.
+         Chatruimtes: de server leest de markeerpunten zelf uit
+         `user_badge_state`, dezelfde bron als de push-badge. De app spiegelt
+         die via PUT /badge-state bij elke markTimelineSeen/markTopicSeen. */
       const since = url.searchParams.get('since');
-      const timeline = await countTimelineBadge(auth.userId, since);
-      return json(res, 200, { timeline });
+
+      const { data: state } = await supabase
+        .from('user_badge_state')
+        .select('chatrooms_seen_at, topic_reads')
+        .eq('user_id', auth.userId)
+        .maybeSingle();
+
+      const [timeline, chatrooms] = await Promise.all([
+        countTimelineBadge(auth.userId, since),
+        countChatroomBadge(
+          auth.userId,
+          state?.chatrooms_seen_at || null,
+          state?.topic_reads || {}
+        ),
+      ]);
+
+      return json(res, 200, { timeline, chatrooms });
     }
 
     /* ----- push register / deregister ----- */

@@ -178,6 +178,11 @@ export async function countTimelineBadge(userId, since) {
  * tellen sinds de chatruimtes-baseline `since`, met per-topic markeerpunten
  * (`topicReads`: { topic_id: ISO }). Admin telt alles, gewone gebruiker
  * enkel admin-geschreven activiteit. Geblokkeerde auteurs tellen niet mee.
+ *
+ * Geeft `{ total, perRoom, perTopic }` terug. De uitsplitsing voedt de badges
+ * per chatruimte en per topic in de mobiele app; `total` is wat de push-badge
+ * en de footer-tab nodig hebben. De telling per topic gebeurde hier toch al,
+ * dus de uitsplitsing kost geen extra query.
  */
 export async function countChatroomBadge(userId, since, topicReads = {}) {
   const baseSince = withExpiry(since);
@@ -191,7 +196,7 @@ export async function countChatroomBadge(userId, since, topicReads = {}) {
   // Alle topics ophalen (chatruimtes zijn laag-volume).
   const { data: topics, error: tErr } = await supabase
     .from('chat_topics_view')
-    .select('id, user_id, created_at, last_reply_at')
+    .select('id, room_id, user_id, created_at, last_reply_at')
     .gt('last_reply_at', baseSince);
   if (tErr) {
     console.warn(`[badges] chat_topics count: ${tErr.message}`);
@@ -201,7 +206,7 @@ export async function countChatroomBadge(userId, since, topicReads = {}) {
   // replies) — die kunnen een last_reply_at === null hebben. Haal die apart.
   const { data: freshTopics } = await supabase
     .from('chat_topics_view')
-    .select('id, user_id, created_at, last_reply_at')
+    .select('id, room_id, user_id, created_at, last_reply_at')
     .gt('created_at', baseSince);
 
   const topicMap = new Map();
@@ -219,14 +224,19 @@ export async function countChatroomBadge(userId, since, topicReads = {}) {
   const authorOk = (uid) =>
     !blockedIds.has(uid) && (isAdmin || adminSet.has(uid));
 
-  let total = 0;
+  const perTopic = {};
+  const roomOfTopic = new Map();
   const scanReplyTopicIds = [];
+  const bump = (topicId) => {
+    perTopic[topicId] = (perTopic[topicId] || 0) + 1;
+  };
 
   for (const t of allTopics) {
+    roomOfTopic.set(t.id, t.room_id);
     const effSince = effectiveSince(t.id, baseSince, topicReads);
     const ref = new Date(effSince).getTime();
     if (authorOk(t.user_id) && new Date(t.created_at).getTime() > ref) {
-      total += 1;
+      bump(t.id);
     }
     if (t.last_reply_at && new Date(t.last_reply_at).getTime() > ref) {
       scanReplyTopicIds.push({ id: t.id, effSince });
@@ -254,11 +264,20 @@ export async function countChatroomBadge(userId, since, topicReads = {}) {
       if (!eff) continue;
       const ref = new Date(eff).getTime();
       const ok = !blockedIds.has(r.user_id) && (isAdmin || replyAdminSet.has(r.user_id));
-      if (ok && new Date(r.created_at).getTime() > ref) total += 1;
+      if (ok && new Date(r.created_at).getTime() > ref) bump(r.topic_id);
     }
   }
 
-  return total;
+  // Per ruimte optellen en het totaal afleiden uit dezelfde tellingen.
+  const perRoom = {};
+  let total = 0;
+  for (const [topicId, n] of Object.entries(perTopic)) {
+    total += n;
+    const roomId = roomOfTopic.get(topicId);
+    if (roomId) perRoom[roomId] = (perRoom[roomId] || 0) + n;
+  }
+
+  return { total, perRoom, perTopic };
 }
 
 /**
@@ -281,5 +300,5 @@ export async function computeTotalBadge(userId) {
     countTimelineBadge(userId, timelineSeen),
     countChatroomBadge(userId, chatroomsSeen, topicReads),
   ]);
-  return tl + cr;
+  return tl + cr.total;
 }
