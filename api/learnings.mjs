@@ -193,29 +193,41 @@ async function listLearnings(req, res, auth) {
     const { data, error } = await q;
     if (error) throw error;
     learnings = data || [];
+  }
+
+  const favsQuery = supabase
+    .from('user_learning_favorites')
+    .select('learning_id')
+    .eq('user_id', auth.userId);
+  const bookmarksQuery = supabase
+    .from('user_learning_bookmarks')
+    .select('learning_id, position, updated_at')
+    .eq('user_id', auth.userId);
+
+  let favs;
+  let bookmarks;
+  if (favoritesOnly) {
+    const [fRes, bRes] = await Promise.all([favsQuery, bookmarksQuery]);
+    favs = fRes.data;
+    bookmarks = bRes.data;
   } else {
+    /* Drie queries die niet van elkaar afhangen: naast elkaar in plaats van
+       eerst de learnings en daarna pas favorieten en bladwijzers. Scheelt een
+       volledige databaseronde bij elke opening van de bibliotheek. */
     let q = supabase
       .from('learnings')
       .select('id, kind, title, description, thumbnail_url, duration_sec, tags, created_at')
       .eq('is_published', true)
       .order('created_at', { ascending: false });
     if (kind) q = q.eq('kind', kind);
-    const { data, error } = await q;
-    if (error) throw error;
-    learnings = data || [];
+    const [lRes, fRes, bRes] = await Promise.all([q, favsQuery, bookmarksQuery]);
+    if (lRes.error) throw lRes.error;
+    learnings = lRes.data || [];
+    favs = fRes.data;
+    bookmarks = bRes.data;
   }
 
   // Markeer favorieten en bestaande lees-/kijkposities voor Mijn leertraject.
-  const [{ data: favs }, { data: bookmarks }] = await Promise.all([
-    supabase
-      .from('user_learning_favorites')
-      .select('learning_id')
-      .eq('user_id', auth.userId),
-    supabase
-      .from('user_learning_bookmarks')
-      .select('learning_id, position, updated_at')
-      .eq('user_id', auth.userId),
-  ]);
   const favSet = new Set((favs || []).map(f => f.learning_id));
   const bookmarkMap = new Map((bookmarks || []).map(row => [row.learning_id, row]));
   for (const l of learnings) {
