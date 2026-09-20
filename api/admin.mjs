@@ -124,15 +124,38 @@ async function getGlobalStats() {
   };
 }
 
+/* ----------------------------------------
+   ALLE AUTH-USERS OPHALEN (gepagineerd)
+   VALKUIL: supabase.auth.admin.listUsers() geeft standaard maar 50
+   gebruikers terug. Met 141 accounts viel tweederde buiten beeld: hun
+   usage kon niet aan een e-mailadres gekoppeld worden en belandde in de
+   bak "Onbekend / verwijderd", alsof het losgekoppelde accounts waren.
+
+   We stoppen pas bij een lege pagina, niet zodra een pagina kleiner is
+   dan gevraagd — de server mag perPage naar beneden bijstellen, en dan
+   zou die check na de eerste pagina al afbreken.
+---------------------------------------- */
+async function listAllAuthUsers() {
+  const alle = [];
+  for (let page = 1; page <= 50; page++) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) throw new Error(error.message);
+    const batch = data?.users || [];
+    if (batch.length === 0) break;
+    alle.push(...batch);
+  }
+  return alle;
+}
+
 async function getUsersStats() {
   const { data: users, error: uErr } = await supabase
     .from('allowed_users')
     .select('email, has_registered, subscription_active, subscription_end_date, cancelled_at, is_admin');
   if (uErr) throw new Error(uErr.message);
 
-  const { data: authUsers } = await supabase.auth.admin.listUsers();
+  const authUsers = await listAllAuthUsers();
   const emailToId = new Map();
-  for (const u of (authUsers?.users || [])) {
+  for (const u of authUsers) {
     if (u.email) emailToId.set(u.email.toLowerCase(), u.id);
   }
 
@@ -286,9 +309,9 @@ async function getRecentQueries(limit) {
     .from('conversations').select('id, user_id, title').in('id', conversationIds);
   const convMap = new Map((convs || []).map(c => [c.id, c]));
 
-  const { data: authUsers } = await supabase.auth.admin.listUsers();
+  const authUsers = await listAllAuthUsers();
   const idToEmail = new Map();
-  for (const u of (authUsers?.users || [])) {
+  for (const u of authUsers) {
     if (u.email) idToEmail.set(u.id, u.email);
   }
 
@@ -327,8 +350,8 @@ async function getRecentQueries(limit) {
 
 async function getUserConversations(email) {
   // Resolve email → user_id via auth.admin.listUsers
-  const { data: authUsers } = await supabase.auth.admin.listUsers();
-  const user = (authUsers?.users || []).find(
+  const authUsers = await listAllAuthUsers();
+  const user = authUsers.find(
     u => (u.email || '').toLowerCase() === email.toLowerCase()
   );
   if (!user) return { email, conversations: [] };
@@ -398,9 +421,9 @@ async function getFallbackQueries(limit) {
     .from('conversations').select('id, user_id, title').in('id', conversationIds);
   const convMap = new Map((convs || []).map(c => [c.id, c]));
 
-  const { data: authUsers } = await supabase.auth.admin.listUsers();
+  const authUsers = await listAllAuthUsers();
   const idToEmail = new Map();
-  for (const u of (authUsers?.users || [])) {
+  for (const u of authUsers) {
     if (u.email) idToEmail.set(u.id, u.email);
   }
 

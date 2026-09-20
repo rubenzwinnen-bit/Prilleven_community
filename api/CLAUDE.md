@@ -135,6 +135,7 @@ Klanten kunnen **niet** zelf opzeggen in Plug&Pay: zelfbediening in het klantenp
 
 ### `admin.mjs` — GET `/api/admin?section=…`
 Admin dashboard. Vereist `requireAdmin`. Sections: `global`, `users`, `queries`, `events`, `conversations` (per email), `chunks` (per ids), `fallbacks`.
+- **VALKUIL — `supabase.auth.admin.listUsers()` geeft standaard maar 50 gebruikers.** Met 141 accounts viel tweederde buiten beeld: hun usage kon niet aan een e-mail gekoppeld worden en belandde in de rij **"Onbekend / verwijderd (losgekoppeld)"**, alsof het opgezegde of verwijderde accounts waren. Dat leest als een lek in de abonnementscheck terwijl er niets aan de hand is. Gefixt op 2026-09-20 met `listAllAuthUsers()`, die pagineert; gebruik altijd die helper, nooit `listUsers()` rechtstreeks. De lus stopt pas bij een **lege** pagina — niet zodra een pagina kleiner is dan gevraagd, want de server mag `perPage` naar beneden bijstellen en dan breekt de lus na pagina 1 alsnog af.
 
 ### `aanraders.mjs` — `/aanraders*` (catch-all, **publiek, server-rendered HTML**)
 De affiliatepagina. Wijkt bewust af van elk ander endpoint hier:
