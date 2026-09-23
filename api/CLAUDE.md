@@ -78,6 +78,7 @@ Chatruimtes (topics + replies + admin). Eén function, rewrite: `/api/chat-rooms
 - `pickNextDate()` haalt de echte incassodatum uit de payload. Ontbreekt die, dan valt `fallbackEndDate(cycle)` terug op +30 dagen / +3 maanden / +1 jaar en komt er `fallback_datum:<cycle>` in de `error`-kolom van de audit-log — grep daarop om te zien of Plug&Pay de datum werkelijk meestuurt.
 - **Grendel bij `activated`: een einddatum in het verleden wordt genegeerd** en vervangen door de fallback (`datum_in_verleden_genegeerd:<datum>` in de log). Anders zou een verkeerd gekozen veld (orderdatum, vorige periode) een lid met zijn eigen betaling buitensluiten.
 - Schrijft naar `allowed_users` (upsert bij activated, update anders) en roept `invalidateSubscriptionCache(email)` aan na success.
+- **SKU-filter (2026-09-23):** alleen SKU's in `TOEGANG_SKUS` (nu enkel `119701`, Pril Leven Community maand + kwartaal) raken `allowed_users`. Een andere SKU wordt gelogd als `ander_product:<sku>` en krijgt 200 terug — een 4xx laat Plug&Pay opnieuw proberen. **Ontbreekt de SKU, dan gaat het event wél door** (`geen_sku` in de log): liever een losse koper te veel dan betalende leden stil weigeren omdat een veld wegvalt. Nieuw abonnementsproduct? Voeg de SKU toe aan de set, anders krijgen die kopers géén toegang.
 - Ook GET = health-check (returnt JSON met hint).
 
 ### `_lib/subscription.mjs` — `effectiveExpiry(endDate)`

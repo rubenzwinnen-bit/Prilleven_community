@@ -28,6 +28,13 @@ const SECRET = process.env.PLUGPAY_WEBHOOK_SECRET || '';
 // geen eigen headers — daarom mag dit ook als ?key= in de query staan.
 const BEARER_SECRET = process.env.PLUGPAY_WEBHOOK_BEARER || '';
 
+// Alleen deze producten geven toegang tot de community. Regel 504592 in
+// Plug&Pay ("Bestelling betaald") vuurt voor élke bestelling — ook een
+// Brooddoos of receptenboek — en die kregen zo 30 dagen community én chatbot.
+// Filter op SKU, niet op productnaam: een naam kan wijzigen, een SKU niet.
+// 119701 = Pril Leven Community (maand- én kwartaalabonnement).
+const TOEGANG_SKUS = new Set(['119701']);
+
 function json(res, status, body) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.statusCode = status;
@@ -268,12 +275,13 @@ export default async function handler(req, res) {
   const customerId = pickPath(body, 'customer.id', 'customer_id', 'data.customer.id',
     'order.customer.id', 'subscriber.id');
   const nextDate = pickNextDate(body);
+  const sku = pickPath(body, 'sku', 'product.sku', 'data.sku', 'order.sku');
 
   const rawType = urlType || bodyEventType || null;
   const category = classifyEvent(rawType);
   const cycle = detectCycle(body, urlCycle);
 
-  console.log(`[plugpay] type=${rawType || '(none)'} category=${category} email=${email || '(none)'} datum=${nextDate || '(none)'} cycle=${cycle || '(none)'}${dryrun ? ' DRYRUN' : ''}`);
+  console.log(`[plugpay] type=${rawType || '(none)'} category=${category} email=${email || '(none)'} datum=${nextDate || '(none)'} cycle=${cycle || '(none)'} sku=${sku || '(none)'}${dryrun ? ' DRYRUN' : ''}`);
 
   if (!email) {
     await logEvent({
@@ -282,6 +290,21 @@ export default async function handler(req, res) {
     });
     return json(res, 400, { error: 'Email missing in webhook payload' });
   }
+
+  // Productfilter. Een SKU die geen toegang geeft: loggen en 200 antwoorden —
+  // een 4xx laat Plug&Pay het opnieuw proberen. Ontbreekt de SKU helemaal, dan
+  // laten we het event dóór: betalende leden stilletjes weigeren omdat een veld
+  // wegvalt is precies het soort fout dat hier al twee keer weken onopgemerkt
+  // bleef. Het eerste slot hoort in Plug&Pay zelf: de regel beperken tot 119701.
+  let skuNote = null;
+  if (sku && !TOEGANG_SKUS.has(String(sku).trim())) {
+    await logEvent({
+      email, eventType: rawType, category, cycle, payload: body,
+      applied: false, error: `ander_product:${sku}`,
+    });
+    return json(res, 200, { received: true, genegeerd: 'ander_product', sku: String(sku) });
+  }
+  if (!sku) skuNote = 'geen_sku';
 
   const emailLower = String(email).toLowerCase().trim();
   let update = {};
@@ -339,7 +362,7 @@ export default async function handler(req, res) {
 
   await logEvent({
     email: emailLower, eventType: rawType, category, cycle,
-    payload: body, applied, error: applyError || note,
+    payload: body, applied, error: applyError || [skuNote, note].filter(Boolean).join(' | ') || null,
   });
 
   if (category === 'unknown') {
