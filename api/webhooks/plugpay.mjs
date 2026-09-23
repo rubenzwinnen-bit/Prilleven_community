@@ -33,6 +33,9 @@ const BEARER_SECRET = process.env.PLUGPAY_WEBHOOK_BEARER || '';
 // Brooddoos of receptenboek — en die kregen zo 30 dagen community én chatbot.
 // Filter op SKU, niet op productnaam: een naam kan wijzigen, een SKU niet.
 // 119701 = Pril Leven Community (maand- én kwartaalabonnement).
+// Bewust NIET: 379373 "HapjesHeld by Pril Leven" (ook als "Masterclass en gids"
+// binnengekomen) — dat is HapjesHeld v1, een losse ChatGPT-bot van €19,95. Geen
+// toegang tot de community of tot HapjesHeld 2.0, de eigen RAG-bot hier.
 const TOEGANG_SKUS = new Set(['119701']);
 
 function json(res, status, body) {
