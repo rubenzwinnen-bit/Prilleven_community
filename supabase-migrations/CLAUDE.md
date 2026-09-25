@@ -217,4 +217,7 @@ Voedt de **publieke** pagina `/aanraders` (zie `api/CLAUDE.md`). Anon mag lezen 
 
 ## Data-fixes (geen schema)
 
+- **2026-09-02 — herstel 87 einddatums** (webhook vond het e-mailadres niet, 13-08 → 02-09). Uitgevoerd via de Supabase MCP, geen bestand. Regel: laatste betaling + 30 dagen, alleen verlengen. Backup in tabel **`allowed_users_backup_20260902`**.
+- **2026-09-23 — herstel 98 einddatums** (`dryrun=1` in de productie-URL, 02-09 → 20-09). Via de MCP, geen bestand. Bron: `subscription_events` met `error = 'dryrun'` en product `Pril Leven Community`; maand +30 dagen, kwartaal +3 maanden, alleen verlengen; klanten met een "geëindigd" ná hun betaling uitgesloten. Backup in **`allowed_users_backup_20260923`**.
+- Beide backup-tabellen hebben RLS aan zonder policies en mogen weg zodra het herstel bevestigd is.
 - `2026-07-31-abonnementen-einddatum-uit-plugpay-export.sql` — eenmalige UPDATE van `allowed_users.subscription_end_date` voor 160 e-mails uit een Plug&Pay-export. Aanleiding: de webhook zette geen verlengingen door, waardoor 31 betalende leden op een verlopen datum stonden. **Al uitgevoerd op productie op 2026-07-31.** De kolom bevat bewust de kale incassodatum; de weekendmarge zit in `effectiveExpiry()` in `api/_lib/subscription.mjs`.

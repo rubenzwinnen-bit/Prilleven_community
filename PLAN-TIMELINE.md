@@ -1460,3 +1460,73 @@ frontend.
 - **De gamification-previews van 22-08 zijn nog steeds niet visueel getest.** Die
   branch is vandaag wel naar `main` gegaan (voor de performance-fixes), dus de
   previews staan nu live zonder dat de feedbackronde is gebeurd.
+
+---
+
+## 2026-09-20 → 09-23 — Tweede betalingsstoring (dryrun) + productlek in de webhook
+
+Begon met een vraag uit het admin-dashboard: *"Onbekend / verwijderd (7 users)"*
+stelde nog vragen aan de chatbot — gebruiken niet-betalenden HapjesHeld 2.0?
+
+### De dashboardrij: geen lek, een pagineringsbug
+
+- `/api/chat` heeft wél een harde abonnementscheck (`getAccessStatus` → 403).
+- `supabase.auth.admin.listUsers()` geeft standaard maar **50** van de 141
+  gebruikers. Wie daarbuiten viel, kon het dashboard niet aan een e-mail koppelen.
+  Exact nagerekend: 7 users, 23 vragen — alle zeven betalend.
+- Gefixt met `listAllAuthUsers()` (pagineert, stopt pas bij een lege pagina) op
+  alle vier de plekken in `admin.mjs`. Geverifieerd: 50 → 141. Live (`fe84944`).
+  Ook `getUserConversations()` gaf daardoor voor 91 users een leeg overzicht.
+
+### De echte vondst: sinds 02-09 opnieuw niets verwerkt
+
+- De parse-fix van 02-09 werkte (e-mail in alle 127 events herkend), maar
+  **`&dryrun=1` was in de productie-URL van Plug&Pay blijven staan** na een test.
+  127 events ontvangen, nul toegepast, tot 20-09.
+- Door jou uit beide regels gehaald. Het laatste gelogde event (22-09) stond nog
+  op `dryrun`; sindsdien is er nog geen betaling binnengekomen.
+- **Herstel 23-09:** 98 van 99 community-klanten weer toegang (96 maand, 2
+  kwartaal; nieuwe einddatums 8 okt – 8 dec). Alle 99 stonden buitengesloten.
+  Backup `allowed_users_backup_20260923`. Geverifieerd via het productie-endpoint.
+- **Bewust niet hersteld:** `sannepelgrimss@gmail.com` — betaalde 10-09, kreeg
+  22-09 "Abonnement geëindigd". Opzegging, mislukte incasso of terugboeking?
+
+### Productlek dichtgezet
+
+- Regel `504592` ("Bestelling betaald") vuurt voor **alle producten**, en de
+  webhook filterde niet. Elke koper van een Brooddoos, receptenboek of Roadmap
+  zou 30 dagen community + HapjesHeld 2.0 krijgen. Tussen 02-09 en 20-09 zaten er
+  24 zulke events tussen — onschadelijk enkel door `dryrun`.
+- **SKU-filter** in de webhook: alleen `119701` (Pril Leven Community, maand én
+  kwartaal) geeft toegang. Andere SKU → gelogd als `ander_product`, 200 terug.
+  Ontbrekende SKU → wél door (`geen_sku`): bewuste keuze na twee stille storingen.
+  Getest met de echte handler tegen een gestubte DB. Live (`48442c6`).
+
+### Beslissingen
+
+- **SKU `379373` "HapjesHeld by Pril Leven" geeft bewust geen toegang.** Dat is
+  HapjesHeld **v1**, een losse ChatGPT-bot (€19,95) — níet de eigen RAG-bot van
+  de community (HapjesHeld 2.0). Kwam ook binnen als "Masterclass en gids".
+- **De universele Plug&Pay-regel blijft staan.** Omzetten naar een
+  productspecifieke regel is overbodig met de SKU-filter, en riskant: het
+  incasso-vinkje moet dan opnieuw gezet worden, en precies dat vinkje kostte
+  in de zomer 160 handmatige herstellingen. Dat het vinkje nu aan staat, blijkt
+  uit de verlengingen van 8–10 september in de nachtelijke incassorun.
+
+### Volgende stappen
+
+1. **Na de eerstvolgende betaling nakijken of hij echt verwerkt is:**
+   `select received_at, category, applied, coalesce(error,'ok'), email,
+   payload->>'sku' from subscription_events where received_at > '2026-09-23'
+   order by received_at desc;` → `applied = true` bij een community-betaling.
+2. Sanne nakijken in Plug&Pay; heeft ze betaald, dan met de hand terugzetten.
+3. Admin-dashboard herladen: de rij "Onbekend / verwijderd" hoort weg te zijn.
+
+### Open vragen / blockers
+
+- De webhook bij het **oude CRM van Joemen** uitzetten — stuurt nog steeds
+  events (`auth_geweigerd`, laatste op 22-09).
+- Nog open van 02-09: opzegverzoek end-to-end testen op een eigen account;
+  had `info@` een forward (mogelijk ongeziene GDPR-verzoeken)?
+- Backup-tabellen `allowed_users_backup_20260902` en `…_20260923` opruimen na
+  bevestiging.
