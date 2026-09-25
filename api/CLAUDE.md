@@ -9,7 +9,7 @@ Vercel Functions voor Pril Leven. Lees eerst de root `CLAUDE.md`; dit bestand vo
 - Alle endpoints zijn `.mjs` (ES modules).
 - Default export = handler: `export default async function handler(req, res) { ... }`.
 - Geen TypeScript, geen build step.
-- `maxDuration: 30` is project-breed gezet (zie `vercel.json`).
+- `maxDuration: 30` is project-breed gezet (zie `vercel.json`). Uitzondering: `api/chat.mjs` op **60** (sinds 2026-09-25) — Sonnet + titel + geheugen na elkaar liep soms over 30 s; Vercel gaf dan een kale 504 terwijl het antwoord wél al in `messages` stond (herkenbaar: antwoord zonder `usage_log`-rij). Die specifieke regel moet vóór de glob staan.
 - Dynamische subroutes via `[param].mjs` (zie `conversations/[id].mjs`).
 - Catch-all routes via een rewrite in `vercel.json` (zie `community.mjs`).
 

@@ -80,7 +80,7 @@ Node ≥ 20.
 - ESM (`.mjs`), default export = handler.
 - Auth via helpers in `api/_lib/auth.mjs`.
 - Supabase service-role key alleen server-side (nooit naar client).
-- `maxDuration: 30` (zie `vercel.json`).
+- `maxDuration: 30` (zie `vercel.json`), behalve `api/chat.mjs`: 60.
 - Rate-limit endpoints die LLM/embeddings aanroepen (`api/_lib/rate-limit.mjs`).
 
 ### Database / Supabase

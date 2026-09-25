@@ -16,6 +16,7 @@
     { "source": "/((?!api/)(?!.*\\.).*)", "destination": "/index.html" }
   ],
   "functions": {
+    "api/chat.mjs": { "maxDuration": 60 },
     "api/**/*.mjs": { "maxDuration": 30 }
   },
   "headers": [
