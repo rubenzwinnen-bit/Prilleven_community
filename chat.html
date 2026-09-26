@@ -16,7 +16,7 @@
   <noscript>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
   </noscript>
-  <link rel="stylesheet" href="/styles.css?v=4.0.37" />
+  <link rel="stylesheet" href="/styles.css?v=4.0.38" />
 
   <style>
     html, body { height: 100%; }
@@ -334,6 +334,30 @@
       cursor: pointer;
     }
     .chat-feedback-reason button:hover { background: var(--color-green-dark); }
+    .chat-suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .45rem;
+      margin: -.2rem 18% .85rem 0;
+    }
+    .chat-suggestion {
+      padding: .45rem .85rem;
+      border: 1px solid var(--color-green-text);
+      border-radius: 999px;
+      background: var(--color-white);
+      color: var(--color-green-text);
+      font-family: inherit;
+      font-size: .85rem;
+      line-height: 1.3;
+      text-align: left;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .chat-suggestion:hover:not(:disabled) {
+      background: var(--color-green-text);
+      color: var(--color-white);
+    }
+    .chat-suggestion:disabled { opacity: .5; cursor: default; }
 
     form {
       display: flex;
@@ -861,10 +885,10 @@
     </div>
   </div>
 
-  <script src="/js/chat.js?v=4.0.37" type="module"></script>
+  <script src="/js/chat.js?v=4.0.38" type="module"></script>
   <script type="module">
-    import { mountHeaderAvatar, attachLogoutHandler } from '/js/headerAvatarStandalone.js?v=4.0.37';
-    import { mountHeaderBell } from '/js/headerBellStandalone.js?v=4.0.37';
+    import { mountHeaderAvatar, attachLogoutHandler } from '/js/headerAvatarStandalone.js?v=4.0.38';
+    import { mountHeaderBell } from '/js/headerBellStandalone.js?v=4.0.38';
     document.addEventListener('DOMContentLoaded', () => {
       mountHeaderBell(document.getElementById('header-bell-mount'));
       mountHeaderAvatar(document.getElementById('header-avatar-mount'));

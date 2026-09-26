@@ -1,11 +1,12 @@
 // POST /api/chat
 // Body: { question: string, conversation_id?: string }
 // Headers: Authorization: Bearer <supabase-jwt>
-// Returns: { answer, sources, cached, topScore, model, modelReason, conversation_id }
+// Returns: { answer, sources, cached, topScore, model, modelReason, conversation_id, suggestions }
 //
 // Streaming (sinds 2026-09-26): met `stream: true` in de body komt het antwoord als
 // text/event-stream: `delta` { text } per stukje, dan `done` met dezelfde velden als
-// de JSON-response, of `error` { error }. Fouten vóór de Claude-call, cache-hits en de
+// de JSON-response, of `error` { error }. Na `done` volgt eventueel nog `suggestions`
+// { suggestions: string[] } met 2 à 3 vervolgvragen. Fouten vóór de Claude-call, cache-hits en de
 // fallback blijven gewone JSON — de client kijkt naar de Content-Type.
 //
 // Flow (Fase A — auth + conversatie-history):
@@ -44,6 +45,7 @@ import {
 } from './_lib/profile.mjs';
 import { getAccessStatus, accessDeniedMessage } from './_lib/subscription.mjs';
 import { rewriteFollowUpQuestion } from './_lib/search-query.mjs';
+import { suggestFollowUps } from './_lib/follow-up-suggestions.mjs';
 
 // ---------- Config ----------
 const MAX_QUESTION_CHARS = 500;
@@ -586,23 +588,41 @@ ${ingredientsBlock}Vraag van de gebruiker: ${questionForPrompt}`;
       usage,
       imageUsage,
     };
-    // Bij streaming krijgt de client `done` al vóór de geheugen-extractie.
+    // Bij streaming krijgt de client `done` al vóór de vervolgvragen en de geheugen-extractie.
     if (wantsStream) sendEvent(res, 'done', result);
+
+    // ---- Vervolgvragen (Haiku), tegelijk met de geheugen-extractie. Bij streaming als
+    // apart `suggestions`-event zodra ze klaar zijn; in JSON als veld `suggestions`.
+    // Kosten als eigen usage_log-rij: de plafonds tellen alle rijen mee.
+    const suggestionsTask = suggestFollowUps({
+      question: question || 'Wat kan ik maken met wat op deze foto staat?',
+      answer,
+      chunks,
+    }).then(async (s) => {
+      if (wantsStream && s.suggestions.length) sendEvent(res, 'suggestions', { suggestions: s.suggestions });
+      if (s.costCents > 0) {
+        await logUsage({ userId, ipHash, event: 'suggestions', tokensIn: s.tokensIn, tokensOut: s.tokensOut, costCents: s.costCents });
+      }
+      return s.suggestions;
+    });
 
     // ---- Memory extractie (synchroon — ~1s extra latency, maar betrouwbaar)
     // In serverless/vercel-dev wordt fire-and-forget vaak gekilled voor het
     // klaar is. Synchroon garandeert dat het feit wordt opgeslagen.
     // Faalt stil — niet kritisch voor de response.
-    if (memoryEnabled && asstId) {
+    const memoryTask = (async () => {
+      if (!memoryEnabled || !asstId) return;
       try {
         await extractAndStoreMemories(userId, question, answer, asstId);
       } catch (e) {
         console.error('[memory-extract]', e.message);
       }
-    }
+    })();
+
+    const [suggestions] = await Promise.all([suggestionsTask, memoryTask]);
 
     if (wantsStream) return res.end();
-    return json(res, 200, result);
+    return json(res, 200, { ...result, suggestions });
   } catch (err) {
     console.error('[chat]', err);
     const error = 'Er ging iets mis. Probeer het later opnieuw.';
