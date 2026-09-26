@@ -16,6 +16,9 @@
     { "source": "/((?!api/)(?!.*\\.).*)", "destination": "/index.html" }
   ],
   "regions": ["dub1"],
+  "crons": [
+    { "path": "/api/cron/recepten-kennisbank", "schedule": "0 2 * * *" }
+  ],
   "functions": {
     "api/chat.mjs": { "maxDuration": 60 },
     "api/**/*.mjs": { "maxDuration": 30 }

@@ -133,7 +133,7 @@ Klanten kunnen **niet** zelf opzeggen in Plug&Pay: zelfbediening in het klantenp
 - `GET ?conversation_id=` → `{ feedback: { [message_id]: { rating, reden } } }`. `POST { message_id, rating: 1|-1, reden? }` → upsert (reden alleen bij 👎, max 500). `DELETE ?message_id=` → ongedaan maken.
 - `user_id` uit het JWT; `POST` controleert dat het bericht een `assistant`-bericht in een eigen gesprek is. Geen abonnementscheck of rate-limit (geen LLM). CORS open, zodat de mobiele app hem later kan gebruiken.
 - Admin-overzicht: `/api/admin?section=feedback`.
-- **Recepten in de kennisbank:** `scripts/recepten-naar-kennisbank.mjs` zet weekschema-recepten die nog nergens in `documents` staan als fragment `wks-<recipe id>` (bron "Weekschema Pril Leven"). Draai het na nieuwe recepten (eerst zonder, dan met `--schrijf`). De leeftijd komt uit het eetmoment en staat bewust niet in de tekst, enkel in `age_min_months`.
+- **Recepten in de kennisbank:** `_lib/recipe-knowledge.mjs` (`syncRecipeKnowledge`) koppelt elk recept aan een boekfragment met exact dezelfde titel (of `KOPPEL_HANDMATIG`), en geeft de rest een eigen fragment `wks-<recipe id>` (bron "Weekschema Pril Leven"). Enkel nieuwe/gewijzigde fragmenten worden ge-embed; fragmenten en koppelingen van verwijderde of hernoemde recepten gaan weg. Draait **elke nacht om 02:00 UTC** via `cron/recepten-kennisbank.mjs`; met de hand (droge run of meteen) via `scripts/recepten-naar-kennisbank.mjs [--schrijf]`. De leeftijd komt uit het eetmoment en staat bewust niet in de tekst, enkel in `age_min_months`.
 - **Testset:** `scripts/eval/hapjesheld-eval.mjs` stelt 40 echte vragen (`hapjesheld-vragen.json`) met dezelfde retrieval/prompt/modelkeuze en laat Sonnet scoren; draai hem vóór en na elke botwijziging. Daarvoor exporteert `chat.mjs` `SYSTEM_PROMPT`, `formatContext` en `MAX_OUTPUT_TOKENS`.
 
 ### `eerste-hapjes/state.mjs` — `/api/eerste-hapjes/state`
@@ -146,6 +146,9 @@ Klanten kunnen **niet** zelf opzeggen in Plug&Pay: zelfbediening in het klantenp
   De losse `/doses` en `/symptoms` blijven bestaan voor het symptomenlogboek en
   het doseformulier.
 - `PATCH` — body `{ child_id, ...partial }`, deep-merge op `allergen_state`.
+
+### `cron/recepten-kennisbank.mjs` — GET `/api/cron/recepten-kennisbank` (Vercel Cron)
+Elke nacht 02:00 UTC (`crons` in `vercel.json`): `syncRecipeKnowledge({ schrijf: true })`. Vereist `Authorization: Bearer <CRON_SECRET>` (stuurt Vercel zelf mee); **zonder `CRON_SECRET` op Vercel weigert hij alles (401) en loopt de sync dus niet.** Resultaat staat in de runtime-logs als `[cron][recepten-kennisbank]`.
 
 ### `admin.mjs` — GET `/api/admin?section=…`
 Admin dashboard. Vereist `requireAdmin`. Sections: `global`, `users`, `queries`, `events`, `conversations` (per email), `chunks` (per ids), `fallbacks`, `feedback` (👍/👎 uit `chat_feedback` + vraag/antwoord + totalen).
@@ -261,6 +264,7 @@ VOYAGE_API_KEY                 # clients.mjs / retrieve.mjs
 PLUGPAY_WEBHOOK_BEARER         # webhook (optie 1) — als ?key= in de URL of Bearer-header
 PLUGPAY_WEBHOOK_SECRET         # webhook (optie 2, HMAC)
 RESEND_API_KEY                 # opzegverzoek.mjs — mail via de Resend REST API
+CRON_SECRET                    # cron/recepten-kennisbank.mjs — Vercel stuurt het als Bearer mee; zonder weigert de cron
 ```
 Op Vercel ingesteld via project settings. Lokaal in `.env.local`. Crasht hard als ze in `clients.mjs` ontbreken.
 

@@ -173,6 +173,7 @@ SUPABASE_ANON_KEY
 PLUGPAY_WEBHOOK_BEARER
 PLUGPAY_WEBHOOK_SECRET
 RESEND_API_KEY
+CRON_SECRET          # nachtelijke sync recepten → kennisbank (api/cron/)
 ```
 
 Op Vercel zelf staan deze al ingesteld via project settings.
@@ -219,7 +220,7 @@ en `eind-sessie` (via de slashlijst of `$skill-naam`).
 - **Contactadres is `hallo@prilleven.be`.** `info@prilleven.be` bestaat sinds 2026-09-02 niet meer en stond toen nog in `privacy.html`, `voorwaarden.html` en `delete-account.html` als contactpunt voor GDPR-, inzage-, verwijder- en klachtverzoeken. Gebruik overal `hallo@`.
 - **Opzeggen kan niet via zelfbediening in Plug&Pay:** dat zit enkel in het **Ultimate**-pakket (€125/mnd), wij draaien **Premium** (€59/mnd). Daarom `/api/opzegverzoek` + tabel `cancellation_requests`, en handmatige afhandeling in Plug&Pay.
 - **Vercel-functies draaien in `dub1` (Dublin), naast Supabase in `eu-west-1`** (sinds 2026-09-26, `"regions"` in `vercel.json`). Tot dan draaiden ze in `iad1` (Washington): elke databasecall kostte ~120 ms i.p.v. ~10-20 ms en de hele site voelde traag. Regio van DB en functies altijd samen houden.
-- **De kennisbank van HapjesHeld (`documents`) volgt de app niet vanzelf.** Nieuwe of gewijzigde recepten in het weekschema kent de bot pas na `scripts/recepten-naar-kennisbank.mjs --schrijf` (zie `api/CLAUDE.md`); dat script zet ook de `recipe_id` voor de receptlinks. Pdf's en video's uit de leerbibliotheek zitten er grotendeels niet in.
+- **De kennisbank van HapjesHeld (`documents`) volgt de recepten met een nacht vertraging.** Een cron (02:00 UTC, `api/cron/recepten-kennisbank.mjs`) synchroniseert nieuwe, gewijzigde en verwijderde recepten en de `recipe_id` voor de receptlinks; meteen kan met `scripts/recepten-naar-kennisbank.mjs --schrijf` (zie `api/CLAUDE.md`). Werkt enkel als `CRON_SECRET` op Vercel staat. Pdf's en video's uit de leerbibliotheek zitten er grotendeels niet in en volgen niet vanzelf.
 - **HapjesHeld-wijzigingen eerst langs de testset** (`scripts/eval/`, zie `api/CLAUDE.md`). Scores schommelen ±0,1–0,3 per run door toeval; enkel grotere of herhaalde verschillen zijn echt.
 - **Cooked it / Pril Ritme is voorlopig een frontend-preview:** gekookte slots staan per gebruiker en kalenderweek in `localStorage` (`prilleven_cooked_meals_<user>`). Drie unieke kookdagen vullen het weekritme; meerdere gerechten op dezelfde dag tellen één keer. Nog niet geschikt als definitieve cross-device opslag.
 
