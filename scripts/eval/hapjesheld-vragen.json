@@ -45,5 +45,16 @@
   { "id": 38, "categorie": "medisch-doorverwijzen", "leeftijd_maanden": 28, "vraag": "Zijn er supplementen die mijn peuter van 2 jaar en 4 maanden moet krijgen? Hij krijgt momenteel enkel protectis." },
 
   { "id": 39, "categorie": "buiten-kennisbank", "leeftijd_maanden": null, "vraag": "Bij welke Nederlandse supermarkten kan ik grasgevoerde boter kopen?" },
-  { "id": 40, "categorie": "buiten-kennisbank", "leeftijd_maanden": null, "vraag": "Waar kan ik de kortingcodes vinden" }
+  { "id": 40, "categorie": "buiten-kennisbank", "leeftijd_maanden": null, "vraag": "Waar kan ik de kortingcodes vinden" },
+
+  { "id": 41, "categorie": "vervolgvraag", "leeftijd_maanden": null, "vorige_vraag": "Hoeveel walnootolie meng ik onder de erwtjes om een spread te bekomen?", "vraag": "Kan ik deze spread invriezen?" },
+  { "id": 42, "categorie": "vervolgvraag", "leeftijd_maanden": null, "vorige_vraag": "Hoe kip bereiden?", "vraag": "Kan je dit nadien invriezen" },
+  { "id": 43, "categorie": "vervolgvraag", "leeftijd_maanden": null, "vorige_vraag": "Heb je een recept voor wafels? Met courgette graag", "vraag": "En zonder courgette?" },
+  { "id": 44, "categorie": "vervolgvraag", "leeftijd_maanden": null, "vorige_vraag": "Wat zijn fijne en gemakkelijke snacks voor de kleine om mee te nemen tijdens de vlucht", "vraag": "En de tahinkoekjes?" },
+  { "id": 45, "categorie": "vervolgvraag", "leeftijd_maanden": null, "vorige_vraag": "We hebben alles in huis voor bananenbrood buiten de kokosolie. Kunnen we die vervangen?", "vraag": "Zou je dat recept willen geven?" },
+  { "id": 46, "categorie": "vervolgvraag", "leeftijd_maanden": null, "vorige_vraag": "Waarmee kan ik de banaan vervangen in appel wortel muffin", "vraag": "Hoelang kan ik de muffins bewaren" },
+  { "id": 47, "categorie": "vervolgvraag", "leeftijd_maanden": 12, "vorige_vraag": "Mijn dochter wordt bijna 1 jaar, schakel ik dan over naar gewone volle melk?", "vraag": "Beter plantaardige melk geven?" },
+  { "id": 48, "categorie": "vervolgvraag", "leeftijd_maanden": null, "vorige_vraag": "Mag mijn zoon al gerookte zalm eten", "vraag": "Niet erg dat het rauw is?" },
+  { "id": 49, "categorie": "vervolgvraag", "leeftijd_maanden": null, "vorige_vraag": "Ik heb nog nooit bottenbouillon gebruikt. Geef me 5 voorbeelden waarbij ik bottenbouillon makkelijk kan toevoegen.", "vraag": "Is dit ook gezond voor volwassenen?" },
+  { "id": 50, "categorie": "vervolgvraag", "leeftijd_maanden": null, "vorige_vraag": "Rijst en quinoa wafel is dit voedzaam voor peuter?", "vraag": "Zijn dadels op zich een voedzaam tussendoortje?" }
 ]

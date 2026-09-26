@@ -43,6 +43,7 @@ import {
   primaryChildAgeMonths,
 } from './_lib/profile.mjs';
 import { getAccessStatus, accessDeniedMessage } from './_lib/subscription.mjs';
+import { rewriteFollowUpQuestion } from './_lib/search-query.mjs';
 
 // ---------- Config ----------
 const MAX_QUESTION_CHARS = 500;
@@ -350,17 +351,22 @@ export default async function handler(req, res) {
       }
     }
 
-    // ---- Bij foto: eerst ingrediënten extraheren (Haiku vision) en aan de zoekstring toevoegen,
-    // zodat RAG recepten kan vinden ook als de tekstvraag vaag is ("wat kan ik hiermee maken?").
+    // ---- Zoekvraag bepalen (tegelijk):
+    // - Vervolgvraag: eerst herschrijven tot een zelfstandige zoekvraag ("en zonder
+    //   courgette?" → "wafels zonder courgette"). Enkel voor de retrieval.
+    // - Bij foto: ingrediënten extraheren en aan de zoekstring toevoegen, zodat RAG
+    //   recepten kan vinden ook als de tekstvraag vaag is ("wat kan ik hiermee maken?").
+    const [rewrite, scan] = await Promise.all([
+      history.length > 0 && question ? rewriteFollowUpQuestion(history, question) : null,
+      hasImage ? extractIngredientsForRAG(imageForClaude) : null,
+    ]);
+    const baseSearch = rewrite?.query || question;
     let extractedIngredients = '';
-    let scanUsage = { tokensIn: 0, tokensOut: 0, costCents: 0 };
-    let searchQuery = question;
-    if (hasImage) {
-      const scan = await extractIngredientsForRAG(imageForClaude);
+    let searchQuery = baseSearch;
+    if (scan) {
       extractedIngredients = scan.ingredients;
-      scanUsage = scan;
       if (extractedIngredients) {
-        const baseQ = question || 'recept op basis van deze ingrediënten';
+        const baseQ = baseSearch || 'recept op basis van deze ingrediënten';
         searchQuery = `${baseQ} — ingrediënten: ${extractedIngredients}`;
       }
     }
@@ -379,6 +385,7 @@ export default async function handler(req, res) {
     // Diagnostic log: welke chunks gaan naar Claude? Zichtbaar in Vercel function-logs.
     console.log('[chat] retrieval', {
       q: searchQuery.slice(0, 100),
+      ...(rewrite?.rewritten ? { original: question.slice(0, 100) } : {}),
       filterAge,
       topScore: Number(topScore?.toFixed?.(3) ?? topScore),
       chunks: chunks.map(c => `${c.source} / ${c.title} @${c.similarity?.toFixed?.(3)}${c.rerankScore != null ? ` r${c.rerankScore.toFixed(2)}` : ''}`),
@@ -494,7 +501,8 @@ ${ingredientsBlock}Vraag van de gebruiker: ${questionForPrompt}`;
     const tokensIn = response.usage?.input_tokens ?? 0;
     const tokensOut = response.usage?.output_tokens ?? 0;
     const costCents = tokensIn * model.costInCents + tokensOut * model.costOutCents;
-    // In usage_log telt de foto-scan mee (budget); in messages enkel het antwoord zelf.
+    // In usage_log tellen foto-scan en herschrijfstap mee (budget); in messages enkel het antwoord zelf.
+    const extra = [scan, rewrite].filter(Boolean);
 
     // ---- Store messages + cache + log
     // Bij foto: had_image=true opslaan maar content bevat alleen de vraag + placeholder.
@@ -525,9 +533,9 @@ ${ingredientsBlock}Vraag van de gebruiker: ${questionForPrompt}`;
     await logUsage({
       userId, ipHash,
       event: hasImage ? 'query_with_image' : 'query',
-      tokensIn: tokensIn + scanUsage.tokensIn,
-      tokensOut: tokensOut + scanUsage.tokensOut,
-      costCents: costCents + scanUsage.costCents,
+      tokensIn: tokensIn + extra.reduce((n, x) => n + x.tokensIn, 0),
+      tokensOut: tokensOut + extra.reduce((n, x) => n + x.tokensOut, 0),
+      costCents: costCents + extra.reduce((n, x) => n + x.costCents, 0),
     });
 
     const [usage, imageUsage] = await Promise.all([

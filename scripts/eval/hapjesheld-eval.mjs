@@ -14,10 +14,15 @@
  *   node --env-file=.env.local scripts/eval/hapjesheld-eval.mjs --model sonnet   (modelkeuze forceren: haiku|sonnet|sonnet46)
  *   node --env-file=.env.local scripts/eval/hapjesheld-eval.mjs --model sonnet --denken laag --max-tokens 2000
  *     (--denken uit|laag|medium|hoog; zonder --denken geldt CHAT_THINKING uit chat.mjs)
+ *   node --env-file=.env.local scripts/eval/hapjesheld-eval.mjs --herschrijf uit   (uit|haiku|sonnet)
  *
- * Verschil met de echte bot: geen gebruikersprofiel, geen geheugen, geen
- * gespreksgeschiedenis en geen cache. Wel het leeftijdsfilter als de vraag
- * een leeftijd noemt (veld leeftijd_maanden).
+ * Verschil met de echte bot: geen gebruikersprofiel, geen geheugen en geen
+ * cache. Wel het leeftijdsfilter als de vraag een leeftijd noemt (veld
+ * leeftijd_maanden).
+ *
+ * Vervolgvragen (veld vorige_vraag): de bot beantwoordt eerst de vorige vraag,
+ * daarna de vervolgvraag met dat gesprek als geschiedenis, zoals in /api/chat.
+ * Zonder --herschrijf geldt de herschrijfstap van productie (REWRITE_MODEL).
  */
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
@@ -28,6 +33,7 @@ import { anthropic } from '../../api/_lib/clients.mjs';
 import { retrieveCombined } from '../../api/_lib/retrieve.mjs';
 import { pickModel, MODELS } from '../../api/_lib/model-router.mjs';
 import { SYSTEM_PROMPT, formatContext, MAX_OUTPUT_TOKENS, CHAT_THINKING } from '../../api/chat.mjs';
+import { rewriteFollowUpQuestion, REWRITE_MODEL } from '../../api/_lib/search-query.mjs';
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
 const VRAGEN_BESTAND = path.join(HIER, 'hapjesheld-vragen.json');
@@ -64,39 +70,74 @@ const DENKEN = {
   hoog: { thinking: { type: 'adaptive' }, output_config: { effort: 'high' } },
 };
 if (denken && !DENKEN[denken]) throw new Error('--denken moet uit, laag, medium of hoog zijn');
+const HERSCHRIJF = { uit: null, haiku: MODELS.HAIKU, sonnet: MODELS.SONNET };
+const herschrijfArg = arg('--herschrijf');
+if (herschrijfArg && !(herschrijfArg in HERSCHRIJF)) throw new Error('--herschrijf moet uit, haiku of sonnet zijn');
+const herschrijfModel = herschrijfArg ? HERSCHRIJF[herschrijfArg] : REWRITE_MODEL;
 
 // ---------- Eén vraag door de bot ----------
-async function stelVraag(item) {
-  const start = Date.now();
-  const { chunks, topScore } = await retrieveCombined(item.vraag, {
+async function beantwoord(vraag, { leeftijd, geschiedenis = [], zoekvraag = vraag }) {
+  const { chunks, topScore } = await retrieveCombined(zoekvraag, {
     userId: null,
-    filterAge: item.leeftijd_maanden ?? null,
+    filterAge: leeftijd ?? null,
     topKDocs: 10,
     includeMemory: false,
   });
 
   if (chunks.length === 0) {
-    return { antwoord: '(fallback: niets gevonden)', model: 'fallback', reden: 'geen-chunks', topScore, chunks, kostCent: 0, ms: Date.now() - start };
+    return { antwoord: '(fallback: niets gevonden)', model: 'fallback', reden: 'geen-chunks', topScore, chunks, kostCent: 0 };
   }
 
   const { model, reason } = forceerModel
     ? { model: ALLE_MODELS[forceerModel], reason: 'geforceerd' }
-    : pickModel({ hasImage: false, question: item.vraag, topScore });
+    : pickModel({ hasImage: false, question: vraag, topScore });
   const context = formatContext(chunks);
   const res = await anthropic.messages.create({
     model: model.id,
     max_tokens: maxTokens,
     ...(denken ? DENKEN[denken] : { thinking: CHAT_THINKING }),
     system: SYSTEM_PROMPT,
-    messages: [{
-      role: 'user',
-      content: `Context uit de kennisbank:\n\n${context}\n\n---\n\nVraag van de gebruiker: ${item.vraag}`,
-    }],
+    messages: [
+      ...geschiedenis,
+      {
+        role: 'user',
+        content: `Context uit de kennisbank:\n\n${context}\n\n---\n\nVraag van de gebruiker: ${vraag}`,
+      },
+    ],
   });
   const antwoord = res.content.filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
   const kostCent = res.usage.input_tokens * model.costInCents + res.usage.output_tokens * model.costOutCents;
 
-  return { antwoord, model: model.id, reden: reason, topScore, chunks, kostCent, ms: Date.now() - start, afgekapt: res.stop_reason === 'max_tokens' };
+  return { antwoord, model: model.id, reden: reason, topScore, chunks, kostCent, afgekapt: res.stop_reason === 'max_tokens' };
+}
+
+async function stelVraag(item) {
+  const start = Date.now();
+  if (!item.vorige_vraag) {
+    const res = await beantwoord(item.vraag, { leeftijd: item.leeftijd_maanden });
+    return { ...res, ms: Date.now() - start };
+  }
+
+  // Vervolgvraag: eerst de vorige vraag beantwoorden, dan verder met dat gesprek.
+  const vorige = await beantwoord(item.vorige_vraag, { leeftijd: item.leeftijd_maanden });
+  const geschiedenis = [
+    { role: 'user', content: item.vorige_vraag },
+    { role: 'assistant', content: vorige.antwoord },
+  ];
+  const start2 = Date.now();
+  const herschreven = herschrijfModel
+    ? await rewriteFollowUpQuestion(geschiedenis, item.vraag, { model: herschrijfModel })
+    : { query: item.vraag, costCents: 0 };
+  const res = await beantwoord(item.vraag, { leeftijd: item.leeftijd_maanden, geschiedenis, zoekvraag: herschreven.query });
+  return {
+    ...res,
+    zoekvraag: herschreven.query,
+    vorigAntwoord: vorige.antwoord,
+    // Kost en duur van de vervolgvraag zelf (herschrijven + antwoord), zoals de ouder die ervaart.
+    kostCent: res.kostCent + herschreven.costCents,
+    totaalKostCent: vorige.kostCent + res.kostCent + herschreven.costCents,
+    ms: Date.now() - start2,
+  };
 }
 
 // ---------- Beoordeling ----------
@@ -120,7 +161,7 @@ async function beoordeel(item, resultaat) {
     system: RECHTER_PROMPT,
     messages: [{
       role: 'user',
-      content: `Categorie: ${item.categorie}\n\nVraag: ${item.vraag}\n\n=== Opgehaalde bronnen ===\n${bronnen}\n\n=== Antwoord van HapjesHeld ===\n${resultaat.antwoord}`,
+      content: `Categorie: ${item.categorie}\n\n${item.vorige_vraag ? `=== Eerder in het gesprek ===\nOuder: ${item.vorige_vraag}\nHapjesHeld: ${resultaat.vorigAntwoord}\n\n=== Vervolgvraag (beoordeel enkel het antwoord hierop) ===\n` : ''}Vraag: ${item.vraag}\n\n=== Opgehaalde bronnen ===\n${bronnen}\n\n=== Antwoord van HapjesHeld ===\n${resultaat.antwoord}`,
     }],
   });
   const tekst = res.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
@@ -161,7 +202,13 @@ function maakRapport(run, vorige) {
   const r = run.resultaten;
   const regels = [];
   regels.push(`# HapjesHeld-test ${run.gestart}${run.label ? ` — ${run.label}` : ''}`, '');
-  regels.push(`${r.length} vragen · kost €${(run.kostCent / 100).toFixed(2)} · ${Math.round(run.duurMs / 1000)} s`, '');
+  regels.push(`${r.length} vragen · kost €${(run.kostCent / 100).toFixed(2)} · ${Math.round(run.duurMs / 1000)} s · herschrijven: ${run.herschrijf}`, '');
+  const vervolg = r.filter(x => x.vorigeVraag);
+  if (vervolg.length) {
+    regels.push('## Zoekvragen bij vervolgvragen', '');
+    for (const x of vervolg) regels.push(`- #${x.id} "${x.vraag}" → "${x.zoekvraag}"`);
+    regels.push('');
+  }
   const gemMs = gemiddelde(r.map(x => x.ms));
   const gemKost = gemiddelde(r.map(x => x.antwoordKostCent));
   regels.push(`Per antwoord: gemiddeld ${gemMs ? (gemMs / 1000).toFixed(1) : '–'} s en ${gemKost ? gemKost.toFixed(2) : '–'} cent (zonder beoordeling) · afgekapt op max_tokens: ${r.filter(x => x.afgekapt).length}`, '');
@@ -208,6 +255,7 @@ function maakRapport(run, vorige) {
   for (const x of zwakst) {
     regels.push(`### #${x.id} (${f(totaalScore(x.oordeel))}) ${x.vraag}`, '');
     regels.push(`- Model: ${x.model} (${x.reden}), topScore ${f(x.topScore)}`);
+    if (x.vorigeVraag) regels.push(`- Vorige vraag: ${x.vorigeVraag}`, `- Zoekvraag: ${x.zoekvraag}`);
     regels.push(`- Bronnen: ${x.bronnen.slice(0, 5).join(' · ') || '–'}`);
     regels.push(`- Scores: ${CRITERIA.map(c => `${c} ${x.oordeel?.[c] ?? '–'}`).join(', ')}`);
     regels.push(`- Rechter: ${x.oordeel?.toelichting || x.oordeel?.fout || '–'}`, '');
@@ -235,13 +283,14 @@ async function main() {
         id: item.id,
         categorie: item.categorie,
         vraag: item.vraag,
+        ...(item.vorige_vraag ? { vorigeVraag: item.vorige_vraag, vorigAntwoord: res.vorigAntwoord, zoekvraag: res.zoekvraag } : {}),
         antwoord: res.antwoord,
         model: res.model,
         reden: res.reden,
         topScore: res.topScore,
         bronnen: res.chunks.map(c => `${c.source} / ${c.title} @${c.similarity?.toFixed(3)}${c.rerankScore != null ? ` r${c.rerankScore.toFixed(2)}` : ''}`),
         oordeel,
-        kostCent: res.kostCent + (oordeel.kostCent || 0),
+        kostCent: (res.totaalKostCent ?? res.kostCent) + (oordeel.kostCent || 0),
         antwoordKostCent: res.kostCent,
         ms: res.ms,
         afgekapt: res.afgekapt || false,
@@ -255,6 +304,7 @@ async function main() {
   const run = {
     gestart: gestart.toISOString(),
     label,
+    herschrijf: herschrijfModel ? herschrijfModel.id : 'uit',
     kostCent: resultaten.reduce((s, x) => s + x.kostCent, 0),
     duurMs: Date.now() - gestart.getTime(),
     resultaten,

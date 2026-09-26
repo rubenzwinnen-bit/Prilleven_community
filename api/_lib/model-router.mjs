@@ -3,7 +3,7 @@
 // Haiku vulde bij korte vragen te vaak zelf aan met kennis die niet in
 // Anneleens kennisbank staat (testset: trouw 4,33 → 4,60 met enkel Sonnet).
 // De reden blijft gelogd (vision / medical-keyword / default) voor de logs.
-// Haiku wordt nog wel gebruikt voor titels en geheugen; de foto-scan loopt sinds 2026-09-26 ook via Sonnet (extractIngredientsForRAG in chat.mjs).
+// Haiku wordt nog wel gebruikt voor titels, geheugen en het herschrijven van vervolgvragen (_lib/search-query.mjs); de foto-scan loopt sinds 2026-09-26 ook via Sonnet (extractIngredientsForRAG in chat.mjs).
 
 export const MODELS = {
   HAIKU: {
