@@ -1530,3 +1530,240 @@ stelde nog vragen aan de chatbot — gebruiken niet-betalenden HapjesHeld 2.0?
   had `info@` een forward (mogelijk ongeziene GDPR-verzoeken)?
 - Backup-tabellen `allowed_users_backup_20260902` en `…_20260923` opruimen na
   bevestiging.
+
+---
+
+## 2026-09-25 → 09-26 — HapjesHeld 2.0: time-outs, testset, strikte bot, Sonnet 5, en de site naar Dublin
+
+Begon met een foutmelding in de mobiele app ("Server gaf status 505"), en werd
+een ronde verbeteringen aan HapjesHeld plus de grootste snelheidswinst tot nu toe.
+
+### Time-outs van de chatbot (25-09)
+
+- De "505" was vrijwel zeker een **504 van Vercel**: de functie liep over de
+  30 s (Sonnet-antwoord + titel + geheugen na elkaar). Het antwoord stond wél in
+  `messages`, maar de app kreeg een kale fout. Herkenbaar aan een antwoord zonder
+  bijhorende `usage_log`-rij: 13-09, 15-09 en 24-09.
+- `api/chat.mjs` krijgt **`maxDuration: 60`** (`df823e7`, live).
+- Daarom stond "AI-gebruik deze maand" op 0%: de vraag van 24-09 was nooit gelogd.
+  Daarnaast rondt de balk af op hele procenten; één vraag ≈ 0,5% van €2,50.
+- Elise Van Dyck kon "niet inloggen": haar toegang staat goed (tot 10-10), ze zat
+  tussen ~12-09 en 23-09 buitengesloten door de dryrun-storing. Geen actie nodig.
+
+### HapjesHeld verbeterd (26-09) — alles live op `main`
+
+- **👍/👎 per antwoord** met optionele reden, vervangt "Dit helpt mij" uit
+  localStorage. Tabel `chat_feedback` (op productie gezet via de MCP), endpoint
+  `/api/chat-feedback`, tab **Feedback** in het admin-dashboard. Werkt, getest.
+- **Testset** `scripts/eval/`: 40 echte eerste vragen (zonder kindernamen), per
+  categorie; Sonnet 4.6 beoordeelt bronnen, trouw, antwoord, toon, doorverwijzing.
+  Kost ±€1,10 per run.
+- **Strikte instructies:** alleen Anneleens kennisbank, geen eigen kook-, bewaar-
+  of vervangtips, geen aangepaste recepten; doorverwijzen naar een arts enkel bij
+  gezondheidsvragen.
+- **Alle vragen via Sonnet 5, zonder nadenken** (Haiku vulde bij korte vragen zelf
+  aan). `MAX_OUTPUT_TOKENS` 600 → 1200 (dagplannen werden afgekapt).
+- **Foto-scan via Sonnet 5** i.p.v. Haiku, en als "kan fout zijn" aangeboden:
+  Haiku zag "brood, rijst" in een koelkast waar dat niet in stond, wat zowel de
+  zoekstap als het antwoord stuurde.
+- Bugfix: popup "updateConversationHelpHeader is not defined" bij een nieuw gesprek.
+
+| Run | Totaal | Trouw | Bronnen |
+|---|---|---|---|
+| Basis (oude bot) | 4,06 | 3,88 | 3,55 |
+| Strikte instructies | 4,26 | 4,33 | 3,63 |
+| + altijd Sonnet 4.6 | 4,32 | 4,53 | 3,65 |
+| + Sonnet 5 zonder nadenken (live) | 4,31–4,38 | 4,58–4,67 | 3,60–3,70 |
+
+### De site was traag: functies stonden in Washington (26-09)
+
+- Vercel-functies draaiden in **`iad1` (Washington)**, Supabase staat in
+  **`eu-west-1` (Dublin)**. Per databasecall mediaan 119 ms vanuit Virginia tegen
+  47 ms vanuit Brussel; een chatvraag deed ~12 calls (2,4 s) vóór het AI-model.
+- `"regions": ["dub1"]` in `vercel.json` (`d1900e7`, live, geverifieerd via
+  `x-vercel-id: cdg1::dub1`). Voelbaar sneller op de hele site.
+
+### Beslissingen
+
+- **HapjesHeld is strikt:** geen algemene kennis van het internet tussen Anneleens
+  info, ook geen onschuldige kooktips. Staat het niet in de kennisbank, dan zegt
+  de bot dat.
+- **Sonnet 5 zonder nadenken** voor chat én foto-scan. Nadenken (`effort: low`)
+  scoorde slechter op toon en doorverwijzing. Haiku blijft voor titels en geheugen.
+- **Beoordelaar van de testset blijft vast op Sonnet 4.6**, zodat runs vergelijkbaar
+  blijven. Verschillen < ±0,3 op het totaal zijn toeval.
+- Feedback eerst op de website; de mobiele app later.
+
+### Volgende stappen
+
+1. **Zoekstap verbeteren** (de zwakste score, bronnen ±3,6): vervolgvragen eerst
+   herschrijven tot een volledige zoekvraag, en/of een reranker (Voyage). Telkens
+   meten met de testset.
+2. **Over een paar dagen nakijken:** komt elk antwoord in `messages` ook in
+   `usage_log` (time-outs weg)? En wat zegt `chat_feedback`?
+3. 👍/👎 in de mobiele app (repo `Prilleven_MOBILE_APP`, endpoint bestaat al).
+
+### Open vragen / blockers
+
+- Quota-balk "< 1%" tonen i.p.v. 0% bij klein verbruik: voorgesteld, niet beslist.
+- Foto-scan blijft niet foutloos (Sonnet 5 zag zoete aardappel aan voor pasta);
+  de kosten van de scan tellen niet mee in het maandbudget per gebruiker.
+- De kennisbank (`documents`) is sinds 11-05 niet bijgewerkt; nieuwe recepten en
+  de leerbibliotheek zitten er niet in.
+- Branch `hapjesheld-feedback-eval` is gemerged en mag weg.
+- De open punten van 20–23 sep (eerste betaling na 23-09 controleren, Sanne,
+  CRM-webhook van Joemen, backup-tabellen) zijn deze sessie niet aangeraakt.
+
+---
+
+## 2026-09-26 (vervolg) — HapjesHeld: zoekstap, 20 recepten in de kennisbank, allergeencontext
+
+Verder op "zoekstap verbeteren". De analyse van de testset toonde dat ongeveer de
+helft van de zwakke bronnen-scores géén zoekprobleem is: het onderwerp staat
+gewoon niet in de kennisbank. Alles hieronder staat live op `main`.
+
+### Zoekstap (A + B)
+
+- **Zacht leeftijdsfilter** (`9cb26fa`): 74 van de 294 fragmenten liepen maar tot
+  24 maanden en vielen weg bij oudere peuters (bv. vitamine D bij 28 maanden).
+  Fragmenten voor jongere kinderen doen nu mee met een aftrek van 0,02 + 0,005 per
+  maand verschil; fragmenten voor oudere kinderen blijven hard gefilterd.
+- **Reranker Voyage `rerank-2.5`** (`58900e5`): de vectorzoek haalt 30 kandidaten,
+  de reranker zet de beste 10 bovenaan. Bij een fout of na 3 s blijft de
+  vectorvolgorde staan. Ongeveer +250 ms per vraag, kost verwaarloosbaar.
+- Branch `hapjesheld-zoekstap` fast-forward gemerged naar `main`.
+
+| Run | Bronnen | Totaal |
+|---|---|---|
+| Vorige productie | 3,60 | 4,31 |
+| + zacht leeftijdsfilter | 3,67 | 4,38 |
+| + reranker (live) | 3,88 | 4,36 |
+
+### Kennisbank: 20 weekschema-recepten toegevoegd
+
+- Nieuw script `scripts/recepten-naar-kennisbank.mjs` (`62b2209`): zet recepten uit
+  `recipes` die nog nergens in `documents` staan om naar fragmenten
+  (`wks-<recipe id>`, bron "Weekschema Pril Leven"). Eerst zonder, dan met `--schrijf`.
+- 20 recepten weggeschreven (Berenhap, Fisch&chips en Blondies stonden er al onder
+  een andere naam). Ongedaan maken: `delete from documents where id like 'wks-%'`.
+
+### Allergeencontext van de bot
+
+- Een bekende allergie stond ook bij "reeds geïntroduceerd" (`b89fb3b`). Nu enkel
+  "allergie voor …", ook die uit `allergen_state.known_allergies`. Raakt 11 kinderen.
+- "Nog niet geïntroduceerde allergenen" enkel van 4 tot 36 maanden (`1f619bc`). Een
+  kind van 6 jaar kreeg anders alle 9 als introductietip. Raakt 10 van 44 kinderen.
+
+### Beslissingen
+
+- **Leeftijd niet in de tekst van receptfragmenten.** Geen enkel recept heeft een
+  leeftijd die Anneleen zelf invulde; de fallback per eetmoment (bv. rijst met
+  sojasaus "vanaf 6 maanden") mag de bot niet als feit brengen. Enkel als filter.
+- **Allergeencontext wijkt bewust af van de website** (`computeIntroducedKeys()`
+  telt een allergie wél als afgerond). Alleen de bot is aangepast.
+- **Grens voor "nog niet geïntroduceerd" = 36 maanden**, gelijk aan de bovengrens
+  van de receptfragmenten. Aanpasbaar via `NOT_INTRODUCED_MAX_AGE`.
+- Symptoomlogboek en dosisvoortgang gaan **niet** mee naar de bot: gezondheidsdata
+  naar Anthropic, eerst de privacyverklaring nakijken.
+
+### Volgende stappen
+
+1. **Lijst met ontbrekende onderwerpen naar Anneleen**: gerookte zalm, rozijnen,
+   mosselen, kefir, rauwe wortel, rauwe melk, zout, flesvoeding rond 1 jaar,
+   overschakelen naar volle melk, harde stoelgang, koemelkallergie/melkladder,
+   supplementen na 2 jaar, invriezen/bewaartijden, vervangers in recepten,
+   kortingscodes. Nog niet als document gedeeld.
+2. **Leerbibliotheek in de kennisbank**: Mealprep (nu 2 fragmenten), Winkellijsten
+   (deels), Kookboek (uitzoeken welke bron), video's "Boost de weerstand" en
+   "Kieskeurige eter" (transcript nodig). Pdf's staan in Supabase Storage.
+3. Testset betrouwbaarder maken (elk antwoord 2× laten beoordelen, ±€0,50 extra per run).
+
+### Open vragen / blockers
+
+- Kefir-achtige gevallen (woord staat letterlijk in een fragment maar valt buiten de
+  30 kandidaten) lost de reranker niet op → optie C (ook op trefwoorden zoeken, vraagt
+  een databasewijziging), niet gestart.
+- Receptdata met fouten voor Anneleen: Hulk omelet heeft een minimale bereiding,
+  tikfouten ("quina", "vermijd").
+- Kosten testsets vandaag: ±€10,90 (10 runs), waarvan €2,25 deze sessie.
+- Punten van de vorige sectie blijven open: `usage_log` vs `messages` en
+  `chat_feedback` nakijken vanaf ±29-09, 👍/👎 in de mobiele app.
+
+---
+
+## 2026-09-26 (avond) — HapjesHeld: streaming, vervolgvragen, receptlinks en nachtelijke receptsync
+
+Vijf verbeteringen, telkens via een feature-branch en de preview naar `main`.
+Alles staat live; de backend-wijzigingen gelden meteen ook voor de mobiele app
+(die gebruikt dezelfde `/api/chat`), de frontend-wijzigingen niet.
+
+### Afgerond
+
+- **Streaming** (`f8fd1e2`, `ac0b9fb`): met `stream: true` antwoordt `/api/chat`
+  als `text/event-stream` (`delta` → `done`/`error`). Zonder die vlag blijft alles
+  JSON, dus oude app-versies breken niet. Website toont de tekst live; tijdens het
+  schrijven kan je vrij naar boven scrollen (meescrollen enkel als je onderaan zit,
+  zoals bij Claude). Cache-buster 4.0.36.
+- **Foto-scan telt mee in dag- en maandbudget** (`031aefa`): ±0,3 cent per scan,
+  opgeteld bij de `usage_log`-rij van de vraag.
+- **Vervolgvragen** (`cffcdf3`): bij gespreksgeschiedenis maakt Haiku eerst een
+  zelfstandige zoekvraag ("en zonder courgette?" → "wafelrecept zonder courgette"),
+  enkel voor de retrieval. Testset uitgebreid met 10 echte vervolgvragen (#41–50).
+- **Receptlinks** (`8cc026e`): alle 82 recepten gekoppeld via
+  `documents.metadata.recipe_id` (60 boekfragmenten op titel, 22 eigen `wks-`fragmenten).
+  De bot zet "Bekijk het recept: [naam](…/#/recipe/<id>)" onder een voorgesteld recept;
+  `checkRecipeLinks()` haalt links weg die niet bij de bronnen passen.
+- **Nachtelijke receptsync** (`2892e3d`): Vercel Cron 02:00 UTC
+  (`api/cron/recepten-kennisbank.mjs`, logica in `_lib/recipe-knowledge.mjs`). Nieuw,
+  gewijzigd, verwijderd en hernoemd wordt bijgewerkt; enkel wat verandert wordt
+  ge-embed. `CRON_SECRET` staat op Vercel; handmatige run gaf 200, 0 wijzigingen.
+- **Receptdata:** Hulk omelet kreeg een volledige bereiding (erwten en geitenkaas
+  worden meegebakken, bevestigd door Ruben); "quina" → "quinoa", "vermijd" → "vermijdt".
+- **Eiermuffin en Tahini koekjes** stonden niet echt in de kennisbank: de gids en de
+  brooddoos hebben een ander recept met dezelfde naam. Nu eigen fragmenten.
+
+| Testset | Vóór | Na |
+|---|---|---|
+| Vervolgvragen (#41–50), bronnen | 3,40 | 4,60 (Haiku) / 4,20 (Sonnet 5) |
+| Vervolgvragen, totaal | 4,12 | 4,53 |
+| Volledig (50), totaal na receptlinks | 4,39 | 4,46 |
+| Volledig, trouw | 4,50 | 4,70 |
+
+### Beslissingen
+
+- **Herschrijfstap via Haiku, niet Sonnet 5:** zelfde winst op bronnen binnen de ruis,
+  0,75 s i.p.v. 1,45 s. De herschreven vraag komt nooit bij de ouder, dus Haiku's
+  neiging tot aanvullen weegt hier minder. Instelbaar via `REWRITE_MODEL`.
+- **Een recept telt pas als "in de kennisbank" als het echt gekoppeld is** (exacte
+  titel of `KOPPEL_HANDMATIG`), niet omdat de naam ergens in een tekst voorkomt.
+- **Sync 's nachts (optie a), niet meteen na opslaan:** vangt ook CSV-imports en
+  aanpassingen op zonder extra aanroepen in de frontend. Nieuw recept = volgende
+  ochtend bekend bij de bot.
+- **Beoordelaar van de testset** laat `Bron:`- en `Bekijk het recept:`-links nu toe
+  (rekende ze eerst af als markdown).
+- De bereidingstijd "2 à 3 minuten per kant" bij de Hulk omelet is van ons, niet van
+  Anneleen.
+
+### Volgende stappen
+
+1. **Mobiele app** (`Prilleven_MOBILE_APP`, nieuwe EAS-build + store-release):
+   streaming via `expo/fetch`, 👍/👎, en receptlinks
+   (`community-web.prilleven.be/#/recipe/<id>`) laten openen in het eigen
+   `RecipeDetail`-scherm i.p.v. de browser.
+2. **Nakijken vanaf ±29-09:** `usage_log` vs `messages` (time-outs weg?),
+   `chat_feedback`, en in de logs of de herschrijvingen (`[chat] retrieval` met
+   `original`) kloppen en of er receptlinks weggehaald worden
+   (`[chat] receptlink weggehaald`).
+3. Communitypost over de verbeteringen plaatsen (tekst staat in de chat van deze sessie).
+
+### Open vragen / blockers
+
+- Hulk omelet (bakwijze/tijd) door Anneleen laten bevestigen; samen met de lijst
+  ontbrekende onderwerpen (vorige sectie) nog niet naar haar gestuurd.
+- Titels en geheugen (Haiku) tellen nog niet mee in het budget; fractie van een cent,
+  niet beslist.
+- In de fallback-route (0 fragmenten) wordt de kost van de herschrijfstap niet gelogd.
+- Kosten testsets deze sessie: ±€4,90 (5 runs).
+- Oude branches mogen weg: `hapjesheld-feedback-eval`, `hapjesheld-zoekstap`,
+  `hapjesheld-streaming`, `hapjesheld-fotoscan-budget`, `hapjesheld-vervolgvragen`,
+  `hapjesheld-receptlinks`, `recepten-kennisbank-sync`.
