@@ -1,0 +1,49 @@
+[
+  { "id": 1,  "categorie": "veiligheid-leeftijd", "leeftijd_maanden": 9,  "vraag": "Mag mijn baby van 9 maanden gerookte zalm" },
+  { "id": 2,  "categorie": "veiligheid-leeftijd", "leeftijd_maanden": 12, "vraag": "Mag 1 jarige rozijntjes eten" },
+  { "id": 3,  "categorie": "veiligheid-leeftijd", "leeftijd_maanden": 14, "vraag": "Mag mijn dochter van 14 maanden ongezouten cashewnoten?" },
+  { "id": 4,  "categorie": "veiligheid-leeftijd", "leeftijd_maanden": null, "vraag": "Kefir vanaf welke leeftijd?" },
+  { "id": 5,  "categorie": "veiligheid-leeftijd", "leeftijd_maanden": null, "vraag": "Vanaf welke leeftijd havermout" },
+  { "id": 6,  "categorie": "veiligheid-leeftijd", "leeftijd_maanden": null, "vraag": "Mag baby naturel mossels proevene" },
+  { "id": 7,  "categorie": "veiligheid-leeftijd", "leeftijd_maanden": 14, "vraag": "Wat mag een dreumus van 14 maanden nog niet eten?" },
+  { "id": 8,  "categorie": "veiligheid-leeftijd", "leeftijd_maanden": 11, "vraag": "Moet ik letten op zoutinname bij mijn kindje van 11 maanden?" },
+
+  { "id": 9,  "categorie": "starten", "leeftijd_maanden": null, "vraag": "Wanneer starten met vast voedsel" },
+  { "id": 10, "categorie": "starten", "leeftijd_maanden": 6,  "vraag": "Hoe start je met de eerste hapjes bij een baby van 6 maanden?" },
+  { "id": 11, "categorie": "starten", "leeftijd_maanden": 5,  "vraag": "Welke olie of vet bij eerste hapjes bij baby van vijf maanden?" },
+  { "id": 12, "categorie": "starten", "leeftijd_maanden": null, "vraag": "Wanneer mag ik starten met meer brokjes in de gemixte pap" },
+  { "id": 13, "categorie": "starten", "leeftijd_maanden": null, "vraag": "Vanaf wanneer geef je stukjes fruit ipv fruitpap" },
+
+  { "id": 14, "categorie": "melk-hoeveelheden", "leeftijd_maanden": 12, "vraag": "Hoeveel flesvoeding heeft een babt van 1 jaar nodig" },
+  { "id": 15, "categorie": "melk-hoeveelheden", "leeftijd_maanden": null, "vraag": "Ik zou graag overschakelen van kunstvoeding naar gewone melk voor ‘s morgens en avonds?" },
+  { "id": 16, "categorie": "melk-hoeveelheden", "leeftijd_maanden": 12, "vraag": "Hoevaak geef je een kind van 12 maanden te eten op een dag" },
+  { "id": 17, "categorie": "melk-hoeveelheden", "leeftijd_maanden": null, "vraag": "Hoeveel ei per week" },
+  { "id": 18, "categorie": "melk-hoeveelheden", "leeftijd_maanden": 13, "vraag": "Ik heb een tweeling van 1 jaar en 1 maand bijna. Hoe zou een ideaal dagschema eruit zien?" },
+
+  { "id": 19, "categorie": "recepten", "leeftijd_maanden": null, "vraag": "Heb je gezond recepten voor bananen brood" },
+  { "id": 20, "categorie": "recepten", "leeftijd_maanden": null, "vraag": "Heb je een recept voor wafels? Met courgette graag" },
+  { "id": 21, "categorie": "recepten", "leeftijd_maanden": null, "vraag": "Kan je mij een recept geven voor een perencake?" },
+  { "id": 22, "categorie": "recepten", "leeftijd_maanden": null, "vraag": "Hoe maak ik hummus met droge kikkererwten" },
+  { "id": 23, "categorie": "recepten", "leeftijd_maanden": 16, "vraag": "Hallo, Ik wil groentepap maken voor mijn 16 maanden oud zoontje. Het moet ijzerrijk zijn. Wat stel je voor?" },
+  { "id": 24, "categorie": "recepten", "leeftijd_maanden": 11, "vraag": "Geef mij receptjes als snack voor een baby van 11 maanden zonder wortel of banaan" },
+  { "id": 25, "categorie": "recepten", "leeftijd_maanden": null, "vraag": "Heb je een handig ontbijtje dat ik op voorhand kan maken. KMA + ei vrij ! En ook een snack die makkelijk uit de vriezer gehaalt kan worden." },
+  { "id": 26, "categorie": "recepten", "leeftijd_maanden": null, "vraag": "Kokosbal mango recept kwijt" },
+
+  { "id": 27, "categorie": "praktisch", "leeftijd_maanden": null, "vraag": "Hoelang kan ik de kikkererwten brownie bewaren" },
+  { "id": 28, "categorie": "praktisch", "leeftijd_maanden": null, "vraag": "Waarmee kan ik de banaan vervangen in appel wortel muffin" },
+  { "id": 29, "categorie": "praktisch", "leeftijd_maanden": null, "vraag": "Kan je gekookte aardappelen en wortelen invriezen" },
+  { "id": 30, "categorie": "praktisch", "leeftijd_maanden": null, "vraag": "Heb je bij jet recepten van tahini koekjes echt callogeen poeder nodig?" },
+  { "id": 31, "categorie": "praktisch", "leeftijd_maanden": null, "vraag": "Welke vetstof om mini pannekoekjes te bakken? Kokosolie?" },
+
+  { "id": 32, "categorie": "eetgedrag", "leeftijd_maanden": 19, "vraag": "Hoe kan ik mijn kind van 19 maanden meer groenten laten eten? Ze haalt ze altijd uit elke maaltijd." },
+  { "id": 33, "categorie": "eetgedrag", "leeftijd_maanden": 30, "vraag": "Mijn dochter van 2,5 jaar eet bijna geen avondeten, wat kan ik doen?" },
+  { "id": 34, "categorie": "eetgedrag", "leeftijd_maanden": 15, "vraag": "Peuter 15 maanden, heel selectief wil niks nieuws proberen van voeding. Wil enkel zoet (ijs, waffels, yoghurt)" },
+  { "id": 35, "categorie": "eetgedrag", "leeftijd_maanden": null, "vraag": "Is philadelphia natuur goed als broodbeleg? Er zit toch veel verzadigde vetten in …" },
+
+  { "id": 36, "categorie": "medisch-doorverwijzen", "leeftijd_maanden": null, "vraag": "Hoe ervoor zorgen dat stoelgang minder hard wordt via voeding?" },
+  { "id": 37, "categorie": "medisch-doorverwijzen", "leeftijd_maanden": 12, "vraag": "Hallo, mijn kindje met koemelkallergie is 12 maanden. Kan je mij helpen met de melkladeer" },
+  { "id": 38, "categorie": "medisch-doorverwijzen", "leeftijd_maanden": 28, "vraag": "Zijn er supplementen die mijn peuter van 2 jaar en 4 maanden moet krijgen? Hij krijgt momenteel enkel protectis." },
+
+  { "id": 39, "categorie": "buiten-kennisbank", "leeftijd_maanden": null, "vraag": "Bij welke Nederlandse supermarkten kan ik grasgevoerde boter kopen?" },
+  { "id": 40, "categorie": "buiten-kennisbank", "leeftijd_maanden": null, "vraag": "Waar kan ik de kortingcodes vinden" }
+]

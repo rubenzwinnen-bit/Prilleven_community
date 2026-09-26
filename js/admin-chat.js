@@ -1,7 +1,7 @@
 // Admin dashboard — laadt stats uit /api/admin/* endpoints.
 // Toegang: vereist een ingelogde user met is_admin = true.
 
-import { sessionGet, sessionRefreshIfNeeded, sessionClear, fetchSubscriptionStatus } from './supabase.js?v=4.0.32';
+import { sessionGet, sessionRefreshIfNeeded, sessionClear, fetchSubscriptionStatus } from './supabase.js?v=4.0.33';
 
 const gate = document.getElementById('gate');
 const dashboard = document.getElementById('dashboard');
@@ -463,6 +463,66 @@ async function loadFallbacks() {
   }
 }
 
+// ---------- Feedback ----------
+async function loadFeedback() {
+  const el = document.getElementById('feedback-table');
+  try {
+    const data = await authedFetch('/api/admin?section=feedback&limit=100');
+    const rows = data.feedback || [];
+    const totals = data.totals || { up: 0, down: 0 };
+    document.getElementById('feedback-totals').textContent =
+      `Totaal: ${totals.up} 👍 · ${totals.down} 👎`;
+    if (rows.length === 0) {
+      el.innerHTML = '<div class="empty">Nog geen feedback ontvangen.</div>';
+      return;
+    }
+    el.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Tijd</th>
+            <th></th>
+            <th>Gebruiker</th>
+            <th>Vraag en antwoord</th>
+            <th>Acties</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((r, i) => `
+            <tr>
+              <td>${fmtDate(r.timestamp)}</td>
+              <td>${r.rating === 1 ? '👍' : '👎'}</td>
+              <td>${esc(r.email)}</td>
+              <td>
+                <div style="max-width:420px;">${esc(truncate(r.question, 160))}</div>
+                <div class="row-details">→ ${esc(truncate(r.answer, 160))}</div>
+                ${r.reden ? `<div class="row-details"><strong>Reden:</strong> ${esc(r.reden)}</div>` : ''}
+              </td>
+              <td>
+                <div class="action-links">
+                  <button class="btn-link" data-fbk-chunks="${i}">Zie chunks</button>
+                  ${r.email && !r.email.startsWith('(')
+                    ? `<button class="btn-link" data-fbk-conv="${esc(r.email)}">Zie gesprek</button>`
+                    : ''}
+                </div>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+    el.querySelectorAll('button[data-fbk-chunks]').forEach(btn => {
+      const idx = Number(btn.dataset.fbkChunks);
+      btn.addEventListener('click', () => openChunksModal(rows[idx]?.retrieved_ids || [], rows[idx]?.question || ''));
+    });
+    el.querySelectorAll('button[data-fbk-conv]').forEach(btn => {
+      btn.addEventListener('click', () => openConversationsModal(btn.dataset.fbkConv));
+    });
+  } catch (err) {
+    el.innerHTML = '<div class="error-box">Kon feedback niet laden: ' + esc(err.message) + '</div>';
+  }
+}
+
 // ---------- Subscription events ----------
 async function loadEvents() {
   const el = document.getElementById('events-table');
@@ -715,6 +775,7 @@ async function init() {
     loadUsers(),
     loadQueries(),
     loadFallbacks(),
+    loadFeedback(),
     loadEvents(),
   ]);
 }

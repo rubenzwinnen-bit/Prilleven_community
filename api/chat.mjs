@@ -42,7 +42,7 @@ import { getAccessStatus, accessDeniedMessage } from './_lib/subscription.mjs';
 // ---------- Config ----------
 const MAX_QUESTION_CHARS = 500;
 const MIN_QUESTION_CHARS = 3;
-const MAX_OUTPUT_TOKENS = 600;
+export const MAX_OUTPUT_TOKENS = 600;
 const HISTORY_LIMIT = 20;
 
 // Foto-upload: base64 in JSON body
@@ -50,7 +50,7 @@ const ACCEPTED_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gi
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024; // 3 MB raw — base64 blijft onder 4.5 MB request-limit
 
 // ---------- System prompt ----------
-const SYSTEM_PROMPT = `Je bent HapjesHeld, de AI-assistent van Pril Leven — een Belgisch/Nederlandstalig platform over kindervoeding (0-24 maanden en jonge kinderen).
+export const SYSTEM_PROMPT = `Je bent HapjesHeld, de AI-assistent van Pril Leven — een Belgisch/Nederlandstalig platform over kindervoeding (0-24 maanden en jonge kinderen).
 
 **Jouw rol:**
 - Beantwoord vragen over kindervoeding op basis van de meegegeven context uit Anneleens eigen kennisbank (gids, masterclass, recepten, roadmap).
@@ -98,7 +98,7 @@ function json(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
-function formatContext(chunks) {
+export function formatContext(chunks) {
   return chunks
     .map((c, i) => {
       const header = c.source_url

@@ -16,7 +16,7 @@
   <noscript>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
   </noscript>
-  <link rel="stylesheet" href="/styles.css?v=4.0.32" />
+  <link rel="stylesheet" href="/styles.css?v=4.0.33" />
 
   <style>
     html, body { height: 100%; }
@@ -116,17 +116,6 @@
       gap: .15rem;
     }
     .conv-info .conv-title { width: 100%; }
-    .conv-helped {
-      display: inline-flex;
-      align-items: center;
-      padding: .08rem .42rem;
-      border-radius: 999px;
-      background: rgba(79, 125, 108, .12);
-      color: var(--color-green-text);
-      font-size: .66rem;
-      font-weight: 600;
-      line-height: 1.4;
-    }
     .conv-title[contenteditable="true"] {
       background: var(--color-white);
       outline: 2px solid var(--color-green-text);
@@ -184,18 +173,6 @@
       margin-bottom: .5rem;
     }
     .chat-title-row h1 { margin-bottom: 0; }
-    .chat-helped-status {
-      display: inline-flex;
-      align-items: center;
-      padding: .2rem .55rem;
-      border: 1px solid rgba(79, 125, 108, .24);
-      border-radius: 999px;
-      background: rgba(79, 125, 108, .10);
-      color: var(--color-green-text);
-      font-size: .72rem;
-      font-weight: 600;
-    }
-    .chat-helped-status[hidden] { display: none; }
     .chat-wrap .intro {
       color: var(--color-dark-light);
       margin-bottom: 1rem;
@@ -299,49 +276,64 @@
     }
     .msg.bot a:hover { color: #004999; }
     .msg.bot a:visited { color: #0066cc; }
-    .chat-help-action {
+    .chat-feedback {
       display: flex;
       align-items: center;
       flex-wrap: wrap;
-      gap: .5rem;
+      gap: .4rem;
       margin-top: .7rem;
       padding-top: .6rem;
       border-top: 1px solid rgba(79, 125, 108, .18);
       white-space: normal;
     }
-    .chat-help-button {
-      padding: .38rem .72rem;
+    .chat-feedback-label {
+      color: var(--color-dark-light);
+      font-size: .78rem;
+      margin-right: .2rem;
+    }
+    .chat-feedback-btn {
+      padding: .25rem .55rem;
       border: 1px solid rgba(79, 125, 108, .34);
       border-radius: 999px;
       background: var(--color-white);
-      color: var(--color-green-text);
+      font-size: .9rem;
+      line-height: 1.2;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .chat-feedback-btn:hover { border-color: var(--color-green-text); }
+    .chat-feedback-btn.is-active {
+      border-color: var(--color-green-text);
+      background: rgba(79, 125, 108, .14);
+    }
+    .chat-feedback .chat-feedback-reason {
+      display: flex;
+      gap: .4rem;
+      width: 100%;
+      margin-top: .3rem;
+    }
+    .chat-feedback .chat-feedback-reason[hidden] { display: none; }
+    .chat-feedback-reason input {
+      flex: 1;
+      min-width: 0;
+      padding: .4rem .6rem;
+      border: 1px solid rgba(79, 125, 108, .34);
+      border-radius: var(--radius-md);
+      font-family: inherit;
+      font-size: .82rem;
+    }
+    .chat-feedback-reason button {
+      padding: .4rem .8rem;
+      border: 0;
+      border-radius: 999px;
+      background: var(--color-green-text);
+      color: var(--color-white);
       font-family: inherit;
       font-size: .78rem;
       font-weight: 600;
       cursor: pointer;
-      transition: var(--transition);
     }
-    .chat-help-button:hover {
-      border-color: var(--color-green-text);
-      background: rgba(79, 125, 108, .08);
-    }
-    .chat-help-button.is-helped {
-      border-color: var(--color-green-text);
-      background: var(--color-green-text);
-      color: var(--color-white);
-      cursor: default;
-    }
-    .chat-help-undo {
-      padding: .25rem 0;
-      border: 0;
-      background: transparent;
-      color: var(--color-dark-light);
-      font-family: inherit;
-      font-size: .75rem;
-      text-decoration: underline;
-      cursor: pointer;
-    }
-    .chat-help-undo[hidden] { display: none; }
+    .chat-feedback-reason button:hover { background: var(--color-green-dark); }
 
     form {
       display: flex;
@@ -806,7 +798,6 @@
       <div class="chat-wrap">
         <div class="chat-title-row">
           <h1>HapjesHeld 2.0</h1>
-          <span id="conversation-helped-status" class="chat-helped-status" hidden>Geholpen ✓</span>
         </div>
         <p class="intro">Stel je vraag over kindervoeding. De assistent gebruikt Anneleens eigen gids, masterclass, recepten en roadmap en onthoudt je eerdere gesprekken.</p>
 
@@ -868,10 +859,10 @@
     </div>
   </div>
 
-  <script src="/js/chat.js?v=4.0.32" type="module"></script>
+  <script src="/js/chat.js?v=4.0.33" type="module"></script>
   <script type="module">
-    import { mountHeaderAvatar, attachLogoutHandler } from '/js/headerAvatarStandalone.js?v=4.0.32';
-    import { mountHeaderBell } from '/js/headerBellStandalone.js?v=4.0.32';
+    import { mountHeaderAvatar, attachLogoutHandler } from '/js/headerAvatarStandalone.js?v=4.0.33';
+    import { mountHeaderBell } from '/js/headerBellStandalone.js?v=4.0.33';
     document.addEventListener('DOMContentLoaded', () => {
       mountHeaderBell(document.getElementById('header-bell-mount'));
       mountHeaderAvatar(document.getElementById('header-avatar-mount'));

@@ -9,6 +9,7 @@
 //   GET /api/admin?section=conversations&email=X    → alle conversaties+berichten per user
 //   GET /api/admin?section=chunks&ids=a,b,c          → document-details voor deze chunk-ids
 //   GET /api/admin?section=fallbacks&limit=50        → enkel fallback / onbeantwoorde vragen
+//   GET /api/admin?section=feedback&limit=100        → 👍/👎 op antwoorden (chat_feedback)
 
 import { requireAdmin, AuthError } from './_lib/auth.mjs';
 import { supabase } from './_lib/clients.mjs';
@@ -62,7 +63,11 @@ export default async function handler(req, res) {
       const limit = Math.min(200, parseInt(url.searchParams.get('limit') || '50', 10));
       return json(res, 200, await getFallbackQueries(limit));
     }
-    return json(res, 400, { error: 'Unknown section. Use: global, users, queries, events, conversations, chunks, fallbacks.' });
+    if (section === 'feedback') {
+      const limit = Math.min(300, parseInt(url.searchParams.get('limit') || '100', 10));
+      return json(res, 200, await getFeedback(limit));
+    }
+    return json(res, 400, { error: 'Unknown section. Use: global, users, queries, events, conversations, chunks, fallbacks, feedback.' });
   } catch (err) {
     console.error('[admin]', err);
     return json(res, 500, { error: err.message || 'Er ging iets mis.' });
@@ -456,6 +461,53 @@ async function getFallbackQueries(limit) {
     };
   });
   return { fallbacks: rows };
+}
+
+async function getFeedback(limit) {
+  const { data: rows, error } = await supabase
+    .from('chat_feedback')
+    .select('rating, reden, created_at, updated_at, user_id, messages!inner(id, conversation_id, content, model, retrieved_ids, created_at)')
+    .order('updated_at', { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+  if (!rows?.length) return { feedback: [], totals: { up: 0, down: 0 } };
+
+  const conversationIds = [...new Set(rows.map(r => r.messages.conversation_id))];
+  const { data: userMsgs } = await supabase
+    .from('messages').select('conversation_id, content, created_at')
+    .eq('role', 'user').in('conversation_id', conversationIds)
+    .order('created_at', { ascending: true });
+
+  const userMsgsByConv = new Map();
+  for (const u of (userMsgs || [])) {
+    if (!userMsgsByConv.has(u.conversation_id)) userMsgsByConv.set(u.conversation_id, []);
+    userMsgsByConv.get(u.conversation_id).push(u);
+  }
+
+  const authUsers = await listAllAuthUsers();
+  const idToEmail = new Map(authUsers.filter(u => u.email).map(u => [u.id, u.email]));
+
+  const [{ count: up }, { count: down }] = await Promise.all([
+    supabase.from('chat_feedback').select('*', { count: 'exact', head: true }).eq('rating', 1),
+    supabase.from('chat_feedback').select('*', { count: 'exact', head: true }).eq('rating', -1),
+  ]);
+
+  const feedback = rows.map(r => {
+    const m = r.messages;
+    const prevUser = [...(userMsgsByConv.get(m.conversation_id) || [])]
+      .reverse().find(u => u.created_at < m.created_at);
+    return {
+      timestamp: r.updated_at,
+      rating: r.rating,
+      reden: r.reden,
+      email: idToEmail.get(r.user_id) || '(verwijderd)',
+      question: prevUser?.content || '(geen vraag gevonden)',
+      answer: m.content || '',
+      model: m.model,
+      retrieved_ids: m.retrieved_ids || [],
+    };
+  });
+  return { feedback, totals: { up: up || 0, down: down || 0 } };
 }
 
 async function getSubscriptionEvents(limit, emailFilter) {

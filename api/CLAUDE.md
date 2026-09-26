@@ -124,6 +124,13 @@ Klanten kunnen **niet** zelf opzeggen in Plug&Pay: zelfbediening in het klantenp
 - Mail via de **Resend REST API met plain `fetch`** — geen dependency. Van `noreply@prilleven.be` naar `hallo@prilleven.be`, `reply_to` = de klant.
 - Afhandelen gebeurt met de hand: opzeggen in Plug&Pay, daarna de rij op `verwerkt` zetten.
 
+### `chat-feedback.mjs` — `/api/chat-feedback`
+👍/👎 per HapjesHeld-antwoord (sinds 2026-09-26, vervangt "Dit helpt mij" uit localStorage).
+- `GET ?conversation_id=` → `{ feedback: { [message_id]: { rating, reden } } }`. `POST { message_id, rating: 1|-1, reden? }` → upsert (reden alleen bij 👎, max 500). `DELETE ?message_id=` → ongedaan maken.
+- `user_id` uit het JWT; `POST` controleert dat het bericht een `assistant`-bericht in een eigen gesprek is. Geen abonnementscheck of rate-limit (geen LLM). CORS open, zodat de mobiele app hem later kan gebruiken.
+- Admin-overzicht: `/api/admin?section=feedback`.
+- **Testset:** `scripts/eval/hapjesheld-eval.mjs` stelt 40 echte vragen (`hapjesheld-vragen.json`) met dezelfde retrieval/prompt/modelkeuze en laat Sonnet scoren; draai hem vóór en na elke botwijziging. Daarvoor exporteert `chat.mjs` `SYSTEM_PROMPT`, `formatContext` en `MAX_OUTPUT_TOKENS`.
+
 ### `eerste-hapjes/state.mjs` — `/api/eerste-hapjes/state`
 - `GET ?child_id=<uuid>[&include=doses,symptoms]` — allergeen-state per kindje.
   Met `include` komen de doses en/of symptomen in hetzelfde antwoord mee
@@ -136,7 +143,7 @@ Klanten kunnen **niet** zelf opzeggen in Plug&Pay: zelfbediening in het klantenp
 - `PATCH` — body `{ child_id, ...partial }`, deep-merge op `allergen_state`.
 
 ### `admin.mjs` — GET `/api/admin?section=…`
-Admin dashboard. Vereist `requireAdmin`. Sections: `global`, `users`, `queries`, `events`, `conversations` (per email), `chunks` (per ids), `fallbacks`.
+Admin dashboard. Vereist `requireAdmin`. Sections: `global`, `users`, `queries`, `events`, `conversations` (per email), `chunks` (per ids), `fallbacks`, `feedback` (👍/👎 uit `chat_feedback` + vraag/antwoord + totalen).
 - **VALKUIL — `supabase.auth.admin.listUsers()` geeft standaard maar 50 gebruikers.** Met 141 accounts viel tweederde buiten beeld: hun usage kon niet aan een e-mail gekoppeld worden en belandde in de rij **"Onbekend / verwijderd (losgekoppeld)"**, alsof het opgezegde of verwijderde accounts waren. Dat leest als een lek in de abonnementscheck terwijl er niets aan de hand is. Gefixt op 2026-09-20 met `listAllAuthUsers()`, die pagineert; gebruik altijd die helper, nooit `listUsers()` rechtstreeks. De lus stopt pas bij een **lege** pagina — niet zodra een pagina kleiner is dan gevraagd, want de server mag `perPage` naar beneden bijstellen en dan breekt de lus na pagina 1 alsnog af.
 
 ### `aanraders.mjs` — `/aanraders*` (catch-all, **publiek, server-rendered HTML**)

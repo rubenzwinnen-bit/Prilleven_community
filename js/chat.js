@@ -1,7 +1,7 @@
 // Chat frontend met sidebar-gebaseerde conversatie-management.
 // Vereist een geldige Supabase sessie (gezet door de hoofdsite-login).
 
-import { sessionGet, sessionRefreshIfNeeded, sessionClear } from './supabase.js?v=4.0.32';
+import { sessionGet, sessionRefreshIfNeeded, sessionClear } from './supabase.js?v=4.0.33';
 
 // ---------- DOM refs ----------
 const form = document.getElementById('form');
@@ -15,7 +15,6 @@ const hamburger = document.getElementById('toggle-sidebar');
 const sidebar = document.getElementById('sidebar');
 const sidebarBackdrop = document.getElementById('sidebar-backdrop');
 const btnMemory = document.getElementById('btn-memory');
-const conversationHelpedStatus = document.getElementById('conversation-helped-status');
 
 // Memory-modal refs
 const memoryModal = document.getElementById('memory-modal');
@@ -26,9 +25,6 @@ const memClose = document.getElementById('mem-close');
 // ---------- State ----------
 let currentConversationId = null;
 let conversations = []; // {id, title, updated_at}
-let currentSessionEmail = null;
-
-const HELPED_STORAGE_PREFIX = 'prilleven_chat_helped_';
 
 // ---------- Utilities ----------
 function stripMarkdown(text) {
@@ -47,89 +43,104 @@ function relativeTime(iso) {
   return d.toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' });
 }
 
-function helpedStorageKey() {
-  return HELPED_STORAGE_PREFIX + String(currentSessionEmail || 'anoniem').trim().toLowerCase();
-}
-
-function readHelpedConversations() {
+// ---------- Feedback (👍/👎 per antwoord) ----------
+async function fetchFeedback(conversationId) {
   try {
-    const parsed = JSON.parse(localStorage.getItem(helpedStorageKey()) || '{}');
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    const res = await authedFetch('/api/chat-feedback?conversation_id=' + encodeURIComponent(conversationId));
+    if (!res.ok) return {};
+    const data = await res.json();
+    return data.feedback || {};
   } catch {
     return {};
   }
 }
 
-function isConversationHelped(id) {
-  if (!id) return false;
-  return Boolean(readHelpedConversations()[String(id)]?.helped_at);
+async function sendFeedback(messageId, rating, reden = null) {
+  const res = rating === 0
+    ? await authedFetch('/api/chat-feedback?message_id=' + encodeURIComponent(messageId), { method: 'DELETE' })
+    : await authedFetch('/api/chat-feedback', {
+        method: 'POST',
+        body: JSON.stringify({ message_id: messageId, rating, reden }),
+      });
+  if (!res.ok && res.status !== 204) throw new Error('Feedback opslaan mislukt.');
 }
 
-function setConversationHelped(id, helped) {
-  if (!id) return;
-  const saved = readHelpedConversations();
-  if (helped) saved[String(id)] = { helped_at: new Date().toISOString() };
-  else delete saved[String(id)];
-
-  try {
-    localStorage.setItem(helpedStorageKey(), JSON.stringify(saved));
-  } catch (err) {
-    console.warn('Kon chatstatus niet lokaal bewaren:', err);
-  }
-}
-
-function updateConversationHelpHeader() {
-  if (!conversationHelpedStatus) return;
-  conversationHelpedStatus.hidden = !isConversationHelped(currentConversationId);
-}
-
-function updateHelpActionRow(row) {
-  if (!row) return;
-  const helped = isConversationHelped(row.dataset.conversationId);
-  const button = row.querySelector('.chat-help-button');
-  const undo = row.querySelector('.chat-help-undo');
-  button.textContent = helped ? 'Geholpen ✓' : 'Dit helpt mij';
-  button.classList.toggle('is-helped', helped);
-  button.disabled = helped;
-  undo.hidden = !helped;
-}
-
-function syncConversationHelpUi() {
-  updateConversationHelpHeader();
-  updateHelpActionRow(log.querySelector('.chat-help-action'));
-  renderSidebar();
-  highlightActive();
-}
-
-function attachHelpAction(messageEl, conversationId) {
-  log.querySelectorAll('.chat-help-action').forEach(el => el.remove());
-  if (!messageEl || !conversationId) return;
+function attachFeedback(messageEl, messageId, initial = null) {
+  if (!messageEl || !messageId) return;
 
   const row = document.createElement('div');
-  row.className = 'chat-help-action';
-  row.dataset.conversationId = String(conversationId);
+  row.className = 'chat-feedback';
 
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = 'chat-help-button';
-  button.addEventListener('click', () => {
-    setConversationHelped(conversationId, true);
-    syncConversationHelpUi();
+  const label = document.createElement('span');
+  label.className = 'chat-feedback-label';
+
+  const up = document.createElement('button');
+  up.type = 'button';
+  up.className = 'chat-feedback-btn';
+  up.textContent = '👍';
+  up.setAttribute('aria-label', 'Nuttig antwoord');
+
+  const down = document.createElement('button');
+  down.type = 'button';
+  down.className = 'chat-feedback-btn';
+  down.textContent = '👎';
+  down.setAttribute('aria-label', 'Niet nuttig antwoord');
+
+  const reasonForm = document.createElement('form');
+  reasonForm.className = 'chat-feedback-reason';
+  reasonForm.hidden = true;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.maxLength = 500;
+  input.placeholder = 'Wat kon beter? (optioneel)';
+  const submit = document.createElement('button');
+  submit.type = 'submit';
+  submit.textContent = 'Verstuur';
+  reasonForm.append(input, submit);
+
+  let rating = initial?.rating || 0;
+
+  function render(message) {
+    up.classList.toggle('is-active', rating === 1);
+    down.classList.toggle('is-active', rating === -1);
+    label.textContent = message || (rating ? 'Bedankt voor je feedback!' : 'Was dit antwoord nuttig?');
+  }
+
+  async function choose(next) {
+    const previous = rating;
+    rating = rating === next ? 0 : next;
+    reasonForm.hidden = rating !== -1;
+    render();
+    try {
+      await sendFeedback(messageId, rating);
+      if (rating === -1) input.focus();
+    } catch {
+      rating = previous;
+      reasonForm.hidden = true;
+      render('Opslaan mislukt, probeer opnieuw.');
+    }
+  }
+
+  up.addEventListener('click', () => choose(1));
+  down.addEventListener('click', () => choose(-1));
+  reasonForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    submit.disabled = true;
+    try {
+      await sendFeedback(messageId, -1, input.value.trim() || null);
+      reasonForm.hidden = true;
+      render('Bedankt, dat helpt ons HapjesHeld te verbeteren.');
+    } catch {
+      render('Opslaan mislukt, probeer opnieuw.');
+    } finally {
+      submit.disabled = false;
+    }
   });
 
-  const undo = document.createElement('button');
-  undo.type = 'button';
-  undo.className = 'chat-help-undo';
-  undo.textContent = 'Ongedaan maken';
-  undo.addEventListener('click', () => {
-    setConversationHelped(conversationId, false);
-    syncConversationHelpUi();
-  });
-
-  row.appendChild(button);
-  row.appendChild(undo);
+  row.append(label, up, down, reasonForm);
   messageEl.appendChild(row);
-  updateHelpActionRow(row);
+  render();
 }
 
 // XSS-veilig: tekst als text-nodes, URLs als <a target="_blank">.
@@ -272,15 +283,13 @@ async function loadConversation(id) {
   if (!data.messages?.length) {
     showWelcome();
   } else {
-    let lastBotMessage = null;
+    const feedback = await fetchFeedback(currentConversationId);
     for (const m of data.messages) {
       const role = m.role === 'assistant' ? 'bot' : 'user';
       const messageEl = appendMsg(role, m.role === 'assistant' ? stripMarkdown(m.content) : m.content);
-      if (role === 'bot') lastBotMessage = messageEl;
+      if (role === 'bot') attachFeedback(messageEl, m.id, feedback[m.id]);
     }
-    attachHelpAction(lastBotMessage, currentConversationId);
   }
-  updateConversationHelpHeader();
   highlightActive();
 }
 
@@ -321,13 +330,6 @@ function renderSidebar() {
     titleEl.title = c.title || 'Nieuw gesprek';
     info.appendChild(titleEl);
 
-    if (isConversationHelped(c.id)) {
-      const helped = document.createElement('span');
-      helped.className = 'conv-helped';
-      helped.textContent = 'Geholpen';
-      info.appendChild(helped);
-    }
-
     const actions = document.createElement('div');
     actions.className = 'conv-actions';
 
@@ -349,7 +351,6 @@ function renderSidebar() {
       if (!confirm(`Gesprek "${c.title || 'Nieuw gesprek'}" verwijderen?`)) return;
       try {
         await deleteConversationCall(c.id);
-        setConversationHelped(c.id, false);
         if (c.id === currentConversationId) {
           currentConversationId = null;
           showWelcome();
@@ -737,8 +738,7 @@ form.addEventListener('submit', async (e) => {
       const wasNew = currentConversationId !== data.conversation_id;
       currentConversationId = data.conversation_id;
       const botMessage = appendMsg('bot', stripMarkdown(data.answer), meta);
-      attachHelpAction(botMessage, currentConversationId);
-      updateConversationHelpHeader();
+      attachFeedback(botMessage, data.assistant_message_id);
       if (data.usage) updateQuotaBar(data.usage);
 
       if (wasNew || conversations.length === 0) {
@@ -791,7 +791,6 @@ async function init() {
     window.location.href = '/';
     return;
   }
-  currentSessionEmail = session.email || null;
 
   try {
     // Parallel: profiel + conversaties laden

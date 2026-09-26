@@ -5,11 +5,11 @@
    toggle en (admin) "Nieuw item" knop met upload-modal.
 ============================================ */
 
-import * as Store from '../store.js?v=4.0.32';
-import * as Router from '../router.js?v=4.0.32';
-import { showToast, confirm } from '../utils.js?v=4.0.32';
-import { sessionGet, sessionRefreshIfNeeded, supabaseStorageUploadXhr, learningsThumbPublicUrl } from '../supabase.js?v=4.0.32';
-import { getLearningStatus } from '../learningProgress.js?v=4.0.32';
+import * as Store from '../store.js?v=4.0.33';
+import * as Router from '../router.js?v=4.0.33';
+import { showToast, confirm } from '../utils.js?v=4.0.33';
+import { sessionGet, sessionRefreshIfNeeded, supabaseStorageUploadXhr, learningsThumbPublicUrl } from '../supabase.js?v=4.0.33';
+import { getLearningStatus } from '../learningProgress.js?v=4.0.33';
 
 let cachedItems = [];
 let cachedFavIds = new Set();
