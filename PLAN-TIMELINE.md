@@ -1752,6 +1752,12 @@ Alles staat live; de backend-wijzigingen gelden meteen ook voor de mobiele app
   `_lib/follow-up-suggestions.mjs` is weg. Ook uit de mobiele app gehaald vóór die
   ooit uitkwam. Het herschrijven van vervolgvragen voor de zoekstap (`cffcdf3`) blijft.
   Cache-buster 4.0.39.
+- **Receptlink naar een recept dat niet in het antwoord stond.** Op de vraag naar vijf
+  ontbijtjes sloot de bot af met "Bekijk het recept: Banaan-yoghurt parfait", dat niet
+  bij de vijf hoorde. `checkRecipeLinks` controleerde enkel of id en naam bij een
+  opgehaald fragment passen. Nu moet het recept ook elders in het antwoord staan, tenzij
+  de regel erboven op een dubbelpunt eindigt. Nagekeken op de 44 links uit de twee
+  receptlink-runs: enkel #5 (zalmballetjes onder een havermoutantwoord) valt weg, terecht.
 
 ### Volgende stappen
 

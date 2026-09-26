@@ -117,18 +117,28 @@ const woorden = s => String(s || '').toLowerCase()
   .replace(/^(recept|dag \d+)[^:]*:\s*/i, '').replace(/\(.*?\)/g, '')
   .split(/[^\p{L}\p{N}]+/u).filter(w => w.length >= 3 && w !== 'met');
 
-// Receptlinks nakijken: het id moet bij een opgehaald fragment horen en de linknaam moet
-// op de titel van dat fragment lijken. Anders (verkeerd recept, verzonnen id) valt de regel weg.
+// Receptlinks nakijken. De regel valt weg als het id niet bij een opgehaald fragment hoort
+// of de linknaam niet op de titel van dat fragment lijkt (verkeerd recept, verzonnen id).
+// Ook als het recept nergens anders in het antwoord staat: dan plakte de bot een link
+// onderaan voor een recept dat hij niet voorstelde. Uitzondering: de regel erboven eindigt
+// op een dubbelpunt ("…een fijn recept om te proberen:") — dan is de link zelf het voorstel.
 export function checkRecipeLinks(answer, chunks) {
   const titles = new Map(chunks.filter(c => c.recipeId).map(c => [c.recipeId, c.title]));
   const re = /^.*\[([^\]\n]+)\]\((https:\/\/community-web\.prilleven\.be\/#\/recipe\/([^)\s]+))\).*$\n?/gm;
-  return answer.replace(re, (line, name, _url, id) => {
+  const lijktOp = (want, heeft) => want.length > 0 && want.filter(heeft).length / want.length >= 0.6;
+  // Meervoud en verkleinwoord tellen mee: "pompoenwafel" vermeldt "Pompoenwafels".
+  const rest = answer.replace(re, '').toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(w => w.length >= 3);
+  const inRest = w => rest.some(r => r === w || (Math.min(r.length, w.length) >= 4 && (r.startsWith(w) || w.startsWith(r))));
+  return answer.replace(re, (line, name, _url, id, offset) => {
     const title = titles.get(decodeURIComponent(id));
     const want = woorden(name);
     const have = new Set(woorden(title));
-    const ok = title && want.length > 0 && want.filter(w => have.has(w)).length / want.length >= 0.6;
+    const ok = title && lijktOp(want, w => have.has(w));
+    const aangekondigd = /:\s*$/.test(answer.slice(0, offset).trimEnd().split('\n').pop() || '');
+    const vermeld = ok && (aangekondigd || lijktOp(want, inRest));
     if (!ok) console.log('[chat] receptlink weggehaald', { name, id, title: title || null });
-    return ok ? line : '';
+    else if (!vermeld) console.log('[chat] receptlink weggehaald (recept niet in antwoord)', { name, id });
+    return vermeld ? line : '';
   }).replace(/\n{3,}/g, '\n\n').trim();
 }
 
