@@ -4,7 +4,7 @@
    Geeft altijd { ok, status, data, error } terug.
 ============================================ */
 
-import { sessionRefreshIfNeeded } from './supabase.js?v=4.0.33';
+import { sessionRefreshIfNeeded } from './supabase.js?v=4.0.34';
 
 async function call({ method = 'GET', body = null } = {}) {
   const session = await sessionRefreshIfNeeded();

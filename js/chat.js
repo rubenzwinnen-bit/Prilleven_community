@@ -1,7 +1,7 @@
 // Chat frontend met sidebar-gebaseerde conversatie-management.
 // Vereist een geldige Supabase sessie (gezet door de hoofdsite-login).
 
-import { sessionGet, sessionRefreshIfNeeded, sessionClear } from './supabase.js?v=4.0.33';
+import { sessionGet, sessionRefreshIfNeeded, sessionClear } from './supabase.js?v=4.0.34';
 
 // ---------- DOM refs ----------
 const form = document.getElementById('form');
@@ -208,7 +208,6 @@ function showWelcome() {
   • <em>Hoe introduceer ik pindakaas bij 8 maanden?</em><br />
   • <em>Wat als mijn kindje de lepel wegduwt?</em>`;
   log.appendChild(welcome);
-  updateConversationHelpHeader();
 }
 
 function closeMobileSidebar() {
