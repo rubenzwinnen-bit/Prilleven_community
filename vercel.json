@@ -15,6 +15,7 @@
     { "source": "/sitemap.xml", "destination": "/api/aanraders?sitemap=1" },
     { "source": "/((?!api/)(?!.*\\.).*)", "destination": "/index.html" }
   ],
+  "regions": ["dub1"],
   "functions": {
     "api/chat.mjs": { "maxDuration": 60 },
     "api/**/*.mjs": { "maxDuration": 30 }
