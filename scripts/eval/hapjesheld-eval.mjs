@@ -11,6 +11,7 @@
  *   node --env-file=.env.local scripts/eval/hapjesheld-eval.mjs --label reranker
  *   node --env-file=.env.local scripts/eval/hapjesheld-eval.mjs --alleen 1,5,26
  *   node --env-file=.env.local scripts/eval/hapjesheld-eval.mjs --vergelijk scripts/eval/resultaten/<vorige>.json
+ *   node --env-file=.env.local scripts/eval/hapjesheld-eval.mjs --model sonnet   (modelkeuze forceren: haiku|sonnet)
  *
  * Verschil met de echte bot: geen gebruikersprofiel, geen geheugen, geen
  * gespreksgeschiedenis en geen cache. Wel het leeftijdsfilter als de vraag
@@ -43,6 +44,8 @@ function arg(naam) {
 const label = arg('--label');
 const alleen = arg('--alleen')?.split(',').map(Number);
 const vergelijkMet = arg('--vergelijk');
+const forceerModel = arg('--model')?.toUpperCase();
+if (forceerModel && !MODELS[forceerModel]) throw new Error('--model moet haiku of sonnet zijn');
 
 // ---------- Eén vraag door de bot ----------
 async function stelVraag(item) {
@@ -58,7 +61,9 @@ async function stelVraag(item) {
     return { antwoord: '(fallback: niets gevonden)', model: 'fallback', reden: 'geen-chunks', topScore, chunks, kostCent: 0, ms: Date.now() - start };
   }
 
-  const { model, reason } = pickModel({ hasImage: false, question: item.vraag, topScore });
+  const { model, reason } = forceerModel
+    ? { model: MODELS[forceerModel], reason: 'geforceerd' }
+    : pickModel({ hasImage: false, question: item.vraag, topScore });
   const context = formatContext(chunks);
   const res = await anthropic.messages.create({
     model: model.id,
