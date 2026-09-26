@@ -130,6 +130,7 @@ Klanten kunnen **niet** zelf opzeggen in Plug&Pay: zelfbediening in het klantenp
 - `GET ?conversation_id=` → `{ feedback: { [message_id]: { rating, reden } } }`. `POST { message_id, rating: 1|-1, reden? }` → upsert (reden alleen bij 👎, max 500). `DELETE ?message_id=` → ongedaan maken.
 - `user_id` uit het JWT; `POST` controleert dat het bericht een `assistant`-bericht in een eigen gesprek is. Geen abonnementscheck of rate-limit (geen LLM). CORS open, zodat de mobiele app hem later kan gebruiken.
 - Admin-overzicht: `/api/admin?section=feedback`.
+- **Recepten in de kennisbank:** `scripts/recepten-naar-kennisbank.mjs` zet weekschema-recepten die nog nergens in `documents` staan als fragment `wks-<recipe id>` (bron "Weekschema Pril Leven"). Draai het na nieuwe recepten (eerst zonder, dan met `--schrijf`). De leeftijd komt uit het eetmoment en staat bewust niet in de tekst, enkel in `age_min_months`.
 - **Testset:** `scripts/eval/hapjesheld-eval.mjs` stelt 40 echte vragen (`hapjesheld-vragen.json`) met dezelfde retrieval/prompt/modelkeuze en laat Sonnet scoren; draai hem vóór en na elke botwijziging. Daarvoor exporteert `chat.mjs` `SYSTEM_PROMPT`, `formatContext` en `MAX_OUTPUT_TOKENS`.
 
 ### `eerste-hapjes/state.mjs` — `/api/eerste-hapjes/state`
