@@ -1744,6 +1744,15 @@ Alles staat live; de backend-wijzigingen gelden meteen ook voor de mobiele app
 - De bereidingstijd "2 à 3 minuten per kant" bij de Hulk omelet is van ons, niet van
   Anneleen.
 
+### Nagekomen (zelfde avond)
+
+- **Voorgestelde vervolgvragen weer geschrapt.** De 2 à 3 vraagknopjes die Haiku na elk
+  antwoord maakte (`6a4fa04`) trokken inhoudelijk op niets. Verwijderd uit `api/chat.mjs`
+  (geen `suggestions`-event en geen Haiku-call meer), `js/chat.js` en `chat.html`;
+  `_lib/follow-up-suggestions.mjs` is weg. Ook uit de mobiele app gehaald vóór die
+  ooit uitkwam. Het herschrijven van vervolgvragen voor de zoekstap (`cffcdf3`) blijft.
+  Cache-buster 4.0.39.
+
 ### Volgende stappen
 
 1. **Mobiele app** (`Prilleven_MOBILE_APP`, nieuwe EAS-build + store-release):

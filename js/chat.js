@@ -1,7 +1,7 @@
 // Chat frontend met sidebar-gebaseerde conversatie-management.
 // Vereist een geldige Supabase sessie (gezet door de hoofdsite-login).
 
-import { sessionGet, sessionRefreshIfNeeded, sessionClear } from './supabase.js?v=4.0.38';
+import { sessionGet, sessionRefreshIfNeeded, sessionClear } from './supabase.js?v=4.0.39';
 
 // ---------- DOM refs ----------
 const form = document.getElementById('form');
@@ -234,9 +234,8 @@ function sseReader(res) {
 }
 
 // Leest de text/event-stream van /api/chat: elke `delta` verschijnt meteen in
-// een bot-bubbel. Geeft { bubble, data, nextEvent } terug met de payload van `done`,
-// of data = { error } bij een fout of een afgebroken verbinding. Met nextEvent
-// lees je daarna nog de vervolgvragen (`suggestions`).
+// een bot-bubbel. Geeft { bubble, data } terug met de payload van `done`, of
+// data = { error } bij een fout of een afgebroken verbinding.
 async function readChatStream(res, onFirstText) {
   const nextEvent = sseReader(res);
   let text = '';
@@ -256,55 +255,11 @@ async function readChatStream(res, onFirstText) {
       bubble.textContent = '';
       renderTextWithLinks(bubble, stripMarkdown(text));
       scrollIfFollowing();
-    } else if (event === 'done') {
-      return { bubble, data: payload, nextEvent };
-    } else if (event === 'error') {
+    } else if (event === 'done' || event === 'error') {
       return { bubble, data: payload };
     }
   }
   return { bubble, data: { error: 'Het antwoord werd onderbroken. Probeer het opnieuw.' } };
-}
-
-// Wacht na `done` op het `suggestions`-event (komt ±1 s later, of niet).
-async function readSuggestions(nextEvent) {
-  try {
-    let ev;
-    while ((ev = await nextEvent())) {
-      if (ev.event === 'suggestions') return ev.payload.suggestions || [];
-    }
-  } catch { /* verbinding weg: dan gewoon geen suggesties */ }
-  return [];
-}
-
-// ---------- Vervolgvragen ----------
-// Knopjes onder het laatste antwoord; een klik stuurt de vraag meteen door.
-// Bij een nieuwe vraag verdwijnen ze.
-let sendSeq = 0;
-
-function clearSuggestions() {
-  log.querySelectorAll('.chat-suggestions').forEach(el => el.remove());
-}
-
-function renderSuggestions(afterEl, suggestions) {
-  clearSuggestions();
-  if (!afterEl?.isConnected || !suggestions?.length || quotaReached) return;
-  const row = document.createElement('div');
-  row.className = 'chat-suggestions';
-  for (const text of suggestions) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'chat-suggestion';
-    btn.textContent = text;
-    btn.addEventListener('click', () => {
-      if (sendBtn.disabled) return;
-      input.value = text;
-      counter.textContent = input.value.length;
-      form.requestSubmit();
-    });
-    row.appendChild(btn);
-  }
-  afterEl.after(row);
-  scrollIfFollowing();
 }
 
 function clearLog() {
@@ -813,8 +768,6 @@ form.addEventListener('submit', async (e) => {
   }
 
   // Toon user-bericht (met foto-thumb als aanwezig)
-  const seq = ++sendSeq;
-  clearSuggestions();
   followBottom = true;
   const userMsgDiv = appendMsg('user', question || '(Foto bijgevoegd)');
   if (hasImg) {
@@ -845,9 +798,8 @@ form.addEventListener('submit', async (e) => {
     const isStream = res.ok && (res.headers.get('content-type') || '').includes('text/event-stream');
     let data;
     let streamedBubble = null;
-    let nextEvent = null;
     if (isStream) {
-      ({ bubble: streamedBubble, data, nextEvent } = await readChatStream(res, () => {
+      ({ bubble: streamedBubble, data } = await readChatStream(res, () => {
         sendBtn.textContent = 'Aan het schrijven…';
       }));
     } else {
@@ -880,12 +832,6 @@ form.addEventListener('submit', async (e) => {
       }
       attachFeedback(botMessage, data.assistant_message_id);
       if (streamedBubble) scrollIfFollowing();
-      // Vervolgvragen: bij streaming komen ze na `done`, in JSON zitten ze er al in.
-      // Enkel tonen als er intussen geen nieuwe vraag vertrokken is.
-      const suggestionsReady = nextEvent ? readSuggestions(nextEvent) : Promise.resolve(data.suggestions || []);
-      suggestionsReady.then(list => {
-        if (seq === sendSeq) renderSuggestions(botMessage, list);
-      });
       if (data.usage) updateQuotaBar(data.usage);
 
       if (wasNew || conversations.length === 0) {

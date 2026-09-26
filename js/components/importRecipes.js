@@ -19,10 +19,10 @@
      naar Supabase Storage in plaats van base64
 ============================================ */
 
-import * as Store from '../store.js?v=4.0.38';
-import * as Router from '../router.js?v=4.0.38';
-import { supabaseStorageUpload } from '../supabase.js?v=4.0.38';
-import { showToast, escapeHtml, normalizeAllergen, normalizeMealMoment } from '../utils.js?v=4.0.38';
+import * as Store from '../store.js?v=4.0.39';
+import * as Router from '../router.js?v=4.0.39';
+import { supabaseStorageUpload } from '../supabase.js?v=4.0.39';
+import { showToast, escapeHtml, normalizeAllergen, normalizeMealMoment } from '../utils.js?v=4.0.39';
 
 /* ----------------------------------------
    RENDER (skeleton)
