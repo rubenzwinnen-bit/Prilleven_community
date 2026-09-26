@@ -2,6 +2,7 @@
 -- 2026-09-26 — Feedback (👍/👎) per antwoord van HapjesHeld.
 -- Run in: Supabase Dashboard → SQL Editor → New query
 -- Safe to run twice: uses IF NOT EXISTS / DROP POLICY IF EXISTS.
+-- UITGEVOERD OP PRODUCTIE OP 2026-09-26 (via de Supabase MCP).
 -- ============================================================
 
 -- Vervangt de knop "Dit helpt mij", die enkel in localStorage stond en dus
