@@ -37,9 +37,10 @@ export async function loadUserProfile(userId) {
   if (communityRow.error) throw new Error('Profile (community): ' + communityRow.error.message);
   if (childrenRows.error) throw new Error('Profile (children): ' + childrenRows.error.message);
 
-  // Allergeen-context per kind, parity met website computeIntroducedKeys():
-  //   geïntroduceerd = union(doses, pre_introduced, known_allergies)
-  //   nog niet       = de 9 hoofdallergenen MIN geïntroduceerd MIN overgeslagen (arts-toezicht)
+  // Allergeen-context per kind (wijkt bewust af van website computeIntroducedKeys()):
+  //   allergie       = union(children.known_allergies, allergen_state.known_allergies)
+  //   geïntroduceerd = union(doses, pre_introduced) MIN allergie
+  //   nog niet       = de 9 hoofdallergenen MIN geïntroduceerd MIN overgeslagen (arts-toezicht) MIN allergie
   // Bronnen: eerste_hapjes_allergen_doses (doses) + eerste_hapjes_state.allergen_state.
   let introMap = {};   // child_id → Set van keys met ≥1 dose
   let stateMap = {};   // child_id → allergen_state-object
@@ -75,28 +76,32 @@ export async function loadUserProfile(userId) {
     children: children.map(c => {
       const astate = stateMap[c.id] || {};
       const childKnown = Array.isArray(c.known_allergies) ? c.known_allergies : [];
-      // Union van alle "reeds geïntroduceerd/bekend"-bronnen.
+      // Bekende allergieën staan apart ("allergie voor …"). De website telt ze mee als
+      // afgerond in de flow, maar voor de bot las "reeds geïntroduceerd: pinda" naast
+      // "allergie voor pinda" als tegenspraak. Ze horen in geen van beide lijsten.
+      const allergySet = new Set([
+        ...childKnown,
+        ...(Array.isArray(astate.known_allergies) ? astate.known_allergies : []),
+      ]);
       const introducedSet = new Set([
         ...(introMap[c.id] || []),
         ...(Array.isArray(astate.pre_introduced) ? astate.pre_introduced : []),
-        ...(Array.isArray(astate.known_allergies) ? astate.known_allergies : []),
-        ...childKnown,
       ]);
       const excludedSet = new Set(
         Array.isArray(astate.excluded_keys) ? astate.excluded_keys : []
       );
-      const introduced = ALLERGEN_KEYS_LIST.filter(k => introducedSet.has(k));
+      const introduced = ALLERGEN_KEYS_LIST.filter(k => introducedSet.has(k) && !allergySet.has(k));
       // "Nog niet geïntroduceerd" is enkel relevant zodra het kind aan vaste voeding
       // kan beginnen (~4 maanden). Daaronder of zonder geboortedatum: leeg laten,
       // anders zou de bot bij een pasgeborene 9 allergenen gaan opsommen.
       const age = ageMonths(c.birthdate);
       const notIntroduced = (age !== null && age >= 4)
-        ? ALLERGEN_KEYS_LIST.filter(k => !introducedSet.has(k) && !excludedSet.has(k))
+        ? ALLERGEN_KEYS_LIST.filter(k => !introducedSet.has(k) && !excludedSet.has(k) && !allergySet.has(k))
         : [];
       return {
         name: c.name,
         birthdate: c.birthdate,
-        allergies: childKnown,
+        allergies: [...allergySet],
         previous_reactions: c.previous_reactions || null,
         notes: c.notes || null,
         introduced_allergens: introduced,
