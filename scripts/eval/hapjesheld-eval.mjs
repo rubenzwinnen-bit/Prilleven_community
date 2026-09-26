@@ -11,7 +11,9 @@
  *   node --env-file=.env.local scripts/eval/hapjesheld-eval.mjs --label reranker
  *   node --env-file=.env.local scripts/eval/hapjesheld-eval.mjs --alleen 1,5,26
  *   node --env-file=.env.local scripts/eval/hapjesheld-eval.mjs --vergelijk scripts/eval/resultaten/<vorige>.json
- *   node --env-file=.env.local scripts/eval/hapjesheld-eval.mjs --model sonnet   (modelkeuze forceren: haiku|sonnet)
+ *   node --env-file=.env.local scripts/eval/hapjesheld-eval.mjs --model sonnet   (modelkeuze forceren: haiku|sonnet|sonnet5)
+ *   node --env-file=.env.local scripts/eval/hapjesheld-eval.mjs --model sonnet5 --denken laag --max-tokens 2000
+ *     (--denken uit|laag|medium|hoog: enkel voor sonnet5, dat standaard adaptief nadenkt)
  *
  * Verschil met de echte bot: geen gebruikersprofiel, geen geheugen, geen
  * gespreksgeschiedenis en geen cache. Wel het leeftijdsfilter als de vraag
@@ -44,8 +46,23 @@ function arg(naam) {
 const label = arg('--label');
 const alleen = arg('--alleen')?.split(',').map(Number);
 const vergelijkMet = arg('--vergelijk');
+// Kandidaat-modellen die (nog) niet in model-router.mjs staan. Prijzen in eurocent
+// per token, zelfde omrekening als MODELS (× 0.92).
+const EXTRA_MODELS = {
+  SONNET5: { id: 'claude-sonnet-5', costInCents: 0.0002 * 0.92, costOutCents: 0.001 * 0.92 },
+};
+const ALLE_MODELS = { ...MODELS, ...EXTRA_MODELS };
 const forceerModel = arg('--model')?.toUpperCase();
-if (forceerModel && !MODELS[forceerModel]) throw new Error('--model moet haiku of sonnet zijn');
+if (forceerModel && !ALLE_MODELS[forceerModel]) throw new Error('--model moet haiku, sonnet of sonnet5 zijn');
+const denken = arg('--denken');
+const maxTokens = Number(arg('--max-tokens')) || MAX_OUTPUT_TOKENS;
+const DENKEN = {
+  uit: { thinking: { type: 'disabled' } },
+  laag: { thinking: { type: 'adaptive' }, output_config: { effort: 'low' } },
+  medium: { thinking: { type: 'adaptive' }, output_config: { effort: 'medium' } },
+  hoog: { thinking: { type: 'adaptive' }, output_config: { effort: 'high' } },
+};
+if (denken && !DENKEN[denken]) throw new Error('--denken moet uit, laag, medium of hoog zijn');
 
 // ---------- Eén vraag door de bot ----------
 async function stelVraag(item) {
@@ -62,12 +79,13 @@ async function stelVraag(item) {
   }
 
   const { model, reason } = forceerModel
-    ? { model: MODELS[forceerModel], reason: 'geforceerd' }
+    ? { model: ALLE_MODELS[forceerModel], reason: 'geforceerd' }
     : pickModel({ hasImage: false, question: item.vraag, topScore });
   const context = formatContext(chunks);
   const res = await anthropic.messages.create({
     model: model.id,
-    max_tokens: MAX_OUTPUT_TOKENS,
+    max_tokens: maxTokens,
+    ...(denken ? DENKEN[denken] : {}),
     system: SYSTEM_PROMPT,
     messages: [{
       role: 'user',
@@ -77,7 +95,7 @@ async function stelVraag(item) {
   const antwoord = res.content.filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
   const kostCent = res.usage.input_tokens * model.costInCents + res.usage.output_tokens * model.costOutCents;
 
-  return { antwoord, model: model.id, reden: reason, topScore, chunks, kostCent, ms: Date.now() - start };
+  return { antwoord, model: model.id, reden: reason, topScore, chunks, kostCent, ms: Date.now() - start, afgekapt: res.stop_reason === 'max_tokens' };
 }
 
 // ---------- Beoordeling ----------
@@ -143,6 +161,9 @@ function maakRapport(run, vorige) {
   const regels = [];
   regels.push(`# HapjesHeld-test ${run.gestart}${run.label ? ` — ${run.label}` : ''}`, '');
   regels.push(`${r.length} vragen · kost €${(run.kostCent / 100).toFixed(2)} · ${Math.round(run.duurMs / 1000)} s`, '');
+  const gemMs = gemiddelde(r.map(x => x.ms));
+  const gemKost = gemiddelde(r.map(x => x.antwoordKostCent));
+  regels.push(`Per antwoord: gemiddeld ${gemMs ? (gemMs / 1000).toFixed(1) : '–'} s en ${gemKost ? gemKost.toFixed(2) : '–'} cent (zonder beoordeling) · afgekapt op max_tokens: ${r.filter(x => x.afgekapt).length}`, '');
 
   regels.push('## Gemiddelde per criterium', '', '| Criterium | Score |' + (vorige ? ' Vorige | Verschil |' : ''), '|---|---|' + (vorige ? '---|---|' : ''));
   for (const c of [...CRITERIA, 'totaal']) {
@@ -220,7 +241,9 @@ async function main() {
         bronnen: res.chunks.map(c => `${c.source} / ${c.title} @${c.similarity?.toFixed(3)}`),
         oordeel,
         kostCent: res.kostCent + (oordeel.kostCent || 0),
+        antwoordKostCent: res.kostCent,
         ms: res.ms,
+        afgekapt: res.afgekapt || false,
       };
     } catch (e) {
       console.error(`  #${item.id} FOUT: ${e.message}`);
