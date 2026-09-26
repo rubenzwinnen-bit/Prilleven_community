@@ -22,7 +22,7 @@ De **AI-chat** (HapjesHeld). Hot path, kostbaar. **Niet aanpassen zonder bevesti
 - Body: `{ question, conversation_id?, image_b64?, image_mime? }`
 - Vereist `Authorization: Bearer <supabase-jwt>`.
 - Flow: auth → subscription gate → rate-limit + cost cap (uur/dag/maand + image cap) → load profile → load/create conversation → cache check → retrieval (Voyage embed → `match_documents` RPC + `match_user_memory` RPC + age-fallback) → out-of-scope fallback → `pickModel()` (altijd Sonnet 5, `thinking` uit, sinds 2026-09-26) → Anthropic call met conversation history → store messages → cache antwoord (alleen tekst, géén foto-vragen) → log usage → memory-extract (Haiku → `chat_user_memory`).
-- Foto-flow (vision): Haiku extraheert eerst ingrediënten als zoekstring, dan Sonnet genereert het antwoord. Foto-bytes worden NOOIT in DB opgeslagen (`had_image=true` flag enkel).
+- Foto-flow (vision): Sonnet 5 (zonder nadenken) extraheert eerst ingrediënten als zoekstring, dan genereert Sonnet het antwoord; de scan wordt als "kan fout zijn" aangeboden en Sonnet moet zelf naar de foto kijken. Foto-bytes worden NOOIT in DB opgeslagen (`had_image=true` flag enkel).
 - System-prompt staat hardcoded in dit bestand — toon = warm, geruststellend, NL, geen markdown, alleen info uit retrieval-context.
 
 ### `community.mjs` — `/api/community/*` (catch-all)
@@ -275,7 +275,7 @@ Op Vercel ingesteld via project settings. Lokaal in `.env.local`. Crasht hard al
 - **Geen** wijzigingen aan `chat.mjs` system-prompt zonder bevestiging (toon is afgesteld + verkeerd kost geld).
 - **Geen** wijzigingen aan `webhooks/plugpay.mjs` zonder bevestiging.
 - **Geen** wijzigingen aan rate-limit constanten zonder afstemming (raken alle users tegelijk).
-- **Geen** Anthropic-modelnaam-changes zonder afstemming. Huidig: Sonnet `claude-sonnet-5` (chat) + Haiku `claude-haiku-4-5` / `claude-haiku-4-5-20251001` (titels, geheugen, foto-ingrediënten). Een modelwissel altijd eerst langs de testset (`scripts/eval/`) halen; de beoordelaar daar staat bewust vast op Sonnet 4.6.
+- **Geen** Anthropic-modelnaam-changes zonder afstemming. Huidig: Sonnet `claude-sonnet-5` (chat) + Haiku `claude-haiku-4-5` / `claude-haiku-4-5-20251001` (titels, geheugen). De foto-ingrediëntenscan loopt via Sonnet 5 zonder nadenken — Haiku verzon ingrediënten die zowel retrieval als antwoord stuurden. Een modelwissel altijd eerst langs de testset (`scripts/eval/`) halen; de beoordelaar daar staat bewust vast op Sonnet 4.6.
 
 ---
 

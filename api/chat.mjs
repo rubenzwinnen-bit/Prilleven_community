@@ -23,7 +23,7 @@ import {
   getMonthlyUsage, getDailyImageUsage, IMAGE_LIMIT_PER_DAY_USER,
 } from './_lib/rate-limit.mjs';
 import { getCached, setCached } from './_lib/cache.mjs';
-import { pickModel } from './_lib/model-router.mjs';
+import { pickModel, MODELS } from './_lib/model-router.mjs';
 import { requireAuth, AuthError } from './_lib/auth.mjs';
 import {
   getOrCreateConversation,
@@ -117,14 +117,17 @@ export function formatContext(chunks) {
     .join('\n\n---\n\n');
 }
 
-// Extract a comma-separated list of food items from a photo via Haiku vision.
+// Extract a comma-separated list of food items from a photo.
 // Used to enrich the RAG search query so recipe chunks can be matched even when
 // the user's text question is too vague (e.g. "wat kan ik hiermee maken?").
-async function extractIngredientsForRAG(imageBlock) {
+// Sinds 2026-09-26 met Sonnet i.p.v. Haiku: Haiku verzon ingrediënten (bv. "brood,
+// rijst" bij een koelkastfoto), wat zowel de retrieval als het antwoord stuurde.
+export async function extractIngredientsForRAG(imageBlock) {
   try {
     const r = await anthropic.messages.create({
-      model: 'claude-haiku-4-5',
+      model: MODELS.SONNET.id,
       max_tokens: 120,
+      thinking: CHAT_THINKING,
       system: 'Je bent een visuele ingrediënten-detector. Je antwoordt UITSLUITEND met een kommagescheiden lijst van zichtbare voedingsmiddelen in het Nederlands (bv. "banaan, appel, wortel, broccoli"). Geen zinnen, geen uitleg, geen hoeveelheden. Maximum 15 items. Als de foto geen voedsel toont: antwoord met het woord "geen".',
       messages: [{
         role: 'user',
