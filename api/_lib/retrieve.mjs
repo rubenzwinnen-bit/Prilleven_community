@@ -99,6 +99,26 @@ export async function rerankChunks(query, chunks, topK) {
 }
 
 /**
+ * Receptfragmenten krijgen `recipeId`: het recept in het weekschema (documents.metadata.recipe_id,
+ * gezet door scripts/recepten-naar-kennisbank.mjs), zodat de bot ernaar kan linken.
+ * match_documents geeft geen metadata terug, vandaar deze aparte lookup.
+ */
+async function attachRecipeIds(chunks) {
+  if (chunks.length === 0) return chunks;
+  const { data, error } = await supabase
+    .from('documents')
+    .select('id, recipe_id:metadata->>recipe_id')
+    .in('id', chunks.map(c => c.id))
+    .not('metadata->>recipe_id', 'is', null);
+  if (error) {
+    console.error('[retrieveCombined] recept-ids ophalen:', error.message);
+    return chunks;
+  }
+  const byId = new Map(data.map(d => [d.id, d.recipe_id]));
+  return chunks.map(c => (byId.has(c.id) ? { ...c, recipeId: byId.get(c.id) } : c));
+}
+
+/**
  * Voegt ongefilterde fragmenten die enkel door hun bovengrens wegvielen (age_max < filterAge)
  * terug toe, met een leeftijdsaftrek op hun rangschikking. `similarity` blijft de ruwe score.
  */
@@ -209,6 +229,7 @@ export async function retrieveCombined(question, {
   }
 
   docs = rerank ? await rerankChunks(question, docs, topKDocs) : docs.slice(0, topKDocs);
+  docs = await attachRecipeIds(docs);
 
   const topMemScore = memories[0]?.similarity ?? 0;
   const topScore = Math.max(topDocScore, topMemScore);

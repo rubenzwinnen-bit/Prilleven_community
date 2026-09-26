@@ -100,11 +100,38 @@ export const SYSTEM_PROMPT = `Je bent HapjesHeld, de AI-assistent van Pril Leven
 - Wanneer je in je antwoord informatie of een recept uit zo'n partner-bron gebruikt, sluit dan je antwoord af met ÉÉN regel onderaan, in EXACT dit formaat (markdown-link):
   Bron: [<naam van de bron>](<url>)
   Bijvoorbeeld: Bron: [Eten met handjes](https://etenmethandjes.nl/?utm_campaign=aa3faa&utm_source=shareable_link)
-- De markdown-link-syntax (vierkante haken + ronde haken) is hier de ENIGE uitzondering op de "geen markdown"-regel — die wordt door de frontend omgezet in een klikbare link.
+- De markdown-link-syntax (vierkante haken + ronde haken) is hier en bij de receptlink hieronder de ENIGE uitzondering op de "geen markdown"-regel — die wordt door de frontend omgezet in een klikbare link.
 - Vermeld de bron precies één keer per antwoord, ook al gebruik je meerdere recepten van dezelfde bron. Gebruik de exacte URL uit de header.
-- Heb je geen partner-bron gebruikt (alleen Anneleens eigen kennisbank), vermeld dan niks — geen bron-regel toevoegen.`;
+- Heb je geen partner-bron gebruikt (alleen Anneleens eigen kennisbank), vermeld dan niks — geen bron-regel toevoegen.
+
+**Link naar het recept in het weekschema:**
+- Sommige bron-blokken bevatten een "weekschema-link:" in de header. Dat recept staat ook in het weekschema van Pril Leven, waar de ouder het volledige recept kan openen.
+- Stel je zo'n recept voor als iets om te maken, zet dan direct onder dat recept een regel in EXACT dit formaat:
+  Bekijk het recept: [<naam van het recept>](<weekschema-link>)
+- De link hoort bij het bron-blok waar dat recept in staat: neem enkel de weekschema-link uit de header van datzelfde bron-blok, nooit die van een ander blok. Heeft dat bron-blok geen weekschema-link, zet dan geen link.
+- Gebruik de exacte link uit de header. Eén link per voorgesteld recept, hoogstens drie per antwoord.
+- Geen link bij recepten zonder weekschema-link, en geen link als je een recept enkel terloops vermeldt.`;
 
 // ---------- Helpers ----------
+const woorden = s => String(s || '').toLowerCase()
+  .replace(/^(recept|dag \d+)[^:]*:\s*/i, '').replace(/\(.*?\)/g, '')
+  .split(/[^\p{L}\p{N}]+/u).filter(w => w.length >= 3 && w !== 'met');
+
+// Receptlinks nakijken: het id moet bij een opgehaald fragment horen en de linknaam moet
+// op de titel van dat fragment lijken. Anders (verkeerd recept, verzonnen id) valt de regel weg.
+export function checkRecipeLinks(answer, chunks) {
+  const titles = new Map(chunks.filter(c => c.recipeId).map(c => [c.recipeId, c.title]));
+  const re = /^.*\[([^\]\n]+)\]\((https:\/\/community-web\.prilleven\.be\/#\/recipe\/([^)\s]+))\).*$\n?/gm;
+  return answer.replace(re, (line, name, _url, id) => {
+    const title = titles.get(decodeURIComponent(id));
+    const want = woorden(name);
+    const have = new Set(woorden(title));
+    const ok = title && want.length > 0 && want.filter(w => have.has(w)).length / want.length >= 0.6;
+    if (!ok) console.log('[chat] receptlink weggehaald', { name, id, title: title || null });
+    return ok ? line : '';
+  }).replace(/\n{3,}/g, '\n\n').trim();
+}
+
 function json(res, status, body) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
@@ -124,12 +151,17 @@ function sendEvent(res, event, data) {
   res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 }
 
+// Receptlinks in antwoorden. De app herkent dit patroon en opent haar eigen receptscherm.
+// Bij een domeinwijziging ook CANONICAL_ORIGIN in aanraders.mjs en robots.txt aanpassen.
+export const RECIPE_URL_PREFIX = 'https://community-web.prilleven.be/#/recipe/';
+
 export function formatContext(chunks) {
   return chunks
     .map((c, i) => {
-      const header = c.source_url
-        ? `[Bron ${i + 1} — ${c.source} / ${c.title} — url: ${c.source_url}]`
-        : `[Bron ${i + 1} — ${c.source} / ${c.title}]`;
+      const header = `[Bron ${i + 1} — ${c.source} / ${c.title}`
+        + (c.source_url ? ` — url: ${c.source_url}` : '')
+        + (c.recipeId ? ` — weekschema-link: ${RECIPE_URL_PREFIX}${encodeURIComponent(c.recipeId)}` : '')
+        + ']';
       return `${header}\n${c.content}`;
     })
     .join('\n\n---\n\n');
@@ -493,9 +525,9 @@ ${ingredientsBlock}Vraag van de gebruiker: ${questionForPrompt}`;
       response = await anthropic.messages.create(claudeParams);
     }
 
-    const answer = response.content
+    const answer = checkRecipeLinks(response.content
       .filter((b) => b.type === 'text')
-      .map((b) => b.text).join('\n').trim();
+      .map((b) => b.text).join('\n').trim(), chunks);
 
     const retrievedIds = chunks.map((c) => c.id);
     const tokensIn = response.usage?.input_tokens ?? 0;

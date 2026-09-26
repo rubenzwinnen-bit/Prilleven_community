@@ -32,7 +32,7 @@ import path from 'node:path';
 import { anthropic } from '../../api/_lib/clients.mjs';
 import { retrieveCombined } from '../../api/_lib/retrieve.mjs';
 import { pickModel, MODELS } from '../../api/_lib/model-router.mjs';
-import { SYSTEM_PROMPT, formatContext, MAX_OUTPUT_TOKENS, CHAT_THINKING } from '../../api/chat.mjs';
+import { SYSTEM_PROMPT, formatContext, checkRecipeLinks, MAX_OUTPUT_TOKENS, CHAT_THINKING } from '../../api/chat.mjs';
 import { rewriteFollowUpQuestion, REWRITE_MODEL } from '../../api/_lib/search-query.mjs';
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
@@ -105,7 +105,7 @@ async function beantwoord(vraag, { leeftijd, geschiedenis = [], zoekvraag = vraa
       },
     ],
   });
-  const antwoord = res.content.filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+  const antwoord = checkRecipeLinks(res.content.filter(b => b.type === 'text').map(b => b.text).join('\n').trim(), chunks);
   const kostCent = res.usage.input_tokens * model.costInCents + res.usage.output_tokens * model.costOutCents;
 
   return { antwoord, model: model.id, reden: reason, topScore, chunks, kostCent, afgekapt: res.stop_reason === 'max_tokens' };
@@ -147,7 +147,7 @@ Geef per criterium een score van 1 (slecht) tot 5 (uitstekend):
 - bronnen: bevatten de opgehaalde bronnen de informatie die nodig is om de vraag te beantwoorden?
 - trouw: staat alles in het antwoord ook echt in de bronnen? Elke verzonnen feit, hoeveelheid of term buiten de bronnen verlaagt de score sterk.
 - antwoord: beantwoordt het antwoord de vraag concreet en bruikbaar? Als de bronnen het antwoord niet bevatten, is eerlijk zeggen "dat vind ik niet in de kennisbank" het juiste antwoord (score 5).
-- toon: warm, geruststellend, niet alarmerend, kort en overzichtelijk, geen markdown.
+- toon: warm, geruststellend, niet alarmerend, kort en overzichtelijk, geen markdown. Uitzondering: een regel "Bron: [..](..)" en regels "Bekijk het recept: [..](..)" zijn toegestaan en gewenst.
 - doorverwijzing: verwijst het rustig door naar huisarts/kinderarts/diëtist waar dat nodig is? Gebruik null als doorverwijzen bij deze vraag niet nodig is.
 
 Antwoord ALLEEN met JSON, zonder uitleg eromheen:
