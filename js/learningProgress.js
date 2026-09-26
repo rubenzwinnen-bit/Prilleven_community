@@ -4,7 +4,7 @@
    'Bezig' blijft afgeleid van bestaande bookmarks.
 ============================================ */
 
-import * as Store from './store.js?v=4.0.36';
+import * as Store from './store.js?v=4.0.37';
 
 const STORAGE_PREFIX = 'prilleven_learning_progress_';
 

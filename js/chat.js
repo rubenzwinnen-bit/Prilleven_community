@@ -1,7 +1,7 @@
 // Chat frontend met sidebar-gebaseerde conversatie-management.
 // Vereist een geldige Supabase sessie (gezet door de hoofdsite-login).
 
-import { sessionGet, sessionRefreshIfNeeded, sessionClear } from './supabase.js?v=4.0.36';
+import { sessionGet, sessionRefreshIfNeeded, sessionClear } from './supabase.js?v=4.0.37';
 
 // ---------- DOM refs ----------
 const form = document.getElementById('form');
@@ -262,7 +262,9 @@ function showWelcome() {
   <br /><br />
   • <em>Wanneer mag mijn kindje starten met vast voedsel?</em><br />
   • <em>Hoe introduceer ik pindakaas bij 8 maanden?</em><br />
-  • <em>Wat als mijn kindje de lepel wegduwt?</em>`;
+  • <em>Wat als mijn kindje de lepel wegduwt?</em>
+  <br /><br />
+  📷 <strong>Tip:</strong> stuur een foto van je koelkast of voorraadkast, dan zoek ik recepten met wat je in huis hebt.`;
   log.appendChild(welcome);
 }
 
@@ -535,7 +537,7 @@ function updateQuotaBar(usage) {
     input.disabled = quotaReached;
     input.placeholder = quotaReached
       ? 'Maandlimiet bereikt — terug op de 1e van volgende maand'
-      : 'Typ je vraag... (max 500 tekens)';
+      : 'Typ je vraag of voeg een foto toe 📷';
   }
 }
 

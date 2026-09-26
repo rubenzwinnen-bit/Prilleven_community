@@ -16,7 +16,7 @@
   <noscript>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
   </noscript>
-  <link rel="stylesheet" href="/styles.css?v=4.0.36" />
+  <link rel="stylesheet" href="/styles.css?v=4.0.37" />
 
   <style>
     html, body { height: 100%; }
@@ -818,6 +818,8 @@
             • <em>Wanneer mag mijn kindje starten met vast voedsel?</em><br />
             • <em>Hoe introduceer ik pindakaas bij 8 maanden?</em><br />
             • <em>Wat als mijn kindje de lepel wegduwt?</em>
+            <br /><br />
+            📷 <strong>Tip:</strong> stuur een foto van je koelkast of voorraadkast, dan zoek ik recepten met wat je in huis hebt.
           </div>
         </div>
 
@@ -828,11 +830,11 @@
         </div>
 
         <form id="form">
-          <label for="file-input" class="btn-attach" title="Voeg foto toe">
-            📎
+          <label for="file-input" class="btn-attach" title="Foto toevoegen (bv. van je koelkast)" aria-label="Foto toevoegen">
+            📷
             <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp,image/gif" hidden />
           </label>
-          <textarea id="q" maxlength="500" placeholder="Typ je vraag... (max 500 tekens)"></textarea>
+          <textarea id="q" maxlength="500" placeholder="Typ je vraag of voeg een foto toe 📷"></textarea>
           <button id="send" type="submit" class="btn-send">Stuur</button>
         </form>
         <div class="counter"><span id="count">0</span>/500</div>
@@ -859,10 +861,10 @@
     </div>
   </div>
 
-  <script src="/js/chat.js?v=4.0.36" type="module"></script>
+  <script src="/js/chat.js?v=4.0.37" type="module"></script>
   <script type="module">
-    import { mountHeaderAvatar, attachLogoutHandler } from '/js/headerAvatarStandalone.js?v=4.0.36';
-    import { mountHeaderBell } from '/js/headerBellStandalone.js?v=4.0.36';
+    import { mountHeaderAvatar, attachLogoutHandler } from '/js/headerAvatarStandalone.js?v=4.0.37';
+    import { mountHeaderBell } from '/js/headerBellStandalone.js?v=4.0.37';
     document.addEventListener('DOMContentLoaded', () => {
       mountHeaderBell(document.getElementById('header-bell-mount'));
       mountHeaderAvatar(document.getElementById('header-avatar-mount'));
