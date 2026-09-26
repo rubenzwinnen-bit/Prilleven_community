@@ -139,10 +139,13 @@ export function formatContext(chunks) {
 // the user's text question is too vague (e.g. "wat kan ik hiermee maken?").
 // Sinds 2026-09-26 met Sonnet i.p.v. Haiku: Haiku verzon ingrediënten (bv. "brood,
 // rijst" bij een koelkastfoto), wat zowel de retrieval als het antwoord stuurde.
+// Geeft ook het verbruik terug, zodat de scan meetelt in het dag- en maandbudget.
 export async function extractIngredientsForRAG(imageBlock) {
+  const model = MODELS.SONNET;
+  const result = { ingredients: '', tokensIn: 0, tokensOut: 0, costCents: 0 };
   try {
     const r = await anthropic.messages.create({
-      model: MODELS.SONNET.id,
+      model: model.id,
       max_tokens: 120,
       thinking: CHAT_THINKING,
       system: 'Je bent een visuele ingrediënten-detector. Je antwoordt UITSLUITEND met een kommagescheiden lijst van zichtbare voedingsmiddelen in het Nederlands (bv. "banaan, appel, wortel, broccoli"). Geen zinnen, geen uitleg, geen hoeveelheden. Maximum 15 items. Als de foto geen voedsel toont: antwoord met het woord "geen".',
@@ -151,13 +154,17 @@ export async function extractIngredientsForRAG(imageBlock) {
         content: [imageBlock, { type: 'text', text: 'Welke ingrediënten zie je?' }],
       }],
     });
+    result.tokensIn = r.usage?.input_tokens ?? 0;
+    result.tokensOut = r.usage?.output_tokens ?? 0;
+    result.costCents = result.tokensIn * model.costInCents + result.tokensOut * model.costOutCents;
     const text = r.content.filter(b => b.type === 'text').map(b => b.text).join(' ').trim();
-    if (!text || /^geen\b/i.test(text)) return '';
+    if (!text || /^geen\b/i.test(text)) return result;
     // Sanitise: keep first line, strip trailing punctuation
-    return text.split('\n')[0].replace(/[.;]+$/, '').trim();
+    result.ingredients = text.split('\n')[0].replace(/[.;]+$/, '').trim();
+    return result;
   } catch (e) {
     console.error('[ingredient-extract]', e.message);
-    return '';
+    return result;
   }
 }
 
@@ -346,9 +353,12 @@ export default async function handler(req, res) {
     // ---- Bij foto: eerst ingrediënten extraheren (Haiku vision) en aan de zoekstring toevoegen,
     // zodat RAG recepten kan vinden ook als de tekstvraag vaag is ("wat kan ik hiermee maken?").
     let extractedIngredients = '';
+    let scanUsage = { tokensIn: 0, tokensOut: 0, costCents: 0 };
     let searchQuery = question;
     if (hasImage) {
-      extractedIngredients = await extractIngredientsForRAG(imageForClaude);
+      const scan = await extractIngredientsForRAG(imageForClaude);
+      extractedIngredients = scan.ingredients;
+      scanUsage = scan;
       if (extractedIngredients) {
         const baseQ = question || 'recept op basis van deze ingrediënten';
         searchQuery = `${baseQ} — ingrediënten: ${extractedIngredients}`;
@@ -484,6 +494,7 @@ ${ingredientsBlock}Vraag van de gebruiker: ${questionForPrompt}`;
     const tokensIn = response.usage?.input_tokens ?? 0;
     const tokensOut = response.usage?.output_tokens ?? 0;
     const costCents = tokensIn * model.costInCents + tokensOut * model.costOutCents;
+    // In usage_log telt de foto-scan mee (budget); in messages enkel het antwoord zelf.
 
     // ---- Store messages + cache + log
     // Bij foto: had_image=true opslaan maar content bevat alleen de vraag + placeholder.
@@ -514,7 +525,9 @@ ${ingredientsBlock}Vraag van de gebruiker: ${questionForPrompt}`;
     await logUsage({
       userId, ipHash,
       event: hasImage ? 'query_with_image' : 'query',
-      tokensIn, tokensOut, costCents,
+      tokensIn: tokensIn + scanUsage.tokensIn,
+      tokensOut: tokensOut + scanUsage.tokensOut,
+      costCents: costCents + scanUsage.costCents,
     });
 
     const [usage, imageUsage] = await Promise.all([
