@@ -42,8 +42,9 @@ import { getAccessStatus, accessDeniedMessage } from './_lib/subscription.mjs';
 // ---------- Config ----------
 const MAX_QUESTION_CHARS = 500;
 const MIN_QUESTION_CHARS = 3;
-// Sonnet 5 telt ~30% meer tokens voor dezelfde tekst dan Sonnet 4.6 (was 600).
-export const MAX_OUTPUT_TOKENS = 900;
+// Sonnet 5 telt ~30% meer tokens voor dezelfde tekst dan Sonnet 4.6. 600 kapte
+// een dagplan (ontbijt/middag/avond) af; je betaalt enkel wat er geschreven wordt.
+export const MAX_OUTPUT_TOKENS = 1200;
 // Sonnet 5 denkt standaard adaptief na; in de testset scoorde dat slechter
 // (toon, doorverwijzing) en het eet max_tokens op. Dus expliciet uit.
 export const CHAT_THINKING = { type: 'disabled' };
@@ -407,10 +408,10 @@ export default async function handler(req, res) {
       ? `Dit weet ik al over deze gebruiker uit eerdere gesprekken:\n${memories.map(m => `- ${m.content}`).join('\n')}\n\nGebruik deze info waar relevant, maar herhaal feiten niet onnodig.\n\n---\n\n`
       : '';
     const questionForPrompt = question || '(Bekijk de bijgevoegde foto en geef relevant advies.)';
-    const ingredientsBlock = (hasImage && extractedIngredients)
-      ? `Ingrediënten die zichtbaar zijn op de foto: ${extractedIngredients}.
-
-Gebruik deze ingrediënten en bovenstaande context om een passend recept of suggestie uit Anneleens kennisbank voor te stellen. Verifieer eerst kort wat je op de foto ziet, kies dan een recept of combinatie die hierbij past.
+    // De Haiku-scan is enkel een zoekhulp voor de retrieval en kan ingrediënten
+    // verzinnen (bv. "brood, rijst" bij een koelkastfoto). Sonnet kijkt zelf.
+    const ingredientsBlock = hasImage
+      ? `${extractedIngredients ? `Een snelle eerste scan dacht op de foto dit te zien (dit kan fout zijn): ${extractedIngredients}.\n\n` : ''}Kijk zelf goed naar de foto en noem alleen voedingsmiddelen die je er echt op ziet. Ingrediënten die je niet met zekerheid ziet, noem je niet en gebruik je niet. Wat in het gebruikersprofiel of in eerdere gesprekken staat, is geen inhoud van de foto. Stel daarna een passend recept of suggestie uit Anneleens kennisbank (bovenstaande context) voor die past bij wat er echt op de foto staat.
 
 ---
 
