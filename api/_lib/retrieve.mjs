@@ -22,6 +22,14 @@ const AGE_FALLBACK_THRESHOLD = 0.40;
 const AGE_PENALTY_BASE = 0.02;
 const AGE_PENALTY_PER_MONTH = 0.005;
 
+// Reranker: de vectorzoek levert RERANK_POOL kandidaten, Voyage zet de beste topK bovenaan.
+// De vectorscores liggen dicht bij elkaar (±0,53–0,65) en missen letterlijke treffers
+// (bv. "kefir"); de reranker leest vraag en fragment samen. Faalt hij, dan blijft de
+// vectorvolgorde staan. `similarity` blijft de cosine-score (drempels zijn daarop geijkt).
+const RERANK_MODEL = 'rerank-2.5';
+const RERANK_POOL = 30;
+const RERANK_TIMEOUT_MS = 3000;
+
 export async function embedQuery(text) {
   const res = await fetch('https://api.voyageai.com/v1/embeddings', {
     method: 'POST',
@@ -59,6 +67,35 @@ export async function retrieveChunks(question, { topK = DEFAULT_TOP_K, filterAge
   const hasRelevant = topScore >= RELEVANCE_THRESHOLD;
 
   return { chunks, topScore, hasRelevant, embedTokens: tokens, embedding };
+}
+
+export async function rerankChunks(query, chunks, topK) {
+  if (chunks.length <= 1) return chunks.slice(0, topK);
+  try {
+    const res = await fetch('https://api.voyageai.com/v1/rerank', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${VOYAGE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query,
+        documents: chunks.map(c => `${c.title}\n${c.content}`),
+        model: RERANK_MODEL,
+      }),
+      signal: AbortSignal.timeout(RERANK_TIMEOUT_MS),
+    });
+    if (!res.ok) throw new Error(`Voyage rerank ${res.status}: ${await res.text()}`);
+    const data = await res.json();
+    const rank = c => c.rerankScore - (c.agePenalty ?? 0);
+    return data.data
+      .map(d => ({ ...chunks[d.index], rerankScore: d.relevance_score }))
+      .sort((a, b) => rank(b) - rank(a))
+      .slice(0, topK);
+  } catch (e) {
+    console.error('[rerank] valt terug op vectorvolgorde:', e.message);
+    return chunks.slice(0, topK);
+  }
 }
 
 /**
@@ -111,12 +148,14 @@ export async function retrieveCombined(question, {
   topKDocs = DEFAULT_TOP_K,
   topKMemory = 4,
   includeMemory = true,
+  rerank = true,
 } = {}) {
   const { embedding, tokens } = await embedQuery(question);
+  const pool = rerank ? Math.max(RERANK_POOL, topKDocs) : topKDocs;
 
   const docsPromise = supabase.rpc('match_documents', {
     query_embedding: embedding,
-    match_count: topKDocs,
+    match_count: pool,
     filter_age: filterAge,
     filter_sources: null,
   });
@@ -125,7 +164,7 @@ export async function retrieveCombined(question, {
   const unfilteredPromise = filterAge !== null
     ? supabase.rpc('match_documents', {
         query_embedding: embedding,
-        match_count: topKDocs * 2,
+        match_count: pool * 2,
         filter_age: null,
         filter_sources: null,
       })
@@ -148,7 +187,7 @@ export async function retrieveCombined(question, {
   const memories = (memRes.data || []).filter(m => m.similarity >= RELEVANCE_THRESHOLD);
 
   if (filterAge !== null && unfilteredRes.data) {
-    docs = await mergeYoungerChunks(docs, unfilteredRes.data, filterAge, topKDocs);
+    docs = await mergeYoungerChunks(docs, unfilteredRes.data, filterAge, pool);
   }
 
   let topDocScore = Math.max(0, ...docs.map(c => c.similarity ?? 0));
@@ -157,7 +196,7 @@ export async function retrieveCombined(question, {
   // Fallback: leeftijd-gefilterd niets relevants gevonden? Neem de ongefilterde zoek
   // (ook fragmenten voor oudere kinderen, bv. "wanneer kan ik starten?" bij 4 maanden).
   if (filterAge !== null && topDocScore < RELEVANCE_THRESHOLD && unfilteredRes.data) {
-    const fbData = unfilteredRes.data.slice(0, topKDocs);
+    const fbData = unfilteredRes.data.slice(0, pool);
     if (
       fbData.length > 0 &&
       (fbData[0].similarity ?? 0) >= AGE_FALLBACK_THRESHOLD &&
@@ -168,6 +207,8 @@ export async function retrieveCombined(question, {
       ageFallbackUsed = true;
     }
   }
+
+  docs = rerank ? await rerankChunks(question, docs, topKDocs) : docs.slice(0, topKDocs);
 
   const topMemScore = memories[0]?.similarity ?? 0;
   const topScore = Math.max(topDocScore, topMemScore);

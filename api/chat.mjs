@@ -353,7 +353,7 @@ export default async function handler(req, res) {
       q: searchQuery.slice(0, 100),
       filterAge,
       topScore: Number(topScore?.toFixed?.(3) ?? topScore),
-      chunks: chunks.map(c => `${c.source} / ${c.title} @${c.similarity?.toFixed?.(3)}`),
+      chunks: chunks.map(c => `${c.source} / ${c.title} @${c.similarity?.toFixed?.(3)}${c.rerankScore != null ? ` r${c.rerankScore.toFixed(2)}` : ''}`),
       memories: (memories || []).map(m => `${(m.content || '').slice(0,60)}… @${m.similarity?.toFixed?.(3)}`),
     });
 

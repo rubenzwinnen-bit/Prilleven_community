@@ -239,7 +239,7 @@ async function main() {
         model: res.model,
         reden: res.reden,
         topScore: res.topScore,
-        bronnen: res.chunks.map(c => `${c.source} / ${c.title} @${c.similarity?.toFixed(3)}`),
+        bronnen: res.chunks.map(c => `${c.source} / ${c.title} @${c.similarity?.toFixed(3)}${c.rerankScore != null ? ` r${c.rerankScore.toFixed(2)}` : ''}`),
         oordeel,
         kostCent: res.kostCent + (oordeel.kostCent || 0),
         antwoordKostCent: res.kostCent,
