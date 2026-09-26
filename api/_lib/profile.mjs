@@ -13,6 +13,10 @@ import { ALLERGEN_KEYS_LIST } from './eersteHapjes-state.mjs';
  * Laad alle profiel-context voor één user.
  * Returnt altijd een object (nooit null) zodat de caller eenvoudig kan blijven.
  */
+// Vanaf 3 jaar tonen we geen "nog niet geïntroduceerde allergenen" meer: een kleuter die
+// de allergenen-flow nooit gebruikte, kreeg anders alle 9 als introductietip.
+const NOT_INTRODUCED_MAX_AGE = 36;
+
 export async function loadUserProfile(userId) {
   const [chatRow, communityRow, childrenRows] = await Promise.all([
     supabase
@@ -91,11 +95,11 @@ export async function loadUserProfile(userId) {
         Array.isArray(astate.excluded_keys) ? astate.excluded_keys : []
       );
       const introduced = ALLERGEN_KEYS_LIST.filter(k => introducedSet.has(k) && !allergySet.has(k));
-      // "Nog niet geïntroduceerd" is enkel relevant zodra het kind aan vaste voeding
-      // kan beginnen (~4 maanden). Daaronder of zonder geboortedatum: leeg laten,
-      // anders zou de bot bij een pasgeborene 9 allergenen gaan opsommen.
+      // "Nog niet geïntroduceerd" is enkel relevant tussen de start van vaste voeding
+      // (~4 maanden) en NOT_INTRODUCED_MAX_AGE. Daarbuiten of zonder geboortedatum: leeg
+      // laten, anders somt de bot 9 allergenen op bij een pasgeborene of een kleuter.
       const age = ageMonths(c.birthdate);
-      const notIntroduced = (age !== null && age >= 4)
+      const notIntroduced = (age !== null && age >= 4 && age < NOT_INTRODUCED_MAX_AGE)
         ? ALLERGEN_KEYS_LIST.filter(k => !introducedSet.has(k) && !excludedSet.has(k) && !allergySet.has(k))
         : [];
       return {
