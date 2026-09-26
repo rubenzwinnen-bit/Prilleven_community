@@ -1,11 +1,8 @@
-// Model router: kiest Haiku (snel/goedkoop) of Sonnet (sterker/duurder).
-//
-// Regels (in volgorde):
-//   1. IF vision request         → Sonnet 4.6
-//   2. IF medical keyword found  → Sonnet 4.6
-//   3. IF question < 50 chars    → Haiku 4.5
-//   4. IF top RAG score > 0.85   → Haiku 4.5 (zeer duidelijke match)
-//   5. ELSE                      → Sonnet 4.6 (default voor complexere vragen)
+// Model router: sinds 2026-09-26 gaat élke chatvraag naar Sonnet 4.6.
+// Haiku vulde bij korte vragen te vaak zelf aan met kennis die niet in
+// Anneleens kennisbank staat (testset: trouw 4,33 → 4,60 met enkel Sonnet).
+// De reden blijft gelogd (vision / medical-keyword / default) voor de logs.
+// Haiku wordt nog wel gebruikt voor titels, geheugen en foto-ingrediënten.
 
 export const MODELS = {
   HAIKU: {
@@ -82,11 +79,5 @@ export function pickModel({ hasImage = false, question = '', topScore = null }) 
   if (hasMedicalKeyword(question)) {
     return { model: MODELS.SONNET, reason: 'medical-keyword' };
   }
-  if (question.length < 50) {
-    return { model: MODELS.HAIKU, reason: 'short-question' };
-  }
-  if (topScore !== null && topScore > 0.85) {
-    return { model: MODELS.HAIKU, reason: 'high-confidence-match' };
-  }
-  return { model: MODELS.SONNET, reason: 'default-complex' };
+  return { model: MODELS.SONNET, reason: 'default' };
 }
