@@ -3,6 +3,11 @@
 // Headers: Authorization: Bearer <supabase-jwt>
 // Returns: { answer, sources, cached, topScore, model, modelReason, conversation_id }
 //
+// Streaming (sinds 2026-09-26): met `stream: true` in de body komt het antwoord als
+// text/event-stream: `delta` { text } per stukje, dan `done` met dezelfde velden als
+// de JSON-response, of `error` { error }. Fouten vóór de Claude-call, cache-hits en de
+// fallback blijven gewone JSON — de client kijkt naar de Content-Type.
+//
 // Flow (Fase A — auth + conversatie-history):
 //   1. requireAuth → userId (JWT validate)
 //   2. Input validation
@@ -106,6 +111,18 @@ function json(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
+function startEventStream(res) {
+  res.statusCode = 200;
+  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store, no-transform');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders?.();
+}
+
+function sendEvent(res, event, data) {
+  res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+}
+
 export function formatContext(chunks) {
   return chunks
     .map((c, i) => {
@@ -197,6 +214,7 @@ export default async function handler(req, res) {
   }
   const question = typeof body.question === 'string' ? body.question.trim() : '';
   const conversationIdIn = typeof body.conversation_id === 'string' ? body.conversation_id : null;
+  const wantsStream = body.stream === true;
 
   // ---- Image parsen (optioneel)
   let imageForClaude = null; // { type:'image', source:{ type:'base64', media_type, data } }
@@ -441,13 +459,22 @@ ${ingredientsBlock}Vraag van de gebruiker: ${questionForPrompt}`;
       { role: 'user', content: latestUserContent },
     ];
 
-    const response = await anthropic.messages.create({
+    const claudeParams = {
       model: model.id,
       max_tokens: MAX_OUTPUT_TOKENS,
       thinking: CHAT_THINKING,
       system: SYSTEM_PROMPT,
       messages: messagesForLLM,
-    });
+    };
+    let response;
+    if (wantsStream) {
+      startEventStream(res);
+      const stream = anthropic.messages.stream(claudeParams);
+      stream.on('text', (text) => sendEvent(res, 'delta', { text }));
+      response = await stream.finalMessage();
+    } else {
+      response = await anthropic.messages.create(claudeParams);
+    }
 
     const answer = response.content
       .filter((b) => b.type === 'text')
@@ -490,6 +517,25 @@ ${ingredientsBlock}Vraag van de gebruiker: ${questionForPrompt}`;
       tokensIn, tokensOut, costCents,
     });
 
+    const [usage, imageUsage] = await Promise.all([
+      getMonthlyUsage({ userId }),
+      getDailyImageUsage({ userId }),
+    ]);
+    const result = {
+      answer,
+      sources: retrievedIds,
+      cached: false,
+      topScore,
+      model: model.id,
+      modelReason: reason,
+      conversation_id: conversationId,
+      assistant_message_id: asstId,
+      usage,
+      imageUsage,
+    };
+    // Bij streaming krijgt de client `done` al vóór de geheugen-extractie.
+    if (wantsStream) sendEvent(res, 'done', result);
+
     // ---- Memory extractie (synchroon — ~1s extra latency, maar betrouwbaar)
     // In serverless/vercel-dev wordt fire-and-forget vaak gekilled voor het
     // klaar is. Synchroon garandeert dat het feit wordt opgeslagen.
@@ -502,24 +548,15 @@ ${ingredientsBlock}Vraag van de gebruiker: ${questionForPrompt}`;
       }
     }
 
-    const [usage, imageUsage] = await Promise.all([
-      getMonthlyUsage({ userId }),
-      getDailyImageUsage({ userId }),
-    ]);
-    return json(res, 200, {
-      answer,
-      sources: retrievedIds,
-      cached: false,
-      topScore,
-      model: model.id,
-      modelReason: reason,
-      conversation_id: conversationId,
-      assistant_message_id: asstId,
-      usage,
-      imageUsage,
-    });
+    if (wantsStream) return res.end();
+    return json(res, 200, result);
   } catch (err) {
     console.error('[chat]', err);
-    return json(res, 500, { error: 'Er ging iets mis. Probeer het later opnieuw.' });
+    const error = 'Er ging iets mis. Probeer het later opnieuw.';
+    if (res.headersSent) {
+      sendEvent(res, 'error', { error });
+      return res.end();
+    }
+    return json(res, 500, { error });
   }
 }

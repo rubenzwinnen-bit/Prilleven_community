@@ -1,7 +1,7 @@
 // Chat frontend met sidebar-gebaseerde conversatie-management.
 // Vereist een geldige Supabase sessie (gezet door de hoofdsite-login).
 
-import { sessionGet, sessionRefreshIfNeeded, sessionClear } from './supabase.js?v=4.0.34';
+import { sessionGet, sessionRefreshIfNeeded, sessionClear } from './supabase.js?v=4.0.35';
 
 // ---------- DOM refs ----------
 const form = document.getElementById('form');
@@ -192,6 +192,45 @@ function appendMsg(role, text, extra = '') {
   log.appendChild(div);
   log.scrollTop = log.scrollHeight;
   return div;
+}
+
+// Leest de text/event-stream van /api/chat: elke `delta` verschijnt meteen in
+// een bot-bubbel. Geeft { bubble, data } terug met de payload van `done`, of
+// data = { error } bij een fout of een afgebroken verbinding.
+async function readChatStream(res, onFirstText) {
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let text = '';
+  let bubble = null;
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let sep;
+    while ((sep = buffer.indexOf('\n\n')) !== -1) {
+      const raw = buffer.slice(0, sep);
+      buffer = buffer.slice(sep + 2);
+      const event = /^event: (.*)$/m.exec(raw)?.[1];
+      const dataLine = /^data: (.*)$/m.exec(raw)?.[1];
+      if (!event || !dataLine) continue;
+      const payload = JSON.parse(dataLine);
+      if (event === 'delta') {
+        const nearBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
+        text += payload.text;
+        if (!bubble) {
+          bubble = appendMsg('bot', '');
+          onFirstText?.();
+        }
+        bubble.textContent = '';
+        renderTextWithLinks(bubble, stripMarkdown(text));
+        if (nearBottom) log.scrollTop = log.scrollHeight;
+      } else if (event === 'done' || event === 'error') {
+        return { bubble, data: payload };
+      }
+    }
+  }
+  return { bubble, data: { error: 'Het antwoord werd onderbroken. Probeer het opnieuw.' } };
 }
 
 function clearLog() {
@@ -707,7 +746,7 @@ form.addEventListener('submit', async (e) => {
   }
 
   // Body samenstellen
-  const body = { question, conversation_id: currentConversationId };
+  const body = { question, conversation_id: currentConversationId, stream: true };
   if (hasImg) {
     body.image_b64 = pendingImage.b64;
     body.image_mime = pendingImage.mime;
@@ -724,9 +763,18 @@ form.addEventListener('submit', async (e) => {
       method: 'POST',
       body: JSON.stringify(body),
     });
-    const data = await res.json();
+    const isStream = res.ok && (res.headers.get('content-type') || '').includes('text/event-stream');
+    let data;
+    let streamedBubble = null;
+    if (isStream) {
+      ({ bubble: streamedBubble, data } = await readChatStream(res, () => {
+        sendBtn.textContent = 'Aan het schrijven…';
+      }));
+    } else {
+      data = await res.json();
+    }
 
-    if (!res.ok) {
+    if (!res.ok || data.error) {
       appendMsg('err', data.error || 'Onbekende fout.');
     } else {
       const meta = [
@@ -736,6 +784,7 @@ form.addEventListener('submit', async (e) => {
       // Als dit het eerste bericht was (nieuwe conversatie), update state
       const wasNew = currentConversationId !== data.conversation_id;
       currentConversationId = data.conversation_id;
+      streamedBubble?.remove();
       const botMessage = appendMsg('bot', stripMarkdown(data.answer), meta);
       attachFeedback(botMessage, data.assistant_message_id);
       if (data.usage) updateQuotaBar(data.usage);
