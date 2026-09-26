@@ -1,7 +1,7 @@
 // Chat frontend met sidebar-gebaseerde conversatie-management.
 // Vereist een geldige Supabase sessie (gezet door de hoofdsite-login).
 
-import { sessionGet, sessionRefreshIfNeeded, sessionClear } from './supabase.js?v=4.0.35';
+import { sessionGet, sessionRefreshIfNeeded, sessionClear } from './supabase.js?v=4.0.36';
 
 // ---------- DOM refs ----------
 const form = document.getElementById('form');
@@ -194,6 +194,21 @@ function appendMsg(role, text, extra = '') {
   return div;
 }
 
+// Volgt de chat het einde van het gesprek mee (zoals bij Claude)? Wie tijdens het
+// streamen naar boven scrollt, zet dit uit; wie terug tot onderaan scrollt, weer aan.
+// Programmatisch scrollen gaat enkel naar beneden, dus elke stap omhoog is de gebruiker.
+let followBottom = true;
+let lastScrollTop = 0;
+log.addEventListener('scroll', () => {
+  if (log.scrollTop < lastScrollTop - 1) followBottom = false;
+  else if (log.scrollHeight - log.scrollTop - log.clientHeight < 24) followBottom = true;
+  lastScrollTop = log.scrollTop;
+}, { passive: true });
+
+function scrollIfFollowing() {
+  if (followBottom) log.scrollTop = log.scrollHeight;
+}
+
 // Leest de text/event-stream van /api/chat: elke `delta` verschijnt meteen in
 // een bot-bubbel. Geeft { bubble, data } terug met de payload van `done`, of
 // data = { error } bij een fout of een afgebroken verbinding.
@@ -216,15 +231,17 @@ async function readChatStream(res, onFirstText) {
       if (!event || !dataLine) continue;
       const payload = JSON.parse(dataLine);
       if (event === 'delta') {
-        const nearBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
         text += payload.text;
         if (!bubble) {
-          bubble = appendMsg('bot', '');
+          // Niet via appendMsg: die scrolt altijd naar beneden.
+          bubble = document.createElement('div');
+          bubble.className = 'msg bot';
+          log.appendChild(bubble);
           onFirstText?.();
         }
         bubble.textContent = '';
         renderTextWithLinks(bubble, stripMarkdown(text));
-        if (nearBottom) log.scrollTop = log.scrollHeight;
+        scrollIfFollowing();
       } else if (event === 'done' || event === 'error') {
         return { bubble, data: payload };
       }
@@ -737,6 +754,7 @@ form.addEventListener('submit', async (e) => {
   }
 
   // Toon user-bericht (met foto-thumb als aanwezig)
+  followBottom = true;
   const userMsgDiv = appendMsg('user', question || '(Foto bijgevoegd)');
   if (hasImg) {
     const imgEl = document.createElement('img');
@@ -784,9 +802,22 @@ form.addEventListener('submit', async (e) => {
       // Als dit het eerste bericht was (nieuwe conversatie), update state
       const wasNew = currentConversationId !== data.conversation_id;
       currentConversationId = data.conversation_id;
-      streamedBubble?.remove();
-      const botMessage = appendMsg('bot', stripMarkdown(data.answer), meta);
+      let botMessage;
+      if (streamedBubble) {
+        // Bubbel ter plaatse afwerken, zodat de scrollpositie van de gebruiker blijft.
+        botMessage = streamedBubble;
+        botMessage.textContent = '';
+        renderTextWithLinks(botMessage, stripMarkdown(data.answer));
+        if (meta) {
+          const small = document.createElement('small');
+          small.textContent = meta;
+          botMessage.appendChild(small);
+        }
+      } else {
+        botMessage = appendMsg('bot', stripMarkdown(data.answer), meta);
+      }
       attachFeedback(botMessage, data.assistant_message_id);
+      if (streamedBubble) scrollIfFollowing();
       if (data.usage) updateQuotaBar(data.usage);
 
       if (wasNew || conversations.length === 0) {
