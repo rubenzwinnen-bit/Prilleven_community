@@ -1,4 +1,5 @@
-// Model router: sinds 2026-09-26 gaat élke chatvraag naar Sonnet 4.6.
+// Model router: sinds 2026-09-26 gaat élke chatvraag naar Sonnet 5 (zonder
+// nadenken — zie CHAT_THINKING in chat.mjs).
 // Haiku vulde bij korte vragen te vaak zelf aan met kennis die niet in
 // Anneleens kennisbank staat (testset: trouw 4,33 → 4,60 met enkel Sonnet).
 // De reden blijft gelogd (vision / medical-keyword / default) voor de logs.
@@ -12,10 +13,11 @@ export const MODELS = {
     costOutCents: 0.0005 * 0.92,
   },
   SONNET: {
-    id: 'claude-sonnet-4-6',
-    // Sonnet 4.6: $3 input / $15 output per 1M tokens.
-    costInCents: 0.0003 * 0.92,
-    costOutCents: 0.0015 * 0.92,
+    id: 'claude-sonnet-5',
+    // Sonnet 5: $2 input / $10 output per 1M tokens. Nieuwe tokenizer: ~30% meer
+    // tokens voor dezelfde tekst dan Sonnet 4.6.
+    costInCents: 0.0002 * 0.92,
+    costOutCents: 0.001 * 0.92,
   },
 };
 

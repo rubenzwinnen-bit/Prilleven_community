@@ -42,7 +42,11 @@ import { getAccessStatus, accessDeniedMessage } from './_lib/subscription.mjs';
 // ---------- Config ----------
 const MAX_QUESTION_CHARS = 500;
 const MIN_QUESTION_CHARS = 3;
-export const MAX_OUTPUT_TOKENS = 600;
+// Sonnet 5 telt ~30% meer tokens voor dezelfde tekst dan Sonnet 4.6 (was 600).
+export const MAX_OUTPUT_TOKENS = 900;
+// Sonnet 5 denkt standaard adaptief na; in de testset scoorde dat slechter
+// (toon, doorverwijzing) en het eet max_tokens op. Dus expliciet uit.
+export const CHAT_THINKING = { type: 'disabled' };
 const HISTORY_LIMIT = 20;
 
 // Foto-upload: base64 in JSON body
@@ -436,6 +440,7 @@ ${ingredientsBlock}Vraag van de gebruiker: ${questionForPrompt}`;
     const response = await anthropic.messages.create({
       model: model.id,
       max_tokens: MAX_OUTPUT_TOKENS,
+      thinking: CHAT_THINKING,
       system: SYSTEM_PROMPT,
       messages: messagesForLLM,
     });

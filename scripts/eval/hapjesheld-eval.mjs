@@ -11,9 +11,9 @@
  *   node --env-file=.env.local scripts/eval/hapjesheld-eval.mjs --label reranker
  *   node --env-file=.env.local scripts/eval/hapjesheld-eval.mjs --alleen 1,5,26
  *   node --env-file=.env.local scripts/eval/hapjesheld-eval.mjs --vergelijk scripts/eval/resultaten/<vorige>.json
- *   node --env-file=.env.local scripts/eval/hapjesheld-eval.mjs --model sonnet   (modelkeuze forceren: haiku|sonnet|sonnet5)
- *   node --env-file=.env.local scripts/eval/hapjesheld-eval.mjs --model sonnet5 --denken laag --max-tokens 2000
- *     (--denken uit|laag|medium|hoog: enkel voor sonnet5, dat standaard adaptief nadenkt)
+ *   node --env-file=.env.local scripts/eval/hapjesheld-eval.mjs --model sonnet   (modelkeuze forceren: haiku|sonnet|sonnet46)
+ *   node --env-file=.env.local scripts/eval/hapjesheld-eval.mjs --model sonnet --denken laag --max-tokens 2000
+ *     (--denken uit|laag|medium|hoog; zonder --denken geldt CHAT_THINKING uit chat.mjs)
  *
  * Verschil met de echte bot: geen gebruikersprofiel, geen geheugen, geen
  * gespreksgeschiedenis en geen cache. Wel het leeftijdsfilter als de vraag
@@ -27,13 +27,12 @@ import path from 'node:path';
 import { anthropic } from '../../api/_lib/clients.mjs';
 import { retrieveCombined } from '../../api/_lib/retrieve.mjs';
 import { pickModel, MODELS } from '../../api/_lib/model-router.mjs';
-import { SYSTEM_PROMPT, formatContext, MAX_OUTPUT_TOKENS } from '../../api/chat.mjs';
+import { SYSTEM_PROMPT, formatContext, MAX_OUTPUT_TOKENS, CHAT_THINKING } from '../../api/chat.mjs';
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
 const VRAGEN_BESTAND = path.join(HIER, 'hapjesheld-vragen.json');
 const RESULTATEN_MAP = path.join(HIER, 'resultaten');
 
-const RECHTER = MODELS.SONNET;
 const GELIJKTIJDIG = 4;
 const CRITERIA = ['bronnen', 'trouw', 'antwoord', 'toon', 'doorverwijzing'];
 
@@ -49,11 +48,13 @@ const vergelijkMet = arg('--vergelijk');
 // Kandidaat-modellen die (nog) niet in model-router.mjs staan. Prijzen in eurocent
 // per token, zelfde omrekening als MODELS (× 0.92).
 const EXTRA_MODELS = {
-  SONNET5: { id: 'claude-sonnet-5', costInCents: 0.0002 * 0.92, costOutCents: 0.001 * 0.92 },
+  SONNET46: { id: 'claude-sonnet-4-6', costInCents: 0.0003 * 0.92, costOutCents: 0.0015 * 0.92 },
 };
 const ALLE_MODELS = { ...MODELS, ...EXTRA_MODELS };
+// De beoordelaar blijft vast op Sonnet 4.6, zodat runs onderling vergelijkbaar blijven.
+const RECHTER = EXTRA_MODELS.SONNET46;
 const forceerModel = arg('--model')?.toUpperCase();
-if (forceerModel && !ALLE_MODELS[forceerModel]) throw new Error('--model moet haiku, sonnet of sonnet5 zijn');
+if (forceerModel && !ALLE_MODELS[forceerModel]) throw new Error('--model moet haiku, sonnet of sonnet46 zijn');
 const denken = arg('--denken');
 const maxTokens = Number(arg('--max-tokens')) || MAX_OUTPUT_TOKENS;
 const DENKEN = {
@@ -85,7 +86,7 @@ async function stelVraag(item) {
   const res = await anthropic.messages.create({
     model: model.id,
     max_tokens: maxTokens,
-    ...(denken ? DENKEN[denken] : {}),
+    ...(denken ? DENKEN[denken] : { thinking: CHAT_THINKING }),
     system: SYSTEM_PROMPT,
     messages: [{
       role: 'user',

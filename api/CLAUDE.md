@@ -21,7 +21,7 @@ Vercel Functions voor Pril Leven. Lees eerst de root `CLAUDE.md`; dit bestand vo
 De **AI-chat** (HapjesHeld). Hot path, kostbaar. **Niet aanpassen zonder bevestiging.**
 - Body: `{ question, conversation_id?, image_b64?, image_mime? }`
 - Vereist `Authorization: Bearer <supabase-jwt>`.
-- Flow: auth → subscription gate → rate-limit + cost cap (uur/dag/maand + image cap) → load profile → load/create conversation → cache check → retrieval (Voyage embed → `match_documents` RPC + `match_user_memory` RPC + age-fallback) → out-of-scope fallback → `pickModel()` (altijd Sonnet sinds 2026-09-26) → Anthropic call met conversation history → store messages → cache antwoord (alleen tekst, géén foto-vragen) → log usage → memory-extract (Haiku → `chat_user_memory`).
+- Flow: auth → subscription gate → rate-limit + cost cap (uur/dag/maand + image cap) → load profile → load/create conversation → cache check → retrieval (Voyage embed → `match_documents` RPC + `match_user_memory` RPC + age-fallback) → out-of-scope fallback → `pickModel()` (altijd Sonnet 5, `thinking` uit, sinds 2026-09-26) → Anthropic call met conversation history → store messages → cache antwoord (alleen tekst, géén foto-vragen) → log usage → memory-extract (Haiku → `chat_user_memory`).
 - Foto-flow (vision): Haiku extraheert eerst ingrediënten als zoekstring, dan Sonnet genereert het antwoord. Foto-bytes worden NOOIT in DB opgeslagen (`had_image=true` flag enkel).
 - System-prompt staat hardcoded in dit bestand — toon = warm, geruststellend, NL, geen markdown, alleen info uit retrieval-context.
 
@@ -177,7 +177,7 @@ De affiliatepagina. Wijkt bewust af van elk ander endpoint hier:
 | `subscription.mjs` | `getAccessStatus(email)` via `get_user_access` RPC, 1 min in-memory cache. `accessDeniedMessage(status)`. `invalidateSubscriptionCache(email)`. |
 | `rate-limit.mjs` | `checkRateLimit`, `checkCostCap` (dag), `checkMonthlyCostCap`, `checkImageRateLimit`, `getMonthlyUsage`, `getDailyImageUsage`, `logUsage`, `hashIp`, `extractIp`. Limieten in caps bovenaan het bestand. |
 | `retrieve.mjs` | `embedQuery(text)` (Voyage `voyage-3-large`, 1024-dim), `retrieveCombined(question, {userId, filterAge, ...})` met age-filter fallback (drempel `RELEVANCE_THRESHOLD = 0.55`, `AGE_FALLBACK_THRESHOLD = 0.40`). |
-| `model-router.mjs` | `pickModel({ hasImage, question, topScore })` → sinds 2026-09-26 **altijd Sonnet 4.6** (Haiku vulde bij korte vragen aan met kennis buiten de kennisbank). `reason` blijft `vision`/`medical-keyword`/`default` voor de logs. |
+| `model-router.mjs` | `pickModel({ hasImage, question, topScore })` → sinds 2026-09-26 **altijd Sonnet 5** (`claude-sonnet-5`, $2/$10). Haiku vulde bij korte vragen aan met kennis buiten de kennisbank. `chat.mjs` stuurt `thinking: CHAT_THINKING` (disabled) mee — Sonnet 5 denkt anders standaard na, wat in de testset slechter scoorde en `max_tokens` opeet; `MAX_OUTPUT_TOKENS` = 900 wegens de nieuwe tokenizer (~30% meer tokens). `reason` blijft `vision`/`medical-keyword`/`default` voor de logs. |
 | `cache.mjs` | `getCached(question)`, `setCached(...)`, `questionHash(q)`. Hash = SHA-256 van genormaliseerde vraag. Tikt `hits` + `last_hit_at` aan op hit. |
 | `moderation.mjs` | `findBlockedWord(text)`, `containsBlockedWord(text)`. Diakritieken-genormaliseerd, woord-grenzen. |
 | `conversation.mjs` | `getOrCreateConversation`, `loadConversationMessages`, `storeMessage`, `generateConversationTitle` (Haiku, max 40 chars), `setConversationTitle`, `listConversations`, `deleteConversation`, `renameConversation`. Doet expliciet user-id ownership check. |
@@ -275,7 +275,7 @@ Op Vercel ingesteld via project settings. Lokaal in `.env.local`. Crasht hard al
 - **Geen** wijzigingen aan `chat.mjs` system-prompt zonder bevestiging (toon is afgesteld + verkeerd kost geld).
 - **Geen** wijzigingen aan `webhooks/plugpay.mjs` zonder bevestiging.
 - **Geen** wijzigingen aan rate-limit constanten zonder afstemming (raken alle users tegelijk).
-- **Geen** Anthropic-modelnaam-changes zonder afstemming. Huidig: Sonnet `claude-sonnet-4-6` + Haiku `claude-haiku-4-5` / `claude-haiku-4-5-20251001`.
+- **Geen** Anthropic-modelnaam-changes zonder afstemming. Huidig: Sonnet `claude-sonnet-5` (chat) + Haiku `claude-haiku-4-5` / `claude-haiku-4-5-20251001` (titels, geheugen, foto-ingrediënten). Een modelwissel altijd eerst langs de testset (`scripts/eval/`) halen; de beoordelaar daar staat bewust vast op Sonnet 4.6.
 
 ---
 
