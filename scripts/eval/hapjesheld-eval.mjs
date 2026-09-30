@@ -11,8 +11,8 @@
  *   node --env-file=.env.local scripts/eval/hapjesheld-eval.mjs --label reranker
  *   node --env-file=.env.local scripts/eval/hapjesheld-eval.mjs --alleen 1,5,26
  *   node --env-file=.env.local scripts/eval/hapjesheld-eval.mjs --vergelijk scripts/eval/resultaten/<vorige>.json
- *   node --env-file=.env.local scripts/eval/hapjesheld-eval.mjs --model sonnet   (modelkeuze forceren: haiku|sonnet|sonnet46)
- *   node --env-file=.env.local scripts/eval/hapjesheld-eval.mjs --model sonnet --denken laag --max-tokens 2000
+ *   node --env-file=.env.local scripts/eval/hapjesheld-eval.mjs --model sonnet   (modelkeuze forceren: haiku|sonnet|sonnet5|sonnet46)
+ *   node --env-file=.env.local scripts/eval/hapjesheld-eval.mjs --model sonnet --denken laag --max-tokens 2000   (--denken uit|tussen|laag|medium|hoog)
  *     (--denken uit|laag|medium|hoog; zonder --denken geldt CHAT_THINKING uit chat.mjs)
  *   node --env-file=.env.local scripts/eval/hapjesheld-eval.mjs --herschrijf uit   (uit|haiku|sonnet)
  *
@@ -55,21 +55,23 @@ const vergelijkMet = arg('--vergelijk');
 // per token, zelfde omrekening als MODELS (× 0.92).
 const EXTRA_MODELS = {
   SONNET46: { id: 'claude-sonnet-4-6', costInCents: 0.0003 * 0.92, costOutCents: 0.0015 * 0.92 },
+  SONNET5: { id: 'claude-sonnet-5', costInCents: 0.0002 * 0.92, costOutCents: 0.001 * 0.92 },
 };
 const ALLE_MODELS = { ...MODELS, ...EXTRA_MODELS };
 // De beoordelaar blijft vast op Sonnet 4.6, zodat runs onderling vergelijkbaar blijven.
 const RECHTER = EXTRA_MODELS.SONNET46;
 const forceerModel = arg('--model')?.toUpperCase();
-if (forceerModel && !ALLE_MODELS[forceerModel]) throw new Error('--model moet haiku, sonnet of sonnet46 zijn');
+if (forceerModel && !ALLE_MODELS[forceerModel]) throw new Error('--model moet haiku, sonnet, sonnet5 of sonnet46 zijn');
 const denken = arg('--denken');
 const maxTokens = Number(arg('--max-tokens')) || MAX_OUTPUT_TOKENS;
 const DENKEN = {
-  uit: { thinking: { type: 'disabled' } },
+  uit: { thinking: { type: 'disabled' } },            // Sonnet 5 en ouder; 400 op Sonnet 5.5
+  tussen: { thinking: { type: 'between_tools' } },    // Sonnet 5.5: laagste stand, geen nadenken
   laag: { thinking: { type: 'adaptive' }, output_config: { effort: 'low' } },
   medium: { thinking: { type: 'adaptive' }, output_config: { effort: 'medium' } },
   hoog: { thinking: { type: 'adaptive' }, output_config: { effort: 'high' } },
 };
-if (denken && !DENKEN[denken]) throw new Error('--denken moet uit, laag, medium of hoog zijn');
+if (denken && !DENKEN[denken]) throw new Error('--denken moet uit, tussen, laag, medium of hoog zijn');
 const HERSCHRIJF = { uit: null, haiku: MODELS.HAIKU, sonnet: MODELS.SONNET };
 const herschrijfArg = arg('--herschrijf');
 if (herschrijfArg && !(herschrijfArg in HERSCHRIJF)) throw new Error('--herschrijf moet uit, haiku of sonnet zijn');

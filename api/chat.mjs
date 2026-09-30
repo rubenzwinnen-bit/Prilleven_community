@@ -51,9 +51,11 @@ const MIN_QUESTION_CHARS = 3;
 // Sonnet 5 telt ~30% meer tokens voor dezelfde tekst dan Sonnet 4.6. 600 kapte
 // een dagplan (ontbijt/middag/avond) af; je betaalt enkel wat er geschreven wordt.
 export const MAX_OUTPUT_TOKENS = 1200;
-// Sonnet 5 denkt standaard adaptief na; in de testset scoorde dat slechter
-// (toon, doorverwijzing) en het eet max_tokens op. Dus expliciet uit.
-export const CHAT_THINKING = { type: 'disabled' };
+// Sonnet denkt standaard adaptief na; op Sonnet 5 scoorde dat slechter in de testset
+// (toon, doorverwijzing) en het eet max_tokens op. Dus uit. Op Sonnet 5.5 geeft
+// `disabled` een 400; `between_tools` is daar de laagste stand (geen nadenken).
+// Werkt enkel op Sonnet 5.5: bij een modelwissel dit mee aanpassen.
+export const CHAT_THINKING = { type: 'between_tools' };
 const HISTORY_LIMIT = 20;
 
 // Foto-upload: base64 in JSON body
@@ -535,9 +537,16 @@ ${ingredientsBlock}Vraag van de gebruiker: ${questionForPrompt}`;
       response = await anthropic.messages.create(claudeParams);
     }
 
-    const answer = checkRecipeLinks(response.content
-      .filter((b) => b.type === 'text')
-      .map((b) => b.text).join('\n').trim(), chunks);
+    // Sonnet 5.5 kan een vraag weigeren (stop_reason 'refusal', ook bij onschuldige
+    // vragen mogelijk). Dan een vriendelijk antwoord i.p.v. een lege of halve tekst.
+    if (response.stop_reason === 'refusal') {
+      console.log('[chat] geweigerd', { category: response.stop_details?.category ?? null, q: question.slice(0, 100) });
+    }
+    const answer = response.stop_reason === 'refusal'
+      ? 'Op deze vraag kan ik helaas niet antwoorden. Probeer ze gerust anders te formuleren, of stel een andere vraag over kindervoeding.'
+      : checkRecipeLinks(response.content
+        .filter((b) => b.type === 'text')
+        .map((b) => b.text).join('\n').trim(), chunks);
 
     const retrievedIds = chunks.map((c) => c.id);
     const tokensIn = response.usage?.input_tokens ?? 0;
