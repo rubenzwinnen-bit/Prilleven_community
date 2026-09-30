@@ -1,7 +1,7 @@
 // Chat frontend met sidebar-gebaseerde conversatie-management.
 // Vereist een geldige Supabase sessie (gezet door de hoofdsite-login).
 
-import { sessionGet, sessionRefreshIfNeeded, sessionClear } from './supabase.js?v=4.0.39';
+import { sessionGet, sessionRefreshIfNeeded, sessionClear } from './supabase.js?v=4.0.40';
 
 // ---------- DOM refs ----------
 const form = document.getElementById('form');
@@ -240,6 +240,62 @@ async function readChatStream(res, onFirstText) {
   const nextEvent = sseReader(res);
   let text = '';
   let bubble = null;
+  // Vloeiend tonen: Sonnet 5.5 levert de tekst in pakketjes (veel stukjes tegelijk,
+  // dan tot ±0,6 s niets). De tekst gaat eerst in een buffer en verschijnt dan per
+  // ±16 ms, aan het gemiddelde tempo waarmee hij binnenkomt. Loopt de buffer op, dan
+  // versnelt het (achterstand weg in ±0,6 s); na `done` nog sneller (±0,25 s).
+  let shown = 0;
+  let firstAt = 0;
+  let lastFrame = 0;
+  let timer = null;
+  let finishing = false;
+  let drained = null;
+
+  const render = () => {
+    bubble.textContent = '';
+    renderTextWithLinks(bubble, stripMarkdown(text.slice(0, shown)));
+    scrollIfFollowing();
+  };
+  const tick = () => {
+    const now = performance.now();
+    const backlog = text.length - shown;
+    if (backlog <= 0) {
+      timer = null;
+      drained?.();
+      return;
+    }
+    const dt = Math.min(now - lastFrame, 100);
+    lastFrame = now;
+    // Minstens 400 ms rekenen, anders verschijnt het eerste pakketje in één keer.
+    const avgRate = text.length / Math.max(now - firstAt, 400);
+    const rate = Math.max(avgRate, backlog / (finishing ? 250 : 600));
+    shown = Math.min(text.length, shown + Math.max(1, Math.round(rate * dt)));
+    render();
+    timer = setTimeout(tick, 16);
+  };
+  const schedule = () => {
+    if (timer) return;
+    lastFrame = performance.now();
+    timer = setTimeout(tick, 16);
+  };
+  // Wacht tot de buffer leeg is (max 1,5 s; een tab op de achtergrond vertraagt
+  // timers tot ±1 s), toon dan de rest in één keer.
+  const flush = async () => {
+    if (!bubble) return;
+    if (!document.hidden && shown < text.length) {
+      finishing = true;
+      schedule();
+      await new Promise(resolve => {
+        drained = resolve;
+        setTimeout(resolve, 1500);
+      });
+    }
+    clearTimeout(timer);
+    timer = null;
+    shown = text.length;
+    render();
+  };
+
   let ev;
   while ((ev = await nextEvent())) {
     const { event, payload } = ev;
@@ -250,15 +306,16 @@ async function readChatStream(res, onFirstText) {
         bubble = document.createElement('div');
         bubble.className = 'msg bot';
         log.appendChild(bubble);
+        firstAt = performance.now();
         onFirstText?.();
       }
-      bubble.textContent = '';
-      renderTextWithLinks(bubble, stripMarkdown(text));
-      scrollIfFollowing();
+      schedule();
     } else if (event === 'done' || event === 'error') {
+      await flush();
       return { bubble, data: payload };
     }
   }
+  await flush();
   return { bubble, data: { error: 'Het antwoord werd onderbroken. Probeer het opnieuw.' } };
 }
 
