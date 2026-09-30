@@ -147,11 +147,19 @@ export function formatProfileForPrompt(profile) {
   const lines = [];
 
   if (Array.isArray(profile.children) && profile.children.length > 0) {
+    // Bij meerdere kinderen "jongste"/"oudste" erbij: een standaardnaam als "Kind 1"
+    // las de bot als het eerste (oudste) kind, en ouders zeggen zelf "mijn jongste".
+    const ages = profile.children.map(c => ageMonths(c.birthdate)).filter(a => a !== null);
+    const youngest = ages.length > 1 ? Math.min(...ages) : null;
+    const oldest = ages.length > 1 ? Math.max(...ages) : null;
     const kidBits = profile.children
       .map(c => {
         const age = ageMonths(c.birthdate);
         const pieces = [];
-        if (c.name) pieces.push(c.name);
+        const rank = youngest === oldest || age === null ? null
+          : age === youngest ? 'jongste kind' : age === oldest ? 'oudste kind' : null;
+        if (c.name) pieces.push(rank ? `${c.name} (${rank})` : c.name);
+        else if (rank) pieces.push(rank);
         if (age !== null) pieces.push(age < 24 ? `${age} maanden` : `${Math.floor(age / 12)} jaar`);
         if (Array.isArray(c.allergies) && c.allergies.length > 0) {
           pieces.push(`allergie voor ${c.allergies.join('/')}`);
