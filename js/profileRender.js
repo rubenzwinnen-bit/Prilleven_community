@@ -16,7 +16,7 @@ import {
   colorFromSeed,
   initialsFromName,
   formatRelativeTime,
-} from './utils.js?v=4.0.40';
+} from './utils.js?v=4.0.41';
 
 /* ---------------- Avatar ---------------- */
 /**

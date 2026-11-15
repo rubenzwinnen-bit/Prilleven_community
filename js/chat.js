@@ -1,7 +1,7 @@
 // Chat frontend met sidebar-gebaseerde conversatie-management.
 // Vereist een geldige Supabase sessie (gezet door de hoofdsite-login).
 
-import { sessionGet, sessionRefreshIfNeeded, sessionClear } from './supabase.js?v=4.0.40';
+import { sessionGet, sessionRefreshIfNeeded, sessionClear } from './supabase.js?v=4.0.41';
 
 // ---------- DOM refs ----------
 const form = document.getElementById('form');

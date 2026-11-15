@@ -1591,6 +1591,22 @@ select.form-control {
   color: var(--color-primary);
 }
 
+/* --- Tikfout-suggestie bij registreren ("Bedoel je …@gmail.com?") --- */
+.auth-typo-suggestie {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-green-text);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.auth-typo-suggestie:hover {
+  color: var(--color-primary);
+}
+
 /* --- Lidmaatschap-CTA onder de auth-views --- */
 .auth-cta {
   margin-top: 1.25rem;

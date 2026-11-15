@@ -370,6 +370,70 @@ function showAuthModal(initialView = 'login') {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   }
 
+  /* Vermoedelijke tikfout in het maildomein ("gmial.com" → "gmail.com"), of null.
+     Spiegel van vermoedelijkeTikfout() in api/_lib/email-typo.mjs (de webhook
+     mailt het team bij een tikfout in Plug&Pay); lijst en drempels gelijk houden. */
+  const BEKENDE_MAILDOMEINEN = [
+    'gmail.com', 'googlemail.com',
+    'hotmail.com', 'hotmail.be', 'hotmail.nl', 'hotmail.fr',
+    'outlook.com', 'outlook.be', 'outlook.nl',
+    'live.com', 'live.be', 'live.nl', 'msn.com',
+    'icloud.com', 'me.com', 'mac.com',
+    'yahoo.com', 'yahoo.fr',
+    'telenet.be', 'skynet.be', 'proximus.be', 'scarlet.be',
+    'kpnmail.nl', 'ziggo.nl', 'planet.nl', 'home.nl',
+  ];
+
+  function domeinAfstand(a, b) {
+    const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+    for (let j = 1; j <= b.length; j++) d[0][j] = j;
+    for (let i = 1; i <= a.length; i++) {
+      for (let j = 1; j <= b.length; j++) {
+        d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+        if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+          d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+        }
+      }
+    }
+    return d[a.length][b.length];
+  }
+
+  function vermoedelijkeTikfout(email) {
+    const [lokaal, domein] = String(email || '').toLowerCase().trim().split('@');
+    if (!lokaal || !domein || BEKENDE_MAILDOMEINEN.includes(domein)) return null;
+    const max = domein.length <= 8 ? 1 : 2;
+    let beste = null;
+    for (const kandidaat of BEKENDE_MAILDOMEINEN) {
+      const a = domeinAfstand(domein, kandidaat);
+      if (a <= max && (!beste || a < beste.a)) beste = { kandidaat, a };
+    }
+    return beste ? `${lokaal}@${beste.kandidaat}` : null;
+  }
+
+  /* "Niet bekend" bij registreren: bij een vermoedelijke tikfout een klikbare
+     verbetering, anders de hint dat het adres bij het betalen fout kan zijn. */
+  function showSignupUnknown(email) {
+    const el = views.signup.querySelector('.auth-error');
+    const suggestie = vermoedelijkeTikfout(email);
+    el.textContent = '';
+    if (suggestie) {
+      el.append('Dit e-mailadres is niet bij ons bekend. Bedoel je ');
+      const knop = document.createElement('button');
+      knop.type = 'button';
+      knop.className = 'auth-typo-suggestie';
+      knop.textContent = suggestie;
+      knop.addEventListener('click', () => {
+        document.getElementById('signup-email').value = suggestie;
+        el.classList.add('hidden');
+        document.getElementById('signup-password').focus();
+      });
+      el.append(knop, '?');
+    } else {
+      el.textContent = 'Dit e-mailadres is niet bij ons bekend. Gebruik het adres waarmee je betaald hebt. Denk je dat er bij het betalen een tikfout in je adres is geslopen? Mail ons via hallo@prilleven.be.';
+    }
+    el.classList.remove('hidden');
+  }
+
   async function completeLogin(email) {
     Store.setCurrentUser(email);
     // Subscription check — als niet actief, toon expired-scherm i.p.v. app
@@ -457,7 +521,7 @@ function showAuthModal(initialView = 'login') {
         if (exists) {
           showError('signup', 'Dit e-mailadres heeft al een account. Gebruik "Inloggen" om in te loggen.');
         } else {
-          showError('signup', 'Dit e-mailadres is niet geregistreerd. Heb je al betaald? Neem contact op als je denkt dat dit een fout is.');
+          showSignupUnknown(email);
         }
         return;
       }
