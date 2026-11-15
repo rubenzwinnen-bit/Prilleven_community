@@ -349,14 +349,34 @@ export default async function handler(req, res) {
 
   let applied = false;
   let applyError = null;
+  let koppelNote = null;
+  let rij = null;
   if (category !== 'unknown') {
     try {
-      const q = wantInsert
-        ? supabase.from('allowed_users').upsert({ email: emailLower, ...update }, { onConflict: 'email' })
-        : supabase.from('allowed_users').update(update).ilike('email', emailLower);
+      // Eerst op Plug&Pay-klantnummer, dan pas op e-mailadres (sinds 2026-11-15).
+      // Een adres dat in allowed_users met de hand verbeterd is (tikfout bij het
+      // afrekenen, bv. outliok.com), krijgt zo toch zijn verlenging, ook al stuurt
+      // Plug&Pay nog het oude adres. Het e-mailadres van de rij blijft dan staan.
+      // Enkel "Bestelling betaald" stuurt een klantnummer mee; "Abonnement
+      // geëindigd" niet, die loopt dus altijd via het e-mailadres.
+      if (customerId) {
+        const { data: rijen, error: zoekFout } = await supabase.from('allowed_users')
+          .select('id, email').eq('plugpay_customer_id', String(customerId)).limit(2);
+        if (zoekFout) throw new Error(zoekFout.message);
+        if (rijen?.length === 1) rij = rijen[0];
+        else if (rijen?.length > 1) koppelNote = `meerdere_rijen_klantnummer:${customerId}`;
+      }
+      const rijEmail = rij ? String(rij.email).toLowerCase() : null;
+      if (rij && rijEmail !== emailLower) koppelNote = `klantnummer_ander_email:${rijEmail}`;
+      const q = rij
+        ? supabase.from('allowed_users').update(update).eq('id', rij.id)
+        : wantInsert
+          ? supabase.from('allowed_users').upsert({ email: emailLower, ...update }, { onConflict: 'email' })
+          : supabase.from('allowed_users').update(update).ilike('email', emailLower);
       const { error } = await q;
       if (error) throw new Error(error.message);
       invalidateSubscriptionCache(emailLower);
+      if (rijEmail && rijEmail !== emailLower) invalidateSubscriptionCache(rijEmail);
       applied = true;
     } catch (err) {
       applyError = err.message;
@@ -366,12 +386,14 @@ export default async function handler(req, res) {
 
   await logEvent({
     email: emailLower, eventType: rawType, category, cycle,
-    payload: body, applied, error: applyError || [skuNote, note].filter(Boolean).join(' | ') || null,
+    payload: body, applied, error: applyError || [skuNote, note, koppelNote].filter(Boolean).join(' | ') || null,
   });
 
   // Lijkt het adres op een tikfout ("outliok.com"), dan een seintje naar het team.
-  // Pas ná het verwerken en loggen, gooit nooit en wacht hooguit 3 s.
-  if (applied && category === 'activated') {
+  // Pas ná het verwerken en loggen, gooit nooit en wacht hooguit 3 s. Niet als de
+  // rij via het klantnummer een ander (verbeterd) adres heeft: dat is al opgelost.
+  const alVerbeterd = rij && String(rij.email).toLowerCase() !== emailLower;
+  if (applied && category === 'activated' && !alVerbeterd) {
     await meldMogelijkeTikfout({ email: emailLower, customerId });
   }
 
