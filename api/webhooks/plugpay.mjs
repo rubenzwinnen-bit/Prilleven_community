@@ -22,6 +22,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { supabase } from '../_lib/clients.mjs';
 import { invalidateSubscriptionCache } from '../_lib/subscription.mjs';
+import { meldMogelijkeTikfout } from '../_lib/email-typo.mjs';
 
 const SECRET = process.env.PLUGPAY_WEBHOOK_SECRET || '';
 // Gedeeld geheim. Plug&Pay laat bij een webhook-actie enkel een URL instellen,
@@ -367,6 +368,12 @@ export default async function handler(req, res) {
     email: emailLower, eventType: rawType, category, cycle,
     payload: body, applied, error: applyError || [skuNote, note].filter(Boolean).join(' | ') || null,
   });
+
+  // Lijkt het adres op een tikfout ("outliok.com"), dan een seintje naar het team.
+  // Pas ná het verwerken en loggen, gooit nooit en wacht hooguit 3 s.
+  if (applied && category === 'activated') {
+    await meldMogelijkeTikfout({ email: emailLower, customerId });
+  }
 
   if (category === 'unknown') {
     return json(res, 200, { received: true, ignored: true, reason: 'unknown_event_type' });

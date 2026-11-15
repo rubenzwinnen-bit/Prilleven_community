@@ -17,7 +17,7 @@ Dit bestand geeft Claude Code (en andere AI-assistenten) de context om effectief
 - **DB + Auth + Storage:** Supabase (Postgres + RLS).
 - **AI:** Anthropic SDK (`@anthropic-ai/sdk`) voor chat, Voyage AI voor embeddings (RAG).
 - **Hosting:** Vercel (zie `vercel.json`).
-- **Betalingen:** Plug&Pay (webhook → `allowed_users` / `subscriptions` tabel).
+- **Betalingen:** Plug&Pay (webhook → `allowed_users`, elk event gelogd in `subscription_events`).
 
 Node ≥ 20.
 
@@ -205,7 +205,7 @@ en `eind-sessie` (via de slashlijst of `$skill-naam`).
 
 - **Cache-buster vergeten** = gebruikers zien oude JS/CSS. Altijd bumpen.
 - **HTML cache headers staan op no-cache, JS/CSS op `max-age=31536000, immutable`** (zie `vercel.json`, sinds 2026-09-02). De browser cachet JS/CSS dus een jaar; zonder cache-buster-bump zien gebruikers gegarandeerd oude code. Bumpen is niet optioneel meer.
-- **`allowed_users` vs `subscriptions`**: `allowed_users` is de huidige toegang, `subscriptions` houdt de geschiedenis bij. Webhook update beide.
+- **`allowed_users` vs `subscription_events`**: `allowed_users` is de huidige toegang, `subscription_events` het logboek van elk webhook-event. Een tabel `subscriptions` bestaat niet. De webhook koppelt **enkel op e-mailadres**: een tikfout bij het afrekenen (bv. `outliok.com`, 07-11-2026) geeft een rij die niemand kan gebruiken, en een adres dat je enkel in `allowed_users` verbetert, krijgt de volgende verlenging niet — die komt op het oude adres binnen. Altijd ook in Plug&Pay verbeteren.
 - **Toegangsverlening loopt sinds 2026-08-12 rechtstreeks via Plug&Pay**, niet meer via het CRM van Joemen. Dat CRM stuurde enkel contactvelden en vuurde nooit bij een verlenging — tussen juni en augustus 2026 kwamen er 2 `activated`-events binnen tegenover 39 `expired`, en moesten 160 einddatums met de hand hersteld worden. Zie `api/CLAUDE.md` voor de twee Plug&Pay-regels en het incasso-vinkje.
 - **RLS-fouten verschijnen als lege response** — niet als error. Bij "data komt niet binnen": eerst RLS-policy checken.
 - **Community routes** lopen via 1 catch-all rewrite naar `/api/community` — die functie doet zelf de routing.
